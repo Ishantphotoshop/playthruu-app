@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<title>Playthruu — your gaming diary</title>
+<script>
+  // Applies a saved Light-theme choice BEFORE the stylesheet paints, as
+  // a plain inline script rather than deferring to js/theme.js (an ES
+  // module, which loads async) — the whole point is that this can't be
+  // a beat late, or the page flashes dark before switching to light.
+  try {
+    if (localStorage.getItem('playthruu_theme') === 'light') {
+      document.documentElement.setAttribute('data-theme', 'light');
+    }
+  } catch (e) { /* storage unavailable — dark default, same as a fresh install */ }
+</script>
+<meta name="description" content="Log, rate, and review the games you play. Follow friends and see what they're playing.">
+<meta name="theme-color" content="#12121a">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://api.fontshare.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,500;1,600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<!-- Switzer: the wordmark's font. Gilroy itself is a paid commercial
+     licence (Fontfabric) — bundling it without buying that licence would
+     be a real legal risk for a commercial app. Switzer (Fontshare, free
+     for commercial use, unlimited) is the closest open equivalent: same
+     geometric-grotesk family as Gilroy. Swap this line for a real Gilroy
+     @font-face if a licence is ever purchased — nothing else has to
+     change, --font-brand is the only thing that references it. -->
+<link href="https://api.fontshare.com/v2/css?f[]=switzer@400,700,800&display=swap" rel="stylesheet">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Playthruu">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<div id="app">
+  <div class="boot-loader">
+    <div class="boot-loader__mark"></div>
+  </div>
+</div>
+
+<script type="module" src="js/app.js"></script>
+<script>
+  // The service worker caches the app shell, which is what you want in
+  // production and actively harmful while developing: a saved edit would
+  // not appear on reload, and even a hard refresh could be answered from
+  // the worker's cache. So on localhost it is never registered, and any
+  // worker left over from a previous visit is torn down along with its
+  // caches. Everywhere else it registers exactly as before.
+  if ('serviceWorker' in navigator) {
+    var isLocalDev = ['localhost', '127.0.0.1', '::1', ''].indexOf(location.hostname) !== -1
+      || location.protocol === 'file:';
+
+    if (isLocalDev) {
+      navigator.serviceWorker.getRegistrations()
+        .then(function (regs) { regs.forEach(function (r) { r.unregister(); }); })
+        .catch(function () {});
+      if (window.caches && caches.keys) {
+        caches.keys()
+          .then(function (keys) { keys.forEach(function (k) { caches.delete(k); }); })
+          .catch(function () {});
+      }
+    } else {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('service-worker.js').catch(function () {
+          // Offline caching just won't be available — the app still works online.
+        });
+      });
+    }
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,3373 @@
+/* ============================================================
+   PLAYTHRUU — Design system v3 ("console")
+   ------------------------------------------------------------
+   Direction: what PLAYTHRUU would look like if Sony built it.
+   The PS5 interface reads calm for four specific reasons, and
+   this system copies the reasoning rather than the pixels:
+
+   1. The base is deep desaturated NAVY, never pure black. Pure
+      black is harsh and makes artwork look pasted on; a blue-
+      grey base makes covers sit in the scene.
+   2. Large text is LIGHT weight, not heavy. Big + bold shouts;
+      big + light feels premium and quiet.
+   3. Space is the main design element. Sections are given far
+      more room than feels necessary at first glance.
+   4. Almost no borders. Surfaces separate by tone, not by lines.
+
+   Accent is PlayStation blue, used sparingly — on a calm field,
+   one saturated colour goes a very long way.
+   ============================================================ */
+:root {
+  /* --- foundation: desaturated navy, five steps of elevation --- */
+  --bg: #0a0e16;
+  --bg-deep: #060910;
+  --bg-lift: #10161f;
+  --surface: #151c28;
+  --surface-raised: #1d2534;
+  --surface-high: #273040;
+
+  /* --- glass --- */
+  --glass-fill: rgba(255, 255, 255, 0.03);
+  --glass-fill-strong: rgba(255, 255, 255, 0.08);
+  --glass-tint: rgba(14, 20, 32, 0.14);
+  --glass-filter: blur(22px) saturate(240%) brightness(1.24) contrast(1.05);
+  --glass-filter-strong: blur(34px) saturate(230%) brightness(1.16) contrast(1.04);
+  --glass-light: rgba(255, 255, 255, 0.045);
+  --glass-border: rgba(255, 255, 255, 0.10);
+  --glass-highlight: rgba(255, 255, 255, 0.45);
+  --glass-shade: rgba(0, 0, 0, 0.16);
+  --blur: 30px;
+  --blur-strong: 42px;
+  --glass: rgba(255, 255, 255, 0.05);
+  --glass-strong: rgba(12, 17, 27, 0.74);
+
+  /* --- text: near-white primary, blue-tinted greys below it --- */
+  --ink: #ffffff;
+  --ink-dim: #9fadc2;
+  --ink-faint: #5e6b80;
+
+  /* --- accent: PlayStation blue --- */
+  --accent: #0f8cff;
+  --accent-bright: #4dabff;
+  --accent-deep: #0062cc;
+  --accent-dim: rgba(15, 140, 255, 0.15);
+  --gold: #ffc247;
+  --coral: #ff6b6b;
+  --teal: #4dabff;
+  --violet: #9d8cff;
+
+  /* --- semantic --- */
+  --line: rgba(255, 255, 255, 0.055);
+  --line-strong: rgba(255, 255, 255, 0.11);
+  --danger: #ff6b6b;
+  --success: #4ade9b;
+  --warning: #ffc247;
+
+  /* --- type ---
+     Plus Jakarta Sans throughout: a touch more character than Inter
+     (rounder bowls, a distinctive single-storey 'a' at weight, wider
+     apertures) without giving up legibility at the 11-13px sizes the
+     metadata rows run at, which is where most trendier faces fall
+     apart. Space Grotesk is kept for the wordmark ONLY — its odd,
+     geometric letterforms are exactly what you want in a logo and
+     exactly what you don't want in a paragraph. */
+  --font-display: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-body: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  /* The wordmark's font — Switzer, Gilroy's free-for-commercial-use
+     lookalike (see the <link> in index.html for why). */
+  --font-brand: 'Switzer', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Consolas, monospace;
+
+  --text-display: 34px;
+  --text-title: 24px;
+  --text-heading: 19px;
+  --text-body: 15px;
+  --text-meta: 13px;
+  --text-label: 11.5px;
+
+  /* Light at large sizes, normal at small — the single biggest
+     lever on whether an interface feels calm or loud. */
+  --weight-display: 300;
+  --weight-heading: 400;
+  --weight-body: 400;
+  --weight-strong: 600;
+
+  /* --- space: deliberately roomier than v2 --- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 14px;
+  --space-4: 20px;
+  --space-5: 28px;
+  --space-6: 40px;
+  --space-7: 56px;
+
+  --radius-s: 8px;
+  --radius-m: 14px;
+  --radius-l: 22px;
+  --radius-pill: 999px;
+
+  /* Shadows are soft and low-contrast — hard shadows would fight
+     the calm. Depth comes from tone, not from drop shadows. */
+  --shadow-card: 0 6px 22px rgba(0,0,0,0.34);
+  --shadow-float: 0 10px 40px rgba(0,0,0,0.46);
+  --shadow-modal: 0 20px 70px rgba(0,0,0,0.6);
+  --shadow-accent: 0 6px 26px rgba(15, 140, 255, 0.34);
+  /* The console focus ring: a soft blue bloom, the cue that tells
+     you where you are on a screen you're navigating, not clicking. */
+  --glow-focus: 0 0 0 2px rgba(255,255,255,0.85), 0 0 26px rgba(15,140,255,0.5);
+
+  --ease: cubic-bezier(0.25, 0.8, 0.25, 1);
+  --dur-fast: 0.16s;
+  --dur: 0.28s;
+  --dur-slow: 0.45s;
+
+  --star-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 .587l3.668 7.431 8.2 1.192-5.934 5.783 1.401 8.172L12 18.897l-7.335 3.868 1.401-8.172L.132 9.21l8.2-1.192z'/%3E%3C/svg%3E");
+  /* Star fill — the muted chartreuse-gold from the reference image, not
+     the amber used elsewhere, so ratings match what Ishan showed. */
+  --star-fill: #c6c42e;
+
+  /* 3:4 (e.g. 264x352). Covers arrive from IGDB at assorted shapes, so
+     the frame is a fixed 3:4 box and the artwork is fitted INSIDE it
+     rather than filled to it — see .poster-frame__img. */
+  --ratio-card: 3/4;
+  --ratio-inline: 3/4;
+
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-top: env(safe-area-inset-top, 0px);
+}
+
+/* ============================================================
+   LIGHT THEME — "creamy white + orange"
+   ------------------------------------------------------------
+   An alternate palette, switched via [data-theme="light"] on
+   <html> (see the Dark/Light toggle in Settings, and the no-flash
+   init script in index.html). Dark mode stays the default — this
+   only applies when someone explicitly opts in.
+
+   Same structural relationships as the dark palette above (base is
+   the dullest tone, more "elevated" surfaces get closer to pure
+   white, glass/lines/shadows all keep the same job) just inverted
+   onto a warm cream base instead of navy, with the accent swapped
+   from PlayStation blue to orange.
+
+   Known gap: a few effects were hand-tuned specifically for dark
+   backdrops with literal rgba() values rather than tokens — the
+   login screen's photo-backdrop text treatment and the tabbar's
+   liquid-glass sheen. Both still work here, just not re-tuned for
+   light yet; a good first candidate for a follow-up pass. */
+:root[data-theme="light"] {
+  --bg: #f5ecda;
+  --bg-deep: #ecdfc4;
+  --bg-lift: #faf5ea;
+  --surface: #fffdf8;
+  --surface-raised: #ffffff;
+  --surface-high: #fff3e0;
+
+  --glass-fill: rgba(43, 29, 14, 0.03);
+  --glass-fill-strong: rgba(43, 29, 14, 0.06);
+  --glass-tint: rgba(255, 250, 240, 0.5);
+  --glass-filter: blur(22px) saturate(160%) brightness(1.04) contrast(1.02);
+  --glass-filter-strong: blur(34px) saturate(150%) brightness(1.03) contrast(1.02);
+  --glass-light: rgba(43, 29, 14, 0.03);
+  --glass-border: rgba(43, 29, 14, 0.10);
+  --glass-highlight: rgba(255, 255, 255, 0.75);
+  --glass-shade: rgba(43, 29, 14, 0.08);
+  --glass: rgba(43, 29, 14, 0.04);
+  --glass-strong: rgba(255, 250, 240, 0.82);
+
+  --ink: #2b1d0e;
+  --ink-dim: #7c6a51;
+  --ink-faint: #ab9b81;
+
+  --accent: #ee7b1a;
+  --accent-bright: #ff9a3d;
+  --accent-deep: #c25e0a;
+  --accent-dim: rgba(238, 123, 26, 0.14);
+
+  --line: rgba(43, 29, 14, 0.08);
+  --line-strong: rgba(43, 29, 14, 0.15);
+  --danger: #d8433f;
+  --success: #2f9e64;
+  --warning: #c9820c;
+
+  --shadow-card: 0 6px 20px rgba(43, 29, 14, 0.12);
+  --shadow-float: 0 10px 34px rgba(43, 29, 14, 0.16);
+  --shadow-modal: 0 20px 60px rgba(43, 29, 14, 0.22);
+  --shadow-accent: 0 6px 22px rgba(238, 123, 26, 0.32);
+  --glow-focus: 0 0 0 2px rgba(255,255,255,0.9), 0 0 22px rgba(238, 123, 26, 0.45);
+}
+/* body's own ambient-light gradient is a literal colour, not a token
+   (see the .body rule below) — needs its own light-mode override or it
+   keeps bleeding dark navy across the top of an otherwise cream page. */
+:root[data-theme="light"] body {
+  background:
+    radial-gradient(120% 70% at 50% 0%, #fff6e2 0%, transparent 62%),
+    var(--bg);
+}
+
+/* The tabbar's glass is tuned white-on-dark by default (see .tabbar
+   below) because most of the time it floats over game cover art. But it
+   also sits over the app's own plain background on screens like
+   Settings and Lists, which in light theme is cream, not dark — the
+   same near-white glass and white text that reads fine over art becomes
+   almost invisible over a cream page. Re-tinted dark-on-cream here,
+   scoped to light theme only so the dark theme (already tuned and
+   approved) is untouched. */
+:root[data-theme="light"] .tabbar {
+  background: rgba(43, 29, 14, 0.055);
+  border-color: rgba(43, 29, 14, 0.14);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.6),
+    0 10px 34px -8px rgba(43,29,14,0.20);
+}
+:root[data-theme="light"] .tabbar__item {
+  color: rgba(43, 29, 14, 0.55);
+  text-shadow: none;
+}
+:root[data-theme="light"] .tabbar__item svg {
+  filter: drop-shadow(0 1px 1.5px rgba(43,29,14,0.10));
+}
+:root[data-theme="light"] .tabbar__item--active { color: var(--ink); }
+:root[data-theme="light"] .tabbar__item--active svg {
+  filter: drop-shadow(0 1px 1.5px rgba(43,29,14,0.10)) drop-shadow(0 0 6px rgba(238,123,26,0.30));
+}
+
+
+/* ------------------------------------------------------------ reset */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { height: 100%; overflow-x: hidden; }
+body {
+  margin: 0;
+  /* Ambient light bleeding down from the top rather than a flat fill.
+     Console dashboards almost never use one uniform colour — the
+     gradient is what stops a dark UI reading as a black rectangle. */
+  background:
+    radial-gradient(120% 70% at 50% 0%, #16202f 0%, transparent 62%),
+    var(--bg);
+  background-attachment: fixed;
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-weight: var(--weight-body);
+  letter-spacing: -0.006em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior-y: none;
+  overflow-x: hidden;
+  width: 100%;
+}
+h1, h2, h3, p, figure { margin: 0; }
+a { color: inherit; text-decoration: none; }
+button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; }
+input, textarea { font: inherit; color: inherit; }
+img { max-width: 100%; display: block; }
+ul { list-style: none; margin: 0; padding: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 2px; border-radius: 4px; }
+
+/* ------------------------------------------------------------ app shell */
+#app {
+  max-width: 560px;
+  width: 100%;
+  margin: 0 auto;
+  min-height: 100vh;
+  min-height: 100dvh;
+  /* On an actual phone, 100dvh is already phone-sized — this does
+     nothing there. On a desktop browser, 100dvh is the whole monitor,
+     which stretched everything (including the login art) to a huge,
+     wrong-feeling size that needed zooming out just to see fully.
+     Capping it keeps the app at a believable phone height everywhere. */
+  max-height: 1000px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  background: transparent;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.boot-loader { flex: 1; display: grid; place-items: center; }
+/* The real brand mark (icons/mark-blue.svg, icons/mark-orange.svg) — a
+   background-image rather than an <img>, so the theme-appropriate one
+   can be picked with a plain CSS override instead of JS, which hasn't
+   run yet at the point this is on screen (see index.html's boot-loader,
+   painted before js/app.js even loads). The [data-theme] attribute
+   IS already set by then, by the same inline script that avoids a
+   flash of the wrong theme on the stylesheet itself. */
+.boot-loader__mark {
+  width: 64px; height: 64px;
+  border-radius: var(--radius-m);
+  background-image: url('icons/mark-blue.svg');
+  background-size: cover;
+  animation: pulse 1.4s ease-in-out infinite;
+}
+:root[data-theme="light"] .boot-loader__mark { background-image: url('icons/mark-orange.svg'); }
+@keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(0.92); } }
+
+.view-body {
+  position: relative; /* anchors .pull-refresh's indicator, wherever the gesture is wired */
+  flex: 1;
+  min-width: 0;
+  padding: var(--space-4) var(--space-4) calc(120px + var(--safe-bottom));
+  overflow-y: auto;
+  animation: view-enter var(--dur) var(--ease);
+}
+/* A page's real content is only ever hidden BEHIND this, never inside
+   it — it has to sit outside whatever gets faded to opacity:0 while
+   data loads (see .feed-body--loading), or it would vanish along with
+   everything else it's meant to be standing in for. */
+.view-loading {
+  position: absolute; inset: 0; z-index: 6;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg);
+}
+/* Without this, the [hidden] attribute does nothing here — this rule's
+   own `display: flex` above is an author-stylesheet declaration, which
+   always beats the browser's default `[hidden] { display: none }` (a
+   UA-stylesheet rule, lowest priority in the cascade regardless of
+   selector specificity) unless something authored overrides it back. */
+.view-loading[hidden] { display: none; }
+@keyframes view-enter {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ------------------------------------------------------------ topbar */
+.topbar {
+  position: sticky; top: 0; z-index: 20;
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: calc(var(--space-3) + var(--safe-top)) var(--space-4) var(--space-3);
+  /* Solid, not glass — glass is kept on the nav bar + login only. */
+  background: var(--bg);
+  border-bottom: 1px solid var(--line);
+}
+/* Home only: the wordmark alone, centred, given room to breathe. */
+.topbar--home { justify-content: center; padding-top: calc(var(--space-4) + var(--safe-top)); padding-bottom: var(--space-4); }
+.topbar--home .topbar__logo { font-size: 22px; letter-spacing: 0.14em; }
+/* Flat, bold, and the plain theme ink — matches the actual "PlayThruu"
+   brand mark exactly (see icons/mark-blue.svg, icons/mark-orange.svg)
+   rather than a decorative gradient invented separately from it. Being
+   a plain colour rather than a background-clip trick is also what lets
+   this read correctly in both themes for free, no separate light-theme
+   override needed the way the old gradient version required. */
+.topbar__logo {
+  font-family: var(--font-brand);
+  font-weight: 800; /* Switzer Extrabold — a chunky, geometric mark, not a thin one */
+  font-style: normal;
+  font-size: 17px;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+.topbar__title {
+  font-family: var(--font-display); font-weight: var(--weight-heading); font-size: var(--text-heading);
+  flex: 1; letter-spacing: -0.012em;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.topbar__back, .icon-btn {
+  width: 38px; height: 38px; display: grid; place-items: center;
+  background: linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.03));
+  backdrop-filter: var(--glass-filter); -webkit-backdrop-filter: var(--glass-filter);
+  border: 1px solid var(--glass-border);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.22);
+  border-radius: 50%; flex-shrink: 0; color: var(--ink);
+  transition: background var(--dur) var(--ease), transform var(--dur-fast) var(--ease);
+}
+.topbar__back:active, .icon-btn:active { transform: scale(0.92); background: var(--surface-high); }
+.topbar__back svg, .icon-btn svg { width: 18px; height: 18px; }
+.topbar__right { display: flex; gap: var(--space-2); }
+
+/* ------------------------------------------------------------ tabbar
+   Floats above the content rather than sitting flush at the bottom
+   edge, so the app reads as layered rather than as a page with a
+   footer. Glass here is load-bearing: the artwork scrolling beneath
+   stays faintly visible, which is what makes it feel like one
+   continuous surface instead of two stacked boxes. */
+/* ---- Liquid Glass tab bar -------------------------------------------
+   Deliberately built from literal values rather than the shared
+   --glass-* tokens: those same tokens drive the top bar, modals and
+   segmented controls, so tuning them here would silently restyle half
+   the app. This material is the tab bar's alone.
+
+   What makes it read as glass rather than a translucent rectangle is
+   the combination, not the transparency:
+     saturate()  — the material picks up the colour of the artwork
+                   passing beneath it instead of greying it out
+     brightness()— keeps it luminous over dark posters
+     heavy blur  — refracts the content rather than merely revealing it
+     rim + sheen — the light behaviour that tells the eye it has an edge
+                   and a thickness
+   The fill is kept very low-alpha on purpose: posters must stay
+   recognisable through it. Legibility is bought back with the icon and
+   label shadows further down, not by making the surface opaque.       */
+.tabbar {
+  position: fixed; left: 50%; transform: translateX(-50%);
+  bottom: calc(var(--space-3) + var(--safe-bottom));
+  width: calc(100% - var(--space-6)); max-width: 460px;
+  display: flex; justify-content: space-around; align-items: center;
+  padding: var(--space-2);
+  /* Transparent water-glass — glass is kept HERE (and on the login
+     popup) only; everything else in the app is solid. */
+  background: rgba(255,255,255,0.05);
+  backdrop-filter: blur(26px) saturate(175%);
+  -webkit-backdrop-filter: blur(26px) saturate(175%);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: var(--radius-pill);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.15),
+    0 10px 34px -8px rgba(0,0,0,0.55);       /* float */
+  z-index: 30;
+  isolation: isolate;
+}
+
+/* Secondary refraction along the top rim. Real glass bends light hardest
+   where it curves, so this strip blurs its own backdrop a second time
+   and fades out downward — that gradient of distortion is what stops the
+   surface reading as one uniformly frosted panel. Harmless if an engine
+   ignores nested backdrop-filter: it simply isn't drawn. */
+/* Sheen + refraction layers removed — the bar is plain transparent glass
+   now, so these no longer exist. */
+.tabbar::after { display: none; }
+
+.tabbar::before { display: none; }
+.tabbar__item {
+  position: relative;
+  /* Above the sheen and refraction layers, so the glass never washes
+     over the controls themselves. */
+  z-index: 2;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 3px;
+  /* Slightly brighter than --ink-faint was: on a transparent surface the
+     artwork behind competes with the labels, so unselected items need a
+     little more presence to stay readable while still sitting back. */
+  color: rgba(255,255,255,0.60); font-size: 10px; font-weight: 600;
+  padding: var(--space-2) var(--space-3); letter-spacing: 0.01em;
+  border-radius: var(--radius-m);
+  transition: color var(--dur) var(--ease), transform var(--dur-fast) var(--ease);
+  min-width: 58px; height: 50px;
+  /* Contrast is held by the glyphs themselves rather than by making the
+     bar opaque — this is what lets the material stay genuinely
+     see-through over bright cover art without losing legibility. */
+  text-shadow: 0 1px 2px rgba(0,0,0,0.42);
+}
+.tabbar__item svg {
+  width: 21px; height: 21px;
+  filter: drop-shadow(0 1px 1.5px rgba(0,0,0,0.38));
+}
+/* The signed-out "Sign in" item is a <button>, not an <a> like the rest
+   — needs its own reset so it doesn't carry the browser's default
+   button chrome (border/background/font) underneath the shared styling
+   above. */
+button.tabbar__item { background: none; border: none; font: inherit; cursor: pointer; appearance: none; }
+.tabbar__item:active { transform: scale(0.92); }
+/* Active tab is marked by the icon/label lighting up to full white (from
+   the 60%-opacity resting state) — no dot beneath it. */
+.tabbar__item--active { color: #fff; }
+.tabbar__item--active svg { filter: drop-shadow(0 1px 1.5px rgba(0,0,0,0.38)) drop-shadow(0 0 6px rgba(120,180,255,0.35)); }
+/* Sits inline with the other items — the previous version used a
+   negative top margin to make it protrude, which fought the flex
+   centering and left it visibly off-axis. Same height as its
+   siblings now, so it lands dead centre every time.
+   Reworked as a glass element rather than a flat disc pasted on the
+   bar: a vertical tint gives it a lit top and a shaded base, the inset
+   highlight puts a specular edge on it, and the glow is split into a
+   tight contact shadow plus a wide soft one so it reads as sitting
+   within the same material instead of floating over it. */
+.tabbar__item--primary {
+  color: #fff;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.30) 0%, rgba(255,255,255,0.04) 48%, rgba(0,0,0,0.10) 100%),
+    linear-gradient(180deg, var(--accent-bright) 0%, var(--accent) 55%, var(--accent-deep) 100%);
+  width: 50px; height: 50px; min-width: 50px; border-radius: 50%;
+  padding: 0; margin: 0; gap: 0; flex-shrink: 0;
+  border: none;
+  text-shadow: none;
+  box-shadow:
+    inset 0 1px 0.5px rgba(255,255,255,0.62),   /* specular top edge */
+    inset 0 -1px 2px rgba(0,0,0,0.26),          /* rounded underside */
+    inset 0 0 0 0.5px rgba(255,255,255,0.20),   /* rim */
+    0 1px 3px rgba(0,0,0,0.24),
+    0 6px 18px -2px rgba(15,140,255,0.42);      /* coloured bloom */
+}
+.tabbar__item--primary span { display: none; }
+.tabbar__item--primary svg {
+  width: 22px; height: 22px;
+  filter: drop-shadow(0 1px 1.5px rgba(0,0,0,0.30));
+}
+.tabbar__item--primary::after { display: none; }
+.tabbar__item--primary:active { transform: scale(0.92); }
+
+/* Unread dot on the Messages tab — see app.js's applyMessageBadge().
+   A plain dot rather than a numbered pill: it only ever means "something
+   changed, go look," never a count worth reading at a glance. */
+.tabbar__item--badge { position: relative; }
+.tabbar__item--badge::after {
+  content: ''; position: absolute; top: 4px; right: 12px;
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--accent-bright);
+  box-shadow: 0 0 0 2px var(--bg), 0 0 6px rgba(15,140,255,0.5);
+}
+
+/* Blur is expensive and some engines fake it badly; without support,
+   fall back to a solid surface rather than an unreadable washed pill.
+   This matters more now that the tab bar's own fill is deliberately
+   near-transparent — with no blur behind it, the labels would be sitting
+   directly on top of raw cover art. The sheen and refraction layers are
+   dropped here too, since neither means anything without the material. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .tabbar { background: var(--surface-raised); }
+  .tabbar::before, .tabbar::after { display: none; }
+  .topbar { background: var(--bg); }
+}
+
+/* ------------------------------------------------------------ buttons */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2);
+  padding: 15px var(--space-5); border-radius: var(--radius-pill);
+  font-weight: var(--weight-strong); font-size: var(--text-body); min-height: 50px;
+  letter-spacing: -0.005em;
+  background: var(--surface-raised); color: var(--ink);
+  border: 1px solid transparent;
+  transition: transform var(--dur-fast) var(--ease), filter var(--dur) var(--ease), background var(--dur) var(--ease);
+}
+.btn:active { transform: scale(0.97); }
+/* The one loud element in the system — reserved for the single most
+   important action on a screen. Everything else is quiet by default. */
+/* Solid blue, no gradient — console primaries are flat and confident.
+   Gradients on buttons read "web app"; flat colour reads "system UI". */
+.btn--accent {
+  background: var(--accent); color: #fff; border: 1px solid transparent;
+  box-shadow: var(--shadow-accent);
+}
+.btn--accent:hover { background: var(--accent-bright); }
+.btn:focus-visible { outline: none; box-shadow: var(--glow-focus); }
+.btn--accent:active { filter: brightness(1.08); }
+.btn--ghost {
+  background: linear-gradient(180deg, rgba(255,255,255,0.09), rgba(255,255,255,0.025));
+  border: 1px solid var(--glass-border);
+  backdrop-filter: var(--glass-filter); -webkit-backdrop-filter: var(--glass-filter);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.20);
+}
+.btn--danger { background: transparent; color: var(--danger); border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent); }
+.btn--block { width: 100%; }
+.btn:disabled { opacity: 0.5; pointer-events: none; }
+.link-btn { color: var(--accent-bright); font-weight: 600; font-size: var(--text-meta); }
+
+/* ------------------------------------------------------------ forms */
+.field { display: flex; flex-direction: column; gap: var(--space-2); margin-bottom: var(--space-4); }
+.field > span {
+  font-size: var(--text-label); font-weight: 600; color: var(--ink-dim);
+  text-transform: uppercase; letter-spacing: 0.07em;
+}
+.field input, .field textarea {
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-s);
+  padding: 13px var(--space-4); font-size: var(--text-body); color: var(--ink); resize: vertical;
+  min-height: 44px; transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+}
+.field input:focus, .field textarea:focus {
+  outline: none; border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-dim);
+}
+.field__hint { font-size: var(--text-label); color: var(--ink-faint); margin-top: -2px; }
+
+.date-input-wrap {
+  position: relative; display: flex; align-items: center;
+  background: var(--surface); border: 1.5px solid var(--line); border-radius: var(--radius-s);
+  padding: 0 13px; transition: border-color 0.15s ease;
+}
+.date-input-wrap:focus-within { border-color: var(--accent-bright); }
+.date-input-wrap__icon { width: 18px; height: 18px; color: var(--ink-dim); flex-shrink: 0; }
+.date-input {
+  flex: 1; background: transparent; border: none; color: var(--ink);
+  font-family: var(--font-mono); font-size: 15px; padding: 11px 10px 11px 12px;
+  color-scheme: dark;
+}
+.date-input:focus { outline: none; }
+/* Recolor the OS-drawn calendar icon so it reads on a dark field —
+   the calendar pop-up itself is native and can't be restyled further. */
+.date-input::-webkit-calendar-picker-indicator { filter: invert(0.7) sepia(1) saturate(4) hue-rotate(2deg); cursor: pointer; }
+.field-row { display: flex; gap: 12px; }
+.field-row .field { flex: 1; }
+.field-row--checks { flex-wrap: wrap; gap: 16px; margin-bottom: 14px; }
+.checkbox { display: flex; align-items: center; gap: 7px; font-size: 14px; color: var(--ink-dim); }
+.checkbox input { width: 17px; height: 17px; accent-color: var(--accent-bright); }
+.auth-form { display: flex; flex-direction: column; }
+
+.settings-section { margin-bottom: 30px; }
+.settings-section:last-of-type { margin-bottom: 10px; }
+
+.sr-only-file-input {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+}
+.avatar-upload { display: flex; align-items: center; gap: 16px; }
+.avatar-upload__preview img, .avatar-upload__preview .avatar { display: block; }
+.avatar-upload .btn { position: relative; cursor: pointer; }
+.avatar-upload .btn svg { width: 16px; height: 16px; margin-right: 2px; vertical-align: -3px; }
+
+.favorites-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.favorite-row {
+  display: flex; align-items: center; gap: 10px; background: var(--surface);
+  border-radius: var(--radius-s); padding: 8px 10px; touch-action: none;
+}
+.favorite-row--dragging { background: var(--surface-raised); box-shadow: var(--shadow-modal); position: relative; z-index: 5; }
+.favorite-row__handle { color: var(--ink-faint); flex-shrink: 0; display: flex; cursor: grab; touch-action: none; }
+.favorite-row__handle svg { width: 18px; height: 18px; }
+.favorite-row__cover { width: 30px; aspect-ratio: var(--ratio-inline); object-fit: cover; border-radius: 4px; flex-shrink: 0; }
+.favorite-row__title { flex: 1; font-size: 13.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.favorite-row__remove { color: var(--ink-faint); flex-shrink: 0; }
+.favorite-row__remove svg { width: 15px; height: 15px; }
+.favorite-row--empty {
+  border: 1.5px dashed var(--line); background: transparent; justify-content: center;
+  color: var(--ink-dim); font-size: 13px; font-weight: 600; padding: 14px 10px;
+}
+.favorite-row--empty svg { width: 16px; height: 16px; }
+
+/* "Add to list" picker — a scrollable stack of the person's own lists,
+   each name plus a live game count, with "+ New list" pinned below. */
+.pick-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: var(--space-3); max-height: 50vh; overflow-y: auto; }
+.pick-list__row {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  background: var(--surface); border-radius: var(--radius-s); padding: 12px 14px;
+  text-align: left; width: 100%; border: none; transition: background 0.12s ease;
+}
+.pick-list__row:active { background: var(--surface-raised); }
+.pick-list__row:disabled { opacity: 0.6; }
+.pick-list__name { font-weight: var(--weight-strong); font-size: 14px; }
+.pick-list__count { font-size: 12px; flex-shrink: 0; }
+
+.segmented {
+  display: flex; border-radius: var(--radius-pill); padding: var(--space-1); gap: var(--space-1);
+  background: linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.02));
+  border: 1px solid var(--glass-border);
+  backdrop-filter: var(--glass-filter); -webkit-backdrop-filter: var(--glass-filter);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.18);
+}
+.segmented--wide { margin-bottom: var(--space-4); }
+.segmented__item {
+  flex: 1; text-align: center; padding: 10px var(--space-2); border-radius: var(--radius-pill);
+  font-size: var(--text-meta); font-weight: 600; color: var(--ink-dim); min-height: 40px;
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+.segmented__item--active {
+  background: var(--surface-high); color: var(--ink);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3), inset 0 1px 0 var(--glass-highlight);
+}
+
+.search-bar-row { display: flex; gap: 8px; margin-bottom: 16px; align-items: center; }
+.search-input {
+  flex: 1; width: 100%; background: var(--surface); border: 1.5px solid var(--line);
+  border-radius: 999px; padding: 13px 18px; font-size: 15px; color: var(--ink);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.search-input:focus { border-color: var(--accent-bright); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-bright) 18%, transparent); }
+.filter-btn {
+  flex-shrink: 0; width: 46px; height: 46px; display: grid; place-items: center;
+  background: var(--surface); border: 1.5px solid var(--line); border-radius: 50%;
+  color: var(--ink); transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+}
+.filter-btn svg { width: 19px; height: 19px; }
+.filter-btn:active { transform: scale(0.94); background: var(--surface-raised); }
+.filter-btn--sm { width: 34px; height: 34px; flex-shrink: 0; }
+.filter-btn--sm svg { width: 16px; height: 16px; }
+
+/* --- discovery shelf --- */
+.discovery-active {
+  font-size: var(--text-meta); color: var(--accent-bright); font-weight: 600;
+  margin: calc(var(--space-2) * -1) 0 var(--space-2);
+}
+.collection-list { display: flex; flex-direction: column; gap: var(--space-2); }
+.collection-option {
+  width: 100%; text-align: left; padding: 14px var(--space-4);
+  border-radius: var(--radius-m); background: var(--surface-raised);
+  border: 1px solid var(--line); color: var(--ink);
+  font-size: var(--text-body); font-weight: 600; min-height: 48px;
+  transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease), transform var(--dur-fast) var(--ease);
+}
+.collection-option:active { transform: scale(0.98); }
+.collection-option--active {
+  background: var(--accent-dim); border-color: var(--accent);
+  color: var(--accent-bright);
+}
+/* Four across, posters only. minmax(0,1fr) rather than plain 1fr so a
+   wide cover can't blow the column out and break the alignment — that
+   is the usual cause of a grid drifting out of true. */
+/* Separated poster cards — each its own rounded tile with a gap between,
+   not one attached block. */
+.discovery-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+/* The Browse screen on the signed-out landing funnel only — 4 across
+   instead of 3, scoped here rather than changing .discovery-grid
+   itself, since that class is shared with the real signed-in feed's
+   "Bored? Try these" grid, which isn't part of this request. */
+.landing-browse .discovery-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.discovery-tile {
+  position: relative;
+  width: 100%; padding: 0; background: none; border: none; display: block;
+  border-radius: var(--radius-s);
+  transition: transform var(--dur) var(--ease);
+}
+.discovery-tile:active { transform: scale(0.94); }
+.discovery-tile:disabled { opacity: 0.5; }
+/* The GOTY collection's award-year tag — small and out of the way, just
+   enough to say "this specific year," not a competing headline over the
+   art. */
+.discovery-goty-badge {
+  position: absolute; top: 6px; left: 6px; z-index: 2;
+  padding: 2px 7px; border-radius: var(--radius-pill);
+  background: rgba(10,14,22,0.65); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  color: #fff; font-size: 10.5px; font-weight: 700; letter-spacing: 0.02em;
+}
+/* Double-tap-to-save badge — invisible until it pops, purely a flash of
+   confirmation, not a persistent state indicator (there's no "already
+   saved" checked state to track here, it's a quick-action not a toggle). */
+.discovery-tile__saved {
+  position: absolute; inset: 0; z-index: 2;
+  display: grid; place-items: center; border-radius: inherit;
+  background: rgba(10,14,22,0.35); color: #fff;
+  opacity: 0; pointer-events: none;
+}
+.discovery-tile__saved svg { width: 34px; height: 34px; filter: drop-shadow(0 2px 8px rgba(0,0,0,0.5)); }
+.discovery-tile__saved.is-popping { animation: discovery-tile-saved-pop 0.6s cubic-bezier(0.2, 0.9, 0.3, 1) both; }
+@keyframes discovery-tile-saved-pop {
+  0% { opacity: 0; transform: scale(0.6); }
+  35% { opacity: 1; transform: scale(1.15); }
+  60% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1); }
+}
+
+.search-recent__heading {
+  font-size: var(--text-label); font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--ink-faint); margin: var(--space-2) 2px var(--space-3);
+}
+.discovery-tile__cover {
+  width: 100%; aspect-ratio: var(--ratio-card); display: block;
+  border-radius: var(--radius-s); background: var(--surface);
+  box-shadow: var(--shadow-card); transition: box-shadow var(--dur) var(--ease);
+}
+.discovery-tile:hover { transform: translateY(-4px) scale(1.03); }
+.discovery-tile:hover .discovery-tile__cover { box-shadow: 0 14px 40px rgba(0,0,0,0.5), 0 0 22px rgba(15,140,255,0.22); }
+.discovery-tile:focus-visible { outline: none; transform: translateY(-4px) scale(1.03); }
+.discovery-tile:focus-visible .discovery-tile__cover { box-shadow: var(--glow-focus); }
+.discovery-tile:focus-visible .discovery-tile__cover { box-shadow: var(--glow-focus); }
+.skeleton--tile { width: 100%; aspect-ratio: var(--ratio-card); border-radius: var(--radius-s); }
+/* Zero-height marker the observer watches; rootMargin gives it a 400px
+   head start so the next page is already arriving before you reach the
+   end and the list never visibly stalls. */
+#discovery-sentinel { height: 1px; width: 100%; }
+.discovery-end {
+  text-align: center; color: var(--ink-faint); font-size: var(--text-meta);
+  padding: var(--space-5) 0 var(--space-2);
+}
+#discovery-more { margin-top: var(--space-3); }
+
+/* ------------------------------------------------------------ stars */
+.stars { display: inline-flex; gap: 2px; vertical-align: middle; }
+.star { position: relative; width: var(--star-size, 18px); height: var(--star-size, 18px); flex-shrink: 0; }
+.star::before, .star::after {
+  content: ''; position: absolute; inset: 0;
+  -webkit-mask: var(--star-mask) center / contain no-repeat;
+  mask: var(--star-mask) center / contain no-repeat;
+}
+.star::before { background: var(--line); }
+.star::after { background: var(--star-fill, var(--gold)); clip-path: inset(0 100% 0 0); }
+.star--half::after { clip-path: inset(0 50% 0 0); }
+.star--full::after { clip-path: inset(0 0 0 0); }
+.stars--interactive .star { cursor: pointer; }
+.stars--interactive .star::before { background: var(--ink-faint); }
+/* Swipe-to-rate: the row owns horizontal drags so sliding across the
+   stars sets the rating instead of scrolling the sheet, and never
+   text-selects mid-drag. */
+.stars--interactive { touch-action: none; user-select: none; -webkit-user-select: none; }
+
+/* ------------------------------------------------------------ stamps (signature element) */
+.stamp {
+  display: inline-block; font-family: var(--font-mono); font-weight: 500;
+  font-size: 10.5px; letter-spacing: 0.09em; padding: 3px 9px;
+  border: 1.5px solid currentColor; border-radius: 4px;
+  transform: rotate(-3deg); flex-shrink: 0;
+}
+.stamp--played { color: var(--coral); }
+.stamp--playing { color: var(--accent-bright); }
+.stamp--backlog { color: var(--ink-faint); }
+.stamp--dropped { color: var(--violet); }
+
+/* ------------------------------------------------------------ game cards / grid */
+.game-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.game-grid--modal { grid-template-columns: repeat(2, 1fr); max-height: 340px; overflow-y: auto; }
+
+.trending-strip {
+  display: flex; gap: var(--space-3); overflow-x: auto; padding: var(--space-1) 2px var(--space-4);
+  scrollbar-width: none; -ms-overflow-style: none;
+}
+.trending-strip::-webkit-scrollbar { display: none; }
+/* All three feed rows (Trending / Friends Recently Completed /
+   Currently Playing) share one definition on purpose — they used to be
+   three separate copies that drifted to different sizes and radii,
+   which is what made the rows look misaligned against each other. */
+.trending-card, .friend-card, .activity-card {
+  flex-shrink: 0; width: 108px; display: block; position: relative;
+  text-align: left; transition: transform 0.12s ease;
+  padding: 0; background: none; border: none;
+}
+.trending-card:active, .friend-card:active, .activity-card:active { transform: scale(0.96); }
+.trending-card__cover, .friend-card__cover, .activity-card__cover {
+  width: 108px; aspect-ratio: var(--ratio-card); object-fit: cover; display: block;
+  border-radius: var(--radius-s); background: var(--surface); box-shadow: var(--shadow-card);
+}
+.trending-card:disabled { opacity: 0.6; }
+.friend-card__avatars { position: absolute; top: 8px; left: 8px; display: flex; }
+.friend-card__avatars .avatar { border: 2px solid var(--bg); margin-right: -8px; }
+
+/* Shared footer under a feed poster (Friend's recent activity + Currently
+   playing): avatar, highlighted name, optional rating — kept within the
+   poster's width so nothing spills past the card edge. */
+.friend-card__poster, .activity-card__poster { display: block; }
+.card-who {
+  display: flex; align-items: center; gap: 7px; margin-top: 8px;
+  width: 108px; max-width: 108px; /* == poster width, so it never overflows */
+}
+.card-who .avatar { flex-shrink: 0; }
+.card-who__meta { min-width: 0; display: flex; flex-direction: column; gap: 1px; overflow: hidden; }
+.card-who__name {
+  font-size: 12.5px; font-weight: 700; color: var(--ink); line-height: 1.2;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+/* min-height reserves the line even when it's empty (no rating) — this
+   is what keeps every card in the strip the same total height, so the
+   posters above them stay perfectly aligned regardless of which entries
+   have a rating and which don't. 11px matches the star size passed to
+   starRow() above. */
+.card-who__stars { display: block; min-height: 11px; line-height: 11px; }
+.card-who__stars .stars { gap: 1px; }
+
+/* ---- a single review on its own page -------------------------------- */
+.review-page { max-width: 640px; margin: 0 auto; }
+.review-page__game { display: flex; gap: 16px; align-items: flex-start; margin-bottom: 4px; }
+.review-page__cover { width: 96px; flex-shrink: 0; aspect-ratio: var(--ratio-card); object-fit: cover; border-radius: 8px; background: var(--surface); box-shadow: var(--shadow-card); }
+.review-page__game-info { min-width: 0; padding-top: 4px; }
+.review-page__title { font-family: var(--font-display); font-weight: 700; font-size: 20px; line-height: 1.2; }
+.review-page__year { color: var(--ink-dim); font-size: var(--text-meta); margin-top: 2px; }
+.review-page__stars { margin-top: 10px; }
+.review-page__author { display: flex; align-items: center; gap: 10px; padding: 14px 0; margin-top: 14px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.review-page__author-name { font-weight: 700; }
+.review-page__date { margin-left: auto; color: var(--ink-faint); font-size: var(--text-meta); }
+.review-page__body { padding: 20px 0; }
+.review-page__body--spoiler { cursor: pointer; }
+.review-page__text { font-size: 16px; line-height: 1.7; color: var(--ink); white-space: pre-wrap; }
+.review-page__body--spoiler .review-page__text { filter: blur(7px); transition: filter 0.2s ease; }
+.review-page__body--spoiler.is-revealed .review-page__text { filter: none; }
+.review-page__body--spoiler .spoiler-tag { display: inline-block; margin-bottom: 10px; }
+.review-page__nowrite { padding: 20px 0; }
+.review-page__actions { padding: 6px 0 16px; border-bottom: 1px solid var(--line); }
+
+/* Comments thread on the review page. */
+.comments { padding-top: 20px; }
+.comments__heading { font-family: var(--font-display); font-weight: 700; font-size: 16px; margin-bottom: 14px; }
+.comments__heading span { color: var(--ink-faint); font-weight: 600; }
+.comment-form { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
+.comment-form .avatar { flex-shrink: 0; }
+.comment-form input {
+  flex: 1; min-width: 0; padding: 11px 14px; border-radius: var(--radius-pill);
+  background: var(--surface); border: 1px solid var(--line-strong); color: var(--ink);
+  font-size: var(--text-body); font-family: inherit;
+}
+.comment-form input:focus { outline: none; border-color: var(--accent-bright); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-bright) 20%, transparent); }
+.comment-form__send { flex-shrink: 0; padding: 10px 18px; min-height: 0; }
+.comment-list { display: flex; flex-direction: column; gap: 16px; }
+.comments__empty { padding: 4px 0; }
+.comment { display: flex; gap: 10px; align-items: flex-start; }
+.comment__avatar { flex-shrink: 0; }
+.comment__body { flex: 1; min-width: 0; }
+.comment__head { display: flex; align-items: baseline; gap: 8px; }
+.comment__name { font-weight: 700; font-size: 13.5px; color: var(--ink); }
+.comment__time { font-size: 11px; color: var(--ink-faint); }
+.comment__text { font-size: 14px; line-height: 1.5; color: var(--ink-dim); margin-top: 2px; white-space: pre-wrap; word-break: break-word; }
+.comment__delete { flex-shrink: 0; width: 26px; height: 26px; display: grid; place-items: center; color: var(--ink-faint); border-radius: 50%; background: none; border: none; }
+.comment__delete svg { width: 13px; height: 13px; }
+.comment__delete:active { background: var(--surface-high); }
+.game-card { display: block; transition: transform 0.12s ease, opacity 0.12s ease; }
+.game-card:active { transform: scale(0.96); opacity: 0.9; }
+.game-card--import { width: 100%; text-align: left; padding: 0; position: relative; }
+/* Blur-fill poster frame: put this class (or one that composes it) on
+   a wrapping <span>/<a>/<button>, with two <img> children inside —
+   .poster-frame__blur (cropped, blurred backdrop) then .poster-frame__img
+   (the real image, fully visible via object-fit:contain). Used wherever
+   a landscape source image needs to sit inside a portrait poster shape
+   without an ugly crop or empty letterbox bars. */
+.poster-frame { position: relative; overflow: hidden; display: block; background: var(--surface-raised); }
+.poster-frame__blur {
+  position: absolute; inset: -10%; width: 120%; height: 120%;
+  object-fit: cover; filter: blur(20px) brightness(0.8) saturate(1.4);
+  z-index: 0; pointer-events: none;
+}
+.poster-frame__img {
+  position: relative; z-index: 1; width: 100%; height: 100%;
+  object-fit: cover;
+}
+/* A big grid of these lazy-loads at once, and the browser trickles
+   through them at its own pace. This sweep sits BEHIND both image
+   layers (z-index -1, vs. 0 and 1 above) — no JS "has it loaded yet"
+   tracking needed, it's simply covered the instant either image paints
+   over it, and stays visible in the gap until then instead of leaving
+   a flat, static-looking blank tile. */
+.poster-frame::after {
+  content: ''; position: absolute; inset: 0; z-index: -1; transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent);
+  animation: skeleton-sweep 1.4s infinite;
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .poster-frame::after { animation: none; }
+}
+
+.game-card__cover {
+  width: 100%; aspect-ratio: var(--ratio-card);
+  border-radius: var(--radius-s); background: var(--surface);
+  box-shadow: var(--shadow-card); transition: box-shadow 0.15s ease;
+}
+.game-card__title { font-size: 12px; font-weight: 600; margin-top: 6px; line-height: 1.3; }
+.game-card__note { font-size: 11px; color: var(--ink-dim); }
+.game-card__add-badge {
+  position: absolute; top: 6px; right: 6px;
+  background: var(--accent-bright); color: var(--bg);
+  font-size: 9.5px; font-weight: 700; letter-spacing: 0.02em;
+  padding: 2px 7px; border-radius: 999px;
+}
+.rawg-credit { font-size: 10.5px; color: var(--ink-faint); text-align: center; margin-top: 10px; }
+.rawg-credit a { color: var(--ink-dim); text-decoration: underline; }
+
+.browse-entry {
+  display: block; background: var(--surface); border: 1.5px solid var(--line); border-radius: var(--radius-m);
+  padding: 16px var(--space-4); font-weight: var(--weight-strong); font-family: var(--font-display); font-size: var(--text-body);
+  color: var(--accent-bright); margin-bottom: 8px;
+}
+.browse-entry:active { background: var(--surface-raised); }
+
+.discover-filters { display: flex; flex-direction: column; gap: 14px; margin-bottom: 18px; }
+.discover-filter-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+/* Labelled filter fields — every control says what it does now. */
+.disc-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.disc-field__label {
+  font-size: var(--text-label); font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--ink-faint);
+}
+.disc-field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.discover-select {
+  width: 100%; background: var(--surface); border: 1.5px solid var(--line); border-radius: var(--radius-s);
+  padding: 11px 13px; font-size: 14px; color: var(--ink); font-family: var(--font-body);
+  color-scheme: dark;
+}
+.discover-card { width: 100%; text-align: left; }
+.discover-card:disabled { opacity: 0.6; }
+
+/* Redesigned Discover: only Sort is ever visible up top, everything
+   else lives behind the Filters button, which opens its own full page
+   (see paintFilters in discover-view.js) — the old version showed all 8
+   controls before a single result did, which is what this replaces. */
+.discover-toolbar { display: flex; gap: 10px; margin-bottom: 16px; }
+.discover-sort { flex: 1; min-width: 0; }
+/* Same glass language as .segmented and .landing-entry__row — a tinted
+   gradient + blur instead of a flat bordered box, so the toolbar reads
+   as part of the same app as Browse's redesigned header. */
+.discover-select, .discover-filters-btn {
+  background: linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.02));
+  border: 1px solid var(--glass-border);
+  backdrop-filter: var(--glass-filter); -webkit-backdrop-filter: var(--glass-filter);
+}
+.discover-filters-btn {
+  position: relative; flex-shrink: 0; display: flex; align-items: center; gap: 6px;
+  border-radius: var(--radius-s);
+  padding: 0 14px; font-size: 14px; font-weight: 600; color: var(--ink); font-family: var(--font-body);
+  transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+.discover-filters-btn svg { width: 17px; height: 17px; }
+/* Glows once a filter is actually applied — the count badge alone was
+   easy to miss, this makes "you're seeing a filtered view" readable at
+   a glance instead of only on close inspection. */
+.discover-filters-btn--active {
+  color: var(--accent-bright); border-color: var(--accent-bright);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-bright) 30%, transparent),
+              0 0 14px 1px color-mix(in srgb, var(--accent-bright) 22%, transparent);
+}
+.discover-filters-count {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 17px; height: 17px; padding: 0 4px; border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent-bright), var(--accent)); color: #fff; font-size: 10.5px; font-weight: 700;
+}
+/* Era chips replace what used to be two typed dd-mm-yyyy date inputs —
+   one tap for "something from the 2010s" instead of hand-typing a
+   range nobody actually wants to type. */
+.disc-era-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { cursor: pointer; transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease); }
+.chip--active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+.reviews-page__head { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; margin-bottom: 16px; }
+.reviews-page__head h1 { font-family: var(--font-display); font-weight: var(--weight-heading); font-size: var(--text-title); letter-spacing: -0.015em; }
+.discover-select-wrap { flex-shrink: 0; }
+.discover-select-wrap .discover-select { width: auto; padding-right: 30px; }
+
+.result-list, .discover-list { display: flex; flex-direction: column; gap: 2px; }
+.result-row {
+  display: flex; align-items: center; gap: 12px; padding: 10px 4px;
+  border-bottom: 1px solid var(--line); text-align: left; width: 100%; background: none;
+  transition: background 0.12s ease;
+}
+.result-row:disabled { opacity: 0.6; }
+.result-row__cover { width: 78px; aspect-ratio: var(--ratio-card); object-fit: cover; border-radius: 6px; flex-shrink: 0; background: var(--surface); transition: box-shadow 0.15s ease; }
+/* Discover specifically (not search's combined results, which keeps the
+   plain hairline-divided list): same rounded card treatment as Browse's
+   review rows, so the two browsing screens read as one design. */
+.discover-list { gap: 10px; }
+.discover-list .result-row {
+  border-bottom: none; padding: var(--space-3);
+  border-radius: var(--radius-s); background: var(--surface-raised); border: 1px solid var(--line);
+  transition: background var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+}
+.discover-list .result-row:active { transform: scale(0.99); background: var(--surface-high); }
+.result-row__info { min-width: 0; flex: 1; }
+.result-row__title { font-weight: var(--weight-strong); font-size: 15px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.result-row__meta { font-size: 12px; color: var(--ink-dim); margin-top: 3px; font-family: var(--font-mono); }
+.result-row__add-badge { background: var(--accent-bright); color: var(--bg); font-size: 9.5px; font-weight: 700; padding: 2px 7px; border-radius: 999px; flex-shrink: 0; }
+
+/* Posters fit across the screen with no cutoff and no horizontal
+   scroll, so this is a grid (not the flex+overflow strip other
+   horizontal lists use) sized off the container width rather than a
+   fixed poster width.
+   The column count comes from --showcase-count, set inline by
+   showcaseGrid() to however many games there actually are. That's what
+   stops a profile with two favourites rendering two posters plus a row
+   of empty gaps — with two games it's a two-column grid, and each
+   poster grows to fill its share of the width. */
+.showcase-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--showcase-count, 4), 1fr);
+  gap: 8px; padding: 2px 2px 6px;
+}
+.showcase-slot { display: block; position: relative; min-width: 0; transition: transform 0.12s ease; }
+.showcase-slot:active { transform: scale(0.95); }
+.showcase-slot__cover { width: 100%; aspect-ratio: var(--ratio-card); border-radius: 7px; background: var(--surface); box-shadow: var(--shadow-card); }
+.showcase-slot__meta { display: flex; align-items: center; justify-content: center; gap: 4px; margin-top: 4px; }
+.showcase-slot__note { width: 12px; height: 12px; color: var(--accent-bright); }
+.showcase-slot__note svg { width: 100%; height: 100%; }
+
+/* "Recently played" strip — this one keeps the old horizontally-scrolling
+   behavior the showcase grid used to have. */
+.recent-played-row {
+  display: flex; gap: 10px; overflow-x: auto; padding: 2px 2px 6px;
+  scrollbar-width: none; -ms-overflow-style: none;
+}
+.recent-played-row::-webkit-scrollbar { display: none; }
+.recent-played-item { display: block; flex-shrink: 0; width: 90px; transition: transform 0.12s ease; }
+.recent-played-item:active { transform: scale(0.95); }
+.recent-played-item__cover { width: 100%; aspect-ratio: var(--ratio-card); object-fit: cover; border-radius: 7px; background: var(--surface); box-shadow: var(--shadow-card); }
+/* Currently-playing posters share the recently-played strip's size and
+   sit in the same horizontal row, so the two read as one aligned band. */
+.recent-played-row .playing-slot { flex-shrink: 0; width: 90px; }
+
+/* Want-to-play: cover-only grid, three across (discover-screen style). */
+.poster-grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-2); }
+.poster-grid3__item { display: block; min-width: 0; transition: transform 0.12s ease; }
+.poster-grid3__item:active { transform: scale(0.96); }
+.poster-grid3__cover { width: 100%; aspect-ratio: var(--ratio-card); object-fit: cover; border-radius: 8px; background: var(--surface); box-shadow: var(--shadow-card); }
+
+.rating-histogram {
+  background: var(--glass-light); border: 1px solid var(--glass-border);
+  border-radius: var(--radius-m); padding: var(--space-4); margin-bottom: var(--space-2);
+  backdrop-filter: var(--glass-filter); -webkit-backdrop-filter: var(--glass-filter);
+}
+.rating-histogram--empty { display: grid; place-items: center; min-height: 96px; }
+.rating-histogram__empty { color: var(--ink-faint); font-size: var(--text-meta); }
+.rating-histogram__summary {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: var(--space-3); margin-bottom: var(--space-4);
+}
+.rating-histogram__avg { display: flex; align-items: center; gap: var(--space-2); }
+/* The average is the headline number on this panel — large, light,
+   tightly tracked, the way a score reads on a console dashboard. */
+.rating-histogram__avg b {
+  font-family: var(--font-mono); font-size: 30px; font-weight: 500;
+  color: var(--ink); letter-spacing: -0.03em; line-height: 1;
+}
+.rating-histogram__total { font-size: var(--text-meta); color: var(--ink-faint); }
+.rating-histogram__bars { display: flex; align-items: flex-end; gap: 3px; height: 76px; }
+.rating-histogram__bar {
+  flex: 1; height: 100%; display: flex; flex-direction: column; align-items: center;
+  justify-content: flex-end; position: relative; padding: 0; background: none; border: none;
+}
+/* A faint always-present track means the ten slots stay visible even
+   where nothing was rated, so the chart reads as a scale rather than
+   as a few floating bars. */
+.rating-histogram__bar-track {
+  display: flex; align-items: flex-end; width: 100%; height: 100%;
+  background: rgba(255,255,255,0.035); border-radius: var(--radius-s);
+  overflow: hidden;
+}
+.rating-histogram__bar-fill {
+  display: block; width: 100%; height: var(--bar-pct, 0%);
+  border-radius: var(--radius-s);
+  background: linear-gradient(180deg, var(--gold), color-mix(in srgb, var(--gold) 72%, var(--coral)));
+  transition: height var(--dur-slow) var(--ease);
+}
+.rating-histogram__bar-count {
+  font-family: var(--font-mono); font-size: 10px; font-weight: 500; color: var(--ink);
+  margin-bottom: var(--space-1); opacity: 0; transform: translateY(3px);
+  transition: opacity var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+}
+.rating-histogram__bar--active .rating-histogram__bar-count { opacity: 1; transform: translateY(0); }
+.rating-histogram__bar--active .rating-histogram__bar-track { background: rgba(255,255,255,0.09); }
+/* Two anchors instead of ten cramped labels — the scale runs low to
+   high and people already know what a star row means. */
+.rating-histogram__axis {
+  display: flex; justify-content: space-between; margin-top: var(--space-3);
+}
+.rating-histogram__axis span { font-size: 10px; color: var(--ink-faint); letter-spacing: 0.12em; }
+
+/* ------------------------------------------------------------ log cards ("save slot") */
+.log-list { display: flex; flex-direction: column; gap: 14px; }
+.log-card { display: flex; gap: var(--space-3); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-m); padding: var(--space-3); transition: border-color var(--dur) var(--ease), background var(--dur) var(--ease); }
+.log-card__cover { width: 64px; aspect-ratio: var(--ratio-card); object-fit: cover; border-radius: var(--radius-s); }
+.log-card__body { flex: 1; min-width: 0; }
+.log-card__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.log-card__title { font-family: var(--font-display); font-weight: var(--weight-strong); font-size: 16px; line-height: 1.3; letter-spacing: -0.01em; }
+.log-card__author { display: flex; align-items: center; gap: 6px; margin-top: 4px; font-size: 12.5px; color: var(--ink-dim); font-weight: 500; }
+.log-card__meta { display: flex; align-items: center; gap: 10px; margin-top: 6px; font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-dim); }
+.log-card__unrated { font-style: italic; opacity: 0.7; }
+.log-card__replay { color: var(--accent-bright); }
+.log-card__review { font-size: 13.5px; line-height: 1.5; color: var(--ink); margin-top: 8px; }
+/* --- spoiler reviews --- */
+.log-card__review--spoiler {
+  position: relative; display: block; width: 100%; text-align: left;
+  background: none; border: none; padding: 0; cursor: pointer;
+}
+.log-card__review--spoiler .spoiler-text {
+  display: block; filter: blur(7px); opacity: 0.55;
+  transition: filter var(--dur) var(--ease), opacity var(--dur) var(--ease);
+  user-select: none;
+}
+.log-card__review--spoiler .spoiler-veil {
+  position: absolute; inset: 0; display: grid; place-items: center;
+  font-size: var(--text-meta); font-weight: 600; color: var(--ink);
+  transition: opacity var(--dur) var(--ease);
+}
+.log-card__review--spoiler.is-revealed .spoiler-text { filter: none; opacity: 1; user-select: text; }
+.log-card__review--spoiler.is-revealed .spoiler-veil { opacity: 0; pointer-events: none; }
+.spoiler-tag { font-family: var(--font-mono); font-size: 10px; color: var(--coral); border: 1px solid var(--coral); border-radius: 3px; padding: 1px 5px; }
+.log-card__footer { display: flex; align-items: center; gap: 14px; margin-top: 10px; }
+.log-card__time { font-size: 11px; color: var(--ink-faint); font-family: var(--font-mono); }
+.log-card__edit { font-size: 12px; color: var(--accent-bright); font-weight: 600; margin-left: auto; }
+.like-btn { display: flex; align-items: center; gap: 4px; color: var(--ink-faint); font-size: 12px; font-weight: 600; }
+.like-btn svg { width: 17px; height: 17px; }
+.like-btn--liked { color: var(--coral); }
+.like-btn--liked svg { fill: var(--coral); }
+
+/* ------------------------------------------------------------ avatar / profile */
+.avatar { border-radius: 50%; object-fit: cover; background: var(--surface-raised); flex-shrink: 0; }
+.avatar--fallback { display: grid; place-items: center; color: var(--ink-dim); font-weight: 700; font-family: var(--font-mono); }
+.profile-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; }
+.profile-row__link { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; transition: opacity 0.12s ease; }
+.profile-row__link:active { opacity: 0.7; }
+.profile-row__display { font-weight: 600; font-size: 14.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.profile-row__username { font-size: 12.5px; color: var(--ink-dim); font-family: var(--font-mono); }
+
+.follow-icon-btn {
+  width: 36px; height: 36px; flex-shrink: 0; display: grid; place-items: center;
+  border-radius: 50%; background: var(--surface); color: var(--ink-dim);
+  border: 1.5px solid var(--line);
+}
+.follow-icon-btn svg { width: 17px; height: 17px; }
+.follow-icon-btn--active { background: var(--accent-bright); color: var(--bg); border-color: var(--accent-bright); }
+.follow-icon-btn:disabled { opacity: 0.6; }
+.profile-list { display: flex; flex-direction: column; }
+
+.profile-header { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; }
+.profile-header__names { flex: 1; min-width: 0; }
+.profile-header__names h1 { font-family: var(--font-display); font-weight: var(--weight-heading); font-size: var(--text-title); letter-spacing: -0.015em; }
+.profile-header__username { font-family: var(--font-mono); font-size: 12.5px; color: var(--ink-dim); margin-top: 2px; }
+.profile-header__actions { display: flex; flex-direction: column; gap: 6px; }
+.profile-header__bio { font-size: 14px; color: var(--ink-dim); line-height: 1.5; margin-bottom: 18px; }
+
+/* Letterboxd-style profile hero: everything centered in a single column,
+   large circular avatar on top, name + @handle, bio, then actions. */
+.profile-header--hero {
+  position: relative;
+  flex-direction: column;
+  text-align: center;
+  gap: 4px;
+  padding: 8px 0 22px;
+}
+.profile-header--hero .avatar { width: 96px; height: 96px; margin-bottom: 10px; box-shadow: 0 0 0 3px var(--surface); }
+.profile-header--hero h1 { font-family: var(--font-display); font-weight: var(--weight-heading); font-size: var(--text-display); letter-spacing: -0.02em; }
+.profile-header--hero .profile-header__username { margin-top: 0; }
+.profile-header--hero .profile-header__bio {
+  max-width: 420px; margin: 10px auto 0; text-align: center;
+}
+/* Total hours + current streak — numbers that feel earned rather than
+   administrative, so they get their own quiet badges instead of blending
+   into the stat-link list below. */
+.profile-header__badges { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.profile-header__hours, .profile-header__streak {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 5px 14px; border-radius: var(--radius-pill);
+  font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums;
+}
+.profile-header__hours {
+  background: color-mix(in srgb, var(--accent-bright) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-bright) 30%, transparent);
+  color: var(--accent-bright);
+}
+.profile-header__streak {
+  background: color-mix(in srgb, #ff8a3d 14%, transparent);
+  border: 1px solid color-mix(in srgb, #ff8a3d 30%, transparent);
+  color: #ff8a3d;
+}
+.profile-header__streak svg { width: 13px; height: 13px; }
+.profile-header--hero .profile-header__actions {
+  flex-direction: row; align-items: center; justify-content: center; margin-top: 14px;
+}
+.profile-header__avatar-btn { background: none; border: none; padding: 0; cursor: pointer; }
+.profile-header__share-row { display: flex; gap: 8px; justify-content: center; margin-top: 10px; }
+.profile-header__share-row--corner {
+  position: absolute; top: 0; right: 0; margin-top: 0;
+}
+
+.director-header { text-align: center; padding: 8px 0 20px; }
+.director-header__photo {
+  width: 100px; height: 100px; border-radius: 50%; object-fit: cover;
+  margin: 0 auto 14px; background: var(--surface); box-shadow: 0 0 0 3px var(--surface);
+}
+.director-header__photo--studio {
+  border-radius: var(--radius-m); object-fit: contain; padding: 14px;
+}
+.director-header__photo--fallback { display: grid; place-items: center; color: var(--ink-faint); }
+.director-header__photo--fallback svg { width: 36px; height: 36px; }
+.director-header h1 { font-family: var(--font-display); font-weight: 700; font-size: 21px; }
+.director-header__roles { font-size: 12.5px; color: var(--ink-dim); margin-top: 4px; font-family: var(--font-mono); }
+.director-header__active { font-size: 11.5px; color: var(--ink-faint); margin-top: 4px; }
+.director-bio { font-size: 13.5px; line-height: 1.6; color: var(--ink-dim); margin-bottom: 8px; }
+.director-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin: 16px 0; }
+.director-stats__item { background: var(--surface); border-radius: var(--radius-s); padding: 12px; text-align: center; }
+.director-stats__item b { display: block; font-family: var(--font-mono); font-size: 20px; font-weight: 500; color: var(--ink); letter-spacing: -0.02em; }
+.director-stats__item span { font-size: 10px; color: var(--ink-dim); text-transform: uppercase; letter-spacing: 0.03em; }
+.gameography-card { width: 100%; text-align: left; }
+.gameography-card__meta { display: flex; align-items: center; justify-content: space-between; margin-top: 3px; font-size: 10.5px; color: var(--ink-dim); font-family: var(--font-mono); }
+
+.stat-strip { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-bottom: 24px; }
+.stat-tile { background: var(--surface); border-radius: var(--radius-s); padding: 10px 4px; text-align: center; display: block; }
+.stat-tile b { display: block; font-family: var(--font-mono); font-size: 19px; font-weight: 500; color: var(--ink); letter-spacing: -0.02em; }
+.stat-tile span { font-size: 9.5px; color: var(--ink-dim); text-transform: uppercase; letter-spacing: 0.04em; }
+.stat-tile--link:active { background: var(--surface-raised); }
+
+.stat-links { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 18px 0 8px; }
+.stat-link {
+  background: var(--surface); border-radius: var(--radius-s); padding: 12px 10px; text-align: left;
+  border: none; font: inherit; color: inherit; display: block;
+}
+.stat-link:active { background: var(--surface-raised); }
+.stat-link b { display: block; font-family: var(--font-mono); font-size: 19px; font-weight: 500; color: var(--ink); letter-spacing: -0.02em; }
+.stat-link__year { font-size: 12px; color: var(--ink-dim); }
+.stat-link span { font-size: 10.5px; color: var(--ink-dim); text-transform: uppercase; letter-spacing: 0.03em; }
+
+/* Vertical variant — one full-width row per stat instead of a 2-col grid. */
+.stat-links--vertical { grid-template-columns: 1fr; }
+.stat-links--vertical .stat-link { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.stat-links--vertical .stat-link b { display: inline-flex; align-items: baseline; gap: 4px; }
+.stat-links--vertical .stat-link span { order: -1; }
+.more-activity-link { display: inline-block; margin-top: 10px; }
+
+.lightbox-overlay { background: rgba(6,6,10,0.92); align-items: center; }
+.lightbox-image { max-width: 88vw; max-height: 70vh; border-radius: var(--radius-m); object-fit: contain; }
+.lightbox-close { position: absolute; top: calc(16px + var(--safe-top)); right: 16px; background: rgba(255,255,255,0.12); }
+
+.modal--qr { border-radius: var(--radius-l); }
+.qr-modal__body { display: flex; flex-direction: column; align-items: center; gap: 12px; padding-bottom: 10px; }
+.qr-modal__body img { border-radius: var(--radius-s); background: #fff; padding: 10px; }
+
+/* Sentence case, not uppercase — uppercase everywhere was making the
+   app shout. Bright ink instead of dim so sections read as real
+   structure rather than faint labels. */
+/* Light weight at a larger size — the opposite of the usual "bold it
+   so it reads as a heading" instinct, and the main reason a console UI
+   feels composed rather than busy. Space above does the separating
+   that a heavy weight would otherwise be doing. */
+.section-heading {
+  font-family: var(--font-display); font-weight: var(--weight-heading);
+  font-size: var(--text-heading); letter-spacing: -0.012em;
+  color: var(--ink); margin: var(--space-6) 0 var(--space-4);
+}
+/* Tighter rhythm on the feed specifically — the gaps between the strips
+   and the next heading were too airy. */
+#feed-body .section-heading { margin: var(--space-4) 0 var(--space-3); }
+#feed-body .trending-strip { padding-bottom: var(--space-2); }
+#feed-body .discovery-active { margin-top: 2px; }
+
+.feed-section-head { display: flex; align-items: baseline; justify-content: space-between; }
+.feed-section-head .section-heading { margin-bottom: 12px; }
+.see-more-link { font-size: 12px; font-weight: 700; color: var(--accent-bright); flex-shrink: 0; }
+
+.icon-btn--small { width: 30px; height: 30px; }
+.icon-btn--small svg { width: 15px; height: 15px; }
+.playing-slot { position: relative; }
+.playing-slot__remove {
+  position: absolute; top: 6px; right: 6px; z-index: 2;
+  width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center;
+  /* Sits on its own dark disc over poster art, not the page background —
+     the icon stays white regardless of theme so it doesn't go dark-on-dark. */
+  background: rgba(10,10,14,0.75); backdrop-filter: blur(2px); color: #ffffff;
+}
+.playing-slot__remove svg { width: 11px; height: 11px; }
+.playing-empty-hint { padding: 8px 2px 4px; }
+
+.diary-list { display: flex; flex-direction: column; gap: 2px; }
+.diary-row { display: flex; align-items: center; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--line); transition: background 0.12s ease; }
+.diary-row:active { background: var(--surface); }
+.diary-row__cover { width: 34px; aspect-ratio: var(--ratio-inline); object-fit: cover; border-radius: 4px; }
+.diary-row__main { flex: 1; min-width: 0; }
+.diary-row__title { font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.diary-row__meta { display: flex; align-items: center; gap: 8px; margin-top: 3px; font-family: var(--font-mono); font-size: 11px; color: var(--ink-dim); }
+.diary-row .stamp { font-size: 9px; padding: 2px 6px; }
+
+.list-index { display: flex; flex-direction: column; }
+.list-index__item { display: block; padding: 14px 0; border-bottom: 1px solid var(--line); transition: background 0.12s ease; }
+.list-index__item:active { background: var(--surface); }
+.list-index__name { font-family: var(--font-display); font-weight: 700; font-size: 16px; }
+.list-index__count { font-size: 12px; color: var(--ink-dim); margin-top: 2px; font-family: var(--font-mono); }
+
+/* ---- Lists index: poster-collage cards ------------------------------ */
+.list-cards { display: flex; flex-direction: column; gap: var(--space-3); }
+.list-card {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-2) var(--space-3) var(--space-2) var(--space-2);
+  border-radius: var(--radius-l);
+  background: var(--surface-raised); border: 1px solid var(--line);
+  transition: transform 0.12s ease, background 0.2s ease;
+}
+.list-card:active { transform: scale(0.99); background: var(--surface-high); }
+.list-card__collage {
+  width: 104px; height: 72px; flex-shrink: 0;
+  border-radius: var(--radius-m); overflow: hidden;
+  display: grid; gap: 2px; background: var(--surface);
+  grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr;
+}
+.list-card__collage img { width: 100%; height: 100%; object-fit: cover; }
+.list-card__collage[data-n="1"] { grid-template-columns: 1fr; grid-template-rows: 1fr; }
+.list-card__collage[data-n="2"] { grid-template-rows: 1fr; }
+.list-card__collage[data-n="3"] img:first-child { grid-row: span 2; }
+.list-card__collage--empty { display: grid; place-items: center; color: var(--ink-faint); }
+.list-card__collage--empty svg { width: 26px; height: 26px; }
+.list-card__body { flex: 1; min-width: 0; }
+.list-card__name { font-family: var(--font-display); font-weight: 700; font-size: 16px; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.list-card__meta { color: var(--ink-dim); font-size: var(--text-meta); margin-top: 3px; }
+.list-card__chev { flex-shrink: 0; color: var(--ink-faint); display: grid; place-items: center; }
+.list-card__chev svg { width: 18px; height: 18px; }
+.list-detail__head { margin-bottom: 18px; }
+.list-detail__head-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.list-detail__head h1 { font-family: var(--font-display); font-weight: 700; font-size: 21px; margin-bottom: 6px; }
+.list-detail__head .btn--danger { margin-top: 12px; }
+.ranked-list { display: flex; flex-direction: column; gap: 4px; }
+.ranked-row { display: flex; align-items: center; gap: 10px; padding: 8px 4px; }
+.ranked-row__num {
+  width: 24px; flex-shrink: 0; text-align: center; font-family: var(--font-display);
+  font-weight: 700; font-size: 15px; color: var(--ink-dim);
+}
+.ranked-row__link { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
+.ranked-row__cover { width: 44px; aspect-ratio: var(--ratio-inline); border-radius: 6px; flex-shrink: 0; }
+.ranked-row__info { min-width: 0; }
+.ranked-row__title { font-weight: 600; font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ranked-row__meta { font-size: 12.5px; color: var(--ink-dim); margin-top: 2px; }
+.ranked-row__controls { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
+.ranked-row__move, .ranked-row__remove {
+  width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
+  color: var(--ink-dim); border-radius: 8px;
+}
+.ranked-row__move svg, .ranked-row__remove svg { width: 16px; height: 16px; }
+.ranked-row__move:disabled { opacity: 0.25; }
+.ranked-row__move:active:not(:disabled), .ranked-row__remove:active { background: var(--surface-raised); color: var(--ink); }
+.ranked-row__remove:active { color: var(--danger); }
+
+/* ------------------------------------------------------------ game detail */
+.game-detail__body { padding-top: 4px; }
+.game-detail__title-row { display: flex; gap: 14px; margin-bottom: 12px; }
+.game-detail__title-col { flex: 1; min-width: 0; }
+/* The one place a large size earns real presence — still light
+   weight, but big and tightly tracked, the way a console title card
+   sits over artwork. */
+.game-detail__title-col h1 {
+  font-family: var(--font-display); font-weight: var(--weight-display);
+  font-size: var(--text-display); line-height: 1.1; letter-spacing: -0.025em;
+}
+.game-detail__date { font-size: 11px; color: var(--ink-dim); letter-spacing: 0.05em; margin-top: 6px; font-family: var(--font-mono); }
+.game-detail__actions-row { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+.btn--pill { border-radius: 999px; padding: 8px 16px; font-size: 12.5px; }
+.game-detail__playtime { font-size: 12px; color: var(--ink-dim); font-family: var(--font-mono); }
+.game-detail__poster {
+  width: 104px; aspect-ratio: var(--ratio-card); flex-shrink: 0; border-radius: var(--radius-s);
+  box-shadow: var(--shadow-modal); cursor: pointer;
+  transition: width 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.25s ease;
+}
+.game-detail__poster { cursor: zoom-in; }
+
+/* --- full-screen artwork viewer --- */
+.poster-viewer {
+  position: fixed; inset: 0; z-index: 200;
+  display: grid; place-items: center;
+  background: rgba(4,6,12,0.94);
+  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  animation: fade-in var(--dur) var(--ease);
+  overflow: hidden;
+}
+.poster-viewer__img {
+  max-width: 94vw; max-height: 86vh; object-fit: contain;
+  border-radius: var(--radius-m); box-shadow: var(--shadow-modal);
+  transition: transform var(--dur-slow) var(--ease);
+  cursor: zoom-in; user-select: none; -webkit-user-drag: none;
+}
+.poster-viewer.is-zoomed .poster-viewer__img { cursor: zoom-out; }
+.poster-viewer__close {
+  position: absolute; top: calc(var(--space-4) + var(--safe-top)); right: var(--space-4);
+  width: 42px; height: 42px; border-radius: 50%; z-index: 2;
+  background: var(--glass-light); border: 1px solid var(--glass-border);
+  backdrop-filter: var(--glass-filter); -webkit-backdrop-filter: var(--glass-filter);
+  color: var(--ink); font-size: 26px; line-height: 1; display: grid; place-items: center;
+}
+.poster-viewer__hint {
+  position: absolute; bottom: calc(var(--space-5) + var(--safe-bottom)); left: 0; right: 0;
+  text-align: center; color: var(--ink-faint); font-size: var(--text-meta);
+  transition: opacity var(--dur) var(--ease); pointer-events: none;
+}
+.poster-viewer.is-zoomed .poster-viewer__hint { opacity: 0; }
+.game-detail__synopsis { font-size: 13.5px; line-height: 1.6; color: var(--ink-dim); margin-bottom: 8px; }
+.game-detail__avg { display: flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-weight: 700; font-size: 16px; color: var(--gold); margin-top: 10px; }
+
+.game-detail__facts { display: flex; flex-direction: column; gap: var(--space-3); }
+.game-detail__fact { display: flex; gap: 10px; font-size: 13px; }
+.game-detail__fact span:first-child { font-weight: 700; color: var(--ink-dim); text-transform: uppercase; font-size: 10px; letter-spacing: 0.04em; width: 96px; flex-shrink: 0; padding-top: 2px; }
+.game-detail__fact span:last-child { color: var(--ink); }
+.game-detail__tabs { margin: 6px 0 14px; }
+#game-tab-content { margin-bottom: 22px; }
+
+.stat-card-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-2); margin: var(--space-5) 0; }
+/* Tinted glass panels instead of flat colour blocks — the coloured
+   fills read heavy against the calmer background. */
+.stat-card {
+  border-radius: var(--radius-m); padding: var(--space-4) var(--space-3) var(--space-3);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: var(--glass-filter); -webkit-backdrop-filter: var(--glass-filter);
+}
+.stat-card svg { width: 19px; height: 19px; margin-bottom: var(--space-4); opacity: 0.9; }
+.stat-card b { display: block; font-family: var(--font-mono); font-size: 20px; font-weight: 500; letter-spacing: -0.02em; }
+.stat-card span { font-size: var(--text-label); text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.75; margin-top: 2px; display: block; }
+.stat-card--green { background: color-mix(in srgb, var(--success) 10%, var(--glass-light)); color: var(--success); }
+.stat-card--green b { color: var(--success); }
+.stat-card--grey { background: var(--glass-light); color: var(--ink-dim); }
+#reviews-stat-card { cursor: pointer; transition: transform 0.1s ease; }
+#reviews-stat-card:active { transform: scale(0.96); }
+.stat-card--grey b { color: var(--ink); }
+.stat-card--blue { background: color-mix(in srgb, var(--accent) 12%, var(--glass-light)); color: var(--accent-bright); }
+.stat-card--blue b { color: var(--accent-bright); }
+
+.chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 6px 13px; font-size: 12.5px; font-weight: 600; color: var(--ink-dim); }
+
+.crew-list { display: flex; flex-direction: column; }
+.crew-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); transition: background 0.12s ease; width: 100%; text-align: left; }
+.crew-row:active { background: var(--surface); }
+.crew-row__photo { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; background: var(--surface-raised); flex-shrink: 0; }
+.crew-row__photo--studio { border-radius: var(--radius-s); object-fit: contain; padding: 6px; }
+.crew-row__photo--fallback { display: grid; place-items: center; color: var(--ink-faint); }
+.crew-row__photo--fallback svg { width: 18px; height: 18px; }
+.crew-row__name { font-weight: 600; font-size: 14px; }
+.crew-row__role { font-size: 12px; color: var(--ink-dim); margin-top: 2px; }
+
+.trailer-video { max-width: 92vw; max-height: 70vh; border-radius: var(--radius-m); }
+
+.own-log-row { display: flex; gap: 8px; align-items: stretch; margin-bottom: 16px; }
+.own-log-card {
+  display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-m);
+  padding: 12px 14px; text-align: left;
+}
+.own-log-row .btn--ghost { flex-shrink: 0; padding: 12px 16px; font-size: 13px; }
+.own-log-card__label { font-size: 13px; font-weight: 600; color: var(--ink); flex: 1; }
+.own-log-card__edit { font-size: 12px; font-weight: 700; color: var(--accent-bright); flex-shrink: 0; }
+
+/* ------------------------------------------------------------ modal */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(4,4,8,0.68);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  display: flex; align-items: flex-end; justify-content: center; z-index: 100;
+  animation: fade-in 320ms ease;
+}
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+/* Sheet, not a box: a grabber, a real spring, and a top-edge highlight
+   so it reads as physically sliding over the content behind it. */
+.modal {
+  position: relative;
+  background: var(--surface); width: 100%; max-width: 560px;
+  border-radius: var(--radius-l) var(--radius-l) 0 0;
+  border-top: 1px solid var(--glass-border);
+  max-height: 88vh; display: flex; flex-direction: column;
+  box-shadow: var(--shadow-modal);
+  /* A slow, soft ease-out so the sheet visibly glides up and settles
+     rather than snapping in. */
+  animation: sheet-in 480ms cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform, opacity;
+  padding-bottom: var(--safe-bottom);
+}
+.modal::before {
+  content: ''; position: absolute; top: var(--space-2); left: 50%;
+  width: 36px; height: 4px; margin-left: -18px; border-radius: var(--radius-pill);
+  background: var(--line-strong);
+}
+@keyframes slide-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes sheet-in {
+  from { transform: translateY(100%); opacity: 0.6; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+.modal--tall { max-height: 92vh; }
+.modal__header { display: flex; align-items: center; justify-content: space-between; padding: 18px 20px 10px; }
+.modal__header h2 { font-family: var(--font-display); font-weight: 700; font-size: 18px; }
+/* Close button styled as PlayStation's Cross (X) button: a dark round
+   button with the iconic blue cross. The inner markup (a "×" glyph or an
+   svg) is hidden and the cross is drawn as a masked shape so every close
+   button matches regardless of what it was built with. */
+.modal__close {
+  position: relative;
+  width: 36px; height: 36px; display: grid; place-items: center;
+  background: radial-gradient(circle at 50% 35%, #2a3346, #171d29);
+  border: 1px solid rgba(90,160,255,0.35);
+  border-radius: 50%;
+  color: transparent; font-size: 0; line-height: 0;
+  box-shadow: inset 0 1px 1px rgba(255,255,255,0.08), 0 2px 6px rgba(0,0,0,0.4);
+  transition: transform var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+.modal__close svg { display: none; }
+/* The blue cross, dead-centre and bolder, with flat (square) line ends
+   rather than rounded caps — closer to the PlayStation Cross glyph. */
+.modal__close::before {
+  content: ''; position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 18px; height: 18px;
+  background: #4d9bff; /* PlayStation cross blue */
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M4 4L20 20M20 4L4 20' stroke='%23000' stroke-width='3' stroke-linecap='square'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M4 4L20 20M20 4L4 20' stroke='%23000' stroke-width='3' stroke-linecap='square'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.modal__close:hover { border-color: rgba(90,160,255,0.7); }
+.modal__close:active { transform: scale(0.9); }
+.modal__body { padding: 6px 20px 20px; overflow-y: auto; }
+.modal__actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 6px; }
+.modal__actions .btn--accent { flex: 1; }
+
+.log-form__game { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 12px; }
+.log-form__game-cover { width: 64px; aspect-ratio: var(--ratio-card); border-radius: 7px; flex-shrink: 0; background: var(--surface); box-shadow: var(--shadow-card); }
+.log-form__game-info { padding-top: 2px; min-width: 0; }
+.log-form__game-title { font-weight: 700; font-size: 15px; line-height: 1.25; }
+.log-form__game-meta { font-size: 11.5px; color: var(--ink-dim); font-family: var(--font-mono); margin-top: 3px; }
+.log-form__synopsis { font-size: 12.5px; line-height: 1.55; color: var(--ink-dim); margin-bottom: 18px; }
+
+/* ------------------------------------------------------------ misc: toast, spinner, empty, banner */
+.toast {
+  position: fixed; left: 50%; bottom: calc(90px + var(--safe-bottom)); transform: translateX(-50%) translateY(12px);
+  background: var(--surface-raised); color: var(--ink); padding: 11px 18px; border-radius: 999px;
+  font-size: 13.5px; font-weight: 500; box-shadow: var(--shadow-modal);
+  opacity: 0; pointer-events: none; transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 200; max-width: 86%; text-align: center;
+}
+.toast--visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast--error { border: 1.5px solid var(--danger); }
+.toast--success { border: 1.5px solid var(--success); }
+
+.spinner {
+  display: block; width: 40px; height: 40px; margin: var(--space-7) auto; line-height: 0;
+}
+.spinner img { display: block; width: 100%; height: 100%; }
+
+/* Skeletons: a sheen sweeps across rather than the whole block pulsing,
+   which reads as "loading" instead of "broken". */
+.skeleton {
+  position: relative; overflow: hidden;
+  background: var(--surface-raised); border-radius: var(--radius-s);
+}
+.skeleton::after {
+  content: ''; position: absolute; inset: 0; transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent);
+  animation: skeleton-sweep 1.4s infinite;
+}
+@keyframes skeleton-sweep { to { transform: translateX(100%); } }
+.skeleton--poster { flex-shrink: 0; width: 132px; aspect-ratio: var(--ratio-card); border-radius: var(--radius-s); }
+.skeleton--thumb { width: 52px; aspect-ratio: var(--ratio-inline); flex-shrink: 0; border-radius: var(--radius-s); }
+.skeleton--line { height: 11px; border-radius: var(--radius-pill); }
+.skeleton--line-sm { height: 9px; opacity: 0.6; }
+.skeleton-list { display: flex; flex-direction: column; gap: var(--space-4); }
+.skeleton-list__row { display: flex; gap: var(--space-3); align-items: center; }
+.skeleton-list__lines { flex: 1; display: flex; flex-direction: column; gap: var(--space-2); }
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton::after { animation: none; }
+}
+
+.empty-state { text-align: center; padding: var(--space-7) var(--space-5); color: var(--ink-dim); }
+.empty-state svg { width: 32px; height: 32px; color: var(--ink-faint); margin-bottom: var(--space-3); }
+.empty-state p { font-size: var(--text-body); margin-bottom: var(--space-4); line-height: 1.5; max-width: 34ch; margin-left: auto; margin-right: auto; }
+
+.banner {
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-s);
+  padding: 12px 14px; font-size: 13px; color: var(--ink-dim); margin-bottom: 16px; line-height: 1.5;
+}
+.banner a { color: var(--accent-bright); font-weight: 600; }
+
+.muted { color: var(--ink-dim); font-size: 13.5px; }
+
+/* ------------------------------------------------------------ auth screen */
+.auth-screen {
+  position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column;
+  justify-content: flex-end; background: #0b0b10; overflow: hidden;
+}
+/* Full-bleed now — the image covers the entire screen behind
+   everything, not just a capped-height band up top. */
+.auth-screen__art-wrap { position: absolute; inset: 0; z-index: 0; }
+/* Two stacked layers crossfade between images (Netflix-style rotation).
+   Full-bleed cover across the entire screen — the trade-off is a little
+   cropping on the edges for images whose proportions don't exactly
+   match the screen, in exchange for zero letterboxing/empty space. */
+.auth-screen__art {
+  position: absolute; inset: 0;
+  background-color: #0b0b10; background-size: cover; background-position: center 22%; background-repeat: no-repeat;
+  opacity: 0; transition: opacity 1.1s ease;
+}
+.auth-screen__art.is-active { opacity: 1; }
+.auth-screen__content { position: relative; z-index: 2; padding: 12px 24px calc(32px + env(safe-area-inset-bottom)); }
+/* Returns to the landing funnel — the only way here now, so it's never a
+   dead end if someone taps Sign up/Log in just to look. Dark translucent
+   circle so it reads over whatever photo happens to be behind it. */
+.auth-screen__back {
+  position: absolute; z-index: 3;
+  top: calc(var(--space-3) + var(--safe-top)); left: var(--space-4);
+  width: 36px; height: 36px; display: grid; place-items: center;
+  border-radius: 50%; background: rgba(8,8,12,0.55); border: 1px solid rgba(255,255,255,0.14);
+  color: #fff; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+}
+.auth-screen__back svg { width: 18px; height: 18px; }
+.auth-screen__back:active { transform: scale(0.92); background: rgba(8,8,12,0.7); }
+/* Credits the game whose art is currently showing and links to its
+   real page in-app — small and out of the way, top-right so it never
+   competes with the back button or the form below it. */
+.auth-screen__credit {
+  position: absolute; z-index: 3;
+  top: calc(var(--space-3) + var(--safe-top)); right: var(--space-4);
+  max-width: 62%; display: flex; align-items: center; gap: 4px;
+  padding: 7px 12px; border-radius: 999px;
+  background: rgba(8,8,12,0.55); border: 1px solid rgba(255,255,255,0.14);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  color: rgba(255,255,255,0.75); font-family: var(--font-body); font-size: 11.5px; font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  opacity: 1; transition: opacity 0.65s ease;
+}
+.auth-screen__credit.is-fading { opacity: 0; }
+.auth-screen__credit:active { background: rgba(8,8,12,0.7); }
+.auth-screen__credit[disabled] { opacity: 0.7; }
+.auth-screen__credit #auth-credit-game { color: #fff; overflow: hidden; text-overflow: ellipsis; }
+@media (prefers-reduced-motion: reduce) {
+  .auth-screen__credit { transition: none; }
+}
+.auth-screen__brand { text-align: center; margin-bottom: 22px; position: relative; }
+.auth-screen__brand-row { display: flex; align-items: center; justify-content: center; gap: 10px; }
+.auth-screen__mark {
+  width: 40px; height: 40px; border-radius: 11px;
+  filter: drop-shadow(0 2px 10px rgba(0,0,0,0.55));
+}
+.auth-screen__brand h1 {
+  /* 'Anton' was referenced here but never actually loaded by any font
+     link in index.html, so it was silently falling back the whole time.
+     Switched to the real brand font, Switzer — bold and lowercase now,
+     a chunkier geometric mark instead of thin tracked-out capitals. */
+  font-family: var(--font-brand); font-weight: 800; font-style: normal; font-size: 36px;
+  color: #fff; letter-spacing: -0.015em; text-transform: none;
+  text-shadow: 0 2px 14px rgba(0,0,0,0.9), 0 1px 3px rgba(0,0,0,0.9);
+}
+.auth-screen__brand p {
+  font-family: var(--font-body); font-style: italic; font-weight: 500;
+  color: rgba(255,255,255,0.85); font-size: 13.5px; margin-top: 6px; letter-spacing: 0.01em;
+  text-shadow: 0 2px 10px rgba(0,0,0,0.9), 0 1px 3px rgba(0,0,0,0.9);
+}
+.auth-form .field span {
+  display: block; font-family: var(--font-body); font-weight: 600;
+  color: rgba(255,255,255,0.75); font-size: 11.5px; margin-bottom: 8px;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.85);
+}
+.auth-form .field input {
+  width: 100%; background: #fff; color: #12121a; border: none; border-radius: 12px;
+  padding: 15px 16px; font-family: var(--font-body); font-size: 15px;
+  box-shadow: 0 0 0 0 transparent; transition: box-shadow 0.15s ease;
+}
+.auth-form .field--icon .field__input-wrap { position: relative; }
+.auth-form .field--icon input { padding-left: 38px; }
+.auth-form .field--password input { padding-right: 44px; }
+.auth-form .field__icon {
+  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+  width: 17px; height: 17px; color: #8d8d97; pointer-events: none;
+}
+.auth-form .field__icon svg { width: 100%; height: 100%; display: block; }
+.auth-form .field__toggle {
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+  width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+  background: none; border: none; padding: 0; color: #8d8d97; cursor: pointer; border-radius: 8px;
+}
+.auth-form .field__toggle svg { width: 18px; height: 18px; display: block; }
+.auth-form .field__toggle:active { color: #12121a; background: rgba(0,0,0,0.06); }
+/* Content fades/rises in on mount rather than just popping into place.
+   Respects reduced-motion — no animation at all in that case, content
+   just appears instantly in its final position. */
+@media (prefers-reduced-motion: no-preference) {
+  .auth-screen__content { animation: authContentIn 0.55s cubic-bezier(0.16, 1, 0.3, 1) both; }
+}
+@keyframes authContentIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .auth-screen__art { transition: none; }
+}
+.auth-form .field input:focus { outline: none; box-shadow: 0 0 0 3px rgba(242,183,5,0.55); }
+.auth-form .field input::placeholder { color: #9a9aa5; }
+.auth-form .field { margin-bottom: 14px; display: block; }
+.auth-screen .btn--accent {
+  background: var(--gold); color: #14100a; border-radius: 999px; border: none;
+  padding: 16px; font-family: var(--font-display); font-weight: 900; font-size: 17px;
+  letter-spacing: 0.02em; width: 100%;
+}
+.auth-screen__switch {
+  display: block; width: 100%; text-align: center; margin-top: 20px; font-size: 13.5px;
+  font-family: var(--font-body); color: rgba(255,255,255,0.75);
+  text-shadow: 0 1px 4px rgba(0,0,0,0.7);
+}
+/* Only the action word is the tappable target now — the lead-in is plain
+   text. */
+.auth-screen__switch-link {
+  background: none; border: none; padding: 0 0 0 4px; cursor: pointer;
+  font: inherit; font-weight: 700; font-size: 15px; color: var(--gold);
+}
+.auth-screen__switch-link:hover { text-decoration: underline; }
+.auth-screen__switch-link:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 2px; border-radius: 4px; }
+.auth-screen__warning {
+  background: color-mix(in srgb, var(--coral) 12%, var(--surface)); border: 1px solid color-mix(in srgb, var(--coral) 40%, transparent);
+  border-radius: var(--radius-s); padding: 12px 14px; font-size: 12.5px; color: var(--ink-dim); margin-bottom: 20px; line-height: 1.5;
+}
+.auth-screen__warning code { font-family: var(--font-mono); color: var(--coral); }
+
+/* ------------------------------------------------------------ small screens */
+@media (max-width: 360px) {
+  .stat-strip { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* ------------------------------------------------------------ desktop/mouse hover
+   Scoped to (hover: hover) so touchscreens never get a "stuck" hover
+   state after tapping — only real pointer devices see these. */
+@media (hover: hover) {
+  .game-card:hover .game-card__cover,
+  .trending-card:hover .trending-card__cover,
+  .friend-card:hover .friend-card__cover,
+  .showcase-slot:hover .showcase-slot__cover,
+  .result-row:hover .result-row__cover {
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  }
+  .game-card:hover, .trending-card:hover, .friend-card:hover, .showcase-slot:hover {
+    transform: translateY(-3px);
+  }
+  .log-card:hover { box-shadow: 0 8px 28px rgba(0,0,0,0.45); }
+  .result-row:hover, .diary-row:hover, .list-index__item:hover { background: var(--surface); }
+  .btn:hover { filter: brightness(1.08); }
+  .tabbar__item:hover:not(.tabbar__item--primary) { color: var(--ink-dim); }
+  .stat-link:hover, .stat-tile--link:hover { background: var(--surface-raised); }
+  a:hover .diary-row__title, a:hover .list-index__name { color: var(--accent-bright); }
+}
+
+/* ------------------------------------------------------------ log sheet */
+.log-sheet__head { padding: var(--space-5) var(--space-4) var(--space-3); text-align: center; }
+.log-sheet__title { font-size: var(--text-heading); font-weight: var(--weight-strong); letter-spacing: -0.01em; }
+.log-sheet__year { color: var(--ink-faint); font-weight: 400; }
+.log-sheet__body { padding-top: 0; }
+
+.quick-row {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2); padding: var(--space-4) 0;
+  border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+}
+.quick-act {
+  display: flex; flex-direction: column; align-items: center; gap: var(--space-2);
+  background: none; border: none; padding: var(--space-2) 0; color: var(--ink-dim);
+  transition: color var(--dur) var(--ease);
+}
+.quick-act__icon { width: 42px; height: 42px; display: grid; place-items: center; }
+.quick-act__icon svg { width: 36px; height: 36px; }
+.quick-act__label { font-size: var(--text-meta); font-weight: 600; }
+.quick-act:active { transform: scale(0.94); }
+
+/* Each toggle lights in its own colour so the three states stay
+   distinguishable at a glance without reading the labels. */
+.quick-act[data-on="1"] { color: var(--ink); }
+.quick-act[data-on="1"] .quick-act__icon--pad { color: var(--success); filter: drop-shadow(0 0 10px rgba(74,222,155,0.5)); }
+.quick-act[data-on="1"] .quick-act__icon--heart { color: var(--coral); filter: drop-shadow(0 0 10px rgba(255,107,107,0.5)); }
+.quick-act[data-on="1"] .quick-act__icon--heart svg path { fill: var(--coral); }
+.quick-act[data-on="1"] .quick-act__icon--save { color: var(--accent-bright); filter: drop-shadow(0 0 10px rgba(15,140,255,0.5)); }
+.quick-act[data-on="1"] .quick-act__icon--save svg path { fill: var(--accent-bright); }
+
+/* Controller "rumble" on activation — a short physical wobble that
+   pairs with the haptic buzz. */
+.quick-act.is-shaking .quick-act__icon { animation: rumble 0.42s var(--ease); }
+@keyframes rumble {
+  0%, 100% { transform: translateX(0) rotate(0); }
+  15% { transform: translateX(-3px) rotate(-7deg); }
+  30% { transform: translateX(3px) rotate(7deg); }
+  45% { transform: translateX(-2px) rotate(-5deg); }
+  60% { transform: translateX(2px) rotate(4deg); }
+  80% { transform: translateX(-1px) rotate(-2deg); }
+}
+.quick-act.is-pop .quick-act__icon { animation: pop 0.34s var(--ease); }
+@keyframes pop {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.32); }
+  100% { transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .quick-act.is-shaking .quick-act__icon, .quick-act.is-pop .quick-act__icon { animation: none; }
+}
+
+.quick-stars {
+  display: flex; justify-content: center; padding: var(--space-4) 0;
+  border-bottom: 1px solid var(--line);
+}
+.log-sheet__rows { display: flex; flex-direction: column; padding: var(--space-2) 0; }
+.sheet-row {
+  text-align: left; background: none; border: none; color: var(--ink);
+  font-size: var(--text-body); padding: var(--space-3) var(--space-1);
+  border-radius: var(--radius-s); min-height: 48px;
+  transition: background var(--dur) var(--ease);
+}
+.sheet-row:active { background: var(--surface-raised); }
+.log-sheet__extra { padding-top: var(--space-3); border-top: 1px solid var(--line); }
+
+/* Feed reveals as one finished page rather than section-by-section —
+   see renderFeedView(). Only the fade is here; the gating is in JS. */
+.feed-body--loading { opacity: 0; }
+#feed-body { opacity: 1; transition: opacity var(--dur) var(--ease); }
+
+/* ---- full-screen profile photo viewer -------------------------------
+   Spans the full width of the screen and sits centred vertically, with
+   pinch/double-tap zoom and drag-to-pan handled in openAvatarLightbox().
+   `touch-action: none` is required: without it the browser claims the
+   pinch and drag gestures for page zoom/scroll before the handlers ever
+   see them. */
+.avatar-viewer {
+  position: fixed; inset: 0; z-index: 120;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(6,6,10,0.95);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  animation: fade-in var(--dur-fast) var(--ease);
+  touch-action: none;
+  overflow: hidden;
+}
+.avatar-viewer__stage {
+  width: 100%; display: flex; align-items: center; justify-content: center;
+}
+.avatar-viewer__img {
+  width: 100%; max-height: 82vh; object-fit: contain;
+  border-radius: var(--radius-m);
+  transform-origin: center center;
+  transition: transform 0.18s var(--ease);
+  user-select: none; -webkit-user-select: none; -webkit-user-drag: none;
+  touch-action: none;
+}
+/* No transition while a gesture is in flight — the image must track the
+   fingers exactly, and easing makes it feel like it's lagging behind. */
+.avatar-viewer__img:active { transition: none; }
+.avatar-viewer__close {
+  position: absolute; top: calc(14px + var(--safe-top)); right: 14px; z-index: 2;
+  width: 38px; height: 38px; display: grid; place-items: center;
+  border-radius: 50%; color: #fff;
+  background: rgba(255,255,255,0.14);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+}
+.avatar-viewer__close svg { width: 17px; height: 17px; }
+.avatar-viewer__hint {
+  position: absolute; bottom: calc(22px + var(--safe-bottom)); left: 0; right: 0;
+  text-align: center; font-size: var(--text-meta); color: rgba(255,255,255,0.5);
+  pointer-events: none;
+}
+
+/* ============================================================
+   GAME DETAIL — hairline layout
+   ------------------------------------------------------------
+   Same palette, accent and type as the rest of the app; only the
+   structure differs. Sections are separated by 1px rules rather than
+   by filled cards, so the page reads as one continuous sheet instead
+   of a stack of tinted boxes. Spacing is done with flex/grid `gap`
+   throughout — no margin collapsing to reason about.
+   ============================================================ */
+.gd {
+  display: flex; flex-direction: column; gap: var(--space-5);
+  --gd-rule: rgba(255,255,255,0.12);
+  --gd-rule-strong: rgba(255,255,255,0.28);
+}
+
+/* Metadata voice: one class for every uppercase label on the screen.
+   Tabular figures so columns of numbers line up and don't jitter when
+   a count changes. 10.5px is the floor — nothing on this screen is
+   allowed to go smaller. */
+.gd-kicker {
+  font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--ink-dim); font-weight: 600;
+  font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1;
+}
+.gd-kicker--value { color: var(--ink); letter-spacing: 0.06em; }
+
+.gd-empty {
+  font-style: italic; color: var(--ink-dim); font-size: var(--text-body);
+}
+.gd-link {
+  color: var(--accent-bright); font-size: 10.5px; letter-spacing: 0.1em;
+  text-transform: uppercase; font-weight: 600; background: none; border: none; padding: 0;
+}
+.gd-link--trailer { letter-spacing: 0.06em; }
+
+/* ---- 1. header ---- */
+/* A real screenshot as ambience behind the title, same idea as the
+   login screen's backdrop — full-bleed to the screen edges (the
+   negative margin cancels .view-body's own padding) and dimmed with a
+   scrim that fades to the page's own background at the bottom, so the
+   header sits on it rather than looking like a pasted-in banner. Only
+   rendered when a background_url exists; the plain hairline header is
+   the fallback for games without one. */
+.gd-hero {
+  position: relative; overflow: hidden;
+  margin: calc(-1 * var(--space-4)) calc(-1 * var(--space-4)) 0;
+  padding: var(--space-5) var(--space-4) var(--space-4);
+}
+.gd-hero__bg {
+  position: absolute; inset: 0; z-index: 0;
+  background-size: cover; background-position: center 30%; background-repeat: no-repeat;
+}
+.gd-hero__scrim {
+  position: absolute; inset: 0; z-index: 0;
+  background: linear-gradient(180deg, rgba(10,14,22,0.45) 0%, rgba(10,14,22,0.85) 68%, var(--bg) 100%);
+}
+/* The title/kicker/score sitting on this hero read var(--ink), which in
+   light theme is dark brown — invisible on a scrim that's always dark
+   regardless of theme (it's drawn over real game art, not the page
+   background). Pinned back to the dark-theme ink values, but only when
+   the art+scrim are actually present (:has) — a game with no backdrop
+   sits on the plain page background instead and should read the real
+   theme ink like everything else. No-op in dark theme either way, since
+   these already equal the dark-theme defaults there. */
+.gd-hero:has(.gd-hero__bg) {
+  --ink: #ffffff;
+  --ink-dim: #9fadc2;
+  --ink-faint: #5e6b80;
+}
+.gd-head { position: relative; z-index: 1; display: flex; gap: var(--space-4); align-items: flex-start; }
+.gd-head__cover {
+  width: 116px; flex-shrink: 0; aspect-ratio: 3/4;
+  border-radius: 6px; overflow: hidden; background: var(--surface);
+}
+/* This one frame fills rather than fits: the header art is a fixed
+   crop by design, so `cover` is correct here even though posters
+   elsewhere in the app use `contain` to avoid trimming box art. */
+.gd-head__cover .poster-frame__img { object-fit: cover; }
+.gd-head__cover .poster-frame__blur { display: none; }
+.gd-head__main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.gd-head__title {
+  font-family: var(--font-display); font-size: 30px; line-height: 1.02;
+  font-weight: 700; letter-spacing: -0.02em;
+}
+.gd-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.gd-tag {
+  font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--ink-dim); border: 1px solid var(--gd-rule);
+  border-radius: 4px; padding: 3px 7px; font-weight: 600;
+}
+.gd-score { display: flex; align-items: baseline; gap: var(--space-3); flex-wrap: wrap; }
+.gd-score__num {
+  font-size: 32px; font-weight: 700; line-height: 1; color: var(--ink);
+  font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1;
+  letter-spacing: -0.02em;
+}
+
+.gd-synopsis { font-size: var(--text-body); line-height: 1.6; color: var(--ink-dim); }
+
+/* ---- 2. rating distribution ---- */
+/* Bars sit ON the baseline rule rather than inside a panel, which is
+   what lets the chart read as part of the page. */
+.gd-dist { display: flex; flex-direction: column; gap: var(--space-2); }
+.gd-dist__bars {
+  display: flex; align-items: flex-end; gap: 4px;
+  height: 42px;
+  border-bottom: 1px solid var(--gd-rule);
+}
+/* Each bar is a real <button>, so it is focusable and clickable on its
+   own. The button fills the full column height rather than only the
+   drawn bar — a 2px stub for an unrated value would otherwise be an
+   almost impossible tap target. */
+.gd-dist__col {
+  flex: 1; height: 100%; min-width: 0; padding: 0;
+  display: flex; align-items: flex-end;
+  background: none; border: none; cursor: pointer;
+  border-radius: 2px 2px 0 0;
+  -webkit-tap-highlight-color: transparent;
+}
+.gd-dist__bar {
+  width: 100%; min-height: 2px; border-radius: 2px 2px 0 0;
+  background: var(--accent);
+  opacity: 0.55;
+  transition: opacity var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
+  pointer-events: none; /* clicks belong to the button, not the bar */
+}
+.gd-dist__col:hover .gd-dist__bar { opacity: 0.8; }
+.gd-dist__col:active .gd-dist__bar { opacity: 1; }
+.gd-dist__col--active .gd-dist__bar { opacity: 1; background: var(--accent-bright); }
+.gd-dist__col:focus-visible {
+  outline: 2px solid var(--accent-bright); outline-offset: 2px;
+}
+.gd-dist__axis { display: flex; justify-content: space-between; }
+
+/* Active rating filter above the review list. */
+.gd-filter {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--space-3); padding: var(--space-2) 0;
+}
+
+/* ---- 3. action row ---- */
+/* Filled, not outlined — outlines read as disabled against a dark
+   background. These match the accent fill already used by the centre
+   tab-bar button, so the primary action looks the same wherever it
+   appears in the app. */
+.gd-actions { display: flex; gap: var(--space-2); align-items: stretch; }
+.gd-btn {
+  min-height: 44px; padding: 0 var(--space-4);
+  display: inline-flex; align-items: center; justify-content: center;
+  border: none; border-radius: var(--radius-s);
+  background: var(--surface-raised); color: var(--ink);
+  font-size: var(--text-body); font-weight: 600;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease), filter var(--dur-fast) var(--ease);
+  -webkit-tap-highlight-color: transparent;
+}
+/* The primary carries the main action, so it gets the wider share. */
+.gd-btn--primary {
+  flex: 1.7;
+  background: var(--accent); color: #fff;
+  box-shadow: var(--shadow-accent);
+}
+.gd-btn:not(.gd-btn--primary):not(.gd-btn--icon) { flex: 1; }
+.gd-btn--icon {
+  flex: 0 0 44px; width: 44px; padding: 0;
+}
+.gd-btn--icon svg { width: 18px; height: 18px; }
+
+.gd-btn:hover { background: var(--surface-high); }
+.gd-btn--primary:hover { background: var(--accent-bright); }
+.gd-btn:active { filter: brightness(0.88); }
+.gd-btn:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 2px; }
+.gd-btn:disabled { opacity: 0.5; cursor: default; }
+
+/* ---- 4. stat strip ---- */
+/* Vertical hairlines between cells, no fill. The heavier rule above it
+   is what marks this as a distinct block without needing a background. */
+.gd-strip {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  border-top: 1px solid var(--gd-rule-strong);
+  border-bottom: 1px solid var(--gd-rule);
+  padding-top: var(--space-4); padding-bottom: var(--space-4);
+}
+.gd-stat {
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 0 var(--space-3);
+  border-right: 1px solid var(--gd-rule);
+}
+.gd-stat:last-child { border-right: none; }
+.gd-stat:first-child { padding-left: 0; }
+.gd-stat b {
+  font-size: 19px; font-weight: 700; color: var(--ink); letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1;
+}
+.gd-stat span {
+  font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--ink-dim); font-weight: 600;
+}
+
+/* ---- 5/7. kicker rows ---- */
+.gd-section { display: flex; flex-direction: column; gap: var(--space-3); }
+/* Playable-on row: an icon per platform instead of a plain comma list —
+   PlayStation/Xbox/Switch/PC/mobile each get a small recognisable mark
+   (see platformIcon() in game-view.js), which reads faster than text and
+   fits the console-dashboard language the rest of this screen uses. */
+.gd-platforms { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.gd-platform {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 11px 6px 8px; border-radius: var(--radius-pill);
+  background: var(--surface-raised); border: 1px solid var(--gd-rule);
+  font-size: 11.5px; font-weight: 600; color: var(--ink-dim);
+}
+.gd-platform__icon { width: 15px; height: 15px; flex-shrink: 0; color: var(--ink-dim); display: grid; place-items: center; }
+.gd-platform__icon svg { width: 100%; height: 100%; }
+.gd-row {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: var(--space-4);
+}
+.gd-row--reviews { padding-bottom: var(--space-2); border-bottom: 1px solid var(--gd-rule); }
+
+/* ---- 6. cast / details tabs ---- */
+/* Two plain labels with an underline on the active one — no filled
+   segmented control, no pill background. */
+.gd-tabs {
+  display: flex; gap: var(--space-5);
+  border-bottom: 1px solid var(--gd-rule);
+}
+.gd-tab {
+  background: none; border: none; padding: 0 0 var(--space-2);
+  font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase;
+  font-weight: 600; color: var(--ink-faint);
+  border-bottom: 1px solid transparent; margin-bottom: -1px;
+  transition: color var(--dur-fast) var(--ease);
+}
+.gd-tab--active { color: var(--accent-bright); border-bottom-color: var(--accent); }
+
+/* ---- 7. reviews ---- */
+/* logCard() is reused as-is so likes and their wiring keep working;
+   only its skin is replaced here — panel and radius stripped, rows
+   divided by hairlines. */
+.gd-reviews { display: flex; flex-direction: column; }
+.gd-reviews .log-card {
+  background: none; border: none; border-radius: 0; box-shadow: none;
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+  padding: var(--space-4) 0;
+  border-bottom: 1px solid var(--gd-rule);
+}
+.gd-reviews .log-card:last-child { border-bottom: none; }
+.gd-reviews .log-card__review {
+  font-style: italic; font-size: 12.5px; line-height: 1.5; color: var(--ink-dim);
+}
+.gd-reviews .log-card__author { font-size: 15px; font-weight: 600; color: var(--ink); }
+
+/* ---- cast portraits + director block --------------------------------
+   Wikidata's photo coverage is partial even on well-documented games,
+   so the initial-letter tile is a normal state, not a failure — it's
+   styled to look deliberate rather than like a broken image. */
+.crew-row__photo--initial {
+  display: grid; place-items: center;
+  background: var(--surface-raised); color: var(--ink-dim);
+  font-weight: 700; font-size: 15px;
+  border-radius: 50%;
+}
+/* Base sizing/shape already comes from .crew-row__photo above; only the
+   larger director variant needs its own dimensions. */
+.crew-row__photo--lg {
+  width: 56px; height: 56px; flex-shrink: 0; font-size: 20px;
+}
+
+.gd-director {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--gd-rule, rgba(255,255,255,0.12));
+}
+.gd-director__info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.gd-director__name { font-size: 16px; font-weight: 700; color: var(--ink); }
+.gd-director__desc {
+  font-size: 12.5px; line-height: 1.45; color: var(--ink-dim);
+  overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+}
+.gd-row--casthead { padding-top: var(--space-3); }
+
+/* ---- header credits preview: director + cast --------------------
+   Director sits standalone right under the title (replaces where genre
+   tags used to be); the cast avatar stack stays near the score/trailer
+   line — two separate teasers, not one combined strip, so cast reads as
+   cast and the director isn't folded into it. Tapping the avatar stack
+   jumps straight to the full Cast tab below for the complete list,
+   characters, and bios. */
+.gd-credit-chip {
+  display: flex; align-items: center; gap: 7px; margin-top: 2px;
+  font-size: 12.5px; font-weight: 600; color: var(--ink-dim);
+}
+.gd-credit-chip__photo { width: 22px; height: 22px; font-size: 10px; }
+.gd-cast-preview {
+  display: flex; align-items: center;
+  background: none; border: none; padding: 0; cursor: pointer;
+}
+.gd-cast-preview__photo {
+  width: 24px; height: 24px; font-size: 10px;
+  margin-left: -8px; box-shadow: 0 0 0 2px var(--bg);
+}
+.gd-cast-preview__photo:first-child { margin-left: 0; }
+.gd-cast-preview__more {
+  display: grid; place-items: center;
+  width: 24px; height: 24px; margin-left: -8px; border-radius: 50%;
+  background: var(--surface-high); box-shadow: 0 0 0 2px var(--bg);
+  font-size: 10px; font-weight: 700; color: var(--ink-dim);
+}
+
+/* ---- hours-to-beat ruler --------------------------------------------
+   A horizontal scroll track with snap points, read against a fixed
+   centre needle — the same interaction as a physical dial, and it
+   avoids opening the keyboard for a number that's an estimate anyway.
+   The track is padded by half its own width at each end so the first
+   and last ticks can actually reach the centre line. */
+.hour-picker { position: relative; display: flex; flex-direction: column; gap: var(--space-2); }
+.hour-picker__value { display: flex; align-items: baseline; gap: 6px; justify-content: center; }
+.hour-picker__value b {
+  font-size: 26px; font-weight: 700; color: var(--ink);
+  font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1;
+  cursor: pointer; border-radius: 8px; padding: 0 6px;
+  transition: background var(--dur-fast) var(--ease);
+}
+.hour-picker__value b:hover { background: rgba(255,255,255,0.07); }
+.hour-picker__value b:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 2px; }
+/* Dashed underline signals the number is tappable to type an exact value
+   — the fast path to big playtimes without swiping the whole ruler. */
+.hour-picker__value b { text-decoration: underline dashed rgba(255,255,255,0.28); text-underline-offset: 4px; }
+.hour-picker__value span { font-size: var(--text-meta); color: var(--ink-dim); }
+/* The tap-to-type field, sized and styled to sit in place of the big
+   number without shifting the layout. Spinner arrows removed. */
+.hour-picker__type {
+  font: inherit; font-size: 26px; font-weight: 700;
+  font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1;
+  width: 6ch; text-align: center;
+  color: var(--ink); background: var(--surface-raised);
+  border: 1px solid var(--accent-bright); border-radius: 8px;
+  padding: 0 4px; -moz-appearance: textfield; appearance: textfield;
+}
+.hour-picker__type::-webkit-outer-spin-button,
+.hour-picker__type::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.hour-picker__type:focus { outline: none; }
+/* Explicit "type" chip next to the number — the reliable way to jump to
+   a big exact value without swiping the whole ruler. */
+.hour-picker__edit {
+  display: inline-flex; align-items: center; gap: 4px; margin-left: 10px; align-self: center;
+  padding: 5px 11px; border-radius: var(--radius-pill);
+  background: var(--surface-high); border: 1px solid var(--glass-border);
+  color: var(--accent-bright); font-size: 12px; font-weight: 700; cursor: pointer;
+}
+.hour-picker__edit svg { width: 13px; height: 13px; }
+.hour-picker__edit:active { transform: scale(0.95); }
+
+/* Vertical alarm-clock wheel (0–20,000). The numbers scroll under a fixed
+   centre band; a top/bottom mask fades them out at the edges for the drum
+   look. "hrs" and the type shortcut sit to the right. */
+.hour-wheel-row { display: flex; align-items: center; justify-content: center; gap: 18px; padding: 4px 0; }
+.hour-wheel { position: relative; width: 150px; height: 176px; }
+.hour-wheel__scroll {
+  height: 100%; overflow-y: auto;
+  scroll-snap-type: y mandatory; overscroll-behavior: contain; touch-action: pan-y;
+  scrollbar-width: none; -ms-overflow-style: none;
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 30%, #000 70%, transparent 100%);
+  mask-image: linear-gradient(180deg, transparent 0%, #000 30%, #000 70%, transparent 100%);
+}
+.hour-wheel__scroll::-webkit-scrollbar { display: none; }
+.hour-wheel__scroll:focus-visible { outline: none; }
+/* (176 - 44) / 2 = 66 — lets the first and last item reach the centre. */
+.hour-wheel__list { padding: 66px 0; }
+.hour-wheel__item {
+  height: 44px; display: flex; align-items: center; justify-content: center;
+  scroll-snap-align: center;
+  font-size: 21px; font-weight: 600; color: var(--ink-faint);
+  font-variant-numeric: tabular-nums; letter-spacing: 0.01em;
+  transition: color 0.12s ease, font-size 0.12s ease, font-weight 0.12s ease;
+}
+.hour-wheel__item.is-selected { color: #fff; font-size: 30px; font-weight: 800; }
+.hour-wheel__band {
+  position: absolute; left: -8px; right: -8px; top: 50%; height: 44px;
+  transform: translateY(-50%); border-radius: 12px; pointer-events: none;
+  background: rgba(255,255,255,0.05);
+  border-top: 1px solid rgba(255,255,255,0.16);
+  border-bottom: 1px solid rgba(255,255,255,0.16);
+}
+.hour-wheel__aside { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; }
+.hour-wheel__unit { font-size: 16px; font-weight: 700; color: var(--ink-dim); }
+.hour-wheel__aside.is-typing .hour-wheel__unit,
+.hour-wheel__aside.is-typing .hour-picker__edit { display: none; }
+
+.hour-picker__track {
+  overflow-x: auto; overflow-y: hidden;
+  /* proximity, not mandatory: mandatory snapping kills flick momentum at
+     every tick, so a fast swipe couldn't coast toward the far end (it
+     kept "sticking" around 10–14k). proximity lets a flick travel and
+     only snaps when it comes to rest near a tick. */
+  scroll-snap-type: x proximity;
+  scrollbar-width: none; -ms-overflow-style: none;
+  padding: 0 50%;
+  border-radius: var(--radius-s);
+  background: var(--surface);
+  touch-action: pan-x; /* let the browser drive the scroll, not the page */
+}
+.hour-picker__track::-webkit-scrollbar { display: none; }
+.hour-picker__track:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 2px; }
+
+.hour-picker__ticks { display: flex; align-items: flex-end; height: 56px; }
+.hour-tick {
+  position: relative; flex: 0 0 12px; height: 16px;
+  scroll-snap-align: center;
+  border-left: 1px solid var(--line-strong);
+}
+.hour-tick--major { height: 26px; border-left-color: var(--ink-faint); }
+.hour-tick--major i {
+  position: absolute; top: -16px; left: 50%; transform: translateX(-50%);
+  font-style: normal; font-size: 10.5px; color: var(--ink-dim);
+  font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1;
+  white-space: nowrap; /* keep "20,000" on one line over a 12px tick */
+}
+/* The reading line. Sits above the ticks and ignores pointer events so
+   it can never swallow a drag meant for the track underneath. */
+.hour-picker__needle {
+  position: absolute; left: 50%; bottom: 0; width: 2px; height: 56px;
+  margin-left: -1px; background: var(--accent-bright);
+  border-radius: 1px; pointer-events: none;
+  box-shadow: 0 0 8px rgba(15,140,255,0.6);
+}
+
+/* ---- moderation: report sheet, block, delete account ---------------- */
+.log-card__report {
+  background: none; border: none; padding: 4px; margin-left: auto;
+  color: var(--ink-faint); cursor: pointer; line-height: 0;
+  opacity: 0.6; transition: opacity var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+.log-card__report svg { width: 15px; height: 15px; }
+.log-card__report:hover { opacity: 1; color: var(--danger); }
+.log-card__report:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 2px; border-radius: 4px; }
+
+.report-sheet__subject { margin-bottom: var(--space-3); }
+.report-reasons {
+  display: flex; flex-direction: column;
+  border: 1px solid var(--glass-border); border-radius: var(--radius-s);
+  overflow: hidden; margin-bottom: var(--space-4);
+}
+.report-reason {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: 12px var(--space-3); cursor: pointer;
+  border-bottom: 1px solid var(--line);
+  font-size: var(--text-body);
+}
+.report-reason:last-child { border-bottom: none; }
+.report-reason:hover { background: var(--surface); }
+.report-reason input { accent-color: var(--accent); width: 17px; height: 17px; flex-shrink: 0; }
+
+/* Deliberately not styled to look inviting — this is the one control in
+   the app that destroys data, so it reads as a warning rather than as
+   another settings row. */
+.settings-danger__note {
+  font-size: var(--text-meta); line-height: 1.5; margin-bottom: var(--space-3);
+}
+
+/* ---- social sign-in ------------------------------------------------- */
+/* "OR" divider above the social button, matching the rest of the login
+   art — a hairline on each side of the word, sitting straight on the
+   poster. */
+.auth-divider {
+  display: flex; align-items: center; gap: var(--space-3);
+  margin: var(--space-4) 0;
+  color: rgba(255,255,255,0.6); font-size: var(--text-label);
+  text-transform: uppercase; letter-spacing: 0.1em;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.9);
+}
+.auth-divider::before, .auth-divider::after {
+  content: ''; flex: 1; height: 1px; background: rgba(255,255,255,0.18);
+}
+
+/* One full-width bordered "Continue with" button on the login art, with
+   the provider logos previewed as a fanned cluster on the right. Tapping
+   anywhere on it opens the popup with the actual choices; the discs
+   inside are just a preview (pointer-events off, so the click always
+   lands on the button). */
+.auth-continue {
+  display: flex; align-items: center; justify-content: center; gap: 14px;
+  width: 100%; min-height: 56px; padding: 0 var(--space-4);
+  border-radius: var(--radius-pill);
+  background: rgba(10,10,14,0.5);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  color: #fff; font-family: var(--font-display), serif;
+  font-size: 16px; font-weight: 600; cursor: pointer;
+  transition: background var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+}
+.auth-continue:hover { background: rgba(20,20,26,0.62); }
+.auth-continue:active { transform: scale(0.98); }
+.auth-continue:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 2px; }
+.auth-continue__label { white-space: nowrap; }
+.auth-continue__orbs { display: flex; align-items: center; pointer-events: none; }
+/* Small fanned discs — same idea as the popup rows, sized to sit inside
+   the button. The dark ring (matching the button behind them) cuts each
+   one out so overlapping logos never blur together. */
+.auth-orb-mini {
+  width: 32px; height: 32px; flex-shrink: 0;
+  display: grid; place-items: center; border-radius: 50%;
+  margin-left: -10px;
+  background: var(--orb-bg, #fff);
+  box-shadow: 0 0 0 2px rgba(11,11,16,0.95), 0 2px 6px rgba(0,0,0,0.5);
+}
+.auth-orb-mini:first-child { margin-left: 0; }
+.auth-orb-mini svg { width: 18px; height: 18px; display: block; }
+
+/* Provider picker popup: a vertical list of brand rows, each a solid
+   coloured disc (its own --orb-bg) beside the label. Google keeps its
+   four-colour "G" on white. */
+.provider-list { display: flex; flex-direction: column; gap: var(--space-2); }
+.provider-row {
+  display: flex; align-items: center; gap: var(--space-3);
+  width: 100%; min-height: 56px; padding: 0 var(--space-3);
+  border-radius: 14px;
+  background: var(--surface-high, rgba(255,255,255,0.05));
+  border: 1px solid var(--glass-border);
+  color: var(--ink); font-weight: 600; font-size: var(--text-body);
+  cursor: pointer; text-align: left;
+  transition: background var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+}
+.provider-row:hover { background: rgba(255,255,255,0.09); }
+.provider-row:active { transform: scale(0.98); }
+.provider-row:disabled { opacity: 0.55; cursor: default; transform: none; }
+.provider-row__disc {
+  width: 40px; height: 40px; flex-shrink: 0;
+  display: grid; place-items: center; border-radius: 50%;
+  background: var(--orb-bg, #fff);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.14);
+}
+.provider-row__disc svg { width: 22px; height: 22px; display: block; }
+
+/* ---- provider popup: liquid glass ----------------------------------
+   Same recipe as the nav bar (.tabbar): a translucent tinted fill that
+   the backdrop-filter frosts and colour-saturates, a bright specular top
+   edge, and an offset sheen so it reads as curved glass rather than a
+   flat panel. The scrim behind is lightened (.modal-overlay--glass) so
+   there's real colour for the glass to refract. */
+.modal-overlay--glass { background: rgba(4,4,8,0.42); }
+
+.modal--providers {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.02) 46%, rgba(255,255,255,0.06) 100%),
+    rgba(18, 24, 36, 0.30);
+  backdrop-filter: blur(34px) saturate(200%) brightness(1.16);
+  -webkit-backdrop-filter: blur(34px) saturate(200%) brightness(1.16);
+  border-top: none;
+  box-shadow:
+    inset 0 1px 0.5px rgba(255,255,255,0.50),   /* specular top edge */
+    inset 0 0 0 0.5px rgba(255,255,255,0.13),   /* faint rim */
+    inset 0 -8px 18px -10px rgba(255,255,255,0.08),
+    0 -1px 3px rgba(0,0,0,0.18),
+    0 -18px 50px -10px rgba(0,0,0,0.50);        /* lift off the content */
+}
+/* Uneven top sheen — offsetting the highlight is what gives glass its
+   curvature. z-index 0 keeps it above the fill but below the content
+   (which is raised to z-index 1 just below). */
+.modal--providers::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit;
+  background:
+    linear-gradient(166deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.05) 26%, transparent 48%),
+    radial-gradient(120% 82% at 12% -8%, rgba(255,255,255,0.13), transparent 52%);
+  pointer-events: none; z-index: 0;
+}
+.modal--providers::before { z-index: 2; }  /* keep the grabber above the sheen */
+.modal--providers .modal__header,
+.modal--providers .modal__body { position: relative; z-index: 1; }
+.modal--providers .modal__header h2 { text-shadow: 0 1px 3px rgba(0,0,0,0.4); }
+.modal--providers .modal__close { background: rgba(255,255,255,0.12); }
+/* This sheet's own fill never changes with theme (see the comment above
+   this block), but the text and hints inside it read var(--ink)/
+   var(--ink-dim)/var(--ink-faint), which DO change with theme — in light
+   mode that's dark brown text on a sheet that's still dark glass. Pinned
+   back to the dark-theme values; no-op in dark theme, since they already
+   match there. */
+.modal--providers {
+  --ink: #ffffff;
+  --ink-dim: #9fadc2;
+  --ink-faint: #5e6b80;
+}
+/* Rows become inner glass panels so they sit on the frosted surface
+   instead of looking like opaque cards pasted on top. */
+.modal--providers .provider-row {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+}
+.modal--providers .provider-row:hover { background: rgba(255,255,255,0.11); }
+
+/* Fallback: if a browser can't frost the backdrop, fall back to the
+   solid sheet rather than leaving text over see-through colour. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .modal--providers { background: var(--surface); }
+  .modal-overlay--glass { background: rgba(4,4,8,0.68); }
+}
+
+/* ---- shared liquid-glass sheet (log sheet + mood picker) ------------
+   Same recipe as the provider popup, generalised so any sheet can wear
+   it via .modal--glass. */
+.modal--glass {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.09) 0%, rgba(255,255,255,0.02) 46%, rgba(255,255,255,0.055) 100%),
+    rgba(16, 22, 34, 0.34);
+  backdrop-filter: blur(34px) saturate(190%) brightness(1.13);
+  -webkit-backdrop-filter: blur(34px) saturate(190%) brightness(1.13);
+  border-top: none;
+  box-shadow:
+    inset 0 1px 0.5px rgba(255,255,255,0.45),
+    inset 0 0 0 0.5px rgba(255,255,255,0.12),
+    inset 0 -8px 18px -10px rgba(255,255,255,0.07),
+    0 -1px 3px rgba(0,0,0,0.18),
+    0 -18px 50px -10px rgba(0,0,0,0.52);
+}
+.modal--glass::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit;
+  background:
+    linear-gradient(166deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.045) 26%, transparent 48%),
+    radial-gradient(120% 82% at 12% -8%, rgba(255,255,255,0.10), transparent 52%);
+  pointer-events: none; z-index: 0;
+}
+.modal--glass::before { z-index: 2; }
+.modal--glass .modal__header,
+.modal--glass .modal__body,
+.modal--glass .log-sheet__head,
+.modal--glass .log-sheet__body { position: relative; z-index: 1; }
+.modal--glass .modal__close,
+.modal--glass .log-sheet__close { background: rgba(255,255,255,0.14); }
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .modal--glass { background: var(--surface); }
+}
+/* Same reasoning as .modal--providers just above: this sheet's fill
+   stays dark glass in every theme, so the ink tokens its contents read
+   need pinning too, or light theme's dark-brown ink goes unreadable on
+   it. No-op in dark theme. */
+.modal--glass {
+  --ink: #ffffff;
+  --ink-dim: #9fadc2;
+  --ink-faint: #5e6b80;
+}
+
+/* Log sheet, redesigned on glass: the three quick actions become their
+   own rounded glass cards, and the section rules soften to hairlines of
+   light so they read on the frosted surface instead of as dark lines. */
+.log-sheet .quick-row { border: none; gap: var(--space-2); padding: var(--space-3) 0 var(--space-4); }
+.log-sheet .quick-act {
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 16px; padding: var(--space-3) 0;
+}
+.log-sheet .quick-act:active { transform: scale(0.95); }
+.log-sheet .quick-stars { border-top-color: rgba(255,255,255,0.1); border-bottom-color: rgba(255,255,255,0.1); }
+.log-sheet .sheet-row { border-bottom: 1px solid rgba(255,255,255,0.07); }
+.log-sheet .log-sheet__rows { padding: var(--space-2) 0 0; }
+.log-sheet .sheet-row:active { background: rgba(255,255,255,0.06); }
+.log-sheet .field input, .log-sheet .field textarea, .log-sheet .date-input-wrap {
+  background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.14);
+}
+
+/* ---- mood picker: a lean, badass numbered list ---------------------
+   Full-width rows, a monospace track-number on the left, an all-caps
+   label, and a chevron that slides in. The active row lights an accent
+   bar and glows. No emojis, no cards — just a tight, confident list. */
+.mood-list { display: flex; flex-direction: column; gap: 6px; padding-bottom: var(--space-2); }
+.mood-row {
+  position: relative; display: flex; align-items: center; gap: 14px;
+  width: 100%; padding: 15px 16px 15px 18px;
+  border-radius: 12px; border: 1px solid transparent;
+  background: var(--surface-raised);
+  color: var(--ink); cursor: pointer; text-align: left; overflow: hidden;
+  transition: background var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+/* Left accent bar — hidden until the row is active/hovered. */
+.mood-row::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+  background: var(--accent-bright); transform: scaleY(0); transform-origin: center;
+  transition: transform var(--dur-fast) var(--ease);
+}
+.mood-row:hover { background: var(--surface-high); }
+.mood-row:hover::before { transform: scaleY(0.55); }
+.mood-row:active { transform: scale(0.985); }
+.mood-row__index {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 12px; font-weight: 700; color: var(--ink-faint);
+  letter-spacing: 0.04em; flex-shrink: 0; width: 20px;
+}
+.mood-row__label {
+  flex: 1; min-width: 0; font-weight: 700; font-size: 14.5px;
+  text-transform: uppercase; letter-spacing: 0.05em;
+}
+.mood-row__arrow {
+  flex-shrink: 0; color: var(--ink-faint); font-size: 16px;
+  opacity: 0; transform: translateX(-6px);
+  transition: opacity var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+}
+.mood-row:hover .mood-row__arrow { opacity: 1; transform: translateX(0); }
+/* Active: accent everything and hold the bar full-height. */
+.mood-row--active {
+  background: color-mix(in srgb, var(--accent-bright) 14%, var(--surface-raised));
+  border-color: color-mix(in srgb, var(--accent-bright) 45%, transparent);
+  box-shadow: 0 0 20px -6px color-mix(in srgb, var(--accent-bright) 55%, transparent);
+}
+.mood-row--active::before { transform: scaleY(1); }
+.mood-row--active .mood-row__index { color: var(--accent-bright); }
+.mood-row--active .mood-row__label { color: #fff; }
+.mood-row--active .mood-row__arrow { opacity: 1; transform: translateX(0); color: var(--accent-bright); }
+
+.claim-status { font-size: var(--text-meta); min-height: 18px; margin-top: -4px; }
+.claim-status--ok { color: var(--success); }
+.claim-status--bad { color: var(--danger); }
+
+/* ---- suspended (banned) account screen ------------------------------ */
+.suspended-screen {
+  min-height: 100dvh; display: flex; align-items: center; justify-content: center;
+  padding: var(--space-5); background: var(--bg);
+}
+.suspended-card {
+  max-width: 380px; width: 100%; text-align: center;
+  display: flex; flex-direction: column; align-items: center; gap: var(--space-3);
+}
+.suspended-icon {
+  width: 64px; height: 64px; display: grid; place-items: center;
+  border-radius: 50%; color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 14%, transparent);
+  margin-bottom: var(--space-2);
+}
+.suspended-icon svg { width: 32px; height: 32px; }
+.suspended-card h1 { font-family: var(--font-display); font-weight: 700; font-size: 22px; }
+.suspended-card p { color: var(--ink-dim); font-size: var(--text-body); line-height: 1.55; }
+.suspended-screen__note { color: var(--ink-faint); font-size: var(--text-meta); }
+.suspended-card .btn { margin-top: var(--space-3); }
+
+/* ---- settings: grouped-list redesign -------------------------------- */
+.settings2 { max-width: 640px; margin: 0 auto; padding-bottom: calc(100px + var(--safe-bottom)); }
+
+.set-account {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-3) var(--space-4); margin: var(--space-3) 0 var(--space-2);
+  background: var(--surface-raised); border: 1px solid var(--line);
+  border-radius: var(--radius-l);
+}
+.set-account__avatar { width: 64px; height: 64px; border-radius: 50%; overflow: hidden; flex-shrink: 0; }
+.set-account__avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block; }
+.set-account__meta { flex: 1; min-width: 0; }
+.set-account__name { font-family: var(--font-display); font-weight: 700; font-size: 18px; line-height: 1.2; }
+.set-account__handle { color: var(--ink-dim); font-size: var(--text-meta); margin-top: 2px; }
+.set-account__photo {
+  display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;
+  padding: 9px 15px; border-radius: var(--radius-pill);
+  background: var(--surface-high); border: 1px solid var(--glass-border);
+  color: var(--ink); font-size: var(--text-meta); font-weight: 600; cursor: pointer;
+}
+.set-account__photo svg { width: 16px; height: 16px; }
+
+.set-group__title {
+  font-size: var(--text-label); font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--ink-faint);
+  margin: var(--space-4) 6px var(--space-2);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.set-group__title--danger { color: var(--danger); }
+.set-group__hint { font-weight: 600; letter-spacing: 0.02em; text-transform: none; color: var(--ink-faint); }
+
+.set-card {
+  background: var(--surface-raised); border: 1px solid var(--line);
+  border-radius: var(--radius-l); overflow: hidden;
+}
+.set-card--pad { padding: var(--space-3); }
+
+.set-form { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); }
+.set-field { display: flex; flex-direction: column; gap: 6px; }
+.set-field__label { font-size: var(--text-meta); font-weight: 600; color: var(--ink-dim); }
+.set-field input, .set-field select, .set-field textarea {
+  width: 100%; padding: 12px 14px; border-radius: var(--radius-m);
+  background: var(--surface); border: 1px solid var(--line-strong); color: var(--ink);
+  font-size: var(--text-body); font-family: inherit;
+}
+.set-field textarea { resize: vertical; min-height: 72px; }
+.set-field input:focus, .set-field select:focus, .set-field textarea:focus {
+  outline: none; border-color: var(--accent-bright);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-bright) 22%, transparent);
+}
+.set-hint { color: var(--ink-faint); font-size: var(--text-meta); line-height: 1.5; padding: var(--space-2) var(--space-4) var(--space-4); }
+
+.set-rowbtn {
+  display: block; width: 100%; text-align: left;
+  padding: 15px var(--space-4);
+  background: none; border: none; border-top: 1px solid var(--line);
+  color: var(--ink); font-size: var(--text-body); font-weight: 600; cursor: pointer;
+}
+.set-rowbtn:first-child { border-top: none; }
+.set-rowbtn:active { background: var(--surface-high); }
+.set-rowbtn--danger { color: var(--danger); }
+
+.set-credit { text-align: center; color: var(--ink-faint); font-size: var(--text-meta); margin: var(--space-5) 0 var(--space-4); }
+.set-credit a { color: var(--ink-dim); }
+
+/* Smaller button, used in tight header rows where the full 50px .btn
+   would be oversized. */
+.btn--sm { padding: 9px 16px; min-height: 0; font-size: 13.5px; }
+
+/* ---- landing / funnel page ------------------------------------------
+   Shown to a signed-out visitor instead of dropping straight onto a
+   login form. Structured as three small screens (entry / browse /
+   search) tied together by the SAME floating glass nav the real app
+   uses (.tabbar, reused via the .landing-nav wrapper below) — the goal
+   is that this reads as genuinely being inside Playthruu, not a
+   separate marketing page bolted on the front. Real trending games and
+   real public reviews throughout; nothing is actually clickable-through
+   — every tap opens sign-up/login. */
+.landing { min-height: 100dvh; display: flex; flex-direction: column; background: var(--bg); }
+/* Reserve exactly the real nav's height + safe-area, no more — a bar
+   docked flush to the edges doesn't need the floating pill's side/bottom
+   breathing room. This has to match .landing-entry's min-height calc
+   below exactly, or the two disagree about where the bottom actually is
+   and a visible gap opens up between them. The real height (see
+   .landing-nav.tabbar and .tabbar__item below): 1px border-top + 8px
+   padding-top + the 50px item itself = 59px, NOT a round 64 — that
+   5px difference was exactly the sliver of page background visible
+   above the bar. */
+.landing-stage { flex: 1; overflow-y: auto; padding-bottom: calc(59px + var(--safe-bottom)); background: var(--bg); }
+
+/* Docked edge-to-edge, not the floating pill the real in-app tabbar
+   uses — full width, square top corners, flush to the bottom and both
+   sides. Deliberately its own solid black + orange material, not the
+   real in-app tabbar's own glass — border/background/blur only, never
+   size or padding, since THAT is what the reserved nav space below
+   (.landing-stage, .landing-entry) is calculated against. Fixed
+   regardless of theme, same reasoning as the entry content above it:
+   this whole screen is a deliberate dark, high-contrast moment, not
+   one that should go pale in light theme. */
+.landing-nav.tabbar {
+  /* position:fixed anchors to the whole browser viewport, not to #app's
+     centred 560px column — plain left:0/right:0 only looked edge-to-edge
+     on an actual phone (viewport already narrower than 560px); on a wider
+     desktop/localhost window it stretched across the entire browser. This
+     matches #app's own centring formula instead, so the bar is genuinely
+     edge-to-edge against the APP's width at any viewport size. */
+  position: fixed; left: 50%; right: auto; bottom: 0; transform: translateX(-50%);
+  width: 100%; max-width: 560px;
+  border-radius: 0; border: none; border-top: 1px solid rgba(255,255,255,0.12);
+  padding-bottom: var(--safe-bottom);
+  /* Simple true glass: minimal blur (just enough for a faint shimmer,
+     not the heavy frosting that read as matte), next to no white tint,
+     saturate to keep it lively instead of flat. */
+  background: rgba(255,255,255,0.025);
+  backdrop-filter: blur(4px) saturate(160%);
+  -webkit-backdrop-filter: blur(4px) saturate(160%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), 0 10px 34px -8px rgba(0,0,0,0.55);
+}
+/* :root[data-theme="light"] .tabbar (the real in-app nav's light-theme
+   retint, added earlier) is one selector more specific than
+   .landing-nav.tabbar above, so without this it would win in light
+   theme and put the light tint back. Same specificity as that rule,
+   this wins the tie by simply being the one this screen means — the
+   glass stays the same in either theme, matching the rest of this
+   always-dark screen. */
+:root[data-theme="light"] .landing-nav.tabbar {
+  background: rgba(255,255,255,0.025);
+  backdrop-filter: blur(4px) saturate(160%);
+  -webkit-backdrop-filter: blur(4px) saturate(160%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), 0 10px 34px -8px rgba(0,0,0,0.55);
+}
+.landing-nav .tabbar__item {
+  background: none; border: none; font: inherit; cursor: pointer; appearance: none;
+  color: rgba(255,255,255,0.7); text-shadow: none;
+}
+.landing-nav .tabbar__item--active { color: #ffffff; }
+/* Icon-only — no label underneath, so every icon can be noticeably
+   bigger and still fit comfortably in the bar. No drop-shadow glow —
+   flat orange on flat black, full stop. Sized/padded exactly like the
+   base .tabbar__item (50px tall) with nothing overridden here — that
+   50px is what the reserved nav space below (.landing-stage,
+   .landing-entry) is calculated against; changing this height without
+   updating those is exactly what reopened the gap above the bar the
+   last time this was touched. */
+.landing-nav .tabbar__item svg { width: 30px; height: 30px; filter: none; }
+
+/* ---- entry screen: brand + one clear action, bottom-anchored over a
+   full-bleed backdrop — a wall of real game covers instead of the
+   original single rotating photo, but structured exactly like that
+   photo was: position:absolute, entirely out of the page's normal
+   layout flow. That's what matters for not scrolling — an EARLIER
+   version of this made the wall an in-flow flex/grid element instead,
+   and its own natural height pushed the buttons below the fold,
+   forcing the whole screen to scroll to reach "Get Started". Anything
+   put back in-flow here will very likely reintroduce that same bug. */
+.landing-entry {
+  /* z-index (not just position:relative) makes this establish its own
+     stacking context — needed now that the mosaic inside it is
+     position:fixed: without one, a fixed descendant's paint order
+     isn't reliably contained by its position:relative parent, and it
+     could end up compositing above .landing-entry__content instead of
+     safely below it. */
+  position: relative; z-index: 0; overflow: hidden;
+  min-height: calc(100dvh - 59px - var(--safe-bottom));
+  display: flex; flex-direction: column; justify-content: flex-end;
+}
+/* position:fixed, not absolute-within-.landing-entry — the nav bar
+   below is a separate fixed element sitting OUTSIDE .landing-entry's
+   own (deliberately shorter) box, so an absolute mosaic stopped exactly
+   at that boundary, leaving nothing behind the nav's glass to blur but
+   the plain page background. Fixed instead means the wall genuinely
+   fills the whole screen, nav included. Needs the exact same
+   centring fix .landing-nav/.tabbar already use — position:fixed
+   anchors to the real browser viewport, not #app's centred 560px
+   column, so plain inset:0 would stretch it edge-to-edge on desktop/
+   localhost the same way the tab bar once did before that was fixed. */
+.landing-entry__mosaic {
+  position: fixed; top: 0; bottom: 0; left: 50%; transform: translateX(-50%);
+  width: 100%; max-width: 560px; z-index: 0; overflow: hidden;
+  background: #000000; /* fallback while covers load in, same role the old photo's own fallback colour played */
+  pointer-events: none; /* a backdrop, not a set of tappable tiles */
+}
+/* 4 side-by-side columns, each scrolling independently (see
+   paintMosaicTiles in landing-view.js) instead of one grid moving as a
+   single block. */
+.landing-mosaic__columns { display: flex; gap: 2px; height: 100%; }
+.landing-mosaic__col { flex: 1; min-width: 0; overflow: hidden; }
+/* Each column's own tile list, written out twice back to back — scrolled
+   exactly one copy's height in a loop, so the moment it reaches ±50% it's
+   showing the exact same pixels it started with and the loop has no
+   visible seam or jump. */
+.landing-mosaic__track { display: flex; flex-direction: column; gap: 2px; }
+/* will-change + backface-visibility promote each column to its own
+   compositor layer, so the browser can animate them by moving
+   pre-painted layers around on the GPU every frame instead of
+   repainting 40-odd cover images each tick — that's what "smooth"
+   actually depends on here, more than the animation's own timing
+   function does. --up and --down share one keyframe (0 -> -50%);
+   --down just plays it backwards, which is a plain reverse-scroll
+   without needing a second, mirrored keyframe. */
+.landing-mosaic__track--up, .landing-mosaic__track--down {
+  animation: landing-mosaic-scroll 130s linear infinite;
+  will-change: transform; backface-visibility: hidden;
+}
+.landing-mosaic__track--down { animation-direction: reverse; }
+@keyframes landing-mosaic-scroll {
+  from { transform: translateY(0); }
+  to { transform: translateY(-50%); }
+}
+.landing-mosaic__tile { aspect-ratio: 3 / 4; overflow: hidden; border-radius: 10px; }
+/* True-instant loading isn't really possible for real images over the
+   network — this is the next best thing: starts invisible and fades in
+   the moment it's actually decoded (see the onload handler in
+   loadMosaic(), landing-view.js) instead of popping in abruptly
+   mid-scroll. */
+.landing-mosaic__tile img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+  opacity: 0; transition: opacity 0.5s ease;
+}
+.landing-mosaic__tile img.is-loaded { opacity: 1; }
+/* The gradient itself — a short dark cap right at the top (just enough
+   to hold the tagline readable over whatever cover happens to scroll
+   underneath it), fully transparent again through the middle so the
+   covers stay at their true colour where there's nothing to read over
+   them, then the long gradual fade at the bottom — capped well short of
+   fully opaque, not settling into true black like an earlier version of
+   this did. That cap is deliberate: the glass buttons/nav sitting in
+   this bottom zone need actual colour and movement behind them to blur
+   and show through, or "liquid glass" just reads as a plain dark blur
+   with nothing in it, which is exactly what a fully black backdrop
+   behind them produced. */
+.landing-entry__mosaic::after {
+  content: ''; position: absolute; inset: 0; z-index: 1;
+  background: linear-gradient(180deg,
+    rgba(0,0,0,0.6) 0%,
+    rgba(0,0,0,0) 15%,
+    rgba(0,0,0,0) 20%,
+    rgba(0,0,0,0.5) 40%,
+    rgba(0,0,0,0.8) 56%,
+    rgba(0,0,0,0.9) 72%,
+    rgba(0,0,0,0.94) 100%);
+}
+@media (prefers-reduced-motion: reduce) {
+  .landing-mosaic__track--up, .landing-mosaic__track--down { animation: none; }
+}
+.landing-entry__content {
+  position: relative; z-index: 2;
+  display: flex; flex-direction: column; align-items: center;
+  padding: var(--space-5) var(--space-5) calc(var(--space-6) + var(--safe-bottom));
+}
+/* Sits where the old top-pinned brand header used to, now that that
+   moved down to sit above Get Started instead — same out-of-flow
+   positioning and the same reasoning: it has to stay OUT of
+   .landing-entry's normal layout flow or it adds its own height on top
+   of .landing-entry__content's and reopens the scrolling bug. */
+.landing-entry__tagline {
+  position: absolute; z-index: 2; top: calc(var(--space-5) + var(--safe-top)); left: var(--space-5); right: var(--space-5);
+  margin: 0; text-align: center;
+  font-family: var(--font-body); font-style: italic; font-weight: 600;
+  font-size: 15.5px; color: rgba(255,255,255,0.88); letter-spacing: 0.01em;
+  text-shadow: 0 2px 10px rgba(0,0,0,0.9), 0 1px 3px rgba(0,0,0,0.9);
+}
+/* Mark + wordmark side by side, sitting right above Get Started now
+   (moved down from a top-pinned header lockup) — the one clear thing
+   above the one clear action, instead of a separate brand header up top
+   competing for attention with its own space. In-flow this time (no
+   position:absolute): it's inside .landing-entry__content, which is
+   already the flex column anchored to the bottom of the backdrop, so
+   its height just adds to that column like the button and links below
+   it do — nothing here needs to be pulled out of flow the way the
+   full-bleed mosaic backdrop does. */
+.landing-entry__brand {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  margin-bottom: 40px;
+}
+.landing-entry__mark {
+  width: 42px; height: 42px; border-radius: 11px;
+  filter: drop-shadow(0 2px 10px rgba(0,0,0,0.5));
+}
+/* Fixed white regardless of theme — this sits on the game-cover
+   backdrop above, not the plain page background, so it doesn't follow
+   var(--ink) the way .topbar__logo and .landing-header__logo do. */
+.landing-entry__word {
+  font-family: var(--font-brand); font-weight: 800; font-style: normal;
+  font-size: 31px; letter-spacing: -0.015em; color: #ffffff;
+  text-shadow: 0 1px 6px rgba(0,0,0,0.85), 0 1px 2px rgba(0,0,0,0.9);
+}
+/* One clear primary action — everything else (signing up, or logging
+   in) sits underneath it as text, not a competing row of equal-weight
+   buttons. Same neutral liquid-glass recipe as the nav bar above, no
+   colour tint — a strong tint (orange or otherwise) reads as a
+   translucent coloured panel, not glass; the backdrop actually showing
+   through it is what makes it read as glass at all. */
+.landing-entry__row {
+  display: block; width: 100%; max-width: 320px; text-align: center;
+  padding: 20px 0; border-radius: 16px;
+  /* Simple true glass: minimal blur, next to no tint, saturate to keep
+     it lively. The SVG-distortion ripple kept bleeding into the games
+     well outside the button's own shape (a real Chromium backdrop-filter
+     + SVG-filter confinement bug, not a tuning issue) — dropped rather
+     than chase a fix for something this fragile. What gives it presence
+     instead: a brighter top-edge highlight (glass catching light along
+     its rim) and a soft ambient glow around the whole shape, both of
+     which read as dimension without adding any actual tint/blur to the
+     fill — the thing that made it recognisably a button in testing
+     wasn't more matte, it was more light. */
+  background: rgba(255,255,255,0.03);
+  backdrop-filter: blur(4px) saturate(165%);
+  -webkit-backdrop-filter: blur(4px) saturate(165%);
+  border: 1px solid rgba(255,255,255,0.24);
+  border-top-color: rgba(255,255,255,0.5);
+  box-shadow:
+    inset 0 1.5px 1px rgba(255,255,255,0.45),
+    0 14px 34px -10px rgba(0,0,0,0.55),
+    0 0 60px 6px rgba(255,255,255,0.05);
+  font-size: 20px; font-weight: 700; letter-spacing: 0.005em; cursor: pointer; color: #fff;
+  transition: background var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+}
+.landing-entry__row:active { background: rgba(255,255,255,0.1); transform: scale(0.98); }
+.landing-entry__links {
+  display: flex; flex-direction: column; align-items: center; gap: 14px; margin-top: 36px;
+}
+.landing-entry__link {
+  background: none; border: none; cursor: pointer;
+  font-size: 17px; font-weight: 700; color: #ffffff;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.85);
+}
+.landing-entry__link:active { color: rgba(255,255,255,0.75); }
+/* "Already have an account? Login in" is now a <p> holding plain text
+   plus one real nested <button> (#entry-signin, just around "Login
+   in") rather than one button around the whole phrase — "Already have
+   an account?" is inert label text now, only "Login in" is actually
+   tappable, which a single button around both couldn't express. */
+.landing-entry__link--strong {
+  font-size: 17px; font-weight: 600; color: rgba(255,255,255,0.7);
+  text-shadow: 0 1px 4px rgba(0,0,0,0.85); margin: 0;
+}
+.landing-entry__link-inline {
+  display: inline; background: none; border: none; padding: 0; margin: 0;
+  font: inherit; font-weight: 800; color: #fff; cursor: pointer;
+}
+.landing-entry__link-inline:active { color: rgba(255,255,255,0.8); }
+
+/* ---- feature tour: full-screen carousel, no bottom nav -------------- */
+.landing--tour { background: var(--bg); }
+.landing-stage--tour { padding-bottom: 0; overflow: hidden; }
+.tour { height: 100%; display: flex; flex-direction: column; }
+.tour__slide {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; padding: var(--space-6) var(--space-5);
+}
+.tour__art {
+  width: 108px; height: 108px; border-radius: 28px; margin-bottom: var(--space-6);
+  display: grid; place-items: center;
+  background: color-mix(in srgb, var(--accent-bright) 16%, var(--surface-raised));
+  color: var(--accent-bright);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-bright) 25%, transparent);
+}
+.tour__art svg { width: 52px; height: 52px; }
+.tour__title { font-family: var(--font-display); font-weight: var(--weight-heading); font-size: 22px; line-height: 1.3; max-width: 320px; }
+.tour__body { color: var(--ink-dim); font-size: var(--text-body); line-height: 1.5; margin-top: 12px; max-width: 300px; }
+.tour__footer {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: var(--space-4) var(--space-5) calc(var(--space-5) + var(--safe-bottom));
+}
+.tour__skip { background: none; border: none; color: var(--ink-faint); font-size: 14px; font-weight: 600; cursor: pointer; padding: 10px; }
+.tour__dots { display: flex; align-items: center; gap: 7px; }
+.tour__dot { width: 6px; height: 6px; border-radius: 50%; background: var(--line-strong); transition: background var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease); }
+.tour__dot--active { background: var(--accent-bright); transform: scale(1.4); }
+.tour__continue {
+  background: var(--accent); color: #fff; border: none; border-radius: var(--radius-pill);
+  padding: 11px 22px; font-size: 14px; font-weight: 700; cursor: pointer;
+}
+.tour__continue:active { transform: scale(0.96); }
+
+/* ---- browse screen: a real poster wall + real reviews ---- */
+.landing-browse__head {
+  position: sticky; top: 0; z-index: 5; text-align: center;
+  padding: calc(var(--space-3) + var(--safe-top)) var(--space-4) var(--space-3);
+  background: var(--bg);
+}
+.landing-browse__brand { display: flex; align-items: center; justify-content: center; gap: 8px; }
+.landing-browse__mark { width: 22px; height: 22px; border-radius: 6px; }
+.landing-header__logo {
+  font-family: var(--font-brand); font-weight: 800; font-style: normal;
+  font-size: 18px; letter-spacing: -0.01em;
+  /* A flat gradient fill instead of a solid colour — the same accent
+     the rest of the app already leans on (buttons, focus glow), just
+     applied to the wordmark itself rather than another blue element
+     sitting near it. */
+  background: linear-gradient(90deg, var(--ink) 0%, var(--ink) 30%, var(--accent-bright) 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent;
+}
+/* Underline tabs instead of the pill-shaped .segmented used elsewhere
+   (search's Games/People tabs, settings toggles) — scoped to this one
+   spot so it doesn't change those. Overrides .segmented's glass-pill
+   chrome down to a plain row with a glowing bar under the active tab. */
+.landing-browse__tabs {
+  border-radius: 0; padding: 0; background: none; border: none;
+  backdrop-filter: none; -webkit-backdrop-filter: none; box-shadow: none;
+  justify-content: center; gap: var(--space-6);
+  border-bottom: 1px solid var(--line);
+  margin: var(--space-3) var(--space-4) var(--space-4);
+}
+.landing-browse__tabs .segmented__item {
+  flex: none; position: relative; min-height: auto;
+  padding: 4px 2px 14px; border-radius: 0;
+  font-size: 14.5px; font-weight: 700; color: var(--ink-faint);
+}
+.landing-browse__tabs .segmented__item--active {
+  background: none; box-shadow: none; color: var(--ink);
+}
+.landing-browse__tabs .segmented__item--active::after {
+  content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 2.5px;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(90deg, var(--accent-bright), var(--accent));
+  box-shadow: 0 0 10px 1px color-mix(in srgb, var(--accent-bright) 55%, transparent);
+}
+#landing-browse-content { padding: 0 var(--space-4); }
+
+.landing-review-list { display: flex; flex-direction: column; gap: var(--space-3); }
+.landing-review-card {
+  display: flex; gap: 12px; width: 100%; text-align: left;
+  padding: var(--space-3); border-radius: var(--radius-s);
+  background: var(--surface-raised); border: 1px solid var(--line);
+  color: inherit; font: inherit; cursor: pointer;
+  transition: background var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+}
+.landing-review-card:active { transform: scale(0.99); background: var(--surface-high); }
+.landing-review-card__cover { width: 56px; flex-shrink: 0; aspect-ratio: var(--ratio-card); object-fit: cover; border-radius: 7px; background: var(--surface); }
+.landing-review-card__body { min-width: 0; flex: 1; }
+.landing-review-card__game { font-family: var(--font-display); font-weight: 700; font-size: 14.5px; line-height: 1.25; }
+.landing-review-card__by { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
+.landing-review-card__by span { font-size: 12px; font-weight: 600; color: var(--ink-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.landing-review-card__stars { margin-top: 6px; }
+.landing-review-card__text {
+  margin-top: 6px; font-size: 13px; line-height: 1.5; color: var(--ink-dim);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+
+/* ---- search screen: locked search bar + real browse-by categories ---- */
+.landing-search-screen { padding: calc(var(--space-3) + var(--safe-top)) var(--space-4) 0; }
+/* Looks exactly like a real search field, but it's a <button> — tapping
+   it opens sign-up instead of focusing an input. */
+.landing-search {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  padding: 13px 16px; margin-bottom: var(--space-6);
+  border-radius: var(--radius-pill); background: var(--surface-raised);
+  border: 1px solid var(--line-strong); color: var(--ink-faint);
+  font-size: var(--text-body); font-family: inherit; cursor: pointer; text-align: left;
+}
+.landing-search svg { width: 18px; height: 18px; flex-shrink: 0; }
+.landing-search:active { background: var(--surface-high); }
+.landing-browseby__heading {
+  font-size: var(--text-label); font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--ink-faint); margin: var(--space-4) 2px var(--space-2);
+}
+.landing-browseby { border-top: 1px solid var(--line); }
+.landing-browseby__row {
+  display: flex; align-items: center; justify-content: space-between; width: 100%;
+  padding: 14px 2px; background: none; border: none; border-bottom: 1px solid var(--line);
+  color: var(--ink); font-size: 15px; font-weight: 600; cursor: pointer; text-align: left;
+}
+.landing-browseby__row svg { width: 16px; height: 16px; color: var(--ink-faint); flex-shrink: 0; }
+.landing-browseby__row:active { background: var(--surface-raised); }
+
+/* ---- pull-to-refresh (Feed, Profile) ----------------------------------
+   Sits absolutely at the top of the scroll container, translated down
+   into view as the person drags — see wirePullToRefresh() in
+   feed-view.js for the gesture logic (exported so other views can wire
+   it too). Positioning is anchored by .view-body itself now (see its
+   rule above) rather than a per-view id, since a second view (Profile)
+   wires the same gesture. Not wired on Search or Discover — both hold
+   an in-progress query/filter as local view state that a refresh
+   (a full re-render) would silently wipe. */
+.pull-refresh {
+  position: absolute; top: -44px; left: 0; right: 0; height: 44px;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none; transition: opacity var(--dur-fast) var(--ease);
+}
+.pull-refresh__spinner {
+  width: 22px; height: 22px; border-radius: 50%;
+  border: 2.5px solid var(--line-strong); border-top-color: var(--accent-bright);
+  transition: border-color var(--dur-fast) var(--ease);
+}
+.pull-refresh--ready .pull-refresh__spinner { border-top-color: var(--accent-bright); border-color: var(--accent-bright); opacity: 0.4; border-top-color: var(--accent-bright); }
+.pull-refresh--ready .pull-refresh__spinner { transform: scale(1.1); }
+.pull-refresh--spinning .pull-refresh__spinner { animation: pull-refresh-spin 0.7s linear infinite; }
+@keyframes pull-refresh-spin { to { transform: rotate(360deg); } }
+
+/* ---- celebrate(): confetti burst for logging a game played for the
+   first time — see utils.js. Fixed, full-screen, pointer-events off so
+   it never blocks whatever's underneath, self-removing. */
+.celebrate-layer { position: fixed; inset: 0; z-index: 500; pointer-events: none; }
+.celebrate-piece {
+  position: absolute; top: 42%; left: 50%; width: 8px; height: 8px; border-radius: 2px;
+  animation: celebrate-burst 1.05s cubic-bezier(0.15, 0.8, 0.3, 1) both;
+  animation-delay: var(--delay, 0ms);
+}
+@keyframes celebrate-burst {
+  0% { transform: translate(-50%, -50%) translate(0, 0) rotate(0deg) scale(0.6); opacity: 1; }
+  70% { opacity: 1; }
+  100% { transform: translate(-50%, -50%) translate(var(--dx), calc(var(--dy) + 160px)) rotate(var(--rot)) scale(0.9); opacity: 0; }
+}
+
+/* ============================================================
+   MESSAGING — inbox (messages-view.js) and one open thread
+   (message-thread-view.js). See migrations/2026-08-19_messaging.sql
+   for the request/accepted rule this UI reflects.
+   ============================================================ */
+
+.convo-list { display: flex; flex-direction: column; }
+.convo-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 4px; border-bottom: 1px solid var(--line);
+  cursor: pointer; transition: background var(--dur-fast) var(--ease);
+}
+.convo-row:active { background: var(--surface-raised); }
+.convo-row__body { flex: 1; min-width: 0; }
+.convo-row__top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.convo-row__name { font-weight: var(--weight-strong); font-size: 14.5px; }
+.convo-row__time { font-size: 11px; color: var(--ink-faint); flex-shrink: 0; font-family: var(--font-mono); }
+.convo-row__preview {
+  font-size: 13px; color: var(--ink-dim); margin-top: 2px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+/* Unread reads as weight, not a second colour system on top of the
+   accent already used everywhere else — bold name/preview and an
+   accent-tinted time, the same visual move Mail/Messages apps use. */
+.convo-row--unread .convo-row__name { font-weight: 800; }
+.convo-row--unread .convo-row__preview { color: var(--ink); font-weight: 600; }
+.convo-row--unread .convo-row__time { color: var(--accent-bright); font-weight: 700; }
+.convo-row__decline {
+  flex-shrink: 0; width: 34px; height: 34px; border-radius: 50%;
+  display: grid; place-items: center; color: var(--ink-faint);
+  background: none; border: none;
+}
+.convo-row__decline svg { width: 16px; height: 16px; }
+.convo-row__decline:active { background: var(--surface-raised); color: var(--danger); }
+
+/* ---- one open thread ------------------------------------------------ */
+
+.thread-body { padding-bottom: calc(78px + var(--safe-bottom)); }
+.thread-peek {
+  display: flex; align-items: center; gap: 10px;
+  padding: 4px 2px 14px; margin-bottom: 6px; border-bottom: 1px solid var(--line);
+}
+.thread-peek span { font-weight: var(--weight-strong); font-size: 15px; }
+.thread-note {
+  font-size: 12.5px; color: var(--ink-dim); background: var(--surface);
+  border-radius: var(--radius-s); padding: 10px 12px; margin-bottom: 10px; text-align: center;
+}
+.thread-messages { display: flex; flex-direction: column; padding: 4px 0; }
+.thread-empty { text-align: center; color: var(--ink-faint); font-size: 13px; padding: 48px 0; }
+
+.msg-row {
+  display: flex; flex-direction: column; align-items: flex-start; align-self: flex-start;
+  max-width: 78%; margin-bottom: 8px;
+}
+.msg-row--mine { align-items: flex-end; align-self: flex-end; }
+.msg-bubble {
+  position: relative; /* anchors .msg-heart-burst */
+  background: var(--surface-raised); color: var(--ink);
+  padding: 9px 13px; border-radius: 16px; border-bottom-left-radius: 4px;
+  font-size: 14px; line-height: 1.4; word-break: break-word; white-space: pre-wrap;
+}
+/* The app's own accent gradient (same recipe as the wordmark and the
+   primary Log tab) rather than a flat iMessage-blue/WhatsApp-green —
+   this is where "not a copy of the other apps" actually shows up. */
+.msg-row--mine .msg-bubble {
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-deep) 100%);
+  color: #fff; border-bottom-left-radius: 16px; border-bottom-right-radius: 4px;
+}
+.msg-time { font-size: 10px; color: var(--ink-faint); margin-top: 3px; padding: 0 4px; font-family: var(--font-mono); }
+
+/* GIFs/stickers carry their own visual weight — no bubble chrome
+   (background/padding) fighting the image or making a giant emoji look
+   like it's trapped in a speech bubble. */
+.msg-bubble--bare { background: none !important; padding: 0 !important; }
+.msg-gif { display: block; max-width: 220px; border-radius: 14px; }
+.msg-video { display: block; max-width: 240px; max-height: 320px; border-radius: 14px; background: #000; }
+.msg-sticker { font-size: 52px; line-height: 1; display: block; }
+
+.msg-reply-preview {
+  display: flex; flex-direction: column; gap: 1px;
+  border-left: 2px solid var(--accent-bright); padding: 3px 0 3px 8px; margin-bottom: 4px;
+  font-size: 11.5px; max-width: 100%;
+}
+.msg-reply-preview b { color: var(--ink-dim); font-weight: 700; }
+.msg-reply-preview span { color: var(--ink-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.msg-reactions { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.msg-reaction {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 999px;
+  padding: 2px 8px; font-size: 12px; line-height: 1.5;
+}
+.msg-reaction--mine { border-color: var(--accent-bright); background: color-mix(in srgb, var(--accent) 14%, var(--surface)); }
+
+/* Fixed at the very bottom in place of the tab bar (this screen doesn't
+   render navBar() at all — see message-thread-view.js). Anchored to the
+   app's own centred column the same way .tabbar is, rather than
+   left:0/right:0 — that was the exact bug that made the tab bar stretch
+   full-width on desktop/localhost before it was fixed, and a fixed
+   composer would hit the same thing. */
+.thread-composer {
+  position: fixed; left: 50%; transform: translateX(-50%);
+  bottom: 0; width: 100%; max-width: 560px;
+  display: flex; flex-direction: column;
+  padding: 8px var(--space-4) calc(10px + var(--safe-bottom));
+  background: var(--surface-high); border-top: 1px solid var(--line);
+  z-index: 30;
+}
+.thread-composer__row { display: flex; align-items: center; gap: 6px; }
+.thread-composer__icon {
+  flex-shrink: 0; width: 34px; height: 34px; border-radius: 50%;
+  display: grid; place-items: center; border: none; background: none; color: var(--ink-dim);
+}
+.thread-composer__icon svg { width: 20px; height: 20px; }
+.thread-composer__icon:active { background: var(--surface-raised); }
+.thread-composer input {
+  flex: 1; min-width: 0; background: var(--surface); border: 1px solid var(--glass-border);
+  border-radius: 999px; padding: 10px 16px; font-size: 14px; color: var(--ink);
+}
+.thread-composer input::placeholder { color: var(--ink-faint); }
+.thread-composer__send {
+  flex-shrink: 0; width: 40px; height: 40px; border-radius: 50%;
+  display: grid; place-items: center; border: none;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-deep) 100%);
+  color: #fff;
+}
+.thread-composer__send svg { width: 18px; height: 18px; margin-left: 1px; }
+.thread-composer__send:active { transform: scale(0.92); }
+
+.thread-replying {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;
+  padding: 8px 4px; border-bottom: 1px solid var(--line); margin-bottom: 4px;
+}
+.thread-replying__info { min-width: 0; }
+.thread-replying__label { font-size: 11px; font-weight: 700; color: var(--accent-bright); }
+.thread-replying__snippet {
+  font-size: 12.5px; color: var(--ink-dim); margin-top: 2px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.thread-replying button {
+  flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%;
+  display: grid; place-items: center; border: none; background: none; color: var(--ink-faint);
+}
+.thread-replying button svg { width: 13px; height: 13px; }
+
+/* ---- long-press action sheet: search/top/recent emoji picker, then
+   reply/copy/info/delete ------------------------------------------- */
+.modal--sheet { padding-bottom: calc(var(--space-3) + var(--safe-bottom)); }
+/* Invisible — the visible grab bar is already the shared .modal::before
+   pseudo-element every sheet gets. This just gives
+   enableSwipeToDismiss() (utils.js) a real <header> element to find and
+   attach the swipe gesture to, which these header-less sheets otherwise
+   don't have (it silently no-ops without one). */
+.msg-actions__grab { height: 22px; }
+.msg-actions { padding: var(--space-3) var(--space-3) 0; overflow-y: auto; max-height: 80vh; }
+.emoji-picker__search {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--surface); border: 1px solid var(--glass-border); border-radius: 999px;
+  padding: 8px 14px; margin-bottom: var(--space-2);
+}
+.emoji-picker__search svg { width: 16px; height: 16px; color: var(--ink-faint); flex-shrink: 0; }
+.emoji-picker__search input { flex: 1; min-width: 0; background: none; border: none; font-size: 14px; color: var(--ink); }
+.emoji-picker__search input::placeholder { color: var(--ink-faint); }
+.emoji-picker__label {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
+  color: var(--ink-faint); margin: var(--space-2) 2px 6px;
+}
+.emoji-picker__row, .emoji-picker__grid {
+  display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px;
+}
+.emoji-picker__emoji {
+  font-size: 24px; line-height: 1; background: none; border: none; padding: 6px 0;
+  border-radius: 10px; transition: transform var(--dur-fast) var(--ease);
+}
+.emoji-picker__emoji:active { transform: scale(1.25); background: var(--surface-raised); }
+.emoji-picker__empty { text-align: center; padding: 20px 0; }
+.msg-actions__list { border-top: 1px solid var(--line); padding: var(--space-2) 0 0; margin: var(--space-2) calc(var(--space-3) * -1) 0; }
+.msg-actions__item {
+  display: flex; align-items: center; gap: 12px; width: 100%;
+  padding: 12px var(--space-3); background: none; border: none; text-align: left;
+  color: var(--ink); font-size: 15px; font-weight: 600;
+}
+.msg-actions__item svg { width: 19px; height: 19px; color: var(--ink-dim); flex-shrink: 0; }
+.msg-actions__item:active { background: var(--surface-raised); }
+.msg-actions__item--danger, .msg-actions__item--danger svg { color: var(--danger); }
+
+.msg-info-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 13.5px;
+}
+.msg-info-row:last-child { border-bottom: none; }
+.msg-info-row span:first-child { color: var(--ink-faint); }
+
+/* ---- GIF picker ------------------------------------------------------ */
+.gif-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+  max-height: 50vh; overflow-y: auto; margin-top: 4px;
+}
+.gif-tile { border-radius: 10px; overflow: hidden; background: var(--surface); border: none; }
+.gif-tile img { width: 100%; height: 100%; object-fit: cover; display: block; aspect-ratio: 1; }
+
+/* ---- double-tap heart burst ------------------------------------------
+   Fires from the bubble's own centre, same idea as Instagram's double-tap
+   like — a single heart that pops up and fades, not a persistent overlay. */
+.msg-image { cursor: pointer; }
+.msg-heart-burst {
+  position: absolute; top: 50%; left: 50%; font-size: 40px; line-height: 1;
+  pointer-events: none; transform: translate(-50%, -50%) scale(0.4); opacity: 0;
+  animation: msg-heart-pop 0.7s cubic-bezier(0.15, 0.8, 0.3, 1) both;
+  filter: drop-shadow(0 2px 8px rgba(0,0,0,0.35));
+}
+@keyframes msg-heart-pop {
+  0% { transform: translate(-50%, -50%) scale(0.4); opacity: 0; }
+  35% { transform: translate(-50%, -50%) scale(1.15); opacity: 1; }
+  60% { transform: translate(-50%, -50%) scale(0.95); opacity: 1; }
+  100% { transform: translate(-50%, -60%) scale(0.9); opacity: 0; }
+}
+
+/* ---- full-screen image viewer -----------------------------------------
+   Always-dark regardless of theme — a photo viewer, like the poster
+   viewer/lightbox elsewhere in the app, not a themed surface. */
+.image-viewer {
+  position: fixed; inset: 0; z-index: 300;
+  background: #000; display: flex; align-items: center; justify-content: center;
+  touch-action: none;
+}
+.image-viewer__stage { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; touch-action: none; }
+.image-viewer__img { max-width: 100%; max-height: 100%; object-fit: contain; touch-action: none; will-change: transform; }
+.image-viewer__close {
+  position: absolute; z-index: 2; top: calc(var(--space-3) + var(--safe-top)); left: var(--space-4);
+  width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center;
+  background: rgba(20,20,20,0.6); color: #fff; border: none;
+}
+.image-viewer__close svg { width: 17px; height: 17px; }

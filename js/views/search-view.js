@@ -1,0 +1,218 @@
+import * as api from '../api.js';
+import { state } from '../state.js';
+import { topBar, navBar, combinedGameResultsList, wireCombinedGameResults, profileRow, wireFollowButtons, spinner, skeletonList, emptyState, iconSearch, iconFilter, posterFrame } from '../components.js';
+import { debounce, qs, qsa, esc, toast, promptSignIn, getRecentlyViewed } from '../utils.js';
+import { navigate } from '../router.js';
+
+async function importAndOpen(g) {
+  // Not-yet-catalogued: viewing is free (opens live from IGDB, see
+  // renderGameView's igdbId mode in game-view.js), same as everywhere
+  // else browsing works in this app — signing in only comes up if this
+  // person actually tries to log/rate/save it, from that page itself.
+  // Signed-in users skip straight to actually saving it, same as before.
+  if (!state.user) {
+    if (g.igdb_id) navigate(`/game/igdb/${g.igdb_id}`);
+    else toast("Couldn't open that game.", 'error');
+    return;
+  }
+  try {
+    const saved = await api.addGame(g, state.user.id);
+    navigate(`/game/${saved.id}`);
+  } catch (err) {
+    toast(err.message || 'Could not open that game.', 'error');
+  }
+}
+
+export function renderSearchView(root) {
+  let tab = 'games';
+
+  root.innerHTML = topBar('Search') + `
+    <div class="view-body">
+      <div class="segmented segmented--wide" id="search-tabs">
+        <button class="segmented__item segmented__item--active" data-tab="games">Games</button>
+        <button class="segmented__item" data-tab="people">People</button>
+      </div>
+      <div class="search-bar-row">
+        <input type="text" id="search-input" class="search-input" placeholder="Search games…" autocomplete="off">
+        <a href="#/discover" class="filter-btn" id="filter-btn" aria-label="Browse and filter all games">${iconFilter()}</a>
+      </div>
+      <div id="search-results" class="search-results"></div>
+    </div>` + navBar('/search');
+
+  const input = qs('#search-input', root);
+  const results = qs('#search-results', root);
+  const filterBtn = qs('#filter-btn', root);
+
+  const showPrompt = async () => {
+    filterBtn.style.display = tab === 'games' ? '' : 'none';
+    if (tab === 'people') {
+      results.innerHTML = emptyState('Search for people to follow and see what they\'re playing.', { icon: iconSearch() });
+      return;
+    }
+    // A quick trail back to games you've actually looked at recently —
+    // kept on-device (see recordRecentlyViewed in utils.js), so it works
+    // even before signing in. Only shown on the blank prompt, never
+    // mixed into real search results.
+    const recent = getRecentlyViewed();
+    results.innerHTML = recent.length
+      ? `
+        <p class="search-recent__heading">Recently viewed</p>
+        <div class="discovery-grid">
+          ${recent.map((g) => `
+            <a href="#/game/${g.id}" class="discovery-tile" aria-label="${esc(g.title)}">
+              ${posterFrame(g.cover_url, g.title, 'discovery-tile__cover')}
+            </a>`).join('')}
+        </div>`
+      : emptyState('Search for a game to log, rate, or review.', { icon: iconSearch() });
+    return;
+  };
+  showPrompt();
+
+  qsa('.segmented__item', root).forEach(btn => {
+    btn.addEventListener('click', () => {
+      tab = btn.dataset.tab;
+      qsa('.segmented__item', root).forEach(b => b.classList.toggle('segmented__item--active', b === btn));
+      input.placeholder = tab === 'games' ? 'Search games…' : 'Search people…';
+      // Keep what was typed. Wiping it meant switching Games -> People
+      // to check the same term made you retype it every single time.
+      if (input.value.trim()) doSearch();
+      else showPrompt();
+      input.focus();
+    });
+  });
+
+  // Bumped every keystroke. Any response whose ticket is stale by the
+  // time it lands gets dropped — without this, a slow early request can
+  // resolve after a newer one and overwrite fresh results with old ones.
+  let searchTicket = 0;
+
+  // Accumulated across pages so scrolling keeps extending the same list
+  // rather than replacing it. One merged, relevance-ranked list now
+  // (local + remote interleaved), not two separate blocks.
+  let allResults = [];
+  let searchPage = 1;
+  let searchHasMore = false;
+  let searchLoading = false;
+  let searchObserver = null;
+
+  function paintGameResults(items) {
+    allResults = items;
+    // Infinite scroll: the sentinel below the list triggers the next page
+    // as it comes into view, so there's a spinner instead of a "Load
+    // more" button to press. The button is kept only as the no-JS-observer
+    // fallback (see observeSearchSentinel), hidden unless it's needed.
+    results.innerHTML = combinedGameResultsList(items)
+      + (searchHasMore ? `<div id="search-sentinel" aria-hidden="true"></div>
+           <div class="search-more" id="search-more">${spinner()}</div>` : '');
+    wireCombinedGameResults(results, items, {
+      onLocal: (g) => navigate(`/game/${g.id}`),
+      onRemote: importAndOpen,
+    });
+    observeSearchSentinel();
+  }
+
+  function observeSearchSentinel() {
+    if (searchObserver) searchObserver.disconnect();
+    const sentinel = qs('#search-sentinel', results);
+    if (!sentinel) return;
+    // Without IntersectionObserver there's nothing to trigger auto-load,
+    // so the spinner would spin forever — fall back to a real button.
+    if (!('IntersectionObserver' in window)) {
+      const more = qs('#search-more', results);
+      if (more) {
+        more.innerHTML = `<button class="btn btn--ghost btn--block" id="search-load-more">Load more</button>`;
+        qs('#search-load-more', more).addEventListener('click', loadMoreResults);
+      }
+      return;
+    }
+    searchObserver = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting)) loadMoreResults();
+    }, { root: results.closest('.view-body') || null, rootMargin: '400px' });
+    searchObserver.observe(sentinel);
+  }
+
+  async function loadMoreResults() {
+    if (searchLoading || !searchHasMore) return;
+    searchLoading = true;
+    const q = input.value.trim();
+    const ticket = searchTicket;
+    try {
+      searchPage += 1;
+      const res = await api.searchGamesEverywhere(q, 40, searchPage);
+      if (ticket !== searchTicket) return; // a newer search started mid-flight
+      // Dedupe against what's already listed — IGDB paging can repeat
+      // entries near page boundaries.
+      const seen = new Set(allResults.map((g) => g.title.trim().toLowerCase()));
+      const fresh = res.results.filter((g) => !seen.has(g.title.trim().toLowerCase()));
+      searchHasMore = res.hasMore && fresh.length > 0;
+      paintGameResults([...allResults, ...fresh]);
+    } catch {
+      searchHasMore = false;
+    } finally {
+      searchLoading = false;
+    }
+  }
+
+  const doSearch = debounce(async () => {
+    const q = input.value.trim();
+    if (!q) { showPrompt(); return; }
+    const ticket = ++searchTicket;
+    // Fresh state per query — otherwise page counters and accumulated
+    // results leak from the previous search into the new one.
+    searchPage = 1; searchHasMore = false; searchLoading = false;
+    allResults = [];
+    if (searchObserver) searchObserver.disconnect();
+    try {
+      if (tab === 'games') {
+        // Clear the previous query's results IMMEDIATELY. The old code
+        // only replaced them when the new query had local matches, so
+        // searching something with no local hits left the last search's
+        // results sitting on screen — which is exactly why typing
+        // "winter" could still show Alan Wake and Elden Ring.
+        results.innerHTML = skeletonList(5);
+
+        // Deliberately a SINGLE paint, once every source has answered.
+        // There used to be an extra early paint of local-catalogue-only
+        // hits here, on the theory that showing something instantly beats
+        // showing a skeleton. In practice it read as a bug: a search
+        // would display a short list of already-logged games, sit there,
+        // and then visibly rewrite itself with the full results a moment
+        // later — which looked like the app had served a stale or cached
+        // answer first. The skeleton now stays up until the real results
+        // are ready, so the list only ever appears once, complete.
+        const { results: found, hasMore } = await api.searchGamesEverywhere(q, 40, 1);
+        if (ticket !== searchTicket) return;
+        searchPage = 1; searchHasMore = !!hasMore; searchLoading = false;
+        paintGameResults(found);
+      } else {
+        results.innerHTML = skeletonList(4);
+        const people = await api.searchUsers(q);
+        if (ticket !== searchTicket) return;
+        if (!people.length) {
+          results.innerHTML = emptyState(`No one found for "${q}".`, { icon: iconSearch() });
+        } else {
+          const followingSet = await api.getFollowingIdSet(state.user?.id);
+          results.innerHTML = `<div class="profile-list">${people.map(p =>
+            profileRow(p, p.id === state.user?.id ? {} : { following: followingSet.has(p.id) })
+          ).join('')}</div>`;
+          wireFollowButtons(results, {
+            onToggle: async (userId, wasFollowing) => {
+              if (!state.user) { promptSignIn('Sign in to follow people.'); throw new Error('not signed in'); }
+              try {
+                if (wasFollowing) await api.unfollow(state.user.id, userId);
+                else await api.follow(state.user.id, userId);
+              } catch (err) {
+                toast(err.message || 'Could not update follow status.', 'error');
+                throw err;
+              }
+            },
+          });
+        }
+      }
+    } catch (err) {
+      results.innerHTML = `<p class="muted">Search failed: ${esc(err.message)}</p>`;
+    }
+  }, 120); // trimmed from 160ms — results still land after typing stops, just sooner
+
+  input.addEventListener('input', doSearch);
+}

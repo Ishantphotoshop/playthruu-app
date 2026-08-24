@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="512" height="512">
+<style>
+  .thruu-loader__chase {
+    stroke-dashoffset: 26;
+    animation: thruu-loader-chase 1.5s cubic-bezier(.4,0,.3,1) infinite both;
+  }
+  @keyframes thruu-loader-chase {
+    0%   { stroke-dashoffset: 26; }
+    50%  { stroke-dashoffset: -100; }
+    100% { stroke-dashoffset: 26; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .thruu-loader__chase { animation: none; stroke-dasharray: none; stroke-dashoffset: 0; }
+  }
+</style>
+<path d="M 20 18 V 62 A 40 40 0 0 0 100 62 V 18" fill="none" stroke="#F2F5FA" stroke-width="16" stroke-linecap="round"></path>
+<path d="M 48 18 V 62 A 12 12 0 0 0 72 62 V 18" fill="none" stroke="#F2F5FA" stroke-width="12" stroke-linecap="round"></path>
+<path class="thruu-loader__chase" d="M 48 18 V 62 A 12 12 0 0 0 72 62 V 18" fill="none" stroke="#3E9BFF" stroke-width="12" stroke-linecap="round" pathLength="100" stroke-dasharray="26 200"></path>
+</svg>
