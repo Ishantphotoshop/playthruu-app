@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>You're confirmed — PlayThruu</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="icon" href="../icons/icon-192.png">
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background:
+      radial-gradient(120% 70% at 50% 0%, #16202f 0%, transparent 62%),
+      #0a0e16;
+    color: #ffffff;
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    text-align: center;
+    padding: 24px;
+  }
+  .card { max-width: 360px; }
+  .mark { margin-bottom: 22px; }
+  h1 { font-size: 25px; font-weight: 700; letter-spacing: -0.01em; margin: 0 0 10px; }
+  p { color: #9fadc2; font-size: 15px; line-height: 1.55; margin: 0 0 26px; }
+  .btn {
+    display: inline-block;
+    background: #0f8cff;
+    color: #fff;
+    text-decoration: none;
+    padding: 14px 30px;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 15px;
+  }
+  .fallback { margin-top: 26px; font-size: 13px; color: #5e6b80; }
+  .fallback a { color: #4dabff; }
+</style>
+</head>
+<body>
+<div class="card">
+  <svg class="mark" width="48" height="48" viewBox="0 0 120 120" aria-hidden="true">
+    <path d="M 20 18 V 62 A 40 40 0 0 0 100 62 V 18" fill="none" stroke="#F2F5FA" stroke-width="16" stroke-linecap="round"></path>
+    <path d="M 48 18 V 62 A 12 12 0 0 0 72 62 V 18" fill="none" stroke="#3E9BFF" stroke-width="12" stroke-linecap="round"></path>
+  </svg>
+  <h1>You're confirmed</h1>
+  <p id="status">Opening PlayThruu&hellip;</p>
+  <a class="btn" id="open-app" href="#">Open PlayThruu</a>
+  <p class="fallback">Nothing happening? Make sure the app is installed, or <a href="../">continue on web</a>.</p>
+</div>
+<script>
+  (function () {
+    var rawHash = window.location.hash.startsWith('#') ? window.location.hash.slice(1) : window.location.hash;
+    var params = new URLSearchParams(rawHash);
+    var accessToken = params.get('access_token');
+    var refreshToken = params.get('refresh_token');
+
+    var deepLink = 'playthruu://auth-callback';
+    if (accessToken && refreshToken) {
+      deepLink += '#access_token=' + encodeURIComponent(accessToken) + '&refresh_token=' + encodeURIComponent(refreshToken);
+    } else {
+      document.getElementById('status').textContent = 'Confirmed. Open the app to log in.';
+    }
+
+    document.getElementById('open-app').href = deepLink;
+
+    if (accessToken && refreshToken) {
+      setTimeout(function () {
+        window.location.href = deepLink;
+      }, 600);
+    }
+  })();
+</script>
+</body>
+</html>
