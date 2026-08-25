@@ -1059,7 +1059,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .discover-filters-count {
   display: inline-flex; align-items: center; justify-content: center;
   min-width: 17px; height: 17px; padding: 0 4px; border-radius: 999px;
-  background: linear-gradient(90deg, var(--accent-bright), var(--accent)); color: #fff; font-size: 10.5px; font-weight: 700;
+  background: var(--accent); color: var(--bg); font-size: 10.5px; font-weight: 700;
 }
 /* Every filter field on this page (Sort, Genre, Platform, Rating,
    Players, Released) is a row of chips, not a native <select> — a real
@@ -3077,15 +3077,15 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   /* Plain glass read as generic — every app's default "haven't decided
      what the CTA looks like yet" button. A bold fill in the app's own
      accent is the one thing a stock UI kit doesn't already have, so
-     it's what actually signals "this is PlayThruu" on first glance. */
-  background: linear-gradient(180deg, var(--accent-bright) 0%, var(--accent) 55%, var(--accent-deep) 100%);
+     it's what actually signals "this is PlayThruu" on first glance.
+     Flat, no gradient or ambient bloom, same as every other button in
+     the app — text is --bg (near-black), not white, since lime is too
+     light for white text to read against (~1.15:1 contrast). */
+  background: var(--accent);
   border: 1px solid rgba(255,255,255,0.24);
   border-top-color: rgba(255,255,255,0.5);
-  box-shadow:
-    inset 0 1.5px 1px rgba(255,255,255,0.45),
-    0 14px 34px -10px rgba(0,0,0,0.55),
-    0 0 50px 8px rgba(217, 255, 63,0.4);
-  font-size: 20px; font-weight: 700; letter-spacing: 0.005em; cursor: pointer; color: #fff;
+  box-shadow: 0 14px 34px -10px rgba(0,0,0,0.55);
+  font-size: 20px; font-weight: 700; letter-spacing: 0.005em; cursor: pointer; color: var(--bg);
   transition: filter var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
 }
 .landing-entry__row:active { filter: brightness(1.08); transform: scale(0.98); }
@@ -3340,8 +3340,8 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    primary Log tab) rather than a flat iMessage-blue/WhatsApp-green —
    this is where "not a copy of the other apps" actually shows up. */
 .msg-row--mine .msg-bubble {
-  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-deep) 100%);
-  color: #fff; border-bottom-left-radius: 16px; border-bottom-right-radius: 4px;
+  background: var(--accent);
+  color: var(--bg); border-bottom-left-radius: 16px; border-bottom-right-radius: 4px;
 }
 .msg-time { font-size: 10px; color: var(--ink-faint); margin-top: 3px; padding: 0 4px; font-family: var(--font-mono); }
 
@@ -3397,8 +3397,8 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .thread-composer__send {
   flex-shrink: 0; width: 40px; height: 40px; border-radius: 50%;
   display: grid; place-items: center; border: none;
-  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-deep) 100%);
-  color: #fff;
+  background: var(--accent);
+  color: var(--bg);
 }
 .thread-composer__send svg { width: 18px; height: 18px; margin-left: 1px; }
 .thread-composer__send:active { transform: scale(0.92); }
