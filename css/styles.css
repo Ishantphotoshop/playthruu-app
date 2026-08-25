@@ -258,10 +258,13 @@
 html, body { height: 100%; overflow-x: hidden; }
 body {
   margin: 0;
-  /* Flat --bg, no ambient top-glow — the 60/30/10 read (near-black base,
-     cream content, lime only on the few things that need attention)
-     holds better without a colour wash sitting under every screen. */
-  background: var(--bg);
+  /* Matches the website's own body background exactly (same gradient,
+     same colour) — brought back after removing it earlier this
+     session, once the actual problem (lime-on-lime glows clashing on
+     buttons/tab icons) turned out to be those buttons, not this. */
+  background:
+    radial-gradient(120% 70% at 50% 0%, #1a1d12 0%, transparent 62%),
+    var(--bg);
   background-attachment: fixed;
   color: var(--ink);
   font-family: var(--font-body);
