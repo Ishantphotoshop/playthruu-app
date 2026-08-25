@@ -241,7 +241,7 @@
 }
 :root[data-theme="light"] .tabbar__item--active { color: var(--ink); }
 :root[data-theme="light"] .tabbar__item--active svg {
-  filter: drop-shadow(0 1px 1.5px rgba(43,29,14,0.10)) drop-shadow(0 0 6px rgba(238,123,26,0.30));
+  filter: drop-shadow(0 1px 1.5px rgba(43,29,14,0.10)) drop-shadow(0 0 6px rgba(107,138,18,0.30));
 }
 
 
@@ -250,12 +250,10 @@
 html, body { height: 100%; overflow-x: hidden; }
 body {
   margin: 0;
-  /* Ambient light bleeding down from the top rather than a flat fill.
-     Console dashboards almost never use one uniform colour — the
-     gradient is what stops a dark UI reading as a black rectangle. */
-  background:
-    radial-gradient(120% 70% at 50% 0%, #1a1d12 0%, transparent 62%),
-    var(--bg);
+  /* Flat --bg, no ambient top-glow — the 60/30/10 read (near-black base,
+     cream content, lime only on the few things that need attention)
+     holds better without a colour wash sitting under every screen. */
+  background: var(--bg);
   background-attachment: fixed;
   color: var(--ink);
   font-family: var(--font-body);
@@ -1604,32 +1602,31 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .modal--tall { max-height: 92vh; }
 .modal__header { display: flex; align-items: center; justify-content: space-between; padding: 18px 20px 10px; }
 .modal__header h2 { font-family: var(--font-display); font-weight: 700; font-size: 18px; }
-/* Close button styled as PlayStation's Cross (X) button: a dark round
-   button with the iconic blue cross. The inner markup (a "×" glyph or an
-   svg) is hidden and the cross is drawn as a masked shape so every close
-   button matches regardless of what it was built with. */
+/* A plain dark round close button — the "×" is drawn as a masked shape
+   so every close button matches regardless of what it was built with.
+   Deliberately neutral (surface + ink tones, no accent colour): a close
+   action isn't the primary action on a screen, so it shouldn't compete
+   with --accent for attention. */
 .modal__close {
   position: relative;
   width: 36px; height: 36px; display: grid; place-items: center;
-  background: radial-gradient(circle at 50% 35%, #2a3346, #171d29);
-  border: 1px solid rgba(90,160,255,0.35);
+  background: var(--surface-high);
+  border: 1px solid var(--line-strong);
   border-radius: 50%;
   color: transparent; font-size: 0; line-height: 0;
   box-shadow: inset 0 1px 1px rgba(255,255,255,0.08), 0 2px 6px rgba(0,0,0,0.4);
   transition: transform var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
 }
 .modal__close svg { display: none; }
-/* The blue cross, dead-centre and bolder, with flat (square) line ends
-   rather than rounded caps — closer to the PlayStation Cross glyph. */
 .modal__close::before {
   content: ''; position: absolute; top: 50%; left: 50%;
   transform: translate(-50%, -50%);
   width: 18px; height: 18px;
-  background: #4d9bff; /* PlayStation cross blue */
+  background: var(--ink-dim);
   -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M4 4L20 20M20 4L4 20' stroke='%23000' stroke-width='3' stroke-linecap='square'/%3E%3C/svg%3E") center / contain no-repeat;
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M4 4L20 20M20 4L4 20' stroke='%23000' stroke-width='3' stroke-linecap='square'/%3E%3C/svg%3E") center / contain no-repeat;
 }
-.modal__close:hover { border-color: rgba(90,160,255,0.7); }
+.modal__close:hover { border-color: var(--ink-faint); }
 .modal__close:active { transform: scale(0.9); }
 .modal__body { padding: 6px 20px 20px; overflow-y: auto; }
 .modal__hint { font-size: 13.5px; color: var(--ink-dim); line-height: 1.5; margin-bottom: var(--space-4); }
