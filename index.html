@@ -67,8 +67,31 @@
       }
     } else {
       window.addEventListener('load', function () {
-        navigator.serviceWorker.register('service-worker.js').catch(function () {
+        navigator.serviceWorker.register('service-worker.js').then(function (reg) {
+          // Re-check for a new service-worker.js whenever the app is
+          // reopened or brought back to the foreground. This bypasses the
+          // browser's normal HTTP cache for the worker script itself (the
+          // spec requires that), so it's the one request that isn't stuck
+          // behind GitHub Pages' 10-minute Cache-Control — otherwise a
+          // phone could sit on a stale build for hours between visits.
+          document.addEventListener('visibilitychange', function () {
+            if (document.visibilityState === 'visible') reg.update().catch(function () {});
+          });
+        }).catch(function () {
           // Offline caching just won't be available — the app still works online.
+        });
+
+        // The worker calls skipWaiting() + clients.claim() on its own
+        // (see service-worker.js), so a new version takes over the page
+        // as soon as it's ready — no "click to update" prompt needed.
+        // controllerchange only fires when an update REPLACES an already-
+        // active worker, never on a page's first-ever install, so this
+        // can't loop or fire on a fresh visit.
+        var refreshedForUpdate = false;
+        navigator.serviceWorker.addEventListener('controllerchange', function () {
+          if (refreshedForUpdate) return;
+          refreshedForUpdate = true;
+          window.location.reload();
         });
       });
     }
