@@ -564,7 +564,13 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2);
   padding: 15px var(--space-5); border-radius: var(--radius-pill);
-  font-weight: var(--weight-strong); font-size: var(--text-body); min-height: 50px;
+  /* Bold + 17px, not --weight-strong (600, shared with unrelated game
+     titles/names elsewhere) — a button label needed its own heavier
+     weight, matching the same 800/17px standard now used everywhere
+     from the landing page's "Get Started" through login to every
+     primary button inside the app, instead of each screen picking
+     its own size independently. */
+  font-weight: 800; font-size: 17px; min-height: 50px;
   letter-spacing: -0.005em;
   background: var(--surface-raised); color: var(--ink);
   border: 1px solid transparent;
@@ -1855,7 +1861,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .auth-form .field { margin-bottom: 14px; display: block; }
 .auth-screen .btn--accent {
   background: var(--gold); color: #14100a; border-radius: 999px; border: none;
-  padding: 16px; font-family: var(--font-display); font-weight: 900; font-size: 17px;
+  padding: 16px; font-family: var(--font-display); font-weight: 800; font-size: 17px;
   letter-spacing: 0.02em; width: 100%;
 }
 .auth-screen__switch {
@@ -2199,7 +2205,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   display: inline-flex; align-items: center; justify-content: center;
   border: none; border-radius: var(--radius-s);
   background: var(--surface-raised); color: var(--ink);
-  font-size: var(--text-body); font-weight: 600;
+  font-size: 17px; font-weight: 800;
   cursor: pointer;
   transition: background var(--dur-fast) var(--ease), filter var(--dur-fast) var(--ease);
   -webkit-tap-highlight-color: transparent;
@@ -3088,7 +3094,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   border: 1px solid rgba(255,255,255,0.24);
   border-top-color: rgba(255,255,255,0.5);
   box-shadow: 0 14px 34px -10px rgba(0,0,0,0.55);
-  font-size: 20px; font-weight: 700; letter-spacing: 0.005em; cursor: pointer; color: var(--bg);
+  font-size: 17px; font-weight: 800; letter-spacing: 0.005em; cursor: pointer; color: var(--bg);
   transition: filter var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
 }
 .landing-entry__row:active { filter: brightness(1.08); transform: scale(0.98); }
@@ -3144,7 +3150,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .tour__dot--active { background: var(--accent-bright); transform: scale(1.4); }
 .tour__continue {
   background: var(--accent); color: var(--bg); border: none; border-radius: var(--radius-pill);
-  padding: 11px 22px; font-size: 14px; font-weight: 700; cursor: pointer;
+  padding: 11px 22px; font-size: 17px; font-weight: 800; cursor: pointer;
 }
 .tour__continue:active { transform: scale(0.96); }
 
