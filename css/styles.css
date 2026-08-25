@@ -562,10 +562,14 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .btn:active { transform: scale(0.97); }
 /* The one loud element in the system — reserved for the single most
    important action on a screen. Everything else is quiet by default. */
-/* Solid blue, no gradient — console primaries are flat and confident.
-   Gradients on buttons read "web app"; flat colour reads "system UI". */
+/* Solid lime, no gradient — console primaries are flat and confident.
+   Gradients on buttons read "web app"; flat colour reads "system UI".
+   Text is --bg (near-black), not white: lime is a very light, high-
+   luminance colour, so white-on-lime sits at roughly 1.15:1 contrast
+   — essentially unreadable. Matches the website's own .button-primary,
+   which uses the same dark-on-lime pairing. */
 .btn--accent {
-  background: var(--accent); color: #fff; border: 1px solid transparent;
+  background: var(--accent); color: var(--bg); border: 1px solid transparent;
   box-shadow: var(--shadow-accent);
 }
 .btn--accent:hover { background: var(--accent-bright); }
@@ -1063,7 +1067,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    later in the file wins ties, which was silently cancelling this out
    and making a selected chip look identical to an unselected one. The
    compound selector outranks a plain .chip regardless of source order. */
-.chip.chip--active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.chip.chip--active { background: var(--accent); border-color: var(--accent); color: var(--bg); }
 
 .reviews-page__head { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; margin-bottom: 16px; }
 .reviews-page__head h1 { font-family: var(--font-display); font-weight: var(--weight-heading); font-size: var(--text-title); letter-spacing: -0.015em; }
@@ -2192,7 +2196,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 /* The primary carries the main action, so it gets the wider share. */
 .gd-btn--primary {
   flex: 1.7;
-  background: var(--accent); color: #fff;
+  background: var(--accent); color: var(--bg);
   box-shadow: var(--shadow-accent);
 }
 .gd-btn:not(.gd-btn--primary):not(.gd-btn--icon) { flex: 1; }
@@ -3128,7 +3132,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .tour__dot { width: 6px; height: 6px; border-radius: 50%; background: var(--line-strong); transition: background var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease); }
 .tour__dot--active { background: var(--accent-bright); transform: scale(1.4); }
 .tour__continue {
-  background: var(--accent); color: #fff; border: none; border-radius: var(--radius-pill);
+  background: var(--accent); color: var(--bg); border: none; border-radius: var(--radius-pill);
   padding: 11px 22px; font-size: 14px; font-weight: 700; cursor: pointer;
 }
 .tour__continue:active { transform: scale(0.96); }
