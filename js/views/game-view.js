@@ -63,8 +63,13 @@ function facePic(p, cls) {
 // director is its own line, not folded into the same strip.
 function directorChipHtml(director) {
   if (!director) return '';
+  // RAWG's own profile (real photo, real bio, real filmography) beats
+  // Wikidata's whenever RAWG recognizes this director — see director-
+  // view.js. Only falls back to the Wikidata person page when RAWG has
+  // no match for them at all.
+  const href = director.rawgSlug ? `#/director/${director.rawgSlug}` : director.qid ? `#/person/${director.qid}` : '';
   return `
-    <a class="gd-credit-chip" ${director.qid ? `href="#/person/${director.qid}"` : ''}>
+    <a class="gd-credit-chip" ${href ? `href="${href}"` : ''}>
       ${facePic(director, 'gd-credit-chip__photo')}
       <span>Dir. ${esc(director.name)}</span>
     </a>`;
@@ -111,9 +116,9 @@ export async function renderGameView(root, { id, igdbId }) {
   const showLoadingTimer = setTimeout(() => { loadingEl.hidden = false; }, 200);
 
   try {
-    // Everything the first paint needs is resolved BEFORE painting,
-    // director and cast included — the page appears once, fully formed,
-    // rather than the credits popping in a beat after the rest of it.
+    // Everything the first paint needs is resolved before painting,
+    // EXCEPT cast/director — see loadCastDirector below for why that
+    // one loads separately, after the page is already up.
     let game = id ? await api.getGame(id) : await api.getIgdbGameDetail(igdbId);
     if (!game) throw new Error("Couldn't find that game.");
 
@@ -124,28 +129,23 @@ export async function renderGameView(root, { id, igdbId }) {
     // not a fallback — so those are skipped rather than queried with an
     // id that doesn't exist.
     const enrichNeeded = !game.igdb_enriched && game.igdb_id;
-    // Cast/director now caches on the row after its first real fetch
-    // (see getGameCastAndDirector in api.js) — direct measurement found
-    // it was the actual, entire cause of every game page's slow open,
-    // repeat visits included: 2-3+ seconds on its own, every single
-    // time, while everything else here resolved in ~500ms. This timeout
-    // is now only a safety cap for a game whose FIRST-ever lookup is
-    // slow or dead (an obscure/unannounced title Wikidata has nothing
-    // on, burning through several failed attempts before giving up),
-    // not the normal case anymore.
-    const withTimeout = (promise, ms) => Promise.race([
-      promise,
-      new Promise((resolve) => setTimeout(() => resolve({ director: null, cast: [], timedOut: true }), ms)),
-    ]);
-    const [enriched, logs, breakdown, listsCount, castDirector] = await Promise.all([
+    // Cast/director caches on the row after its first real fetch (see
+    // getGameCastAndDirector in api.js), but that first fetch can
+    // legitimately run several seconds (RAWG + a couple of Wikidata
+    // round trips, more on a title that needs the edition-suffix
+    // retry). It used to block the whole page behind a 3s timeout that
+    // gave up and showed a dead-end "try again later" message — instead
+    // of blocking the page or truncating the wait, it now loads AFTER
+    // the rest of the page paints, with its own spinner in the Cast tab
+    // that swaps for the real content the moment it resolves, however
+    // long that actually takes.
+    const [enriched, logs, breakdown, listsCount] = await Promise.all([
       enrichNeeded ? api.enrichGameDetails(game).catch(() => game) : Promise.resolve(game),
       id ? api.getLogsForGame(id) : Promise.resolve([]),
       id ? api.getGameRatingBreakdown(id) : Promise.resolve({}),
       id ? api.getListsCountForGame(id) : Promise.resolve(0),
-      withTimeout(api.getGameCastAndDirector(game), 3000).catch(() => ({ director: null, cast: [] })),
     ]);
     game = enriched || game;
-    castDirectorData = castDirector;
 
     const rated = logs.filter(l => l.rating);
     const avg = rated.length ? (rated.reduce((s, l) => s + Number(l.rating), 0) / rated.length) : null;
@@ -157,6 +157,27 @@ export async function renderGameView(root, { id, igdbId }) {
     paintGame();
     loadMoreFromStudio();
     recordRecentlyViewed(game);
+    loadCastDirector();
+
+    // Runs after the page has already painted (castDirectorData starts
+    // null, which paintTabContent's Cast branch renders as a spinner —
+    // see below). Updates the header's director chip and cast-preview
+    // avatars, plus the Cast tab itself if it's the one currently open,
+    // once the real result is in — no arbitrary cutoff, it just shows
+    // up whenever it's actually ready.
+    async function loadCastDirector() {
+      try {
+        castDirectorData = await api.getGameCastAndDirector(game);
+      } catch {
+        castDirectorData = { director: null, cast: [] };
+      }
+      const directorSlot = qs('#director-slot', body);
+      if (directorSlot) directorSlot.innerHTML = directorChipHtml(castDirectorData.director);
+      const castPreviewSlot = qs('#cast-preview-slot', body);
+      if (castPreviewSlot) castPreviewSlot.innerHTML = castPreviewHtml(castDirectorData.cast);
+      wireCastPreviewJump();
+      if (activeTab === 'cast') paintTabContent();
+    }
 
     // Tapping the cast-avatar stack in the header preview jumps straight
     // to the full Cast tab, which is already right below on the page.
@@ -486,37 +507,27 @@ export async function renderGameView(root, { id, igdbId }) {
       if (!slot) return;
       if (activeTab === 'cast') {
         if (castDirectorData === null) {
+          // The real loading state now — cast/director loads after the
+          // rest of the page (see loadCastDirector above), so this
+          // shows until that resolves, however long it actually takes.
           slot.innerHTML = spinner();
-          return; // shouldn't happen now that cast/director resolves before the first paint — kept as a safety fallback
+          return;
         }
         const cast = castDirectorData.cast;
-        const director = castDirectorData.director;
 
-        const directorBlock = director ? `
-          <a class="gd-director" ${director.qid ? `href="#/person/${director.qid}"` : ''}>
-            ${facePic(director, 'crew-row__photo--lg')}
-            <div class="gd-director__info">
-              <span class="gd-kicker">Director</span>
-              <div class="gd-director__name">${esc(director.name)}</div>
-              ${director.description ? `<div class="gd-director__desc">${esc(director.description)}</div>` : ''}
-            </div>
-          </a>` : '';
-
-        slot.innerHTML = cast.length || director
-          ? `${directorBlock}
-             ${cast.length ? `
-               <div class="gd-row gd-row--casthead"><span class="gd-kicker">Voice cast · ${cast.length}</span></div>
-               <div class="crew-list">${cast.map((p) => `
+        // Director already shows next to the game's title (#director-slot
+        // in the header above) — repeating it here just duplicated it.
+        // This tab is voice cast only now.
+        slot.innerHTML = cast.length
+          ? `<div class="crew-list">${cast.map((p) => `
                 <a href="#/person/${p.qid}" class="crew-row">
                   ${facePic(p, '')}
                   <div class="crew-row__info">
                     <div class="crew-row__name">${esc(p.name)}</div>
                     <div class="crew-row__role">${p.characters.length ? esc(p.characters.join(', ')) : 'Voice actor'}</div>
                   </div>
-                </a>`).join('')}</div>` : ''}`
-          : `<p class="gd-empty">${castDirectorData.timedOut
-              ? 'Cast lookup is taking too long — try reopening this page in a moment.'
-              : "No cast listed for this game on Wikidata yet — coverage there is community-maintained."}</p>`;
+                </a>`).join('')}</div>`
+          : `<p class="gd-empty">No cast listed for this game on Wikidata yet — coverage there is community-maintained.</p>`;
         return;
       }
       if (activeTab === 'details') {

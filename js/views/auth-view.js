@@ -1,4 +1,4 @@
-import { signIn, signUp, signInWithProvider } from '../auth.js';
+import { signIn, signUp, signInWithProvider, sendPasswordReset } from '../auth.js';
 import { toast, qs, qsa, enableSwipeToDismiss } from '../utils.js';
 import { configured } from '../supabase-client.js';
 import { getLoginBackground, openCreditedGame } from '../api.js';
@@ -89,6 +89,65 @@ function openProviderPopup() {
         qsa('[data-provider]', overlay).forEach((b) => { b.disabled = false; });
       }
     });
+  });
+}
+
+// Same modal shell as openProviderPopup above — just ask for the email
+// and send the reset link. Supabase itself decides whether that email
+// actually has an account; this never confirms or denies either way, so
+// it can't be used to check who's registered.
+function openForgotPasswordPopup() {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay modal-overlay--glass';
+  overlay.innerHTML = `
+    <div class="modal">
+      <header class="modal__header">
+        <h2>Reset your password</h2>
+        <button class="modal__close" data-close aria-label="Close">${iconClose()}</button>
+      </header>
+      <div class="modal__body">
+        <p class="modal__hint">Enter the email on your account and we'll send you a link to set a new password.</p>
+        <form id="forgot-password-form">
+          <label class="field field--icon">
+            <span>Email</span>
+            <div class="field__input-wrap">
+              <span class="field__icon">${iconMail()}</span>
+              <input type="email" name="email" placeholder="you@example.com" autocomplete="email" required>
+            </div>
+          </label>
+          <button type="submit" class="btn btn--accent btn--block">Send reset link</button>
+        </form>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  document.body.style.overflow = 'hidden';
+
+  const close = () => {
+    overlay.remove();
+    document.body.style.overflow = '';
+    document.removeEventListener('keydown', onKey);
+  };
+  const onKey = (e) => { if (e.key === 'Escape') close(); };
+  document.addEventListener('keydown', onKey);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+  qsa('[data-close]', overlay).forEach((b) => b.addEventListener('click', close));
+  enableSwipeToDismiss(qs('.modal', overlay), close);
+
+  qs('#forgot-password-form', overlay).addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = qs('button[type="submit"]', overlay);
+    const email = new FormData(e.target).get('email');
+    btn.disabled = true;
+    btn.textContent = 'Sending…';
+    try {
+      await sendPasswordReset(email);
+      toast('Check your email for a reset link.', 'success');
+      close();
+    } catch (err) {
+      toast(err.message || 'Could not send that reset link.', 'error');
+      btn.disabled = false;
+      btn.textContent = 'Send reset link';
+    }
   });
 }
 
@@ -255,6 +314,7 @@ export function renderAuthView(root, { startMode = 'signin' } = {}) {
               <button type="button" class="field__toggle" id="toggle-password" aria-label="${passwordVisible ? 'Hide password' : 'Show password'}">${passwordVisible ? iconEyeOff() : iconEye()}</button>
             </div>
           </label>
+          ${mode === 'signin' ? `<button type="button" class="auth-form__forgot" id="forgot-password">Forgot password?</button>` : ''}
           <button type="submit" class="btn btn--accent btn--block">${mode === 'signup' ? 'Settle in' : 'LOGin'}</button>
         </form>
 
@@ -290,6 +350,8 @@ export function renderAuthView(root, { startMode = 'signin' } = {}) {
       btn.setAttribute('aria-label', passwordVisible ? 'Hide password' : 'Show password');
       input.focus();
     });
+
+    qs('#forgot-password', root)?.addEventListener('click', openForgotPasswordPopup);
 
     qs('#switch-mode', root).addEventListener('click', () => {
       mode = mode === 'signup' ? 'signin' : 'signup';

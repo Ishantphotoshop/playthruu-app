@@ -1,7 +1,7 @@
 import * as api from '../api.js';
 import { state } from '../state.js';
 import { topBar, navBar, combinedGameResultsList, wireCombinedGameResults, profileRow, wireFollowButtons, spinner, skeletonList, emptyState, iconSearch, iconFilter, posterFrame } from '../components.js';
-import { debounce, qs, qsa, esc, toast, promptSignIn, getRecentlyViewed } from '../utils.js';
+import { qs, qsa, esc, toast, promptSignIn, getRecentlyViewed, recordRecentSearch, getRecentSearches, removeRecentSearch, clearRecentSearches } from '../utils.js';
 import { navigate } from '../router.js';
 
 async function importAndOpen(g) {
@@ -30,23 +30,49 @@ export function renderSearchView(root) {
     <div class="view-body">
       <div class="segmented segmented--wide" id="search-tabs">
         <button class="segmented__item segmented__item--active" data-tab="games">Games</button>
-        <button class="segmented__item" data-tab="people">People</button>
+        <button class="segmented__item" data-tab="people">Players</button>
       </div>
-      <div class="search-bar-row">
-        <input type="text" id="search-input" class="search-input" placeholder="Search games…" autocomplete="off">
+      <form class="search-bar-row" id="search-form">
+        <input type="search" id="search-input" class="search-input" placeholder="Search games…" autocomplete="off" enterkeyhint="search">
         <a href="#/discover" class="filter-btn" id="filter-btn" aria-label="Browse and filter all games">${iconFilter()}</a>
-      </div>
+      </form>
       <div id="search-results" class="search-results"></div>
     </div>` + navBar('/search');
 
   const input = qs('#search-input', root);
   const results = qs('#search-results', root);
   const filterBtn = qs('#filter-btn', root);
+  const form = qs('#search-form', root);
+
+  // The actual typed terms — Games and Players keep separate histories
+  // (see recordRecentSearch in utils.js), since a game title showing up
+  // while searching for players was just confusing. Separate from
+  // getRecentlyViewed's list of games actually opened.
+  function recentSearchesBlock() {
+    const terms = getRecentSearches(tab);
+    if (!terms.length) return '';
+    return `
+      <div class="search-recent__row">
+        <p class="search-recent__heading">Recent searches</p>
+        <button type="button" class="link-btn" id="clear-recent-searches">Clear</button>
+      </div>
+      <div class="recent-search-list">
+        ${terms.map((t) => `
+          <div class="recent-search-row">
+            <button type="button" class="recent-search-row__delete" data-delete-term="${esc(t)}">Delete</button>
+            <button type="button" class="recent-search-row__content" data-term="${esc(t)}">
+              ${iconSearch()}<span>${esc(t)}</span>
+            </button>
+          </div>`).join('')}
+      </div>`;
+  }
 
   const showPrompt = async () => {
     filterBtn.style.display = tab === 'games' ? '' : 'none';
+    const recentSearches = recentSearchesBlock();
     if (tab === 'people') {
-      results.innerHTML = emptyState('Search for people to follow and see what they\'re playing.', { icon: iconSearch() });
+      results.innerHTML = recentSearches || emptyState('Search for players to follow and see what they\'re playing.', { icon: iconSearch() });
+      wireRecentSearches();
       return;
     }
     // A quick trail back to games you've actually looked at recently —
@@ -54,7 +80,7 @@ export function renderSearchView(root) {
     // even before signing in. Only shown on the blank prompt, never
     // mixed into real search results.
     const recent = getRecentlyViewed();
-    results.innerHTML = recent.length
+    results.innerHTML = recentSearches + (recent.length
       ? `
         <p class="search-recent__heading">Recently viewed</p>
         <div class="discovery-grid">
@@ -63,16 +89,83 @@ export function renderSearchView(root) {
               ${posterFrame(g.cover_url, g.title, 'discovery-tile__cover')}
             </a>`).join('')}
         </div>`
-      : emptyState('Search for a game to log, rate, or review.', { icon: iconSearch() });
+      : (recentSearches ? '' : emptyState('Search for a game to log, rate, or review.', { icon: iconSearch() })));
+    wireRecentSearches();
     return;
   };
+
+  function wireRecentSearches() {
+    qsa('.recent-search-row__content', results).forEach((btn) => {
+      btn.addEventListener('click', () => {
+        input.value = btn.dataset.term;
+        doSearch();
+      });
+    });
+    qsa('.recent-search-row__delete', results).forEach((btn) => {
+      btn.addEventListener('click', () => {
+        removeRecentSearch(btn.dataset.deleteTerm, tab);
+        showPrompt();
+      });
+    });
+    qsa('.recent-search-row', results).forEach(wireSwipeToReveal);
+    const clearBtn = qs('#clear-recent-searches', results);
+    if (clearBtn) clearBtn.addEventListener('click', () => { clearRecentSearches(tab); showPrompt(); });
+  }
+
+  // Left-swipe-to-delete, the same gesture a phone's call log uses: drag
+  // the row's visible content left and the red Delete button underneath
+  // is revealed by exactly as much as it's dragged — not a fixed reveal
+  // amount. Past the threshold, releasing snaps it fully open (delete is
+  // still a deliberate tap, never an accidental full-swipe delete);
+  // short of it, it springs back closed.
+  function wireSwipeToReveal(row) {
+    const content = qs('.recent-search-row__content', row);
+    const REVEAL = 84; // px of Delete button width to expose when open
+    let startX = 0, dx = 0, candidate = false, dragging = false, open = false;
+
+    content.addEventListener('pointerdown', (e) => {
+      if (e.pointerType === 'mouse') return; // touch affordance only
+      startX = e.clientX; dx = 0; candidate = true; dragging = false;
+    });
+    content.addEventListener('pointermove', (e) => {
+      if (!candidate) return;
+      dx = e.clientX - startX + (open ? -REVEAL : 0);
+      if (!dragging) {
+        if (Math.abs(dx) > 6) { dragging = true; try { content.setPointerCapture(e.pointerId); } catch { /* fine */ } }
+        else return;
+      }
+      const clamped = Math.min(0, Math.max(-REVEAL, dx));
+      content.style.transition = 'none';
+      content.style.transform = `translateX(${clamped}px)`;
+    });
+    const settle = (e) => {
+      if (!candidate) return;
+      const wasDragging = dragging;
+      candidate = false; dragging = false;
+      try { content.releasePointerCapture(e.pointerId); } catch { /* already released */ }
+      if (!wasDragging) { if (open) closeRow(); return; } // a tap while open just closes it back up
+      if (dx < -REVEAL / 2) {
+        content.style.transition = 'transform 0.18s ease';
+        content.style.transform = `translateX(-${REVEAL}px)`;
+        open = true;
+      } else closeRow();
+    };
+    function closeRow() {
+      content.style.transition = 'transform 0.18s ease';
+      content.style.transform = 'translateX(0)';
+      open = false;
+    }
+    content.addEventListener('pointerup', settle);
+    content.addEventListener('pointercancel', settle);
+  }
+
   showPrompt();
 
   qsa('.segmented__item', root).forEach(btn => {
     btn.addEventListener('click', () => {
       tab = btn.dataset.tab;
       qsa('.segmented__item', root).forEach(b => b.classList.toggle('segmented__item--active', b === btn));
-      input.placeholder = tab === 'games' ? 'Search games…' : 'Search people…';
+      input.placeholder = tab === 'games' ? 'Search games…' : 'Search players…';
       // Keep what was typed. Wiping it meant switching Games -> People
       // to check the same term made you retype it every single time.
       if (input.value.trim()) doSearch();
@@ -153,9 +246,15 @@ export function renderSearchView(root) {
     }
   }
 
-  const doSearch = debounce(async () => {
+  // Runs on submit (Enter / the keyboard's search key) rather than on
+  // every keystroke — searching-as-you-type meant firing a request per
+  // letter typed, most of which never matter by the time the next one
+  // lands. Typing a full query and hitting Enter is one deliberate
+  // search, not a debounce race.
+  async function doSearch() {
     const q = input.value.trim();
     if (!q) { showPrompt(); return; }
+    recordRecentSearch(q, tab);
     const ticket = ++searchTicket;
     // Fresh state per query — otherwise page counters and accumulated
     // results leak from the previous search into the new one.
@@ -197,7 +296,7 @@ export function renderSearchView(root) {
           ).join('')}</div>`;
           wireFollowButtons(results, {
             onToggle: async (userId, wasFollowing) => {
-              if (!state.user) { promptSignIn('Sign in to follow people.'); throw new Error('not signed in'); }
+              if (!state.user) { promptSignIn('Sign in to follow players.'); throw new Error('not signed in'); }
               try {
                 if (wasFollowing) await api.unfollow(state.user.id, userId);
                 else await api.follow(state.user.id, userId);
@@ -212,7 +311,12 @@ export function renderSearchView(root) {
     } catch (err) {
       results.innerHTML = `<p class="muted">Search failed: ${esc(err.message)}</p>`;
     }
-  }, 120); // trimmed from 160ms — results still land after typing stops, just sooner
+  }
 
-  input.addEventListener('input', doSearch);
+  form.addEventListener('submit', (e) => { e.preventDefault(); doSearch(); });
+  // Clearing the box by hand (backspace or the native ⓧ on type=search)
+  // should drop back to the prompt — that's not a new search, just an
+  // empty one, so it skips doSearch entirely rather than firing a
+  // request for an empty query.
+  input.addEventListener('input', () => { if (!input.value.trim()) showPrompt(); });
 }

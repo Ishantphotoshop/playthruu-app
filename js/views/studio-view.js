@@ -2,6 +2,7 @@ import * as api from '../api.js';
 import { state } from '../state.js';
 import { topBar, navBar, spinner, emptyState, iconUser, posterFrame } from '../components.js';
 import { esc, qs, toast, starRow } from '../utils.js';
+import { navigate } from '../router.js';
 
 // Replaces the old per-person Director page. IGDB doesn't expose
 // individual crew credits the way RAWG did, only which studios were
@@ -60,9 +61,14 @@ export async function renderStudioView(root, { companyId }) {
       el.addEventListener('click', async () => {
         const g = byIgdbId.get(el.dataset.igdbId);
         if (!g) return;
+        // Same free-viewing rule as everywhere else: opening a game to
+        // look at it doesn't need an account. Calling addGame while
+        // signed out hit the anonymous-insert RLS wall instead of just
+        // opening the page.
+        if (!state.user) { navigate(`/game/igdb/${g.igdb_id}`); return; }
         try {
-          const saved = await api.addGame({ igdb_id: g.igdb_id, title: g.title, cover_url: g.cover_url, release_year: g.year }, state.user?.id);
-          location.hash = `#/game/${saved.id}`;
+          const saved = await api.addGame({ igdb_id: g.igdb_id, title: g.title, cover_url: g.cover_url, release_year: g.year }, state.user.id);
+          navigate(`/game/${saved.id}`);
         } catch (err) {
           toast(err.message || 'Could not open that game.', 'error');
         }

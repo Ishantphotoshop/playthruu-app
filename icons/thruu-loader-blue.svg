@@ -1,19 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="512" height="512">
 <style>
-  .thruu-loader__chase {
-    stroke-dashoffset: 26;
-    animation: thruu-loader-chase 1.5s cubic-bezier(.4,0,.3,1) infinite both;
+  .thruu-loader__mark {
+    animation: thruu-loader-spin 1.1s linear infinite;
   }
-  @keyframes thruu-loader-chase {
-    0%   { stroke-dashoffset: 26; }
-    50%  { stroke-dashoffset: -100; }
-    100% { stroke-dashoffset: 26; }
-  }
+  @keyframes thruu-loader-spin { to { transform: rotate(360deg); } }
   @media (prefers-reduced-motion: reduce) {
-    .thruu-loader__chase { animation: none; stroke-dasharray: none; stroke-dashoffset: 0; }
+    .thruu-loader__mark { animation: none; }
   }
 </style>
-<path d="M 20 18 V 62 A 40 40 0 0 0 100 62 V 18" fill="none" stroke="#F2F5FA" stroke-width="16" stroke-linecap="round"></path>
-<path d="M 48 18 V 62 A 12 12 0 0 0 72 62 V 18" fill="none" stroke="#F2F5FA" stroke-width="12" stroke-linecap="round"></path>
-<path class="thruu-loader__chase" d="M 48 18 V 62 A 12 12 0 0 0 72 62 V 18" fill="none" stroke="#3E9BFF" stroke-width="12" stroke-linecap="round" pathLength="100" stroke-dasharray="26 200"></path>
+<g transform="translate(60,60)">
+  <g class="thruu-loader__mark">
+    <g transform="translate(-60,-60)">
+      <path fill="#F2F5FA" d="M 113.4045,52 A 54,54 0 1,0 113.4045,68 L 64,68 A 8,8 0 0,1 64,52 Z"/>
+    </g>
+  </g>
+</g>
 </svg>

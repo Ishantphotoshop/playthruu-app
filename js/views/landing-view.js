@@ -429,7 +429,7 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
       // which reads as a broken, misaligned layout.
       moreEl.innerHTML = '';
       if (list && !qs('[data-skeleton]', list)) {
-        list.insertAdjacentHTML('beforeend', Array.from({ length: 8 }, () => '<div class="skeleton skeleton--tile" data-skeleton></div>').join(''));
+        list.insertAdjacentHTML('beforeend', Array.from({ length: 20 }, () => '<div class="skeleton skeleton--tile" data-skeleton></div>').join(''));
       }
       return;
     }

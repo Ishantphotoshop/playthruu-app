@@ -208,6 +208,53 @@ export function getRecentlyViewed() {
   }
 }
 
+// Same pattern again, this time for the search screen's own history —
+// the actual typed terms, not the games that came from them (that's
+// recordRecentlyViewed above, a separate list). Games and Players keep
+// SEPARATE histories (separate keys) — a game title showing up while
+// searching for players (or vice versa) was confusing, since the two
+// tabs search completely different things.
+const RECENT_SEARCHES_KEY = { games: 'playthruu_recent_searches_games', people: 'playthruu_recent_searches_people' };
+const RECENT_SEARCHES_MAX = 25;
+
+export function recordRecentSearch(term, tab) {
+  const q = term?.trim();
+  const key = RECENT_SEARCHES_KEY[tab];
+  if (!q || !key) return;
+  try {
+    const list = getRecentSearches(tab).filter((t) => t.toLowerCase() !== q.toLowerCase());
+    list.unshift(q);
+    localStorage.setItem(key, JSON.stringify(list.slice(0, RECENT_SEARCHES_MAX)));
+  } catch { /* storage unavailable — nothing to persist to */ }
+}
+
+export function getRecentSearches(tab) {
+  const key = RECENT_SEARCHES_KEY[tab];
+  if (!key) return [];
+  try {
+    const raw = localStorage.getItem(key);
+    const list = raw ? JSON.parse(raw) : [];
+    return Array.isArray(list) ? list : [];
+  } catch {
+    return [];
+  }
+}
+
+export function removeRecentSearch(term, tab) {
+  const key = RECENT_SEARCHES_KEY[tab];
+  if (!key) return;
+  try {
+    const list = getRecentSearches(tab).filter((t) => t.toLowerCase() !== term.toLowerCase());
+    localStorage.setItem(key, JSON.stringify(list));
+  } catch { /* nothing to persist */ }
+}
+
+export function clearRecentSearches(tab) {
+  const key = RECENT_SEARCHES_KEY[tab];
+  if (!key) return;
+  try { localStorage.removeItem(key); } catch { /* nothing to clear */ }
+}
+
 // Same pattern as the recently-viewed games above, for the emoji picker's
 // "Recent" row — on-device only, not per-account, so it's just whatever
 // this phone reached for lately rather than something worth a database

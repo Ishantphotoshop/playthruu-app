@@ -1,5 +1,5 @@
 import { supabase } from './supabase-client.js';
-import { onAuthChange, signOut } from './auth.js';
+import { onAuthChange, signOut, updatePasswordAfterReset } from './auth.js';
 import { getTheme, applyTheme } from './theme.js';
 import * as api from './api.js';
 import { state } from './state.js';
@@ -19,10 +19,12 @@ import { renderGameView } from './views/game-view.js';
 import { renderGameReviewsView } from './views/game-reviews-view.js';
 import { renderReviewView } from './views/review-view.js';
 import { renderPersonView } from './views/person-view.js';
+import { renderDirectorView } from './views/director-view.js';
 import { renderStudioView } from './views/studio-view.js';
 import { renderSettingsView } from './views/settings-view.js';
 import { openLogModal } from './views/log-modal.js';
-import { toast } from './utils.js';
+import { toast, qs } from './utils.js';
+import { iconClose, iconLock } from './components.js';
 
 const appEl = document.getElementById('app');
 let routesRegistered = false;
@@ -108,6 +110,7 @@ function registerRoutes() {
   route('/game/:id/reviews', (p) => renderGameReviewsView(appEl, p));
   route('/review/:id', (p) => renderReviewView(appEl, p));
   route('/person/:qid', (p) => renderPersonView(appEl, p));
+  route('/director/:slug', (p) => renderDirectorView(appEl, p));
   route('/studio/:companyId', (p) => renderStudioView(appEl, p));
   route('/settings', () => renderSettingsView(appEl));
   route('/log', () => {
@@ -344,6 +347,62 @@ async function boot() {
       await loadSession(session.user);
     } else if (event === 'SIGNED_OUT') {
       handleSignedOut();
+    } else if (event === 'PASSWORD_RECOVERY') {
+      // Fires when the password-reset email link lands back here — the
+      // recovery token in the URL already proved this is the account
+      // owner, so the only thing left to do is ask for a new password.
+      openSetNewPasswordModal();
+    }
+  });
+}
+
+// Reached only via the PASSWORD_RECOVERY event above — a real session
+// is already active by then (Supabase exchanged the email link's token
+// for one), just not one anyone typed a password into, so this is the
+// one place a new password is accepted with no "current password" check.
+function openSetNewPasswordModal() {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay modal-overlay--glass';
+  overlay.innerHTML = `
+    <div class="modal">
+      <header class="modal__header">
+        <h2>Set a new password</h2>
+      </header>
+      <div class="modal__body">
+        <p class="modal__hint">You're in — pick a new password to finish resetting it.</p>
+        <form id="new-password-form">
+          <label class="field field--icon">
+            <span>New password</span>
+            <div class="field__input-wrap">
+              <span class="field__icon">${iconLock()}</span>
+              <input type="password" name="password" placeholder="••••••••" autocomplete="new-password" required minlength="6">
+            </div>
+          </label>
+          <button type="submit" class="btn btn--accent btn--block">Save password</button>
+        </form>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  document.body.style.overflow = 'hidden';
+  // No close button, no backdrop-tap, no swipe-to-dismiss — leaving this
+  // open with an unset password isn't a real state to land in, so unlike
+  // the other modals here, this one only closes once it's actually done.
+
+  qs('#new-password-form', overlay).addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = qs('button[type="submit"]', overlay);
+    const password = new FormData(e.target).get('password');
+    btn.disabled = true;
+    btn.textContent = 'Saving…';
+    try {
+      await updatePasswordAfterReset(password);
+      toast('Password updated.', 'success');
+      overlay.remove();
+      document.body.style.overflow = '';
+    } catch (err) {
+      toast(err.message || 'Could not update your password.', 'error');
+      btn.disabled = false;
+      btn.textContent = 'Save password';
     }
   });
 }

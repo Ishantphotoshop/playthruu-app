@@ -91,6 +91,28 @@ export async function signIn(identifier, password) {
   return data;
 }
 
+// Sends the "reset your password" email. The link inside it brings the
+// person back to this same app with a recovery token in the URL —
+// Supabase's client picks that up automatically and fires a
+// PASSWORD_RECOVERY event (see onAuthChange's caller in app.js), which
+// is what actually prompts for the new password, not this function.
+export async function sendPasswordReset(email) {
+  assertConfigured();
+  const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+    redirectTo: `${location.origin}${location.pathname}`,
+  });
+  if (error) throw error;
+}
+
+// Only valid right after a PASSWORD_RECOVERY event — that's what proves
+// this is really the person from the email link, so (unlike
+// changePassword above) there's no current password to re-check here.
+export async function updatePasswordAfterReset(newPassword) {
+  assertConfigured();
+  const { error } = await supabase.auth.updateUser({ password: newPassword });
+  if (error) throw error;
+}
+
 export async function signOut() {
   const { error } = await supabase.auth.signOut();
   if (error) throw error;

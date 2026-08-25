@@ -46,11 +46,11 @@
   --ink-dim: #9fadc2;
   --ink-faint: #5e6b80;
 
-  /* --- accent: PlayStation blue --- */
-  --accent: #0f8cff;
-  --accent-bright: #4dabff;
-  --accent-deep: #0062cc;
-  --accent-dim: rgba(15, 140, 255, 0.15);
+  /* --- accent: PlayThruu orange --- */
+  --accent: #ff7a1a;
+  --accent-bright: #ff9a47;
+  --accent-deep: #cc5b00;
+  --accent-dim: rgba(255, 122, 26, 0.15);
   --gold: #ffc247;
   --coral: #ff6b6b;
   --teal: #4dabff;
@@ -111,10 +111,10 @@
   --shadow-card: 0 6px 22px rgba(0,0,0,0.34);
   --shadow-float: 0 10px 40px rgba(0,0,0,0.46);
   --shadow-modal: 0 20px 70px rgba(0,0,0,0.6);
-  --shadow-accent: 0 6px 26px rgba(15, 140, 255, 0.34);
-  /* The console focus ring: a soft blue bloom, the cue that tells
+  --shadow-accent: 0 6px 26px rgba(255, 122, 26, 0.34);
+  /* The console focus ring: a soft accent bloom, the cue that tells
      you where you are on a screen you're navigating, not clicking. */
-  --glow-focus: 0 0 0 2px rgba(255,255,255,0.85), 0 0 26px rgba(15,140,255,0.5);
+  --glow-focus: 0 0 0 2px rgba(255,255,255,0.85), 0 0 26px rgba(255,122,26,0.5);
 
   --ease: cubic-bezier(0.25, 0.8, 0.25, 1);
   --dur-fast: 0.16s;
@@ -488,7 +488,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
     inset 0 -1px 2px rgba(0,0,0,0.26),          /* rounded underside */
     inset 0 0 0 0.5px rgba(255,255,255,0.20),   /* rim */
     0 1px 3px rgba(0,0,0,0.24),
-    0 6px 18px -2px rgba(15,140,255,0.42);      /* coloured bloom */
+    0 6px 18px -2px rgba(255,122,26,0.42);      /* coloured bloom */
 }
 .tabbar__item--primary span { display: none; }
 .tabbar__item--primary svg {
@@ -506,7 +506,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   content: ''; position: absolute; top: 4px; right: 12px;
   width: 8px; height: 8px; border-radius: 50%;
   background: var(--accent-bright);
-  box-shadow: 0 0 0 2px var(--bg), 0 0 6px rgba(15,140,255,0.5);
+  box-shadow: 0 0 0 2px var(--bg), 0 0 6px rgba(255,122,26,0.5);
 }
 
 /* Blur is expensive and some engines fake it badly; without support,
@@ -704,7 +704,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    instead of 3, scoped here rather than changing .discovery-grid
    itself, since that class is shared with the real signed-in feed's
    "Bored? Try these" grid, which isn't part of this request. */
-.landing-browse .discovery-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.landing-browse .discovery-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .discovery-tile {
   position: relative;
   width: 100%; padding: 0; background: none; border: none; display: block;
@@ -744,13 +744,34 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   font-size: var(--text-label); font-weight: 700; text-transform: uppercase;
   letter-spacing: 0.08em; color: var(--ink-faint); margin: var(--space-2) 2px var(--space-3);
 }
+.search-recent__row { display: flex; align-items: center; justify-content: space-between; margin: var(--space-2) 2px var(--space-3); }
+.search-recent__row .search-recent__heading { margin: 0; }
+/* Left-swipe-to-delete, iOS-call-log style — see wireSwipeToReveal in
+   search-view.js. .recent-search-row__content sits opaque on top of
+   .recent-search-row__delete and slides left on drag to reveal exactly
+   as much of it as the drag covers. */
+.recent-search-list { display: flex; flex-direction: column; gap: 2px; margin-bottom: var(--space-5); }
+.recent-search-row { position: relative; overflow: hidden; border-radius: var(--radius-s); }
+.recent-search-row__delete {
+  position: absolute; inset: 0; left: auto; width: 84px;
+  background: #e5484d; color: #fff; font-size: 13px; font-weight: 700;
+}
+.recent-search-row__content {
+  position: relative; z-index: 1; width: 100%;
+  display: flex; align-items: center; gap: 10px;
+  background: var(--surface); padding: 12px 14px;
+  font-size: 14.5px; color: var(--ink); text-align: left;
+  touch-action: pan-y;
+}
+.recent-search-row__content svg { width: 16px; height: 16px; color: var(--ink-faint); flex-shrink: 0; }
+.recent-search-row__content span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .discovery-tile__cover {
   width: 100%; aspect-ratio: var(--ratio-card); display: block;
   border-radius: var(--radius-s); background: var(--surface);
   box-shadow: var(--shadow-card); transition: box-shadow var(--dur) var(--ease);
 }
 .discovery-tile:hover { transform: translateY(-4px) scale(1.03); }
-.discovery-tile:hover .discovery-tile__cover { box-shadow: 0 14px 40px rgba(0,0,0,0.5), 0 0 22px rgba(15,140,255,0.22); }
+.discovery-tile:hover .discovery-tile__cover { box-shadow: 0 14px 40px rgba(0,0,0,0.5), 0 0 22px rgba(255,122,26,0.22); }
 .discovery-tile:focus-visible { outline: none; transform: translateY(-4px) scale(1.03); }
 .discovery-tile:focus-visible .discovery-tile__cover { box-shadow: var(--glow-focus); }
 .discovery-tile:focus-visible .discovery-tile__cover { box-shadow: var(--glow-focus); }
@@ -799,6 +820,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 /* ------------------------------------------------------------ game cards / grid */
 .game-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
 .game-grid--modal { grid-template-columns: repeat(2, 1fr); max-height: 340px; overflow-y: auto; }
+.game-grid--3col { grid-template-columns: repeat(3, 1fr); gap: 8px; }
 
 .trending-strip {
   display: flex; gap: var(--space-3); overflow-x: auto; padding: var(--space-1) 2px var(--space-4);
@@ -951,12 +973,12 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .discover-filters { display: flex; flex-direction: column; gap: 14px; margin-bottom: 18px; }
 .discover-filter-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 /* Labelled filter fields — every control says what it does now. */
-.disc-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.disc-field { display: flex; flex-direction: column; gap: 10px; min-width: 0; margin-bottom: 24px; }
 .disc-field__label {
   font-size: var(--text-label); font-weight: 700; text-transform: uppercase;
   letter-spacing: 0.06em; color: var(--ink-faint);
 }
-.disc-field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.disc-field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }
 .discover-select {
   width: 100%; background: var(--surface); border: 1.5px solid var(--line); border-radius: var(--radius-s);
   padding: 11px 13px; font-size: 14px; color: var(--ink); font-family: var(--font-body);
@@ -965,12 +987,11 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .discover-card { width: 100%; text-align: left; }
 .discover-card:disabled { opacity: 0.6; }
 
-/* Redesigned Discover: only Sort is ever visible up top, everything
-   else lives behind the Filters button, which opens its own full page
-   (see paintFilters in discover-view.js) — the old version showed all 8
-   controls before a single result did, which is what this replaces. */
+/* Redesigned Discover: nothing but the Filters button is ever visible up
+   top (Sort now lives inside Filters as its own chip row, same as every
+   other option) — the old version showed a Sort dropdown plus a Filters
+   button before a single result did, which is what this replaces. */
 .discover-toolbar { display: flex; gap: 10px; margin-bottom: 16px; }
-.discover-sort { flex: 1; min-width: 0; }
 /* Same glass language as .segmented and .landing-entry__row — a tinted
    gradient + blur instead of a flat bordered box, so the toolbar reads
    as part of the same app as Browse's redesigned header. */
@@ -985,6 +1006,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   padding: 0 14px; font-size: 14px; font-weight: 600; color: var(--ink); font-family: var(--font-body);
   transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
 }
+.discover-filters-btn--solo { flex: 1; justify-content: center; min-height: 46px; }
 .discover-filters-btn svg { width: 17px; height: 17px; }
 /* Glows once a filter is actually applied — the count badge alone was
    easy to miss, this makes "you're seeing a filtered view" readable at
@@ -999,12 +1021,21 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   min-width: 17px; height: 17px; padding: 0 4px; border-radius: 999px;
   background: linear-gradient(90deg, var(--accent-bright), var(--accent)); color: #fff; font-size: 10.5px; font-weight: 700;
 }
-/* Era chips replace what used to be two typed dd-mm-yyyy date inputs —
-   one tap for "something from the 2010s" instead of hand-typing a
-   range nobody actually wants to type. */
-.disc-era-row { display: flex; flex-wrap: wrap; gap: 8px; }
+/* Every filter field on this page (Sort, Genre, Platform, Rating,
+   Players, Released) is a row of chips, not a native <select> — a real
+   <select>'s dropdown is drawn by the OS/browser, not this page's CSS,
+   and kept rendering as an unstyled white popup no matter what was set
+   here. Chips are plain themeable elements, and every option is visible
+   up front rather than hidden behind a tap. */
+.disc-chip-row { display: flex; flex-wrap: wrap; gap: 10px; }
 .chip { cursor: pointer; transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease); }
-.chip--active { background: var(--accent); border-color: var(--accent); color: #fff; }
+/* .chip.chip--active, not just .chip--active: there's a second, older
+   .chip rule further down (a different, unrelated feature) that also
+   sets background/border/color at equal specificity — whichever comes
+   later in the file wins ties, which was silently cancelling this out
+   and making a selected chip look identical to an unselected one. The
+   compound selector outranks a plain .chip regardless of source order. */
+.chip.chip--active { background: var(--accent); border-color: var(--accent); color: #fff; }
 
 .reviews-page__head { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; margin-bottom: 16px; }
 .reviews-page__head h1 { font-family: var(--font-display); font-weight: var(--weight-heading); font-size: var(--text-title); letter-spacing: -0.015em; }
@@ -1256,6 +1287,36 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .gameography-card { width: 100%; text-align: left; }
 .gameography-card__meta { display: flex; align-items: center; justify-content: space-between; margin-top: 3px; font-size: 10.5px; color: var(--ink-dim); font-family: var(--font-mono); }
 
+/* Director profile hero — sits on the same .gd-hero/.gd-hero__bg/
+   .gd-hero__scrim used by the game page, so a director's backdrop reads
+   as the same visual language as everything else instead of its own
+   one-off treatment. Only the content layout below is specific to a
+   person (centered photo+name+pills vs. the game page's poster-beside-
+   title row). */
+.director-hero__content { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; text-align: center; }
+.director-hero__photo {
+  width: 112px; height: 112px; border-radius: 50%; object-fit: cover;
+  margin-bottom: 14px; background: var(--surface);
+  box-shadow: 0 0 0 3px rgba(255,255,255,0.14), 0 10px 28px -8px rgba(0,0,0,0.6);
+}
+.director-hero__photo--fallback { display: grid; place-items: center; color: var(--ink-faint); }
+.director-hero__photo--fallback svg { width: 40px; height: 40px; }
+.director-hero__name { font-family: var(--font-display); font-weight: 700; font-size: 24px; letter-spacing: -0.01em; }
+.director-hero__pills { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 10px; }
+
+.director-bio-more[hidden] { display: none; }
+
+/* "Known for" — the person's highest-rated credit, pulled out of the
+   grid below and shown as one wide card instead of just another tile,
+   the way a lead credit deserves more weight than the rest of the list. */
+.director-featured {
+  display: flex; gap: 14px; align-items: center; width: 100%; text-align: left;
+  background: var(--surface); border-radius: var(--radius-m); padding: 10px;
+}
+.director-featured__cover { width: 72px; flex-shrink: 0; aspect-ratio: 3/4; border-radius: 6px; overflow: hidden; }
+.director-featured__info { flex: 1; min-width: 0; }
+.director-featured__title { font-family: var(--font-display); font-weight: 700; font-size: 15.5px; margin-bottom: 4px; }
+
 .stat-strip { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-bottom: 24px; }
 .stat-tile { background: var(--surface); border-radius: var(--radius-s); padding: 10px 4px; text-align: center; display: block; }
 .stat-tile b { display: block; font-family: var(--font-mono); font-size: 19px; font-weight: 500; color: var(--ink); letter-spacing: -0.02em; }
@@ -1470,8 +1531,8 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .stat-card--blue { background: color-mix(in srgb, var(--accent) 12%, var(--glass-light)); color: var(--accent-bright); }
 .stat-card--blue b { color: var(--accent-bright); }
 
-.chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
-.chip { background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 6px 13px; font-size: 12.5px; font-weight: 600; color: var(--ink-dim); }
+.chip-row { display: flex; flex-wrap: wrap; gap: 10px; }
+.chip { background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 10px 18px; font-size: 13.5px; font-weight: 600; color: var(--ink-dim); }
 
 .crew-list { display: flex; flex-direction: column; }
 .crew-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); transition: background 0.12s ease; width: 100%; text-align: left; }
@@ -1559,6 +1620,11 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .modal__close:hover { border-color: rgba(90,160,255,0.7); }
 .modal__close:active { transform: scale(0.9); }
 .modal__body { padding: 6px 20px 20px; overflow-y: auto; }
+.modal__hint { font-size: 13.5px; color: var(--ink-dim); line-height: 1.5; margin-bottom: var(--space-4); }
+.auth-form__forgot {
+  align-self: flex-end; margin-top: -8px;
+  font-size: 12.5px; font-weight: 600; color: var(--accent-bright);
+}
 .modal__actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 6px; }
 .modal__actions .btn--accent { flex: 1; }
 
@@ -1585,6 +1651,15 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   display: block; width: 40px; height: 40px; margin: var(--space-7) auto; line-height: 0;
 }
 .spinner img { display: block; width: 100%; height: 100%; }
+/* A results list that's currently JUST the loading spinner (first paint,
+   nothing to show yet) reads as off-center — the spinner's own margin
+   only pushes it down a fixed amount, which sits near the top of a tall
+   empty screen instead of the middle of it. Center it in whatever space
+   is actually available, but only while it really is the sole content. */
+#discover-results:has(> .spinner:only-child) {
+  display: flex; align-items: center; justify-content: center;
+  min-height: 60vh;
+}
 
 /* Skeletons: a sheen sweeps across rather than the whole block pulsing,
    which reads as "loading" instead of "broken". */
@@ -1814,7 +1889,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .quick-act[data-on="1"] .quick-act__icon--pad { color: var(--success); filter: drop-shadow(0 0 10px rgba(74,222,155,0.5)); }
 .quick-act[data-on="1"] .quick-act__icon--heart { color: var(--coral); filter: drop-shadow(0 0 10px rgba(255,107,107,0.5)); }
 .quick-act[data-on="1"] .quick-act__icon--heart svg path { fill: var(--coral); }
-.quick-act[data-on="1"] .quick-act__icon--save { color: var(--accent-bright); filter: drop-shadow(0 0 10px rgba(15,140,255,0.5)); }
+.quick-act[data-on="1"] .quick-act__icon--save { color: var(--accent-bright); filter: drop-shadow(0 0 10px rgba(255,122,26,0.5)); }
 .quick-act[data-on="1"] .quick-act__icon--save svg path { fill: var(--accent-bright); }
 
 /* Controller "rumble" on activation — a short physical wobble that
@@ -1946,15 +2021,45 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .gd-hero {
   position: relative; overflow: hidden;
   margin: calc(-1 * var(--space-4)) calc(-1 * var(--space-4)) 0;
-  padding: var(--space-5) var(--space-4) var(--space-4);
+  /* More headroom above the poster/title than the old var(--space-5)
+     (28px) gave — that left almost no backdrop actually visible before
+     content covered it. This much clear image up top, before the scrim
+     and the header content begin, is what makes it read as a real photo
+     behind the page rather than a sliver peeking out from under text. */
+  padding: 260px var(--space-4) var(--space-4);
 }
+/* Both boxed to the same fixed aspect ratio (roughly what a game
+   screenshot actually is) instead of stretching to fill the hero's full,
+   variable height — that mismatch was what forced `cover` to zoom in
+   ("normal resolution" fix), and it's also what made the fade below
+   impossible to land precisely: a gradient sized to the whole hero had
+   no way to know where the image itself actually stopped. Giving both
+   layers the identical aspect-ratio box means they're always the same
+   height as each other, by construction, so the fade's last stop always
+   lands exactly on the image's real bottom edge — never short (a visible
+   hard edge) and never long (fading into space with no image left). */
 .gd-hero__bg {
-  position: absolute; inset: 0; z-index: 0;
-  background-size: cover; background-position: center 30%; background-repeat: no-repeat;
+  position: absolute; top: 0; left: 0; right: 0; z-index: 0;
+  aspect-ratio: 16 / 9;
+  background-size: cover; background-position: top center; background-repeat: no-repeat;
 }
 .gd-hero__scrim {
-  position: absolute; inset: 0; z-index: 0;
-  background: linear-gradient(180deg, rgba(10,14,22,0.45) 0%, rgba(10,14,22,0.85) 68%, var(--bg) 100%);
+  position: absolute; top: 0; left: 0; right: 0; z-index: 0;
+  aspect-ratio: 16 / 9;
+  /* Reaching full opacity at 90%, not 100%, matters: a gradient that
+     only hits solid var(--bg) exactly AT the image's true edge still
+     shows a sliver of image color right up to that last pixel, which
+     reads as a hard cut the instant it disappears. Going fully solid
+     with 10% of the box to spare means the image's actual crop boundary
+     sits UNDER already-opaque scrim, invisible regardless of what color
+     the photo happens to be at that row — nothing left to cut. */
+  background: linear-gradient(180deg,
+    rgba(10,14,22,0.12) 0%,
+    rgba(10,14,22,0.3) 30%,
+    rgba(10,14,22,0.68) 55%,
+    rgba(10,14,22,0.95) 75%,
+    var(--bg) 90%,
+    var(--bg) 100%);
 }
 /* The title/kicker/score sitting on this hero read var(--ink), which in
    light theme is dark brown — invisible on a scrim that's always dark
@@ -1969,6 +2074,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   --ink-dim: #9fadc2;
   --ink-faint: #5e6b80;
 }
+
 .gd-head { position: relative; z-index: 1; display: flex; gap: var(--space-4); align-items: flex-start; }
 .gd-head__cover {
   width: 116px; flex-shrink: 0; aspect-ratio: 3/4;
@@ -2325,7 +2431,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   position: absolute; left: 50%; bottom: 0; width: 2px; height: 56px;
   margin-left: -1px; background: var(--accent-bright);
   border-radius: 1px; pointer-events: none;
-  box-shadow: 0 0 8px rgba(15,140,255,0.6);
+  box-shadow: 0 0 8px rgba(255,122,26,0.6);
 }
 
 /* ---- moderation: report sheet, block, delete account ---------------- */
@@ -2893,7 +2999,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   margin: 0; text-align: center;
   font-family: var(--font-body); font-style: italic; font-weight: 600;
   font-size: 15.5px; color: rgba(255,255,255,0.88); letter-spacing: 0.01em;
-  text-shadow: 0 2px 10px rgba(0,0,0,0.9), 0 1px 3px rgba(0,0,0,0.9);
+  text-shadow: 0 2px 10px rgba(0,0,0,0.9), 0 1px 3px rgba(0,0,0,0.9), 0 0 22px rgba(255,122,26,0.5);
 }
 /* Mark + wordmark side by side, sitting right above Get Started now
    (moved down from a top-pinned header lockup) — the one clear thing
@@ -2929,29 +3035,21 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .landing-entry__row {
   display: block; width: 100%; max-width: 320px; text-align: center;
   padding: 20px 0; border-radius: 16px;
-  /* Simple true glass: minimal blur, next to no tint, saturate to keep
-     it lively. The SVG-distortion ripple kept bleeding into the games
-     well outside the button's own shape (a real Chromium backdrop-filter
-     + SVG-filter confinement bug, not a tuning issue) — dropped rather
-     than chase a fix for something this fragile. What gives it presence
-     instead: a brighter top-edge highlight (glass catching light along
-     its rim) and a soft ambient glow around the whole shape, both of
-     which read as dimension without adding any actual tint/blur to the
-     fill — the thing that made it recognisably a button in testing
-     wasn't more matte, it was more light. */
-  background: rgba(255,255,255,0.03);
-  backdrop-filter: blur(4px) saturate(165%);
-  -webkit-backdrop-filter: blur(4px) saturate(165%);
+  /* Plain glass read as generic — every app's default "haven't decided
+     what the CTA looks like yet" button. A bold fill in the app's own
+     accent is the one thing a stock UI kit doesn't already have, so
+     it's what actually signals "this is PlayThruu" on first glance. */
+  background: linear-gradient(180deg, var(--accent-bright) 0%, var(--accent) 55%, var(--accent-deep) 100%);
   border: 1px solid rgba(255,255,255,0.24);
   border-top-color: rgba(255,255,255,0.5);
   box-shadow:
     inset 0 1.5px 1px rgba(255,255,255,0.45),
     0 14px 34px -10px rgba(0,0,0,0.55),
-    0 0 60px 6px rgba(255,255,255,0.05);
+    0 0 50px 8px rgba(255,122,26,0.4);
   font-size: 20px; font-weight: 700; letter-spacing: 0.005em; cursor: pointer; color: #fff;
-  transition: background var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+  transition: filter var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
 }
-.landing-entry__row:active { background: rgba(255,255,255,0.1); transform: scale(0.98); }
+.landing-entry__row:active { filter: brightness(1.08); transform: scale(0.98); }
 .landing-entry__links {
   display: flex; flex-direction: column; align-items: center; gap: 14px; margin-top: 36px;
 }

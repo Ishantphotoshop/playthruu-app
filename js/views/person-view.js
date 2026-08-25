@@ -2,6 +2,7 @@ import * as api from '../api.js';
 import { state } from '../state.js';
 import { topBar, navBar, spinner, emptyState, iconUser } from '../components.js';
 import { esc, qs, toast } from '../utils.js';
+import { navigate } from '../router.js';
 
 // Mirrors studio-view.js's layout (same .director-* CSS) — a person and
 // a studio profile lay out the same way: photo, bio, stat row,
@@ -71,8 +72,21 @@ export async function renderPersonView(root, { qid }) {
         try {
           const matches = await api.searchIgdb(title, 1);
           if (!matches.length) { toast(`Couldn't find "${title}" to open.`, 'error'); el.querySelector('.crew-row__name').textContent = original; return; }
-          const saved = await api.addGame(matches[0], state.user?.id);
-          location.hash = `#/game/${saved.id}`;
+          const g = matches[0];
+          // Same free-viewing rule as everywhere else browsing works in
+          // this app: opening a game to look at it doesn't need an
+          // account — only actually saving/logging it does. Calling
+          // addGame while signed out hit the anonymous-insert RLS wall
+          // and threw "new row violates row-level security policy"
+          // instead of just opening the page.
+          if (!state.user) {
+            if (g.igdb_id) { navigate(`/game/igdb/${g.igdb_id}`); return; }
+            toast(`Couldn't open "${title}".`, 'error');
+            el.querySelector('.crew-row__name').textContent = original;
+            return;
+          }
+          const saved = await api.addGame(g, state.user.id);
+          navigate(`/game/${saved.id}`);
         } catch (err) {
           toast(err.message || 'Could not open that game.', 'error');
           el.querySelector('.crew-row__name').textContent = original;

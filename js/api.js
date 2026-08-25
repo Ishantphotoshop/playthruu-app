@@ -700,6 +700,12 @@ export const BROWSE_GENRES = [
   { label: 'Platformer', value: 'genre:8' }, { label: 'Racing', value: 'genre:10' },
   { label: 'Sports', value: 'genre:14' }, { label: 'Simulation', value: 'genre:13' },
   { label: 'Indie', value: 'genre:32' }, { label: 'Fighting', value: 'genre:4' },
+  { label: 'Real-Time Strategy', value: 'genre:11' }, { label: 'Turn-Based Strategy', value: 'genre:16' },
+  { label: 'Tactical', value: 'genre:24' }, { label: 'Hack and Slash', value: 'genre:25' },
+  { label: 'Arcade', value: 'genre:33' }, { label: 'Visual Novel', value: 'genre:34' },
+  { label: 'Card & Board Game', value: 'genre:35' }, { label: 'MOBA', value: 'genre:36' },
+  { label: 'Point-and-Click', value: 'genre:2' }, { label: 'Music', value: 'genre:7' },
+  { label: 'Quiz/Trivia', value: 'genre:26' }, { label: 'Pinball', value: 'genre:30' },
 ];
 export const BROWSE_PLATFORMS = [
   { label: 'PC', value: '6' }, { label: 'PlayStation 5', value: '167' },
@@ -992,6 +998,24 @@ const IGDB_DETAIL_FIELDS = 'name,summary,storyline,cover.image_id,artworks.image
 // row so this only ever runs one time per game, not on every visit to
 // its page. `igdb_enriched` is the flag that distinguishes "checked,
 // found nothing" from "never checked".
+// Free fallback for a description when IGDB has nothing for a game —
+// no API key, no cost, just Wikipedia's public REST summary endpoint.
+// Only ever reached when IGDB's own summary/storyline both came back
+// empty (the obscure/very-new titles this whole feature is for), since
+// IGDB's own copy is more game-specific when it exists.
+async function getWikipediaSummary(title) {
+  try {
+    const url = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`;
+    const res = await fetchWithTimeout(url);
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data.type === 'disambiguation') return null; // no real content to show
+    return data.extract ? summarizeDescription(data.extract) : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function enrichGameDetails(game) {
   if (!game.igdb_id || game.igdb_enriched) return game;
   const updates = { igdb_enriched: true };
@@ -1018,6 +1042,9 @@ export async function enrichGameDetails(game) {
         if (bg) updates.background_url = bg;
       }
       if (!game.cover_url && detail.cover?.image_id) updates.cover_url = igdbImageUrl(detail.cover.image_id, 'cover_big');
+    }
+    if (!updates.description) {
+      updates.description = await getWikipediaSummary(game.title);
     }
   } catch {
     // Leave whatever fields we didn't reach empty — igdb_enriched=true
@@ -1047,10 +1074,11 @@ export async function getIgdbGameDetail(igdbId) {
   const companies = g.involved_companies || [];
   const dev = companies.find((c) => c.developer);
   const video = (g.videos || [])[0];
+  const description = summarizeDescription(g.summary || g.storyline) || await getWikipediaSummary(base.title);
   return {
     ...base,
     id: null,
-    description: summarizeDescription(g.summary || g.storyline),
+    description,
     trailer_url: video?.video_id ? `https://www.youtube.com/embed/${video.video_id}` : null,
     studio_id: dev?.company?.id || null,
     studio_name: dev?.company?.name || null,
@@ -1143,7 +1171,18 @@ async function wikidataQuery(sparql) {
 // The search API below is indexed and answers in milliseconds. Note
 // origin=* — the MediaWiki API requires it to send CORS headers for
 // unauthenticated browser requests.
-async function findWikidataGameId(title) {
+// Remasters/re-releases routinely get their OWN Wikidata item — so the
+// lookup below "succeeds" — but it's often a bare stub with none of the
+// P57/P725 credit statements filled in, while the original release's
+// item has years of community-added credits. "The Last of Us Part II
+// Remastered" is exactly this case: it has a real Wikidata item, just an
+// empty one. Checking "was an item found" isn't enough to catch that —
+// the retry (see fetchCastAndDirectorLive below) has to check "did that
+// item actually have any credits", and only then fall back to the
+// stripped, original-release title.
+const EDITION_SUFFIX = /\s*[:\-–—]\s*(remastered|remake|definitive edition|game of the year edition|goty edition|enhanced edition|anniversary edition|complete edition|director'?s cut|complete collection|redux)$|\s+(remastered|remake|redux)$/i;
+
+async function findWikidataGameIdOnce(title) {
   const searchUrl = `${WIKIDATA_API}?action=wbsearchentities&search=${encodeURIComponent(title)}&language=en&uselang=en&format=json&origin=*&type=item&limit=10`;
   const res = await fetchWithTimeout(searchUrl);
   if (!res.ok) return null;
@@ -1177,6 +1216,33 @@ async function findWikidataGameId(title) {
   return candidates.find((id) => gameQids.has(id)) || null;
 }
 
+// Same search-then-narrow pattern as findWikidataGameIdOnce above, but for
+// a person by name instead of a game by title — narrows to actual
+// humans (Q5) so a same-named company, character, or anything else
+// can't win. RAWG's development-team credits (see getRawgDirector
+// below) only ever give a name, no Wikidata id, which is exactly why
+// a director sourced from RAWG couldn't open a person page before this
+// existed — there was nothing to link to.
+async function findWikidataPersonId(name) {
+  const searchUrl = `${WIKIDATA_API}?action=wbsearchentities&search=${encodeURIComponent(name)}&language=en&uselang=en&format=json&origin=*&type=item&limit=10`;
+  const res = await fetchWithTimeout(searchUrl);
+  if (!res.ok) return null;
+  const data = await res.json();
+  const candidates = (data.search || []).map((s) => s.id);
+  if (!candidates.length) return null;
+
+  const valuesClause = candidates.map((id) => `wd:${id}`).join(' ');
+  const check = await wikidataQuery(`
+    SELECT ?item WHERE {
+      VALUES ?item { ${valuesClause} }
+      ?item wdt:P31 wd:Q5.
+    }`);
+  const personQids = new Set(
+    check.results.bindings.map((b) => b.item.value.split('/').pop())
+  );
+  return candidates.find((id) => personQids.has(id)) || null;
+}
+
 // Director (P57) + voice cast (P725, with character role P453 as a
 // qualifier) for a game, by title. Returns { director, cast } — cast
 // is [{ qid, name, characters: [...] }], deduped per person even if
@@ -1187,6 +1253,16 @@ async function findWikidataGameId(title) {
 // list). No "voice actor" role exists there at all, so this is ONLY
 // used for Director, never for cast.
 async function getRawgDirector(title) {
+  const found = await getRawgDirectorOnce(title);
+  if (found) return found;
+  const stripped = title.replace(EDITION_SUFFIX, '').trim();
+  if (stripped && stripped.toLowerCase() !== title.toLowerCase()) {
+    return getRawgDirectorOnce(stripped);
+  }
+  return null;
+}
+
+async function getRawgDirectorOnce(title) {
   if (!RAWG_API_KEY) return null;
   try {
     const searchUrl = `https://api.rawg.io/api/games?key=${RAWG_API_KEY}&search=${encodeURIComponent(title)}&page_size=1`;
@@ -1196,8 +1272,15 @@ async function getRawgDirector(title) {
     const rawgId = searchData.results?.[0]?.id;
     if (!rawgId) return null;
 
+    // Each crew member's entry embeds their own full games list, so this
+    // response runs well over 100KB even for a single page of results —
+    // the default 3.5s budget genuinely wasn't enough for it on a real
+    // connection, silently dropping a correct RAWG director (who has an
+    // explicit "director" job role) in favor of Wikidata's P57, which
+    // has no equivalent way to tell a lead director from a co-director
+    // when a game credits more than one.
     const teamUrl = `https://api.rawg.io/api/games/${rawgId}/development-team?key=${RAWG_API_KEY}`;
-    const teamRes = await fetchWithTimeout(teamUrl);
+    const teamRes = await fetchWithTimeout(teamUrl, {}, 9000);
     if (!teamRes.ok) return null;
     const teamData = await teamRes.json();
     const directorEntry = (teamData.results || []).find((person) =>
@@ -1227,7 +1310,13 @@ export async function getGameCastAndDirector(game) {
   if (typeof game === 'string') game = { title: game }; // legacy call shape, no row to cache against
   if (game.credits_fetched) return game.credits_json || { director: null, cast: [] };
   const result = await fetchCastAndDirectorLive(game.title);
-  if (game.id) {
+  // A totally empty result (no director, no cast) almost always means the
+  // lookup missed rather than that the game genuinely has neither — RAWG
+  // or Wikidata being briefly unreachable, a title not matching yet, etc.
+  // Caching that as final locked it in as "no cast" forever, even after a
+  // later fix would've found it, since nothing ever asked again. Only a
+  // result with something in it is worth freezing.
+  if (game.id && (result.director || result.cast.length)) {
     // Fire-and-forget: a failed save (signed out) just means no
     // persistence this time, same tradeoff already accepted for IGDB
     // enrichment — the live result above is still returned either way.
@@ -1246,75 +1335,99 @@ async function fetchCastAndDirectorLive(title) {
   // in one no longer costs the other.
   const [rawgSettled, qidSettled] = await Promise.allSettled([
     getRawgDirector(title),
-    findWikidataGameId(title),
+    findWikidataGameIdOnce(title),
   ]);
   const rawgDirector = rawgSettled.status === 'fulfilled' ? rawgSettled.value : null;
   const qid = qidSettled.status === 'fulfilled' ? qidSettled.value : null;
 
-  if (!qid) return { director: rawgDirector, cast: [] };
+  // RAWG gives a name only, no Wikidata id — without one, the director
+  // chip renders with no href at all (see directorChipHtml/gd-director
+  // in game-view.js), so it just sits there looking clickable but doing
+  // nothing. One quick name lookup gets it a working /person/:qid link
+  // like every Wikidata-sourced director already has.
+  if (rawgDirector && !rawgDirector.qid) {
+    rawgDirector.qid = await findWikidataPersonId(rawgDirector.name).catch(() => null);
+  }
 
-  try {
-    // P18 is the item's image. Wikidata hands it back as a Commons
-    // Special:FilePath URL, which redirects to the real file — usable
-    // directly as an <img src>, and it accepts a width parameter so we
-    // pull a thumbnail rather than the full-size original (those are
-    // routinely several megabytes, which would be unusable in a list).
-    // Also fetching the director's own description/role for the redesign.
-    const data = await wikidataQuery(`
-      SELECT ?director ?directorLabel ?directorImage ?directorDesc
-             ?person ?personLabel ?personImage ?characterLabel WHERE {
-        OPTIONAL {
-          wd:${qid} wdt:P57 ?director.
-          OPTIONAL { ?director wdt:P18 ?directorImage. }
-          OPTIONAL { ?director schema:description ?directorDesc. FILTER(LANG(?directorDesc) = "en") }
-        }
-        OPTIONAL {
-          wd:${qid} p:P725 ?voiceStatement.
-          ?voiceStatement ps:P725 ?person.
-          OPTIONAL { ?person wdt:P18 ?personImage. }
-          OPTIONAL { ?voiceStatement pq:P453 ?character. }
-        }
-        SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
-      } LIMIT 120`);
+  let credits = qid ? await fetchWikidataCredits(qid).catch(() => null) : null;
 
-    let wikidataDirector = null;
-    const castMap = new Map();
-    for (const row of data.results.bindings) {
-      if (row.director && !wikidataDirector) {
-        wikidataDirector = {
-          qid: row.director.value.split('/').pop(),
-          name: row.directorLabel?.value || 'Unknown',
-          photo: commonsThumb(row.directorImage?.value),
-          description: row.directorDesc?.value || null,
-        };
-      }
-      if (row.person) {
-        const personQid = row.person.value.split('/').pop();
-        if (!castMap.has(personQid)) {
-          castMap.set(personQid, {
-            qid: personQid,
-            name: row.personLabel?.value || 'Unknown',
-            photo: commonsThumb(row.personImage?.value),
-            characters: new Set(),
-          });
-        }
-        // A person can appear across several rows (one per character);
-        // the photo only comes back on some of them, so take the first
-        // non-empty one rather than letting a later blank row clear it.
-        const entry = castMap.get(personQid);
-        if (!entry.photo) entry.photo = commonsThumb(row.personImage?.value);
-        if (row.characterLabel) entry.characters.add(row.characterLabel.value);
+  // The qid lookup can "succeed" on a remaster/remake's own bare stub
+  // item (see EDITION_SUFFIX above) — that's not the same as it having
+  // any actual credits. Only retry against the original release once we
+  // know this specific item came back empty.
+  if (!credits || (!credits.director && !credits.cast.length)) {
+    const stripped = title.replace(EDITION_SUFFIX, '').trim();
+    if (stripped && stripped.toLowerCase() !== title.toLowerCase()) {
+      const originalQid = await findWikidataGameIdOnce(stripped).catch(() => null);
+      if (originalQid && originalQid !== qid) {
+        const retry = await fetchWikidataCredits(originalQid).catch(() => null);
+        if (retry && (retry.director || retry.cast.length)) credits = retry;
       }
     }
-    const cast = [...castMap.values()].map((c) => ({ ...c, characters: [...c.characters] }));
-    // RAWG's director wins when both have one — it comes from an
-    // explicit "director" job role, more reliable than Wikidata's P57
-    // which is sometimes populated from a film-style single "director"
-    // field that doesn't always fit how games credit that role.
-    return { director: rawgDirector || wikidataDirector, cast };
-  } catch {
-    return { director: rawgDirector, cast: [] }; // Wikidata being unreachable shouldn't break the game page
   }
+
+  if (!credits) return { director: rawgDirector, cast: [] };
+  // RAWG's director wins when both have one — it comes from an
+  // explicit "director" job role, more reliable than Wikidata's P57
+  // which is sometimes populated from a film-style single "director"
+  // field that doesn't always fit how games credit that role.
+  return { director: rawgDirector || credits.director, cast: credits.cast };
+}
+
+// P18 is the item's image. Wikidata hands it back as a Commons
+// Special:FilePath URL, which redirects to the real file — usable
+// directly as an <img src>, and it accepts a width parameter so we pull
+// a thumbnail rather than the full-size original (those are routinely
+// several megabytes, which would be unusable in a list).
+async function fetchWikidataCredits(qid) {
+  const data = await wikidataQuery(`
+    SELECT ?director ?directorLabel ?directorImage ?directorDesc
+           ?person ?personLabel ?personImage ?characterLabel WHERE {
+      OPTIONAL {
+        wd:${qid} wdt:P57 ?director.
+        OPTIONAL { ?director wdt:P18 ?directorImage. }
+        OPTIONAL { ?director schema:description ?directorDesc. FILTER(LANG(?directorDesc) = "en") }
+      }
+      OPTIONAL {
+        wd:${qid} p:P725 ?voiceStatement.
+        ?voiceStatement ps:P725 ?person.
+        OPTIONAL { ?person wdt:P18 ?personImage. }
+        OPTIONAL { ?voiceStatement pq:P453 ?character. }
+      }
+      SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
+    } LIMIT 120`);
+
+  let director = null;
+  const castMap = new Map();
+  for (const row of data.results.bindings) {
+    if (row.director && !director) {
+      director = {
+        qid: row.director.value.split('/').pop(),
+        name: row.directorLabel?.value || 'Unknown',
+        photo: commonsThumb(row.directorImage?.value),
+        description: row.directorDesc?.value || null,
+      };
+    }
+    if (row.person) {
+      const personQid = row.person.value.split('/').pop();
+      if (!castMap.has(personQid)) {
+        castMap.set(personQid, {
+          qid: personQid,
+          name: row.personLabel?.value || 'Unknown',
+          photo: commonsThumb(row.personImage?.value),
+          characters: new Set(),
+        });
+      }
+      // A person can appear across several rows (one per character); the
+      // photo only comes back on some of them, so take the first
+      // non-empty one rather than letting a later blank row clear it.
+      const entry = castMap.get(personQid);
+      if (!entry.photo) entry.photo = commonsThumb(row.personImage?.value);
+      if (row.characterLabel) entry.characters.add(row.characterLabel.value);
+    }
+  }
+  const cast = [...castMap.values()].map((c) => ({ ...c, characters: [...c.characters] }));
+  return { director, cast };
 }
 
 // A cast member's own mini bio page: description + every other game
@@ -1361,8 +1474,64 @@ export async function getWikidataPersonProfile(qid) {
     entry.roles.add(row.role?.value || 'voice');
     if (row.characterLabel) entry.characters.add(row.characterLabel.value);
   }
-  const games = [...gameMap.values()].map((g) => ({ ...g, characters: [...g.characters], roles: [...g.roles] }));
+  // When an item has no label in any language, Wikidata's label service
+  // falls back to handing back its bare QID (e.g. "Q27950674") as the
+  // "label" instead of leaving it blank — that's not a real title, just
+  // an artifact of missing data, so it's filtered out rather than shown.
+  const games = [...gameMap.values()]
+    .filter((g) => g.title && !/^Q\d+$/.test(g.title))
+    .map((g) => ({ ...g, characters: [...g.characters], roles: [...g.roles] }));
   return { qid, name, description, games };
+}
+
+// Strips RAWG's bio HTML (real markup — <p>, <h3>, the occasional <br>,
+// not just escaped text) down to plain paragraphs, since rendering it
+// raw would mean either literal "<p>" text on screen (via esc()) or an
+// XSS-shaped hole (via innerHTML on unsanitized third-party HTML).
+// Heading/paragraph boundaries become paragraph breaks before every
+// remaining tag is dropped, so a bio like Neil Druckmann's — an intro
+// paragraph, then "Career", then "Style" — still reads as distinct
+// paragraphs instead of one run-on block.
+function stripRawgBio(html) {
+  if (!html) return [];
+  const text = html
+    .replace(/<h[1-6][^>]*>/gi, '\n\n')
+    .replace(/<\/h[1-6]>/gi, '\n')
+    .replace(/<\/p>/gi, '\n\n')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&#39;/g, "'").replace(/&quot;/g, '"');
+  return text.split(/\n{2,}/).map((p) => p.replace(/\s+/g, ' ').trim()).filter(Boolean);
+}
+
+// A director's full profile sourced from RAWG instead of Wikidata — a
+// real photo, a real written bio, and their actual filmography with
+// cover art, all things Wikidata routinely doesn't have (see the "Q"
+// numbers and missing photo fixed earlier the same session). Only
+// reachable for directors RAWG has a creators entry for; person-view.js
+// (Wikidata-based) remains the fallback for everyone else.
+export async function getRawgPersonProfile(slug) {
+  if (!RAWG_API_KEY || !slug) return null;
+  const [detailRes, gamesRes] = await Promise.all([
+    fetchWithTimeout(`https://api.rawg.io/api/creators/${encodeURIComponent(slug)}?key=${RAWG_API_KEY}`, {}, 8000),
+    fetchWithTimeout(`https://api.rawg.io/api/games?key=${RAWG_API_KEY}&creators=${encodeURIComponent(slug)}&page_size=20`, {}, 8000),
+  ]);
+  if (!detailRes.ok) return null;
+  const detail = await detailRes.json();
+  const gamesData = gamesRes.ok ? await gamesRes.json() : { results: [] };
+  return {
+    name: detail.name,
+    photo: detail.image || null,
+    bio: stripRawgBio(detail.description),
+    positions: (detail.positions || []).map((p) => p.name),
+    games: (gamesData.results || []).map((g) => ({
+      slug: g.slug,
+      title: g.name,
+      cover_url: g.background_image || null,
+      year: g.released ? new Date(g.released).getFullYear() : null,
+      rating: g.rating ? Math.round(g.rating * 20) : null, // RAWG's 0-5 -> the app's 0-100 scale (see starRow callers, which divide by 20)
+    })),
+  };
 }
 
 export async function getGameStudios(igdbId) {
