@@ -1,35 +1,42 @@
 /* ============================================================
-   PLAYTHRUU — Design system v3 ("console")
+   PLAYTHRUU — Design system v4 ("shared brand")
    ------------------------------------------------------------
-   Direction: what PLAYTHRUU would look like if Sony built it.
-   The PS5 interface reads calm for four specific reasons, and
-   this system copies the reasoning rather than the pixels:
+   Same structural reasoning as v3 (navy over black, light large
+   text, generous space, tone over borders) — only the palette
+   changed, to derive directly from playthruu.com's own tokens
+   (app/globals.css there) instead of the earlier PS5-navy-blue
+   direction, so the marketing site and the app finally read as
+   the same product.
 
-   1. The base is deep desaturated NAVY, never pure black. Pure
-      black is harsh and makes artwork look pasted on; a blue-
-      grey base makes covers sit in the scene.
+   1. The base is near-black, matching the website's --void —
+      not pure black (#000), which is harsher and flattens cover
+      art sitting on it.
    2. Large text is LIGHT weight, not heavy. Big + bold shouts;
       big + light feels premium and quiet.
    3. Space is the main design element. Sections are given far
       more room than feels necessary at first glance.
    4. Almost no borders. Surfaces separate by tone, not by lines.
 
-   Accent is PlayStation blue, used sparingly — on a calm field,
-   one saturated colour goes a very long way.
+   Accent is the website's acid lime, used sparingly — on a calm
+   field, one saturated colour goes a very long way. Violet stays
+   as the secondary accent, aligned to the website's exact hue.
    ============================================================ */
 :root {
-  /* --- foundation: desaturated navy, five steps of elevation --- */
-  --bg: #0a0e16;
-  --bg-deep: #060910;
-  --bg-lift: #10161f;
-  --surface: #151c28;
-  --surface-raised: #1d2534;
-  --surface-high: #273040;
+  /* --- foundation: near-black, five steps of elevation ---
+     Derived from the website's --void (#0a0b0f) / --panel
+     (#14161d) pair, extrapolated out to the same five elevation
+     steps the app already used. */
+  --bg: #0a0b0f;
+  --bg-deep: #050609;
+  --bg-lift: #0f1015;
+  --surface: #101218;
+  --surface-raised: #14161d;
+  --surface-high: #1c1f28;
 
   /* --- glass --- */
   --glass-fill: rgba(255, 255, 255, 0.03);
   --glass-fill-strong: rgba(255, 255, 255, 0.08);
-  --glass-tint: rgba(14, 20, 32, 0.14);
+  --glass-tint: rgba(10, 11, 15, 0.14);
   --glass-filter: blur(22px) saturate(240%) brightness(1.24) contrast(1.05);
   --glass-filter-strong: blur(34px) saturate(230%) brightness(1.16) contrast(1.04);
   --glass-light: rgba(255, 255, 255, 0.045);
@@ -39,26 +46,26 @@
   --blur: 30px;
   --blur-strong: 42px;
   --glass: rgba(255, 255, 255, 0.05);
-  --glass-strong: rgba(12, 17, 27, 0.74);
+  --glass-strong: rgba(10, 11, 15, 0.74);
 
-  /* --- text: near-white primary, blue-tinted greys below it --- */
-  --ink: #ffffff;
-  --ink-dim: #9fadc2;
-  --ink-faint: #5e6b80;
+  /* --- text: the website's warm cream primary, dim green-grey below it --- */
+  --ink: #f1f0e9;
+  --ink-dim: #8a9086;
+  --ink-faint: #5c6158;
 
-  /* --- accent: PlayThruu orange --- */
-  --accent: #ff7a1a;
-  --accent-bright: #ff9a47;
-  --accent-deep: #cc5b00;
-  --accent-dim: rgba(255, 122, 26, 0.15);
+  /* --- accent: the website's acid lime --- */
+  --accent: #d9ff3f;
+  --accent-bright: #e4ff70;
+  --accent-deep: #a8cc20;
+  --accent-dim: rgba(217, 255, 63, 0.15);
   --gold: #ffc247;
   --coral: #ff6b6b;
   --teal: #4dabff;
-  --violet: #9d8cff;
+  --violet: #a78bfa;
 
   /* --- semantic --- */
-  --line: rgba(255, 255, 255, 0.055);
-  --line-strong: rgba(255, 255, 255, 0.11);
+  --line: rgba(241, 240, 233, 0.08);
+  --line-strong: rgba(241, 240, 233, 0.16);
   --danger: #ff6b6b;
   --success: #4ade9b;
   --warning: #ffc247;
@@ -111,10 +118,10 @@
   --shadow-card: 0 6px 22px rgba(0,0,0,0.34);
   --shadow-float: 0 10px 40px rgba(0,0,0,0.46);
   --shadow-modal: 0 20px 70px rgba(0,0,0,0.6);
-  --shadow-accent: 0 6px 26px rgba(255, 122, 26, 0.34);
+  --shadow-accent: 0 6px 26px rgba(217, 255, 63, 0.34);
   /* The console focus ring: a soft accent bloom, the cue that tells
      you where you are on a screen you're navigating, not clicking. */
-  --glow-focus: 0 0 0 2px rgba(255,255,255,0.85), 0 0 26px rgba(255,122,26,0.5);
+  --glow-focus: 0 0 0 2px rgba(255,255,255,0.85), 0 0 26px rgba(217,255,63,0.5);
 
   --ease: cubic-bezier(0.25, 0.8, 0.25, 1);
   --dur-fast: 0.16s;
@@ -137,7 +144,7 @@
 }
 
 /* ============================================================
-   LIGHT THEME — "creamy white + orange"
+   LIGHT THEME — "creamy white + olive lime"
    ------------------------------------------------------------
    An alternate palette, switched via [data-theme="light"] on
    <html> (see the Dark/Light toggle in Settings, and the no-flash
@@ -147,8 +154,10 @@
    Same structural relationships as the dark palette above (base is
    the dullest tone, more "elevated" surfaces get closer to pure
    white, glass/lines/shadows all keep the same job) just inverted
-   onto a warm cream base instead of navy, with the accent swapped
-   from PlayStation blue to orange.
+   onto a warm cream base instead of near-black. The accent stays
+   in the lime family but is darkened to an olive lime — the dark
+   theme's neon #d9ff3f has almost no contrast against a light
+   surface, so it's toned down rather than reused as-is.
 
    Known gap: a few effects were hand-tuned specifically for dark
    backdrops with literal rgba() values rather than tokens — the
@@ -179,10 +188,13 @@
   --ink-dim: #7c6a51;
   --ink-faint: #ab9b81;
 
-  --accent: #ee7b1a;
-  --accent-bright: #ff9a3d;
-  --accent-deep: #c25e0a;
-  --accent-dim: rgba(238, 123, 26, 0.14);
+  /* The dark theme's bright neon lime (#d9ff3f) is nearly invisible on a
+     cream/white surface — same hue family, darkened to a legible olive
+     lime instead of just inheriting the raw brand value. */
+  --accent: #6b8a12;
+  --accent-bright: #85a821;
+  --accent-deep: #526b0d;
+  --accent-dim: rgba(107, 138, 18, 0.14);
 
   --line: rgba(43, 29, 14, 0.08);
   --line-strong: rgba(43, 29, 14, 0.15);
@@ -193,8 +205,8 @@
   --shadow-card: 0 6px 20px rgba(43, 29, 14, 0.12);
   --shadow-float: 0 10px 34px rgba(43, 29, 14, 0.16);
   --shadow-modal: 0 20px 60px rgba(43, 29, 14, 0.22);
-  --shadow-accent: 0 6px 22px rgba(238, 123, 26, 0.32);
-  --glow-focus: 0 0 0 2px rgba(255,255,255,0.9), 0 0 22px rgba(238, 123, 26, 0.45);
+  --shadow-accent: 0 6px 22px rgba(107, 138, 18, 0.32);
+  --glow-focus: 0 0 0 2px rgba(255,255,255,0.9), 0 0 22px rgba(107, 138, 18, 0.45);
 }
 /* body's own ambient-light gradient is a literal colour, not a token
    (see the .body rule below) — needs its own light-mode override or it
@@ -242,7 +254,7 @@ body {
      Console dashboards almost never use one uniform colour — the
      gradient is what stops a dark UI reading as a black rectangle. */
   background:
-    radial-gradient(120% 70% at 50% 0%, #16202f 0%, transparent 62%),
+    radial-gradient(120% 70% at 50% 0%, #1a1d12 0%, transparent 62%),
     var(--bg);
   background-attachment: fixed;
   color: var(--ink);
@@ -488,7 +500,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
     inset 0 -1px 2px rgba(0,0,0,0.26),          /* rounded underside */
     inset 0 0 0 0.5px rgba(255,255,255,0.20),   /* rim */
     0 1px 3px rgba(0,0,0,0.24),
-    0 6px 18px -2px rgba(255,122,26,0.42);      /* coloured bloom */
+    0 6px 18px -2px rgba(217, 255, 63,0.42);      /* coloured bloom */
 }
 .tabbar__item--primary span { display: none; }
 .tabbar__item--primary svg {
@@ -506,7 +518,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   content: ''; position: absolute; top: 4px; right: 12px;
   width: 8px; height: 8px; border-radius: 50%;
   background: var(--accent-bright);
-  box-shadow: 0 0 0 2px var(--bg), 0 0 6px rgba(255,122,26,0.5);
+  box-shadow: 0 0 0 2px var(--bg), 0 0 6px rgba(217, 255, 63,0.5);
 }
 
 /* Blur is expensive and some engines fake it badly; without support,
@@ -771,7 +783,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   box-shadow: var(--shadow-card); transition: box-shadow var(--dur) var(--ease);
 }
 .discovery-tile:hover { transform: translateY(-4px) scale(1.03); }
-.discovery-tile:hover .discovery-tile__cover { box-shadow: 0 14px 40px rgba(0,0,0,0.5), 0 0 22px rgba(255,122,26,0.22); }
+.discovery-tile:hover .discovery-tile__cover { box-shadow: 0 14px 40px rgba(0,0,0,0.5), 0 0 22px rgba(217, 255, 63,0.22); }
 .discovery-tile:focus-visible { outline: none; transform: translateY(-4px) scale(1.03); }
 .discovery-tile:focus-visible .discovery-tile__cover { box-shadow: var(--glow-focus); }
 .discovery-tile:focus-visible .discovery-tile__cover { box-shadow: var(--glow-focus); }
@@ -1889,7 +1901,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .quick-act[data-on="1"] .quick-act__icon--pad { color: var(--success); filter: drop-shadow(0 0 10px rgba(74,222,155,0.5)); }
 .quick-act[data-on="1"] .quick-act__icon--heart { color: var(--coral); filter: drop-shadow(0 0 10px rgba(255,107,107,0.5)); }
 .quick-act[data-on="1"] .quick-act__icon--heart svg path { fill: var(--coral); }
-.quick-act[data-on="1"] .quick-act__icon--save { color: var(--accent-bright); filter: drop-shadow(0 0 10px rgba(255,122,26,0.5)); }
+.quick-act[data-on="1"] .quick-act__icon--save { color: var(--accent-bright); filter: drop-shadow(0 0 10px rgba(217, 255, 63,0.5)); }
 .quick-act[data-on="1"] .quick-act__icon--save svg path { fill: var(--accent-bright); }
 
 /* Controller "rumble" on activation — a short physical wobble that
@@ -2070,9 +2082,9 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    theme ink like everything else. No-op in dark theme either way, since
    these already equal the dark-theme defaults there. */
 .gd-hero:has(.gd-hero__bg) {
-  --ink: #ffffff;
-  --ink-dim: #9fadc2;
-  --ink-faint: #5e6b80;
+  --ink: #f1f0e9;
+  --ink-dim: #8a9086;
+  --ink-faint: #5c6158;
 }
 
 .gd-head { position: relative; z-index: 1; display: flex; gap: var(--space-4); align-items: flex-start; }
@@ -2431,7 +2443,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   position: absolute; left: 50%; bottom: 0; width: 2px; height: 56px;
   margin-left: -1px; background: var(--accent-bright);
   border-radius: 1px; pointer-events: none;
-  box-shadow: 0 0 8px rgba(255,122,26,0.6);
+  box-shadow: 0 0 8px rgba(217, 255, 63,0.6);
 }
 
 /* ---- moderation: report sheet, block, delete account ---------------- */
@@ -2586,9 +2598,9 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    back to the dark-theme values; no-op in dark theme, since they already
    match there. */
 .modal--providers {
-  --ink: #ffffff;
-  --ink-dim: #9fadc2;
-  --ink-faint: #5e6b80;
+  --ink: #f1f0e9;
+  --ink-dim: #8a9086;
+  --ink-faint: #5c6158;
 }
 /* Rows become inner glass panels so they sit on the frosted surface
    instead of looking like opaque cards pasted on top. */
@@ -2644,9 +2656,9 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    need pinning too, or light theme's dark-brown ink goes unreadable on
    it. No-op in dark theme. */
 .modal--glass {
-  --ink: #ffffff;
-  --ink-dim: #9fadc2;
-  --ink-faint: #5e6b80;
+  --ink: #f1f0e9;
+  --ink-dim: #8a9086;
+  --ink-faint: #5c6158;
 }
 
 /* Log sheet, redesigned on glass: the three quick actions become their
@@ -2831,7 +2843,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 
 /* Docked edge-to-edge, not the floating pill the real in-app tabbar
    uses — full width, square top corners, flush to the bottom and both
-   sides. Deliberately its own solid black + orange material, not the
+   sides. Deliberately its own solid black + lime material, not the
    real in-app tabbar's own glass — border/background/blur only, never
    size or padding, since THAT is what the reserved nav space below
    (.landing-stage, .landing-entry) is calculated against. Fixed
@@ -2877,7 +2889,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .landing-nav .tabbar__item--active { color: #ffffff; }
 /* Icon-only — no label underneath, so every icon can be noticeably
    bigger and still fit comfortably in the bar. No drop-shadow glow —
-   flat orange on flat black, full stop. Sized/padded exactly like the
+   flat lime on flat black, full stop. Sized/padded exactly like the
    base .tabbar__item (50px tall) with nothing overridden here — that
    50px is what the reserved nav space below (.landing-stage,
    .landing-entry) is calculated against; changing this height without
@@ -2999,7 +3011,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   margin: 0; text-align: center;
   font-family: var(--font-body); font-style: italic; font-weight: 600;
   font-size: 15.5px; color: rgba(255,255,255,0.88); letter-spacing: 0.01em;
-  text-shadow: 0 2px 10px rgba(0,0,0,0.9), 0 1px 3px rgba(0,0,0,0.9), 0 0 22px rgba(255,122,26,0.5);
+  text-shadow: 0 2px 10px rgba(0,0,0,0.9), 0 1px 3px rgba(0,0,0,0.9), 0 0 22px rgba(217, 255, 63,0.5);
 }
 /* Mark + wordmark side by side, sitting right above Get Started now
    (moved down from a top-pinned header lockup) — the one clear thing
@@ -3045,7 +3057,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   box-shadow:
     inset 0 1.5px 1px rgba(255,255,255,0.45),
     0 14px 34px -10px rgba(0,0,0,0.55),
-    0 0 50px 8px rgba(255,122,26,0.4);
+    0 0 50px 8px rgba(217, 255, 63,0.4);
   font-size: 20px; font-weight: 700; letter-spacing: 0.005em; cursor: pointer; color: #fff;
   transition: filter var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
 }
