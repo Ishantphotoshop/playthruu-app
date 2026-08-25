@@ -65,9 +65,15 @@ self.addEventListener('fetch', (event) => {
 
   // Network-first: always try to get the latest file first (so edits
   // during development show up immediately), and only fall back to the
-  // cached copy if there's no network at all.
+  // cached copy if there's no network at all. { cache: 'no-store' } is
+  // load-bearing here, not decoration — without it this is still a
+  // plain fetch() underneath, which happily answers from the browser's
+  // own HTTP cache (GitHub Pages sends Cache-Control: max-age=600 on
+  // everything) instead of touching the network at all. That silently
+  // defeated "network-first" for up to 10 minutes per file, regardless
+  // of whether the service worker itself had updated.
   event.respondWith(
-    fetch(request)
+    fetch(request, { cache: 'no-store' })
       .then((response) => {
         if (response.ok) {
           const copy = response.clone();
