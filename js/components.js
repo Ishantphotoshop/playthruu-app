@@ -45,7 +45,7 @@ export function navBar(activeBase = '/feed') {
   const items = [
     { route: '/feed', icon: iconHome(), label: 'Feed' },
     { route: '/search', icon: iconSearch(), label: 'Search' },
-    { route: '/log', icon: iconJournal(), label: 'Log', primary: true },
+    { route: '/log', icon: iconBrandMark(), label: 'Log', primary: true },
     { route: '/messages', icon: iconMessage(), label: 'Messages' },
     { route: '/me', icon: iconUser(), label: 'Profile' },
   ];
@@ -585,12 +585,14 @@ export function iconStamp() { return `<svg viewBox="0 0 24 24" fill="none"><rect
 // pasted-in graphic: the right-hand page stops short where the feather
 // crosses it, which is what makes the two shapes look like one scene
 // rather than two icons stacked on top of each other.
-export function iconJournal() {
-  return `<svg viewBox="0 0 24 24" fill="none">
-    <path d="M11.4 9.4C9.5 8 6.6 7.4 3.7 7.9v10.6c2.9-.5 5.8.1 7.7 1.5 1.9-1.4 4.8-2 7.7-1.5v-3.9" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M11.4 9.4V20" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
-    <path d="M14.1 12.2c1.1-3.9 3.9-6.7 7.8-7.8-1.1 3.9-3.9 6.7-7.8 7.8z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
-    <path d="M14.1 12.2 12.5 13.8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+// The middle tab bar button IS the brand mark rather than a generic
+// "add" glyph — same notched-circle path as the app icon and
+// components/BrandMark.tsx on the website. Filled with currentColor
+// (not stroked, like the outline-style nav icons around it) since the
+// mark is a solid shape.
+export function iconBrandMark() {
+  return `<svg viewBox="0 0 120 120" fill="none">
+    <path fill="currentColor" d="M 113.4045,52 A 54,54 0 1,0 113.4045,68 L 64,68 A 8,8 0 0,1 64,52 Z"/>
   </svg>`;
 }
 export function iconBack() { return `<svg viewBox="0 0 24 24" fill="none"><path d="M15 19l-7-7 7-7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`; }

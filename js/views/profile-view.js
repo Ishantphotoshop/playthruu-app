@@ -5,7 +5,7 @@ import {
   emptyState, iconStamp, iconSettings, iconShare, iconQr, iconClose, iconSearch, iconPlus, listCard, iconFlame, iconMessage,
   combinedGameResults, wireCombinedGameResults, openReportSheet, iconFlag, iconBlock,
 } from '../components.js';
-import { esc, formatDate, statusStamp, starRow, qs, qsa, toast, debounce } from '../utils.js';
+import { esc, formatDate, statusStamp, starRow, qs, qsa, toast, debounce, pulseLogTab } from '../utils.js';
 import { refreshCurrentView, navigate } from '../router.js';
 import { wirePullToRefresh } from './feed-view.js';
 import { openNewListForm } from './lists-view.js';
@@ -443,6 +443,7 @@ function openQuickAddPlaying() {
   async function addPlaying(gameId) {
     try {
       await api.createLog({ user_id: state.user.id, game_id: gameId, status: 'playing', is_public: true });
+      pulseLogTab();
       close();
       toast('Added to currently playing.', 'success');
       refreshCurrentView();

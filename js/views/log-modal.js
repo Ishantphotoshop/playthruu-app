@@ -1,6 +1,6 @@
 import * as api from '../api.js';
 import { state } from '../state.js';
-import { esc, starRow, toast, qs, qsa, debounce, placeholderCover, formatDate, enableSwipeToDismiss, celebrate } from '../utils.js';
+import { esc, starRow, toast, qs, qsa, debounce, placeholderCover, formatDate, enableSwipeToDismiss, celebrate, pulseLogTab } from '../utils.js';
 import { iconClose, iconCalendar, iconGamepad, iconHeart, iconBookmark, combinedGameResults, wireCombinedGameResults, posterFrame } from '../components.js';
 import { openAddToListPicker } from './lists-view.js';
 
@@ -417,10 +417,14 @@ export function openLogModal({ game = null, existingLog = null, defaultReplay = 
           saved = await api.createLog(payload);
         }
         toast(existingLog ? 'Entry updated.' : 'Logged!', 'success');
-        // The one moment worth celebrating — a brand new "played" entry,
-        // not an edit and not backlog/playing. Fires after close() so the
-        // burst survives the sheet's own removal instead of vanishing
-        // with it.
+        // Every save gets a small pulse on the log tab's brand mark — the
+        // tab bar is part of the app shell, not this sheet, so it's safe
+        // to fire before close(). The confetti burst stays reserved for
+        // the one moment actually worth celebrating: a brand new "played"
+        // entry, not an edit and not backlog/playing. That one fires
+        // after close() so the burst survives the sheet's own removal
+        // instead of vanishing with it.
+        pulseLogTab();
         const firstPlay = !existingLog && currentStatus === 'played';
         close();
         if (firstPlay) celebrate();

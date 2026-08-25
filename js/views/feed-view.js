@@ -4,7 +4,7 @@ import {
   topBar, navBar, activityCard, emptyState, spinner, skeletonRow, iconStamp, iconUser, iconFilter,
   trendingStrip, wireTrendingStrip, friendsPlayingCard, posterFrame, openReportSheet,
 } from '../components.js';
-import { toast, qs, qsa, esc, enableSwipeToDismiss, promptSignIn, tapFeedback } from '../utils.js';
+import { toast, qs, qsa, esc, enableSwipeToDismiss, promptSignIn, tapFeedback, pulseLogTab } from '../utils.js';
 import { openLogModal } from './log-modal.js';
 import { refreshCurrentView, navigate } from '../router.js';
 
@@ -118,6 +118,7 @@ async function paintDiscovery(slot) {
           try {
             const saved = await api.addGame(g, state.user.id);
             await api.createLog({ game_id: saved.id, user_id: state.user.id, status: 'backlog', is_public: true });
+            pulseLogTab();
             tapFeedback();
             const badge = qs('.discovery-tile__saved', btn);
             badge.classList.remove('is-popping'); void badge.offsetWidth; badge.classList.add('is-popping');

@@ -474,7 +474,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 /* Active tab is marked by the icon/label lighting up to full white (from
    the 60%-opacity resting state) — no dot beneath it. */
 .tabbar__item--active { color: #fff; }
-.tabbar__item--active svg { filter: drop-shadow(0 1px 1.5px rgba(0,0,0,0.38)) drop-shadow(0 0 6px rgba(120,180,255,0.35)); }
+.tabbar__item--active svg { filter: drop-shadow(0 1px 1.5px rgba(0,0,0,0.38)) drop-shadow(0 0 6px rgba(217,255,63,0.35)); }
 /* Sits inline with the other items — the previous version used a
    negative top margin to make it protrude, which fought the flex
    centering and left it visibly off-axis. Same height as its
@@ -507,6 +507,28 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 }
 .tabbar__item--primary::after { display: none; }
 .tabbar__item--primary:active { transform: scale(0.92); }
+/* A brief celebratory pulse on the log tab's brand mark whenever an
+   entry saves successfully (see pulseLogTab() in utils.js, called
+   from log-modal.js) — the mark bounces and a ring of light expands
+   out from it and fades. The class removes itself once the animation
+   ends (see pulseLogTab()), so this never needs manual cleanup. */
+.tabbar__item--primary.is-logged { animation: log-pulse 0.5s var(--ease); }
+.tabbar__item--primary.is-logged::before {
+  content: ''; position: absolute; inset: -6px; border-radius: 50%;
+  border: 2px solid var(--accent-bright);
+  animation: log-ring 0.6s var(--ease) forwards;
+  pointer-events: none;
+}
+@keyframes log-pulse {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.22); }
+  60% { transform: scale(0.94); }
+  100% { transform: scale(1); }
+}
+@keyframes log-ring {
+  0% { opacity: 0.7; transform: scale(0.9); }
+  100% { opacity: 0; transform: scale(1.6); }
+}
 
 /* Unread dot on the Messages tab — see app.js's applyMessageBadge().
    A plain dot rather than a numbered pill: it only ever means "something

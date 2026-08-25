@@ -3,7 +3,7 @@ import { state } from '../state.js';
 import {
   topBar, navBar, spinner, logCard, emptyState, posterFrame, iconUser,
 } from '../components.js';
-import { esc, starRow, formatDate, qs, qsa, toast, promptSignIn, recordRecentlyViewed } from '../utils.js';
+import { esc, starRow, formatDate, qs, qsa, toast, promptSignIn, recordRecentlyViewed, pulseLogTab } from '../utils.js';
 import { openLogModal } from './log-modal.js';
 import { openAddToListPicker } from './lists-view.js';
 import { refreshCurrentView, navigate } from '../router.js';
@@ -472,6 +472,7 @@ export async function renderGameView(root, { id, igdbId }) {
           const saved = await ensureSavedGame();
           if (!saved) { backlogBtn.disabled = false; return; }
           await api.createLog({ game_id: game.id, user_id: state.user.id, status: 'backlog', is_public: true });
+          pulseLogTab();
           toast('Added to your backlog.', 'success');
           refreshCurrentView();
         } catch (err) {

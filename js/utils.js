@@ -300,7 +300,7 @@ export function tapFeedback() {
 // getting wiped out with the modal. Respects reduced-motion.
 export function celebrate() {
   if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
-  const COLORS = ['#0f8cff', '#4dabff', '#ffc247', '#4ade95', '#ff6b6b'];
+  const COLORS = ['#d9ff3f', '#a78bfa', '#ffc247', '#4ade95', '#ff6b6b'];
   const layer = document.createElement('div');
   layer.className = 'celebrate-layer';
   const count = 26;
@@ -318,4 +318,23 @@ export function celebrate() {
   }
   document.body.appendChild(layer);
   setTimeout(() => layer.remove(), 1300);
+}
+
+// A small, every-time confirmation (unlike celebrate(), which is
+// reserved for the one big "first play" moment) — the log tab's brand
+// mark bounces and a ring of light expands from it, so saving an
+// entry visibly lands on the icon you'll tap to do it again. Looked
+// up fresh each call rather than cached, since the tab bar element
+// itself gets re-rendered on route changes. No reduced-motion check
+// needed here — the global rule in styles.css already zeroes out
+// .is-logged's animation duration.
+export function pulseLogTab() {
+  const tab = document.querySelector('.tabbar__item--primary');
+  if (!tab) return;
+  tab.classList.remove('is-logged');
+  // Force a reflow so re-adding the class restarts the animation even
+  // if a previous pulse hasn't finished (e.g. two saves back to back).
+  void tab.offsetWidth;
+  tab.classList.add('is-logged');
+  tab.addEventListener('animationend', () => tab.classList.remove('is-logged'), { once: true });
 }
