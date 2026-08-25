@@ -247,6 +247,14 @@
 
 /* ------------------------------------------------------------ reset */
 *, *::before, *::after { box-sizing: border-box; }
+/* Android/Chrome's default tap-highlight is a translucent BLUE overlay
+   — shows up on any button/link/interactive element that doesn't
+   explicitly suppress it. Only two rules in this file did that
+   locally; everything else (the theme toggle, ghost buttons like
+   "Change password", etc.) was showing that native blue glow on tap,
+   which doesn't correspond to any colour in this app's actual
+   palette. Set globally instead of chasing it element by element. */
+* { -webkit-tap-highlight-color: transparent; }
 html, body { height: 100%; overflow-x: hidden; }
 body {
   margin: 0;
