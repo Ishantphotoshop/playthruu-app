@@ -479,32 +479,27 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    negative top margin to make it protrude, which fought the flex
    centering and left it visibly off-axis. Same height as its
    siblings now, so it lands dead centre every time.
-   Dark glass, not a solid lime disc: a permanent block of accent
+   Flat dark fill, not a solid lime disc: a permanent block of accent
    colour both fought whatever art sits behind the translucent bar
    and buried the pulse ring (a lime ring is invisible against a lime
    fill). The mark itself carries the accent instead — matches how
-   sparingly --accent is used everywhere else, and the ring reads
-   clearly against dark glass. */
+   sparingly --accent is used everywhere else. Deliberately flat, no
+   glass layering or glow: the specular/rim inset shadows that read as
+   a nice edge on a lime disc showed up as two distracting rings once
+   the fill went dark, and an ambient bloom just re-introduced the
+   same "accent everywhere" problem the flat fill was meant to fix. */
 .tabbar__item--primary {
   color: var(--accent);
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.02) 48%, rgba(0,0,0,0.18) 100%),
-    var(--surface-high);
-  width: 54px; height: 54px; min-width: 54px; border-radius: 50%;
+  background: var(--surface-high);
+  width: 64px; height: 64px; min-width: 64px; border-radius: 50%;
   padding: 0; margin: 0; gap: 0; flex-shrink: 0;
   border: 1.5px solid var(--accent-dim);
   text-shadow: none;
-  box-shadow:
-    inset 0 1px 0.5px rgba(255,255,255,0.30),   /* specular top edge */
-    inset 0 -1px 2px rgba(0,0,0,0.30),          /* rounded underside */
-    inset 0 0 0 0.5px rgba(255,255,255,0.08),   /* rim */
-    0 1px 3px rgba(0,0,0,0.30),
-    0 4px 14px -2px rgba(217, 255, 63,0.28);      /* soft coloured halo */
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
 }
 .tabbar__item--primary span { display: none; }
 .tabbar__item--primary svg {
-  width: 28px; height: 28px;
-  filter: drop-shadow(0 0 5px rgba(217,255,63,0.4));
+  width: 34px; height: 34px;
 }
 .tabbar__item--primary::after { display: none; }
 .tabbar__item--primary:active { transform: scale(0.92); }
