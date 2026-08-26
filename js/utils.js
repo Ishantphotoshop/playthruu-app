@@ -109,7 +109,14 @@ export function placeholderCover(title) {
 // on the phone. Dragging elsewhere (the scrollable body) is untouched,
 // and a plain tap on a header control still clicks because we only take
 // over once the finger has actually moved down a few pixels.
-export function enableSwipeToDismiss(modal, close) {
+//
+// `onDrag`, if passed, fires on every pointermove with the drag's
+// progress toward the dismiss threshold (0 = not dragged, 1 = at/past
+// THRESHOLD), and again with exactly 0 once the sheet springs back to
+// rest (so a caller tying some other effect to the drag — e.g. easing
+// off a background blur as the sheet comes down — can reset cleanly
+// instead of being left stuck mid-fade).
+export function enableSwipeToDismiss(modal, close, onDrag) {
   if (!modal) return;
   const header = modal.querySelector('.modal__header, .log-sheet__head, header');
   if (!header) return;
@@ -137,6 +144,7 @@ export function enableSwipeToDismiss(modal, close) {
     modal.style.transform = `translateY(${dy}px)`;
     const ov = overlay();
     if (ov) ov.style.opacity = String(Math.max(0.25, 1 - dy / 420));
+    if (onDrag) onDrag(Math.min(1, dy / THRESHOLD));
   });
 
   const settle = (e) => {
@@ -155,6 +163,7 @@ export function enableSwipeToDismiss(modal, close) {
       modal.style.transition = 'transform 0.32s cubic-bezier(0.16,1,0.3,1)';
       modal.style.transform = 'translateY(0)';
       if (ov) { ov.style.transition = 'opacity 0.2s ease'; ov.style.opacity = ''; }
+      if (onDrag) onDrag(0);
     }
   };
   header.addEventListener('pointerup', settle);

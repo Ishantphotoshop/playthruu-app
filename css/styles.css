@@ -1715,9 +1715,15 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    wordmark, form fields, everything — not just the backdrop art
    layer (.auth-screen--blurred, toggled by openProviderPopup() in
    auth-view.js). A plain filter on the actual screen, not backdrop-
-   filter on the popup, which never composited reliably. */
+   filter on the popup, which never composited reliably. Kept fairly
+   light (16px, only a slight dip in brightness) — the earlier 28px/
+   0.75 combo read as the screen going dull/dark rather than just
+   softly out of focus. While the sheet is being dragged down, JS
+   overrides this filter inline (see openProviderPopup's onDrag) so
+   the blur eases back out in step with the swipe instead of staying
+   pinned at full strength until release. */
 .auth-screen--blurred {
-  filter: blur(28px) brightness(0.75);
+  filter: blur(16px) brightness(0.94);
 }
 /* Full-bleed now — the image covers the entire screen behind
    everything, not just a capped-height band up top. */

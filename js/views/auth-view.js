@@ -80,13 +80,34 @@ function openProviderPopup() {
     overlay.remove();
     document.body.style.overflow = '';
     document.removeEventListener('keydown', onKey);
-    if (screen) screen.classList.remove('auth-screen--blurred');
+    if (screen) {
+      screen.classList.remove('auth-screen--blurred');
+      // Drop the drag-eased inline override, if any, so it doesn't
+      // linger and mask the class-based state on the next open.
+      screen.style.filter = '';
+      screen.style.transition = '';
+    }
   };
   const onKey = (e) => { if (e.key === 'Escape') close(); };
   document.addEventListener('keydown', onKey);
   overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
   qsa('[data-close]', overlay).forEach((b) => b.addEventListener('click', close));
-  enableSwipeToDismiss(qs('.modal', overlay), close);
+  // Ease the screen blur back out as the sheet is dragged down, instead
+  // of it staying pinned at full strength until the finger lifts —
+  // matches .auth-screen--blurred's blur(16px)/brightness(0.94) at
+  // progress 0 (not dragged), fading toward no filter at progress 1
+  // (dragged to the dismiss threshold).
+  enableSwipeToDismiss(qs('.modal', overlay), close, (progress) => {
+    if (!screen) return;
+    if (progress <= 0) {
+      screen.style.transition = '';
+      screen.style.filter = '';
+      return;
+    }
+    screen.style.transition = 'none';
+    const p = 1 - progress;
+    screen.style.filter = `blur(${(16 * p).toFixed(1)}px) brightness(${(1 - 0.06 * p).toFixed(3)})`;
+  });
 
   qsa('[data-provider]', overlay).forEach((btn) => {
     btn.addEventListener('click', async () => {
