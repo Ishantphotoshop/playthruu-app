@@ -2966,20 +2966,66 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .landing--tour { background: var(--bg); }
 .landing-stage--tour { padding-bottom: 0; overflow: hidden; }
 .tour { height: 100%; display: flex; flex-direction: column; }
+/* Bottom-anchored, not centred — the slide used to float in the
+   vertical middle of the screen, which on a real phone read as
+   sitting up near the top with a lot of dead air underneath it before
+   the footer. justify-content:flex-end pins it to the bottom of its
+   own flex:1 area instead, right above Continue/Skip. */
 .tour__slide {
-  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
-  text-align: center; padding: var(--space-6) var(--space-5);
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+  text-align: center; padding: var(--space-6) var(--space-5) var(--space-5);
 }
+/* Each slide's mockup replaces the old single abstract glyph with a
+   small, real piece of the app's own UI — same classes/visual language
+   (.stamp, starRow's .stars, etc.) as the genuine screens, just built
+   from static placeholder data instead of a live fetch, since this
+   carousel runs before anyone's signed in or any data has loaded. */
 .tour__art {
-  width: 108px; height: 108px; border-radius: 28px; margin-bottom: var(--space-6);
-  display: grid; place-items: center;
-  background: color-mix(in srgb, var(--accent-bright) 16%, var(--surface-raised));
-  color: var(--accent-bright);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-bright) 25%, transparent);
+  display: flex; align-items: center; justify-content: center;
+  min-height: 108px; margin-bottom: var(--space-5);
 }
-.tour__art svg { width: 52px; height: 52px; }
 .tour__title { font-family: var(--font-display); font-weight: var(--weight-heading); font-size: 22px; line-height: 1.3; max-width: 320px; }
 .tour__body { color: var(--ink-dim); font-size: var(--text-body); line-height: 1.5; margin-top: 12px; max-width: 300px; }
+
+/* ---- tour slide mockups --------------------------------------------- */
+.tour-mock { display: flex; align-items: center; gap: 14px; }
+/* A small stand-in cover — a flat gradient block in the app's own
+   palette, not a real fetched image (no game to point at here). */
+.tour-mock__poster {
+  width: 64px; aspect-ratio: var(--ratio-card); border-radius: var(--radius-s);
+  box-shadow: var(--shadow-card); flex-shrink: 0;
+}
+.tour-mock--log .tour-mock__poster {
+  position: relative; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 8px;
+  background: linear-gradient(160deg, var(--accent-bright), color-mix(in srgb, var(--accent) 55%, #14150f));
+}
+.tour-mock--log .tour-mock__stamp { transform: rotate(-3deg); }
+.tour-mock--rate .tour-mock__poster { background: linear-gradient(160deg, var(--gold), color-mix(in srgb, var(--coral) 60%, var(--gold))); }
+.tour-mock__card {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 6px; text-align: left;
+}
+.tour-mock__label { font-size: 12px; font-weight: 700; color: var(--ink-dim); }
+.tour-mock--review .tour-mock__poster { width: 44px; height: 44px; aspect-ratio: 1; border-radius: 50%; background: linear-gradient(160deg, var(--violet), color-mix(in srgb, var(--accent-bright) 40%, var(--violet))); }
+.tour-mock__lines { display: flex; flex-direction: column; gap: 7px; width: 150px; }
+.tour-mock__line { height: 9px; border-radius: 5px; background: var(--line-strong); }
+.tour-mock__line--short { width: 60%; }
+.tour-mock--people .tour-mock__stack { display: flex; }
+.tour-mock--people .tour-mock__avatar {
+  width: 48px; height: 48px; border-radius: 50%; margin-left: -14px;
+  box-shadow: 0 0 0 3px var(--bg);
+  background: linear-gradient(160deg, var(--accent-bright), var(--gold));
+}
+.tour-mock--people .tour-mock__avatar:first-child { margin-left: 0; }
+.tour-mock--people .tour-mock__avatar:nth-child(2) { background: linear-gradient(160deg, var(--gold), var(--coral)); }
+.tour-mock--people .tour-mock__avatar:nth-child(3) { background: linear-gradient(160deg, var(--violet), var(--accent-bright)); }
+.tour-mock--list .tour-mock__stack { display: flex; }
+.tour-mock--list .tour-mock__poster {
+  width: 48px; margin-left: -20px; box-shadow: var(--shadow-card), 0 0 0 3px var(--bg);
+}
+.tour-mock--list .tour-mock__poster:first-child { margin-left: 0; }
+.tour-mock--list .tour-mock__poster:nth-child(1) { background: linear-gradient(160deg, var(--accent-bright), color-mix(in srgb, var(--accent) 55%, #14150f)); }
+.tour-mock--list .tour-mock__poster:nth-child(2) { background: linear-gradient(160deg, var(--gold), var(--coral)); }
+.tour-mock--list .tour-mock__poster:nth-child(3) { background: linear-gradient(160deg, var(--violet), var(--accent-bright)); }
 .tour__footer {
   display: flex; align-items: center; justify-content: space-between;
   padding: var(--space-4) var(--space-5) calc(var(--space-5) + var(--safe-bottom));

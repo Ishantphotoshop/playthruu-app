@@ -469,7 +469,7 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
     return `
       <div class="tour">
         <div class="tour__slide" id="tour-slide">
-          <div class="tour__art">${tourIconSvg(slide.icon)}</div>
+          <div class="tour__art">${tourMockupHtml(slide.icon)}</div>
           <h2 class="tour__title">${esc(slide.title)}</h2>
           <p class="tour__body">${esc(slide.body)}</p>
         </div>
@@ -600,17 +600,57 @@ function iconCompass() {
   </svg>`;
 }
 
-// Large centrepiece icons for the tour slides — no real screenshots
-// exist to embed here, so each slide gets a bold, single-colour glyph
-// standing in for one (icons drawn plain, coloured via CSS on .tour__art).
-function tourIconSvg(name) {
-  const paths = {
-    gamepad: `<path d="M6.5 8.5h11a4 4 0 0 1 3.9 3.1l.9 4A2.4 2.4 0 0 1 19 18.4l-2-2.4H7l-2 2.4a2.4 2.4 0 0 1-4.2-2.8l.9-4A4 4 0 0 1 6.5 8.5z"/><path d="M7.5 11.6v2.3M6.35 12.75h2.3"/><circle cx="15.6" cy="12" r="1.05" fill="currentColor" stroke="none"/><circle cx="17.8" cy="14" r="1.05" fill="currentColor" stroke="none"/>`,
-    star: `<path d="M12 2.3l3 6.4 6.9.9-5 4.9 1.2 6.9L12 17.9l-6.1 3.5 1.2-6.9-5-4.9 6.9-.9L12 2.3z"/>`,
-    review: `<path d="M4 6h16M4 12h16M4 18h10"/>`,
-    people: `<circle cx="8.5" cy="8" r="3.2"/><path d="M2.5 20c1-3.4 3.2-5.3 6-5.3s5 1.9 6 5.3"/><circle cx="17" cy="8.5" r="2.6"/><path d="M15.5 14.5c2.2.2 3.9 1.8 4.8 4.7"/>`,
-    list: `<path d="M8 6h13M8 12h13M8 18h13"/><circle cx="3.5" cy="6" r="1.3" fill="currentColor" stroke="none"/><circle cx="3.5" cy="12" r="1.3" fill="currentColor" stroke="none"/><circle cx="3.5" cy="18" r="1.3" fill="currentColor" stroke="none"/>`,
-    compass: `<circle cx="12" cy="12" r="9.2"/><path d="m15 9-4.2 2.8L9 15l4.2-2.8L15 9z"/>`,
+// Small mockups for the tour slides, built from the app's own real
+// component classes/CSS (.stamp, starRow's .stars, the card/avatar
+// radii and shadow tokens) rather than abstract icon glyphs — no real
+// screenshots exist to embed here (this carousel runs before anyone's
+// signed in or any data has loaded), so the "cover art" underneath is a
+// flat gradient placeholder in the app's own palette, not a fetched
+// image, but everything drawn on top of it is genuine app UI at a
+// smaller scale.
+function tourMockupHtml(name) {
+  const mockups = {
+    gamepad: `
+      <div class="tour-mock tour-mock--log">
+        <div class="tour-mock__poster"><span class="tour-mock__stamp stamp stamp--played">PLAYED</span></div>
+        <div class="tour-mock__card">
+          <span class="tour-mock__label">Elden Ring</span>
+          <div class="tour-mock__lines"><div class="tour-mock__line tour-mock__line--short"></div></div>
+        </div>
+      </div>`,
+    star: `
+      <div class="tour-mock tour-mock--rate">
+        <div class="tour-mock__poster"></div>
+        <div class="tour-mock__card">
+          <span class="tour-mock__label">Hades II</span>
+          ${starRow(4.5, { size: 20 })}
+        </div>
+      </div>`,
+    review: `
+      <div class="tour-mock tour-mock--review">
+        <div class="tour-mock__poster"></div>
+        <div class="tour-mock__lines">
+          <div class="tour-mock__line"></div>
+          <div class="tour-mock__line"></div>
+          <div class="tour-mock__line tour-mock__line--short"></div>
+        </div>
+      </div>`,
+    people: `
+      <div class="tour-mock tour-mock--people">
+        <div class="tour-mock__stack">
+          <span class="tour-mock__avatar"></span>
+          <span class="tour-mock__avatar"></span>
+          <span class="tour-mock__avatar"></span>
+        </div>
+      </div>`,
+    list: `
+      <div class="tour-mock tour-mock--list">
+        <div class="tour-mock__stack">
+          <span class="tour-mock__poster"></span>
+          <span class="tour-mock__poster"></span>
+          <span class="tour-mock__poster"></span>
+        </div>
+      </div>`,
   };
-  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name] || paths.star}</svg>`;
+  return mockups[name] || mockups.star;
 }
