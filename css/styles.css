@@ -118,7 +118,11 @@
   --shadow-card: 0 6px 22px rgba(0,0,0,0.34);
   --shadow-float: 0 10px 40px rgba(0,0,0,0.46);
   --shadow-modal: 0 20px 70px rgba(0,0,0,0.6);
-  --shadow-accent: 0 6px 26px rgba(217, 255, 63, 0.34);
+  /* Neutral, not lime-tinted — a colour-matched shadow reads as a glow
+     around the button, which every other panel in the app dropped when
+     it was flattened. Same weight as --shadow-card so accent buttons
+     still sit slightly proud without calling attention to themselves. */
+  --shadow-accent: 0 6px 22px rgba(0,0,0,0.34);
   /* The console focus ring: a soft accent bloom, the cue that tells
      you where you are on a screen you're navigating, not clicking. */
   --glow-focus: 0 0 0 2px rgba(255,255,255,0.85), 0 0 26px rgba(217,255,63,0.5);
@@ -205,7 +209,7 @@
   --shadow-card: 0 6px 20px rgba(43, 29, 14, 0.12);
   --shadow-float: 0 10px 34px rgba(43, 29, 14, 0.16);
   --shadow-modal: 0 20px 60px rgba(43, 29, 14, 0.22);
-  --shadow-accent: 0 6px 22px rgba(107, 138, 18, 0.32);
+  --shadow-accent: 0 6px 20px rgba(43, 29, 14, 0.12);
   --glow-focus: 0 0 0 2px rgba(255,255,255,0.9), 0 0 22px rgba(107, 138, 18, 0.45);
 }
 /* body's own ambient-light gradient is a literal colour, not a token
