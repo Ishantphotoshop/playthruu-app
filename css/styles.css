@@ -2553,23 +2553,62 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    there's real colour for the glass to refract. */
 .modal-overlay--glass { background: rgba(4,4,8,0.68); }
 
-/* Flat solid sheet, not glass — the gradient/sheen/inset-highlight
-   recipe here only ever worked paired with backdrop-filter blurring
-   what's behind it; without that blur it just read as a translucent
-   panel with content bleeding through, not "glass" at all. */
+/* Glass, brought back specifically for this popup by request — every
+   other sheet in the app stays flat (see .modal--glass just below),
+   this is the one deliberate exception. */
 .modal--providers {
-  background: var(--surface);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.02) 46%, rgba(255,255,255,0.06) 100%),
+    rgba(18, 24, 36, 0.30);
+  backdrop-filter: blur(34px) saturate(200%) brightness(1.16);
+  -webkit-backdrop-filter: blur(34px) saturate(200%) brightness(1.16);
   border-top: none;
-  box-shadow: 0 -18px 50px -10px rgba(0,0,0,0.50);
+  box-shadow:
+    inset 0 1px 0.5px rgba(255,255,255,0.50),   /* specular top edge */
+    inset 0 0 0 0.5px rgba(255,255,255,0.13),   /* faint rim */
+    inset 0 -8px 18px -10px rgba(255,255,255,0.08),
+    0 -1px 3px rgba(0,0,0,0.18),
+    0 -18px 50px -10px rgba(0,0,0,0.50);        /* lift off the content */
 }
+/* Uneven top sheen — offsetting the highlight is what gives glass its
+   curvature. z-index 0 keeps it above the fill but below the content
+   (which is raised to z-index 1 just below). */
+.modal--providers::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit;
+  background:
+    linear-gradient(166deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.05) 26%, transparent 48%),
+    radial-gradient(120% 82% at 12% -8%, rgba(255,255,255,0.13), transparent 52%);
+  pointer-events: none; z-index: 0;
+}
+.modal--providers::before { z-index: 2; }  /* keep the grabber above the sheen */
 .modal--providers .modal__header,
 .modal--providers .modal__body { position: relative; z-index: 1; }
-.modal--providers .modal__close { background: var(--surface-high); }
-.modal--providers .provider-row {
-  background: var(--surface-high);
-  border: 1px solid var(--line);
+.modal--providers .modal__header h2 { text-shadow: 0 1px 3px rgba(0,0,0,0.4); }
+.modal--providers .modal__close { background: rgba(255,255,255,0.12); }
+/* This sheet's own fill never changes with theme, but the text and
+   hints inside it read var(--ink)/var(--ink-dim)/var(--ink-faint),
+   which DO change with theme — in light mode that's dark brown text
+   on a sheet that's still dark glass. Pinned back to the dark-theme
+   values; no-op in dark theme, since they already match there. */
+.modal--providers {
+  --ink: #f1f0e9;
+  --ink-dim: #8a9086;
+  --ink-faint: #5c6158;
 }
-.modal--providers .provider-row:hover { background: var(--surface-raised); }
+/* Rows become inner glass panels so they sit on the frosted surface
+   instead of looking like opaque cards pasted on top. */
+.modal--providers .provider-row {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+}
+.modal--providers .provider-row:hover { background: rgba(255,255,255,0.11); }
+
+/* Fallback: if a browser can't frost the backdrop, fall back to the
+   solid sheet rather than leaving text over see-through colour. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .modal--providers { background: var(--surface); }
+  .modal-overlay--glass { background: rgba(4,4,8,0.68); }
+}
 
 /* ---- shared flat sheet (log sheet + mood picker) ---------------------
    Same recipe as the provider popup, generalised so any sheet can wear
