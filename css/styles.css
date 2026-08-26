@@ -1709,19 +1709,20 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .auth-screen {
   position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column;
   justify-content: flex-end; background: #0b0b10; overflow: hidden;
-}
-/* Full-bleed now — the image covers the entire screen behind
-   everything, not just a capped-height band up top. Also blurs while
-   the "Continue with" popup is open (.auth-screen__art-wrap--blurred,
-   toggled by openProviderPopup() in auth-view.js) — a plain filter
-   on the actual art layer, not backdrop-filter on the popup, which
-   never composited reliably. */
-.auth-screen__art-wrap {
-  position: absolute; inset: 0; z-index: 0;
   transition: filter 320ms ease;
 }
-.auth-screen__art-wrap--blurred {
+/* Whole screen blurs while the "Continue with" popup is open — art,
+   wordmark, form fields, everything — not just the backdrop art
+   layer (.auth-screen--blurred, toggled by openProviderPopup() in
+   auth-view.js). A plain filter on the actual screen, not backdrop-
+   filter on the popup, which never composited reliably. */
+.auth-screen--blurred {
   filter: blur(28px) brightness(0.75);
+}
+/* Full-bleed now — the image covers the entire screen behind
+   everything, not just a capped-height band up top. */
+.auth-screen__art-wrap {
+  position: absolute; inset: 0; z-index: 0;
 }
 /* Two stacked layers crossfade between images (Netflix-style rotation).
    Full-bleed cover across the entire screen — the trade-off is a little
