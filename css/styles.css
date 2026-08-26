@@ -358,16 +358,6 @@ ul { list-style: none; margin: 0; padding: 0; }
   background: var(--bg);
   border-bottom: 1px solid var(--line);
 }
-/* Game pages with a hero backdrop only (see wireHeroTopbar in
-   game-view.js): the topbar starts fully transparent so the sticky bar
-   doesn't cut a hard rectangle out of the scrolling hero image/gradient
-   behind it — .gd-hero__scrim already handles legibility the same way
-   the login screen's backdrop does. --hero-solid is added once the
-   hero has scrolled out from underneath it, fading back to the normal
-   solid fill so the bar reads correctly over ordinary page content
-   below the fold. */
-.topbar--hero { background: transparent; border-bottom-color: transparent; transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease); }
-.topbar--hero.topbar--hero-solid { background: var(--bg); border-bottom-color: var(--line); }
 /* Home only: the wordmark alone, centred, given room to breathe. */
 .topbar--home { justify-content: center; padding-top: calc(var(--space-4) + var(--safe-top)); padding-bottom: var(--space-4); }
 .topbar--home .topbar__logo { font-size: 22px; letter-spacing: 0.14em; }
@@ -400,6 +390,16 @@ ul { list-style: none; margin: 0; padding: 0; }
 .topbar__back:active, .icon-btn:active { transform: scale(0.92); background: var(--surface-high); }
 .topbar__back svg, .icon-btn svg { width: 18px; height: 18px; }
 .topbar__right { display: flex; gap: var(--space-2); }
+/* Game pages only: no topbar strip/title at all — just this floating
+   .topbar__back reused on its own (same circular chip, no bar around
+   it), pinned to the top-left corner of #app. position:absolute rather
+   than sticky: #app itself (the actual scroll container, not window)
+   never moves on screen, only its content scrolls inside it, so an
+   absolutely-positioned child of it — #app is the containing block via
+   its own position:relative — stays visually pinned exactly like a
+   fixed/sticky element would, with none of sticky's flex/flow
+   requirements. Sits above .gd-hero (z-index 0) either way. */
+.game-back { position: absolute; z-index: 20; top: calc(var(--space-3) + var(--safe-top)); left: var(--space-4); }
 
 /* ------------------------------------------------------------ tabbar
    Floats above the content rather than sitting flush at the bottom

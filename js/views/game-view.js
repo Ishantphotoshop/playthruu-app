@@ -1,7 +1,7 @@
 import * as api from '../api.js';
 import { state } from '../state.js';
 import {
-  topBar, navBar, spinner, logCard, emptyState, posterFrame, iconUser,
+  navBar, spinner, logCard, emptyState, posterFrame, iconUser, iconBack,
 } from '../components.js';
 import { esc, starRow, formatDate, qs, qsa, toast, promptSignIn, recordRecentlyViewed, pulseLogTab } from '../utils.js';
 import { openLogModal } from './log-modal.js';
@@ -101,7 +101,13 @@ function castPreviewHtml(cast) {
 // action (log, backlog, add to list), which is exactly when this app
 // already asks for an account everywhere else.
 export async function renderGameView(root, { id, igdbId }) {
-  root.innerHTML = topBar('Game', { back: true }) + `<div class="view-body" id="game-body"><div class="view-loading" id="game-loading" hidden>${spinner()}</div></div>` + navBar('');
+  // No topbar strip/title here — the game's real title already shows
+  // big in .gd-head below, so a generic "Game" label bar added nothing,
+  // and it cut a hard rectangle across the hero image right where the
+  // whole point of .gd-hero__scrim/--hero-fade is a seamless blend.
+  // Just the back button, floating on its own (see .game-back).
+  root.innerHTML = `<button type="button" class="topbar__back game-back" data-action="back" aria-label="Back">${iconBack()}</button>`
+    + `<div class="view-body" id="game-body"><div class="view-loading" id="game-loading" hidden>${spinner()}</div></div>` + navBar('');
   const body = qs('#game-body', root);
   let activeTab = 'cast';
   let crewCache = null;
@@ -500,33 +506,7 @@ export async function renderGameView(root, { id, igdbId }) {
         });
       });
       wireCastPreviewJump();
-      wireHeroTopbar();
       paintTabContent();
-    }
-
-    // Only when this game actually has a hero image (.gd-hero__bg) —
-    // without one there's nothing for a transparent topbar to sit over,
-    // and it should just stay in its normal solid state. Scroll is read
-    // from #app (the real scroll container the sticky topbar scrolls
-    // within, not window — see #app's overflow-y:auto), and the handler
-    // self-removes once .topbar is no longer in the document (this runs
-    // once per game-page visit, but #app itself persists across every
-    // navigation, so without this the listener would otherwise pile up
-    // one per visit for the lifetime of the session).
-    function wireHeroTopbar() {
-      const topbarEl = qs('.topbar', root);
-      const heroBg = qs('.gd-hero__bg', body);
-      const heroEl = heroBg?.closest('.gd-hero');
-      if (!topbarEl || !heroEl) return;
-      topbarEl.classList.add('topbar--hero');
-      const scrollContainer = document.getElementById('app');
-      const onScroll = () => {
-        if (!topbarEl.isConnected) { scrollContainer.removeEventListener('scroll', onScroll); return; }
-        const solid = heroEl.getBoundingClientRect().bottom <= topbarEl.getBoundingClientRect().bottom;
-        topbarEl.classList.toggle('topbar--hero-solid', solid);
-      };
-      scrollContainer.addEventListener('scroll', onScroll, { passive: true });
-      onScroll();
     }
 
     async function paintTabContent() {
