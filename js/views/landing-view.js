@@ -468,17 +468,17 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
     const isLast = tourIndex === TOUR_SLIDES.length - 1;
     return `
       <div class="tour">
-        <div class="tour__sheet" id="tour-slide">
+        <div class="tour__slide" id="tour-slide">
           <div class="tour__art">${tourMockupHtml(slide.icon)}</div>
           <h2 class="tour__title">${esc(slide.title)}</h2>
           <p class="tour__body">${esc(slide.body)}</p>
-          <div class="tour__footer">
-            <button type="button" class="tour__skip" id="tour-skip">Skip</button>
-            <div class="tour__dots">
-              ${TOUR_SLIDES.map((_, i) => `<span class="tour__dot${i === tourIndex ? ' tour__dot--active' : ''}"></span>`).join('')}
-            </div>
-            <button type="button" class="tour__continue" id="tour-continue">${isLast ? 'Get Started' : 'Continue'}</button>
+        </div>
+        <div class="tour__footer">
+          <button type="button" class="tour__skip" id="tour-skip">Skip</button>
+          <div class="tour__dots">
+            ${TOUR_SLIDES.map((_, i) => `<span class="tour__dot${i === tourIndex ? ' tour__dot--active' : ''}"></span>`).join('')}
           </div>
+          <button type="button" class="tour__continue" id="tour-continue">${isLast ? 'Get Started' : 'Continue'}</button>
         </div>
       </div>`;
   }
