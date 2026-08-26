@@ -217,21 +217,11 @@
     var(--bg);
 }
 
-/* The tabbar's glass is tuned white-on-dark by default (see .tabbar
-   below) because most of the time it floats over game cover art. But it
-   also sits over the app's own plain background on screens like
-   Settings and Lists, which in light theme is cream, not dark — the
-   same near-white glass and white text that reads fine over art becomes
-   almost invisible over a cream page. Re-tinted dark-on-cream here,
-   scoped to light theme only so the dark theme (already tuned and
-   approved) is untouched. */
-:root[data-theme="light"] .tabbar {
-  background: rgba(43, 29, 14, 0.055);
-  border-color: rgba(43, 29, 14, 0.14);
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.6),
-    0 10px 34px -8px rgba(43,29,14,0.20);
-}
+/* .tabbar's own background/border now use theme-aware tokens (var(--
+   surface-raised), var(--line)) directly, so it no longer needs a
+   light-theme override here — only the item text/icon colours below
+   still need one, since those stay hardcoded to a white-ish value
+   that only worked against the old dark glass fill. */
 :root[data-theme="light"] .tabbar__item {
   color: rgba(43, 29, 14, 0.55);
   text-shadow: none;
@@ -388,10 +378,8 @@ ul { list-style: none; margin: 0; padding: 0; }
 }
 .topbar__back, .icon-btn {
   width: 38px; height: 38px; display: grid; place-items: center;
-  background: linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.03));
-  backdrop-filter: var(--glass-filter); -webkit-backdrop-filter: var(--glass-filter);
-  border: 1px solid var(--glass-border);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.22);
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
   border-radius: 50%; flex-shrink: 0; color: var(--ink);
   transition: background var(--dur) var(--ease), transform var(--dur-fast) var(--ease);
 }
@@ -428,16 +416,12 @@ ul { list-style: none; margin: 0; padding: 0; }
   width: calc(100% - var(--space-6)); max-width: 460px;
   display: flex; justify-content: space-around; align-items: center;
   padding: var(--space-2);
-  /* Transparent water-glass — glass is kept HERE (and on the login
-     popup) only; everything else in the app is solid. */
-  background: rgba(255,255,255,0.05);
-  backdrop-filter: blur(26px) saturate(175%);
-  -webkit-backdrop-filter: blur(26px) saturate(175%);
-  border: 1px solid rgba(255,255,255,0.12);
+  /* Flat solid surface, not glass — matches every other panel in the
+     app now instead of being the one translucent exception. */
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
   border-radius: var(--radius-pill);
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.15),
-    0 10px 34px -8px rgba(0,0,0,0.55);       /* float */
+  box-shadow: 0 10px 34px -8px rgba(0,0,0,0.55);
   z-index: 30;
   isolation: isolate;
 }
@@ -446,7 +430,6 @@ ul { list-style: none; margin: 0; padding: 0; }
    where it curves, so this strip blurs its own backdrop a second time
    and fades out downward — that gradient of distortion is what stops the
    surface reading as one uniformly frosted panel. Harmless if an engine
-   ignores nested backdrop-filter: it simply isn't drawn. */
 /* Sheen + refraction layers removed — the bar is plain transparent glass
    now, so these no longer exist. */
 .tabbar::after { display: none; }
@@ -554,12 +537,6 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    near-transparent — with no blur behind it, the labels would be sitting
    directly on top of raw cover art. The sheen and refraction layers are
    dropped here too, since neither means anything without the material. */
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .tabbar { background: var(--surface-raised); }
-  .tabbar::before, .tabbar::after { display: none; }
-  .topbar { background: var(--bg); }
-}
-
 /* ------------------------------------------------------------ buttons */
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2);
@@ -593,10 +570,8 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .btn:focus-visible { outline: none; box-shadow: var(--glow-focus); }
 .btn--accent:active { filter: brightness(1.08); }
 .btn--ghost {
-  background: linear-gradient(180deg, rgba(255,255,255,0.09), rgba(255,255,255,0.025));
-  border: 1px solid var(--glass-border);
-  backdrop-filter: var(--glass-filter); -webkit-backdrop-filter: var(--glass-filter);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.20);
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
 }
 .btn--danger { background: transparent; color: var(--danger); border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent); }
 .btn--block { width: 100%; }
@@ -688,10 +663,8 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 
 .segmented {
   display: flex; border-radius: var(--radius-pill); padding: var(--space-1); gap: var(--space-1);
-  background: linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.02));
-  border: 1px solid var(--glass-border);
-  backdrop-filter: var(--glass-filter); -webkit-backdrop-filter: var(--glass-filter);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.18);
+  background: var(--surface);
+  border: 1px solid var(--line);
 }
 .segmented--wide { margin-bottom: var(--space-4); }
 .segmented__item {
@@ -701,7 +674,6 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 }
 .segmented__item--active {
   background: var(--surface-high); color: var(--ink);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.3), inset 0 1px 0 var(--glass-highlight);
 }
 
 .search-bar-row { display: flex; gap: 8px; margin-bottom: 16px; align-items: center; }
@@ -768,7 +740,6 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .discovery-goty-badge {
   position: absolute; top: 6px; left: 6px; z-index: 2;
   padding: 2px 7px; border-radius: var(--radius-pill);
-  background: rgba(10,14,22,0.65); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
   color: #fff; font-size: 10.5px; font-weight: 700; letter-spacing: 0.02em;
 }
 /* Double-tap-to-save badge — invisible until it pops, purely a flash of
@@ -1041,13 +1012,9 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    other option) — the old version showed a Sort dropdown plus a Filters
    button before a single result did, which is what this replaces. */
 .discover-toolbar { display: flex; gap: 10px; margin-bottom: 16px; }
-/* Same glass language as .segmented and .landing-entry__row — a tinted
-   gradient + blur instead of a flat bordered box, so the toolbar reads
-   as part of the same app as Browse's redesigned header. */
 .discover-select, .discover-filters-btn {
-  background: linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.02));
-  border: 1px solid var(--glass-border);
-  backdrop-filter: var(--glass-filter); -webkit-backdrop-filter: var(--glass-filter);
+  background: var(--surface);
+  border: 1px solid var(--line);
 }
 .discover-filters-btn {
   position: relative; flex-shrink: 0; display: flex; align-items: center; gap: 6px;
@@ -1156,9 +1123,8 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .poster-grid3__cover { width: 100%; aspect-ratio: var(--ratio-card); object-fit: cover; border-radius: 8px; background: var(--surface); box-shadow: var(--shadow-card); }
 
 .rating-histogram {
-  background: var(--glass-light); border: 1px solid var(--glass-border);
+  background: var(--surface); border: 1px solid var(--line);
   border-radius: var(--radius-m); padding: var(--space-4); margin-bottom: var(--space-2);
-  backdrop-filter: var(--glass-filter); -webkit-backdrop-filter: var(--glass-filter);
 }
 .rating-histogram--empty { display: grid; place-items: center; min-height: 96px; }
 .rating-histogram__empty { color: var(--ink-faint); font-size: var(--text-meta); }
@@ -1427,7 +1393,6 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center;
   /* Sits on its own dark disc over poster art, not the page background —
      the icon stays white regardless of theme so it doesn't go dark-on-dark. */
-  background: rgba(10,10,14,0.75); backdrop-filter: blur(2px); color: #ffffff;
 }
 .playing-slot__remove svg { width: 11px; height: 11px; }
 .playing-empty-hint { padding: 8px 2px 4px; }
@@ -1526,7 +1491,6 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   position: fixed; inset: 0; z-index: 200;
   display: grid; place-items: center;
   background: rgba(4,6,12,0.94);
-  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
   animation: fade-in var(--dur) var(--ease);
   overflow: hidden;
 }
@@ -1540,8 +1504,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .poster-viewer__close {
   position: absolute; top: calc(var(--space-4) + var(--safe-top)); right: var(--space-4);
   width: 42px; height: 42px; border-radius: 50%; z-index: 2;
-  background: var(--glass-light); border: 1px solid var(--glass-border);
-  backdrop-filter: var(--glass-filter); -webkit-backdrop-filter: var(--glass-filter);
+  background: var(--surface-high); border: 1px solid var(--line);
   color: var(--ink); font-size: 26px; line-height: 1; display: grid; place-items: center;
 }
 .poster-viewer__hint {
@@ -1561,23 +1524,21 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 #game-tab-content { margin-bottom: 22px; }
 
 .stat-card-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-2); margin: var(--space-5) 0; }
-/* Tinted glass panels instead of flat colour blocks — the coloured
-   fills read heavy against the calmer background. */
+/* Flat tinted panels — solid colour-mixed fills, not glass. */
 .stat-card {
   border-radius: var(--radius-m); padding: var(--space-4) var(--space-3) var(--space-3);
-  border: 1px solid var(--glass-border);
-  backdrop-filter: var(--glass-filter); -webkit-backdrop-filter: var(--glass-filter);
+  border: 1px solid var(--line);
 }
 .stat-card svg { width: 19px; height: 19px; margin-bottom: var(--space-4); opacity: 0.9; }
 .stat-card b { display: block; font-family: var(--font-mono); font-size: 20px; font-weight: 500; letter-spacing: -0.02em; }
 .stat-card span { font-size: var(--text-label); text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.75; margin-top: 2px; display: block; }
-.stat-card--green { background: color-mix(in srgb, var(--success) 10%, var(--glass-light)); color: var(--success); }
+.stat-card--green { background: color-mix(in srgb, var(--success) 10%, var(--surface)); color: var(--success); }
 .stat-card--green b { color: var(--success); }
-.stat-card--grey { background: var(--glass-light); color: var(--ink-dim); }
+.stat-card--grey { background: var(--surface); color: var(--ink-dim); }
 #reviews-stat-card { cursor: pointer; transition: transform 0.1s ease; }
 #reviews-stat-card:active { transform: scale(0.96); }
 .stat-card--grey b { color: var(--ink); }
-.stat-card--blue { background: color-mix(in srgb, var(--accent) 12%, var(--glass-light)); color: var(--accent-bright); }
+.stat-card--blue { background: color-mix(in srgb, var(--accent) 12%, var(--surface)); color: var(--accent-bright); }
 .stat-card--blue b { color: var(--accent-bright); }
 
 .chip-row { display: flex; flex-wrap: wrap; gap: 10px; }
@@ -1608,7 +1569,6 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 /* ------------------------------------------------------------ modal */
 .modal-overlay {
   position: fixed; inset: 0; background: rgba(4,4,8,0.68);
-  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
   display: flex; align-items: flex-end; justify-content: center; z-index: 100;
   animation: fade-in 320ms ease;
 }
@@ -1619,7 +1579,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   position: relative;
   background: var(--surface); width: 100%; max-width: 560px;
   border-radius: var(--radius-l) var(--radius-l) 0 0;
-  border-top: 1px solid var(--glass-border);
+  border-top: 1px solid var(--line);
   max-height: 88vh; display: flex; flex-direction: column;
   box-shadow: var(--shadow-modal);
   /* A slow, soft ease-out so the sheet visibly glides up and settles
@@ -1653,7 +1613,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   border: 1px solid var(--line-strong);
   border-radius: 50%;
   color: transparent; font-size: 0; line-height: 0;
-  box-shadow: inset 0 1px 1px rgba(255,255,255,0.08), 0 2px 6px rgba(0,0,0,0.4);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
   transition: transform var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
 }
 .modal__close svg { display: none; }
@@ -1990,7 +1950,6 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   position: fixed; inset: 0; z-index: 120;
   display: flex; align-items: center; justify-content: center;
   background: rgba(6,6,10,0.95);
-  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
   animation: fade-in var(--dur-fast) var(--ease);
   touch-action: none;
   overflow: hidden;
@@ -2014,7 +1973,6 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   width: 38px; height: 38px; display: grid; place-items: center;
   border-radius: 50%; color: #fff;
   background: rgba(255,255,255,0.14);
-  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
 }
 .avatar-viewer__close svg { width: 17px; height: 17px; }
 .avatar-viewer__hint {
@@ -2297,7 +2255,6 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .gd-reviews { display: flex; flex-direction: column; }
 .gd-reviews .log-card {
   background: none; border: none; border-radius: 0; box-shadow: none;
-  backdrop-filter: none; -webkit-backdrop-filter: none;
   padding: var(--space-4) 0;
   border-bottom: 1px solid var(--gd-rule);
 }
@@ -2402,7 +2359,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .hour-picker__edit {
   display: inline-flex; align-items: center; gap: 4px; margin-left: 10px; align-self: center;
   padding: 5px 11px; border-radius: var(--radius-pill);
-  background: var(--surface-high); border: 1px solid var(--glass-border);
+  background: var(--surface-high); border: 1px solid var(--line);
   color: var(--accent-bright); font-size: 12px; font-weight: 700; cursor: pointer;
 }
 .hour-picker__edit svg { width: 13px; height: 13px; }
@@ -2495,7 +2452,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .report-sheet__subject { margin-bottom: var(--space-3); }
 .report-reasons {
   display: flex; flex-direction: column;
-  border: 1px solid var(--glass-border); border-radius: var(--radius-s);
+  border: 1px solid var(--line); border-radius: var(--radius-s);
   overflow: hidden; margin-bottom: var(--space-4);
 }
 .report-reason {
@@ -2539,15 +2496,13 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   display: flex; align-items: center; justify-content: center; gap: 14px;
   width: 100%; min-height: 56px; padding: 0 var(--space-4);
   border-radius: var(--radius-pill);
-  background: rgba(10,10,14,0.5);
-  border: 1px solid var(--glass-border);
-  backdrop-filter: blur(18px) saturate(160%);
-  -webkit-backdrop-filter: blur(18px) saturate(160%);
-  color: #fff; font-family: var(--font-display), serif;
+  background: var(--surface-high);
+  border: 1px solid var(--line);
+  color: var(--ink); font-family: var(--font-display), serif;
   font-size: 16px; font-weight: 600; cursor: pointer;
   transition: background var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
 }
-.auth-continue:hover { background: rgba(20,20,26,0.62); }
+.auth-continue:hover { background: var(--surface-raised); }
 .auth-continue:active { transform: scale(0.98); }
 .auth-continue:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 2px; }
 .auth-continue__label { white-space: nowrap; }
@@ -2573,13 +2528,13 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   display: flex; align-items: center; gap: var(--space-3);
   width: 100%; min-height: 56px; padding: 0 var(--space-3);
   border-radius: 14px;
-  background: var(--surface-high, rgba(255,255,255,0.05));
-  border: 1px solid var(--glass-border);
+  background: var(--surface-high);
+  border: 1px solid var(--line);
   color: var(--ink); font-weight: 600; font-size: var(--text-body);
   cursor: pointer; text-align: left;
   transition: background var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
 }
-.provider-row:hover { background: rgba(255,255,255,0.09); }
+.provider-row:hover { background: var(--surface-raised); }
 .provider-row:active { transform: scale(0.98); }
 .provider-row:disabled { opacity: 0.55; cursor: default; transform: none; }
 .provider-row__disc {
@@ -2596,106 +2551,40 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    edge, and an offset sheen so it reads as curved glass rather than a
    flat panel. The scrim behind is lightened (.modal-overlay--glass) so
    there's real colour for the glass to refract. */
-.modal-overlay--glass { background: rgba(4,4,8,0.42); }
+.modal-overlay--glass { background: rgba(4,4,8,0.68); }
 
+/* Flat solid sheet, not glass — the gradient/sheen/inset-highlight
+   recipe here only ever worked paired with backdrop-filter blurring
+   what's behind it; without that blur it just read as a translucent
+   panel with content bleeding through, not "glass" at all. */
 .modal--providers {
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.02) 46%, rgba(255,255,255,0.06) 100%),
-    rgba(18, 24, 36, 0.30);
-  backdrop-filter: blur(34px) saturate(200%) brightness(1.16);
-  -webkit-backdrop-filter: blur(34px) saturate(200%) brightness(1.16);
+  background: var(--surface);
   border-top: none;
-  box-shadow:
-    inset 0 1px 0.5px rgba(255,255,255,0.50),   /* specular top edge */
-    inset 0 0 0 0.5px rgba(255,255,255,0.13),   /* faint rim */
-    inset 0 -8px 18px -10px rgba(255,255,255,0.08),
-    0 -1px 3px rgba(0,0,0,0.18),
-    0 -18px 50px -10px rgba(0,0,0,0.50);        /* lift off the content */
+  box-shadow: 0 -18px 50px -10px rgba(0,0,0,0.50);
 }
-/* Uneven top sheen — offsetting the highlight is what gives glass its
-   curvature. z-index 0 keeps it above the fill but below the content
-   (which is raised to z-index 1 just below). */
-.modal--providers::after {
-  content: ''; position: absolute; inset: 0; border-radius: inherit;
-  background:
-    linear-gradient(166deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.05) 26%, transparent 48%),
-    radial-gradient(120% 82% at 12% -8%, rgba(255,255,255,0.13), transparent 52%);
-  pointer-events: none; z-index: 0;
-}
-.modal--providers::before { z-index: 2; }  /* keep the grabber above the sheen */
 .modal--providers .modal__header,
 .modal--providers .modal__body { position: relative; z-index: 1; }
-.modal--providers .modal__header h2 { text-shadow: 0 1px 3px rgba(0,0,0,0.4); }
-.modal--providers .modal__close { background: rgba(255,255,255,0.12); }
-/* This sheet's own fill never changes with theme (see the comment above
-   this block), but the text and hints inside it read var(--ink)/
-   var(--ink-dim)/var(--ink-faint), which DO change with theme — in light
-   mode that's dark brown text on a sheet that's still dark glass. Pinned
-   back to the dark-theme values; no-op in dark theme, since they already
-   match there. */
-.modal--providers {
-  --ink: #f1f0e9;
-  --ink-dim: #8a9086;
-  --ink-faint: #5c6158;
-}
-/* Rows become inner glass panels so they sit on the frosted surface
-   instead of looking like opaque cards pasted on top. */
+.modal--providers .modal__close { background: var(--surface-high); }
 .modal--providers .provider-row {
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.12);
+  background: var(--surface-high);
+  border: 1px solid var(--line);
 }
-.modal--providers .provider-row:hover { background: rgba(255,255,255,0.11); }
+.modal--providers .provider-row:hover { background: var(--surface-raised); }
 
-/* Fallback: if a browser can't frost the backdrop, fall back to the
-   solid sheet rather than leaving text over see-through colour. */
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .modal--providers { background: var(--surface); }
-  .modal-overlay--glass { background: rgba(4,4,8,0.68); }
-}
-
-/* ---- shared liquid-glass sheet (log sheet + mood picker) ------------
+/* ---- shared flat sheet (log sheet + mood picker) ---------------------
    Same recipe as the provider popup, generalised so any sheet can wear
    it via .modal--glass. */
 .modal--glass {
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.09) 0%, rgba(255,255,255,0.02) 46%, rgba(255,255,255,0.055) 100%),
-    rgba(16, 22, 34, 0.34);
-  backdrop-filter: blur(34px) saturate(190%) brightness(1.13);
-  -webkit-backdrop-filter: blur(34px) saturate(190%) brightness(1.13);
+  background: var(--surface);
   border-top: none;
-  box-shadow:
-    inset 0 1px 0.5px rgba(255,255,255,0.45),
-    inset 0 0 0 0.5px rgba(255,255,255,0.12),
-    inset 0 -8px 18px -10px rgba(255,255,255,0.07),
-    0 -1px 3px rgba(0,0,0,0.18),
-    0 -18px 50px -10px rgba(0,0,0,0.52);
+  box-shadow: 0 -18px 50px -10px rgba(0,0,0,0.52);
 }
-.modal--glass::after {
-  content: ''; position: absolute; inset: 0; border-radius: inherit;
-  background:
-    linear-gradient(166deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.045) 26%, transparent 48%),
-    radial-gradient(120% 82% at 12% -8%, rgba(255,255,255,0.10), transparent 52%);
-  pointer-events: none; z-index: 0;
-}
-.modal--glass::before { z-index: 2; }
 .modal--glass .modal__header,
 .modal--glass .modal__body,
 .modal--glass .log-sheet__head,
 .modal--glass .log-sheet__body { position: relative; z-index: 1; }
 .modal--glass .modal__close,
-.modal--glass .log-sheet__close { background: rgba(255,255,255,0.14); }
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .modal--glass { background: var(--surface); }
-}
-/* Same reasoning as .modal--providers just above: this sheet's fill
-   stays dark glass in every theme, so the ink tokens its contents read
-   need pinning too, or light theme's dark-brown ink goes unreadable on
-   it. No-op in dark theme. */
-.modal--glass {
-  --ink: #f1f0e9;
-  --ink-dim: #8a9086;
-  --ink-faint: #5c6158;
-}
+.modal--glass .log-sheet__close { background: var(--surface-high); }
 
 /* Log sheet, redesigned on glass: the three quick actions become their
    own rounded glass cards, and the section rules soften to hairlines of
@@ -2804,7 +2693,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .set-account__photo {
   display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;
   padding: 9px 15px; border-radius: var(--radius-pill);
-  background: var(--surface-high); border: 1px solid var(--glass-border);
+  background: var(--surface-high); border: 1px solid var(--line);
   color: var(--ink); font-size: var(--text-meta); font-weight: 600; cursor: pointer;
 }
 .set-account__photo svg { width: 16px; height: 16px; }
@@ -3399,7 +3288,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .thread-composer__icon svg { width: 20px; height: 20px; }
 .thread-composer__icon:active { background: var(--surface-raised); }
 .thread-composer input {
-  flex: 1; min-width: 0; background: var(--surface); border: 1px solid var(--glass-border);
+  flex: 1; min-width: 0; background: var(--surface); border: 1px solid var(--line);
   border-radius: 999px; padding: 10px 16px; font-size: 14px; color: var(--ink);
 }
 .thread-composer input::placeholder { color: var(--ink-faint); }
@@ -3440,7 +3329,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .msg-actions { padding: var(--space-3) var(--space-3) 0; overflow-y: auto; max-height: 80vh; }
 .emoji-picker__search {
   display: flex; align-items: center; gap: 8px;
-  background: var(--surface); border: 1px solid var(--glass-border); border-radius: 999px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 999px;
   padding: 8px 14px; margin-bottom: var(--space-2);
 }
 .emoji-picker__search svg { width: 16px; height: 16px; color: var(--ink-faint); flex-shrink: 0; }
