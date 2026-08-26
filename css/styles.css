@@ -2555,30 +2555,53 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 
 /* Glass, brought back specifically for this popup by request — every
    other sheet in the app stays flat (see .modal--glass just below),
-   this is the one deliberate exception. */
+   this is the one deliberate exception. Pushed further than the
+   original recipe for a more premium read: real Apple "Liquid Glass"
+   bends light through actual refraction (an SVG displacement filter,
+   Chrome-only, silently no-ops on Safari/Firefox) — deliberately
+   skipped that here since this popup needs to render correctly on
+   every browser a website visitor might use. What CSS *can* do
+   everywhere: more light layers (three now, not two, so the surface
+   reads as curved rather than flat-lit from one side), a stronger
+   backdrop pull, a faint brand-colour glint at the rim the way real
+   glass picks up ambient colour, and a slow, near-imperceptible
+   shimmer so the highlight isn't perfectly static. */
 .modal--providers {
   background:
-    linear-gradient(180deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.02) 46%, rgba(255,255,255,0.06) 100%),
-    rgba(18, 24, 36, 0.30);
-  backdrop-filter: blur(34px) saturate(200%) brightness(1.16);
-  -webkit-backdrop-filter: blur(34px) saturate(200%) brightness(1.16);
+    linear-gradient(180deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.02) 40%, rgba(255,255,255,0.07) 100%),
+    rgba(18, 24, 36, 0.28);
+  backdrop-filter: blur(40px) saturate(220%) brightness(1.2) contrast(1.05);
+  -webkit-backdrop-filter: blur(40px) saturate(220%) brightness(1.2) contrast(1.05);
   border-top: none;
   box-shadow:
-    inset 0 1px 0.5px rgba(255,255,255,0.50),   /* specular top edge */
-    inset 0 0 0 0.5px rgba(255,255,255,0.13),   /* faint rim */
-    inset 0 -8px 18px -10px rgba(255,255,255,0.08),
+    inset 0 1.5px 0.5px rgba(255,255,255,0.6),        /* specular top edge */
+    inset 0 0 0 0.5px rgba(255,255,255,0.15),         /* faint rim */
+    inset 0 0 24px 0 color-mix(in srgb, var(--accent) 10%, transparent), /* brand glint */
+    inset 0 -8px 20px -10px rgba(255,255,255,0.09),
     0 -1px 3px rgba(0,0,0,0.18),
-    0 -18px 50px -10px rgba(0,0,0,0.50);        /* lift off the content */
+    0 -22px 60px -12px rgba(0,0,0,0.55);              /* lift off the content */
 }
-/* Uneven top sheen — offsetting the highlight is what gives glass its
-   curvature. z-index 0 keeps it above the fill but below the content
-   (which is raised to z-index 1 just below). */
+/* Three light layers instead of two — an offset top sheen, a bright
+   spot near the top-left (the "primary" highlight), and a second,
+   dimmer spot lower-right (a secondary bounce) — is what actually
+   reads as a curved surface catching light from more than one angle,
+   rather than one flat gradient painted across it. The sheen slowly
+   drifts (shimmer, ~14s) so the glass doesn't look perfectly frozen;
+   the movement is subtle enough to not distract from the content. */
 .modal--providers::after {
   content: ''; position: absolute; inset: 0; border-radius: inherit;
   background:
-    linear-gradient(166deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.05) 26%, transparent 48%),
-    radial-gradient(120% 82% at 12% -8%, rgba(255,255,255,0.13), transparent 52%);
+    linear-gradient(166deg, rgba(255,255,255,0.20) 0%, rgba(255,255,255,0.05) 24%, transparent 46%),
+    radial-gradient(110% 70% at 15% -10%, rgba(255,255,255,0.16), transparent 55%),
+    radial-gradient(90% 60% at 88% 115%, rgba(255,255,255,0.07), transparent 60%);
+  background-size: 140% 140%, 140% 140%, 140% 140%;
+  background-position: 0% 0%, 0% 0%, 100% 100%;
+  animation: providers-shimmer 14s ease-in-out infinite;
   pointer-events: none; z-index: 0;
+}
+@keyframes providers-shimmer {
+  0%, 100% { background-position: 0% 0%, 0% 0%, 100% 100%; }
+  50% { background-position: 8% 6%, 6% 4%, 94% 106%; }
 }
 .modal--providers::before { z-index: 2; }  /* keep the grabber above the sheen */
 .modal--providers .modal__header,
@@ -2596,12 +2619,18 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   --ink-faint: #5c6158;
 }
 /* Rows become inner glass panels so they sit on the frosted surface
-   instead of looking like opaque cards pasted on top. */
+   instead of looking like opaque cards pasted on top — each with its
+   own faint top highlight so the rows read as small lozenges of the
+   same material, not flat cards laid over glass. */
 .modal--providers .provider-row {
   background: rgba(255,255,255,0.06);
   border: 1px solid rgba(255,255,255,0.12);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.14);
 }
-.modal--providers .provider-row:hover { background: rgba(255,255,255,0.11); }
+.modal--providers .provider-row:hover {
+  background: rgba(255,255,255,0.11);
+  border-color: rgba(255,255,255,0.2);
+}
 
 /* Fallback: if a browser can't frost the backdrop, fall back to the
    solid sheet rather than leaving text over see-through colour. */
