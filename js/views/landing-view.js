@@ -153,6 +153,7 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
   let screen = startScreen;   // 'entry' | 'browse' | 'search' | 'tour'
   let browseTab = 'games';    // 'games' | 'reviews', only used on the browse screen
   let tourIndex = 0;
+  let tourDirection = null;   // 'forward' | 'backward' | null — which way the next tourHtml() paint should glide in from
 
   const goToAuth = (startMode = 'signin') => renderAuthView(root, { startMode });
 
@@ -465,10 +466,18 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
   // ---- tour: a short feature carousel, ending on sign-up --------------
   function tourHtml() {
     const slide = TOUR_SLIDES[tourIndex];
+    // Glides the new slide in from the direction it was swiped from
+    // (see wireTourSwipe below) instead of just cutting straight to it
+    // — that entrance is what actually reads as "sliding," since the
+    // drag-follow during the gesture itself gets wiped the instant this
+    // re-renders. Consumed once so a later plain re-paint (e.g. a theme
+    // toggle refresh) doesn't replay it.
+    const enterClass = tourDirection ? ` tour__content--enter-${tourDirection}` : '';
+    tourDirection = null;
     return `
       <div class="tour">
         <button type="button" class="tour__skip" id="tour-skip">Skip</button>
-        <div class="tour__content" id="tour-slide">
+        <div class="tour__content${enterClass}" id="tour-slide">
           <div class="tour__art">${tourMockupHtml(slide.icon)}</div>
           <h2 class="tour__title">${esc(slide.title)}</h2>
           <p class="tour__body">${esc(slide.body)}</p>
@@ -510,15 +519,23 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
       if (!dragging) return;
       dragging = false;
       try { slide.releasePointerCapture(e.pointerId); } catch { /* already released */ }
-      slide.style.transition = 'transform 0.25s ease, opacity 0.25s ease';
-      slide.style.transform = ''; slide.style.opacity = '';
-      setTimeout(() => { slide.style.transition = ''; }, 260);
       if (dx <= -SWIPE_THRESHOLD) {
-        if (tourIndex === TOUR_SLIDES.length - 1) goToAuth('signup');
-        else { tourIndex += 1; paintScreen(); }
+        if (tourIndex === TOUR_SLIDES.length - 1) { goToAuth('signup'); return; }
+        tourDirection = 'forward';
+        tourIndex += 1;
+        paintScreen();
       } else if (dx >= SWIPE_THRESHOLD && tourIndex > 0) {
+        tourDirection = 'backward';
         tourIndex -= 1;
         paintScreen();
+      } else {
+        // Didn't cross the threshold — spring the same slide back to
+        // rest instead of advancing. paintScreen() isn't called on this
+        // path, so (unlike the two branches above, which replace the
+        // element outright) this transition actually gets to play.
+        slide.style.transition = 'transform 0.25s ease, opacity 0.25s ease';
+        slide.style.transform = ''; slide.style.opacity = '';
+        setTimeout(() => { slide.style.transition = ''; }, 260);
       }
     };
     slide.addEventListener('pointerup', endSwipe);
