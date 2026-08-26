@@ -2992,7 +2992,17 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   background: none; border: none; color: var(--ink-faint); font-size: 14px; font-weight: 600;
   cursor: pointer; padding: 10px;
 }
-.tour__content { display: flex; flex-direction: column; align-items: center; }
+/* Fills the full tour area (not just its own text/art's natural size)
+   so a swipe anywhere on the screen registers — wireTourSwipe binds its
+   pointer listeners to this element, and a box only as big as its
+   content would only catch drags starting right over the title/body
+   text, not the empty space around it. touch-action:pan-y leaves
+   vertical browser gestures alone but keeps horizontal drags free for
+   JS to read as the swipe. */
+.tour__content {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  width: 100%; height: 100%; touch-action: pan-y;
+}
 /* Each slide's mockup replaces the old single abstract glyph with a
    small, real piece of the app's own UI — same classes/visual language
    (.stamp, starRow's .stars, etc.) as the genuine screens, just built
