@@ -339,6 +339,19 @@ async function boot() {
     // through to the landing funnel instead.
     registerPublicRoutes();
     setNotFound(() => renderLandingView(appEl));
+    // A signed-out visitor's hash can be left over from earlier in the
+    // same browser/app session — tapping Search or Discover sets
+    // location.hash, and that persists across a full relaunch (the OS/
+    // browser resumes the last URL, not the manifest's start_url), so
+    // reopening the app was landing back on whichever of those was open
+    // last instead of the entry screen. /search and /discover aren't
+    // links anyone would ever share or deep-link to fresh, unlike
+    // /game/:id — so only those two are treated as stale session state
+    // and cleared before the router's first resolve.
+    const hashPath = location.hash.slice(1).split('?')[0];
+    if (hashPath === '/search' || hashPath === '/discover') {
+      history.replaceState(null, '', location.pathname + location.search);
+    }
     startRouter();
   }
 
