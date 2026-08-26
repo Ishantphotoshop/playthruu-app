@@ -2557,17 +2557,22 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    other sheet in the app stays flat (see .modal--glass just below),
    this is the one deliberate exception.
 
-   Reverted to the exact recipe from a known-working shipped build
-   (apk_builds/Questlog-v3.18.0-liquid-glass-fixed-mosaic-shadow) —
-   the "premium upgrade" pass after this (three gradient layers, a
-   shimmer animation, a darker/more opaque tint, a pushed-up blur
-   radius) left backdrop-filter not visibly rendering at all on a
-   real device. Rather than guess which of those stacked changes
-   caused it, went straight back to the values proven to actually
-   work, matching pixel-for-pixel. Future changes to this block
-   should be made one at a time with a real check in between, not
-   stacked like the last pass was. */
+   The actual reason no version of this rendered was never the blur
+   values — .modal (the base class every sheet extends, including
+   this one) sets will-change: transform, opacity for its slide-up
+   entrance animation, on the SAME element backdrop-filter is applied
+   to. That combination is a known Chromium/WebKit bug: pre-promoting
+   a compositing layer for transform/opacity via will-change
+   interferes with backdrop-filter establishing what's actually
+   behind it, and it can silently render as if there's nothing to
+   blur — full clarity, not just less blur. Every value tweaked in
+   earlier passes (radius, saturation, tint opacity) was adjusting a
+   filter that was structurally prevented from ever compositing.
+   will-change: auto below cancels that inherited hint specifically
+   for this one popup — every other .modal keeps it, since only this
+   one pairs the animation with backdrop-filter. */
 .modal--providers {
+  will-change: auto;
   background:
     linear-gradient(180deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.02) 46%, rgba(255,255,255,0.06) 100%),
     rgba(18, 24, 36, 0.30);
