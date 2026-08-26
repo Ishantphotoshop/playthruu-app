@@ -2556,20 +2556,52 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 }
 .provider-row__disc svg { width: 22px; height: 22px; display: block; }
 
-/* ---- provider popup ----
-   backdrop-filter on the popup itself was the wrong approach —
-   several rebuilds never got it compositing on a real device. What
-   was actually wanted is simpler and far more reliable: blur the
-   login screen's own backdrop art directly (see .auth-screen__art-
-   wrap--blurred, toggled by JS in auth-view.js's openProviderPopup())
-   with a plain CSS filter, and let this popup itself just be a
-   normal flat sheet — same var(--surface) fill as every other .modal
-   in the app, no special-casing needed here at all. */
-.modal--providers .provider-row {
-  background: var(--surface-high);
-  border: 1px solid var(--line);
+/* ---- provider popup: liquid glass sheet ----
+   The blur itself lives on the login screen behind (.auth-screen--
+   blurred in auth-view.js's openProviderPopup()) via a plain CSS
+   filter — backdrop-filter on this sheet never composited reliably
+   across several rebuilds. Since the backdrop is already blurred by
+   the time it reaches here, this sheet doesn't need backdrop-filter
+   to read as glass: a translucent tinted fill plus a soft diagonal
+   sheen and specular edge highlights (all plain gradients/box-shadow,
+   nothing compositing-dependent) is enough to sell it, and renders
+   reliably everywhere. Ink tokens are pinned since the tint is dark
+   regardless of the active theme. */
+.modal--providers {
+  --ink: #f3f2ec;
+  --ink-dim: #a9ada2;
+  --ink-faint: #6c7066;
+  position: relative;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.02) 38%, rgba(255,255,255,0.06) 100%),
+    rgba(18, 20, 26, 0.62);
+  border-top: none;
+  box-shadow:
+    inset 0 1.5px 0.5px rgba(255,255,255,0.55),
+    inset 0 0 0 0.5px rgba(255,255,255,0.12),
+    inset 0 -10px 24px -14px rgba(255,255,255,0.08),
+    0 -1px 3px rgba(0,0,0,0.2),
+    0 -24px 60px -14px rgba(0,0,0,0.55);
 }
-.modal--providers .provider-row:hover { background: var(--surface-raised); }
+.modal--providers::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit;
+  background:
+    linear-gradient(158deg, rgba(255,255,255,0.20) 0%, rgba(255,255,255,0.05) 24%, transparent 46%),
+    radial-gradient(120% 80% at 14% -6%, rgba(255,255,255,0.16), transparent 55%);
+  pointer-events: none; z-index: 0;
+}
+.modal--providers .modal__header,
+.modal--providers .modal__body { position: relative; z-index: 1; }
+.modal--providers .modal__close {
+  background: rgba(255,255,255,0.12);
+  border-color: rgba(255,255,255,0.22);
+}
+.modal--providers .provider-row {
+  position: relative; z-index: 1;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.16);
+}
+.modal--providers .provider-row:hover { background: rgba(255,255,255,0.14); }
 
 /* ---- shared flat sheet (log sheet + mood picker) ---------------------
    Same recipe as the provider popup, generalised so any sheet can wear
