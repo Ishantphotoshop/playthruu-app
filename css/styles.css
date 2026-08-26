@@ -2064,6 +2064,11 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
      and the header content begin, is what makes it read as a real photo
      behind the page rather than a sliver peeking out from under text. */
   padding: 260px var(--space-4) var(--space-4);
+  /* Shared by .gd-hero__bg and .gd-hero__scrim below — see the note
+     there for why masking both to transparent, rather than fading the
+     scrim to a hand-matched solid colour, is what actually makes the
+     image disappear into the real page background correctly. */
+  --hero-fade: linear-gradient(180deg, #000 0%, #000 55%, transparent 92%);
 }
 /* Both boxed to the same fixed aspect ratio (roughly what a game
    screenshot actually is) instead of stretching to fill the hero's full,
@@ -2074,29 +2079,36 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    layers the identical aspect-ratio box means they're always the same
    height as each other, by construction, so the fade's last stop always
    lands exactly on the image's real bottom edge — never short (a visible
-   hard edge) and never long (fading into space with no image left). */
+   hard edge) and never long (fading into space with no image left).
+   Both also share --hero-fade (a mask, not a background colour) so
+   they fade to transparent together instead of the scrim trying to end
+   on a hand-matched "var(--bg) 90%, var(--bg) 100%" solid colour — that
+   required its terminal colour to exactly equal whatever's actually
+   behind it, which it didn't quite: the page's real background (see
+   body{} above) is var(--bg) PLUS a soft radial tint centred at the
+   very top of the page, exactly where this hero sits. Fading to
+   transparent needs no colour guess at all — whatever's genuinely
+   behind it shows through, correct regardless of what the page
+   background is or ever changes to. */
 .gd-hero__bg {
   position: absolute; top: 0; left: 0; right: 0; z-index: 0;
   aspect-ratio: 16 / 9;
   background-size: cover; background-position: top center; background-repeat: no-repeat;
+  mask-image: var(--hero-fade); -webkit-mask-image: var(--hero-fade);
 }
 .gd-hero__scrim {
   position: absolute; top: 0; left: 0; right: 0; z-index: 0;
   aspect-ratio: 16 / 9;
-  /* Reaching full opacity at 90%, not 100%, matters: a gradient that
-     only hits solid var(--bg) exactly AT the image's true edge still
-     shows a sliver of image color right up to that last pixel, which
-     reads as a hard cut the instant it disappears. Going fully solid
-     with 10% of the box to spare means the image's actual crop boundary
-     sits UNDER already-opaque scrim, invisible regardless of what color
-     the photo happens to be at that row — nothing left to cut. */
+  mask-image: var(--hero-fade); -webkit-mask-image: var(--hero-fade);
+  /* Just the top-region darkening curve now — the mask above handles
+     the actual disappearance, so this never needs to reach an opaque
+     "matches the page" colour on its own. */
   background: linear-gradient(180deg,
     rgba(10,14,22,0.12) 0%,
     rgba(10,14,22,0.3) 30%,
     rgba(10,14,22,0.68) 55%,
-    rgba(10,14,22,0.95) 75%,
-    var(--bg) 90%,
-    var(--bg) 100%);
+    rgba(10,14,22,0.92) 75%,
+    rgba(10,14,22,0.96) 100%);
 }
 /* The title/kicker/score sitting on this hero read var(--ink), which in
    light theme is dark brown — invisible on a scrim that's always dark
