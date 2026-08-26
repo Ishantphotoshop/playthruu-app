@@ -2962,25 +2962,37 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 }
 .landing-entry__link-inline:active { color: rgba(255,255,255,0.8); }
 
-/* ---- feature tour: full-screen carousel, no bottom nav --------------
-   Swipe-only now (see wireTourSwipe in landing-view.js) — no Continue
-   button, so nothing needs to be reserved at the bottom for it. The
-   slide is free to use the entire screen and sit dead-centre, with
-   just Skip pinned in the corner and the dots pinned at the bottom as
-   a progress cue, both floating over the slide rather than sharing a
-   layout row with it. */
+/* ---- feature tour: full-screen carousel, rebuilt from scratch -------
+   min-height:100dvh directly on .tour, not height:100% inherited
+   through .landing/.landing-stage's own flex-grow chain — a flex
+   container whose own height only comes from a min-height a few
+   levels up isn't guaranteed to hand a definite, filled height down
+   to a 100%-height descendant in every engine, and that's exactly the
+   failure mode this had: the content sat at its natural (top of box)
+   size instead of actually being centred in a full screen, because
+   the box it was centring inside of never obviously had spare height
+   in the first place. Pinning the real viewport height straight onto
+   .tour itself removes that dependency entirely.
+   Swipe-only (see wireTourSwipe in landing-view.js) — no Continue
+   button, so nothing needs to be reserved at the bottom for one. Skip
+   floats in the top-right corner and the dots float bottom-centre;
+   .tour__content is the only normal-flow child, so centring it inside
+   .tour centres it in the full screen, biased slightly toward the
+   lower half (see the padding split below) rather than dead-centre. */
 .landing--tour { background: var(--bg); }
 .landing-stage--tour { padding-bottom: 0; overflow: hidden; }
-.tour { height: 100%; position: relative; }
+.tour {
+  min-height: 100dvh; position: relative;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center;
+  padding: calc(var(--space-6) + var(--safe-top)) var(--space-5) calc(var(--space-7) + var(--space-5) + var(--safe-bottom));
+}
 .tour__skip {
   position: absolute; z-index: 2; top: calc(var(--space-4) + var(--safe-top)); right: var(--space-4);
   background: none; border: none; color: var(--ink-faint); font-size: 14px; font-weight: 600;
   cursor: pointer; padding: 10px;
 }
-.tour__slide {
-  height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;
-  text-align: center; padding: var(--space-6) var(--space-5) calc(var(--space-6) + var(--safe-bottom));
-}
+.tour__content { display: flex; flex-direction: column; align-items: center; }
 /* Each slide's mockup replaces the old single abstract glyph with a
    small, real piece of the app's own UI — same classes/visual language
    (.stamp, starRow's .stars, etc.) as the genuine screens, just built

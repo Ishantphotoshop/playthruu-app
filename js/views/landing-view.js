@@ -468,7 +468,7 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
     return `
       <div class="tour">
         <button type="button" class="tour__skip" id="tour-skip">Skip</button>
-        <div class="tour__slide" id="tour-slide">
+        <div class="tour__content" id="tour-slide">
           <div class="tour__art">${tourMockupHtml(slide.icon)}</div>
           <h2 class="tour__title">${esc(slide.title)}</h2>
           <p class="tour__body">${esc(slide.body)}</p>
