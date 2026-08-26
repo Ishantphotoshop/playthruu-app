@@ -2824,13 +2824,10 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   width: 100%; max-width: 560px;
   border-radius: 0; border: none; border-top: 1px solid rgba(255,255,255,0.12);
   padding-bottom: var(--safe-bottom);
-  /* Simple true glass: minimal blur (just enough for a faint shimmer,
-     not the heavy frosting that read as matte), next to no white tint,
-     saturate to keep it lively instead of flat. */
-  background: rgba(255,255,255,0.025);
-  backdrop-filter: blur(4px) saturate(160%);
-  -webkit-backdrop-filter: blur(4px) saturate(160%);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), 0 10px 34px -8px rgba(0,0,0,0.55);
+  /* Flat solid surface, not glass — matches the real in-app .tabbar
+     (see above) and every other panel in the app now. */
+  background: #101014;
+  box-shadow: 0 10px 34px -8px rgba(0,0,0,0.55);
 }
 /* :root[data-theme="light"] .tabbar (the real in-app nav's light-theme
    retint, added earlier) is one selector more specific than
@@ -2840,10 +2837,8 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    glass stays the same in either theme, matching the rest of this
    always-dark screen. */
 :root[data-theme="light"] .landing-nav.tabbar {
-  background: rgba(255,255,255,0.025);
-  backdrop-filter: blur(4px) saturate(160%);
-  -webkit-backdrop-filter: blur(4px) saturate(160%);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), 0 10px 34px -8px rgba(0,0,0,0.55);
+  background: #101014;
+  box-shadow: 0 10px 34px -8px rgba(0,0,0,0.55);
 }
 .landing-nav .tabbar__item {
   background: none; border: none; font: inherit; cursor: pointer; appearance: none;
