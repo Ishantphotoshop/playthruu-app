@@ -2058,12 +2058,21 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .gd-hero {
   position: relative; overflow: hidden;
   margin: calc(-1 * var(--space-4)) calc(-1 * var(--space-4)) 0;
-  /* More headroom above the poster/title than the old var(--space-5)
-     (28px) gave — that left almost no backdrop actually visible before
-     content covered it. This much clear image up top, before the scrim
-     and the header content begin, is what makes it read as a real photo
-     behind the page rather than a sliver peeking out from under text. */
-  padding: 260px var(--space-4) var(--space-4);
+  /* Was a flat 260px, which only happened to roughly match the image's
+     own rendered height (16:9 of the hero's width) at one specific
+     viewport width — narrower than that and the image+its fade were
+     long finished well before 260px, leaving a dead flat-colour gap
+     between the fade and the poster/title (see the screenshots this
+     was reported against). padding-top percentages resolve against the
+     containing block's WIDTH, not height, which is exactly what's
+     needed here since the image's own height IS 56.25% of that same
+     width (aspect-ratio:16/9) — so this now tracks the image at any
+     viewport width by construction, the same way .gd-hero__bg's own
+     sizing does, instead of a guessed constant. The -40px pulls content
+     up slightly into the fade's own tail (already mostly transparent by
+     then) for a tighter, Letterboxd-style poster-over-backdrop overlap
+     rather than a hard gap. */
+  padding: calc(56.25% - 40px) var(--space-4) var(--space-4);
   /* Shared by .gd-hero__bg and .gd-hero__scrim below — see the note
      there for why masking both to transparent, rather than fading the
      scrim to a hand-matched solid colour, is what actually makes the
