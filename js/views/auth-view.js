@@ -45,8 +45,12 @@ const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-mo
 // other sheet and is dismissed by the same Android back-button handler.
 function openProviderPopup() {
   const overlay = document.createElement('div');
-  // Glass is kept here (login) and on the nav bar only.
-  overlay.className = 'modal-overlay modal-overlay--glass';
+  // Plain, not glass — the login page's own backdrop art blurs
+  // directly instead (see the art-wrap class toggle below), which
+  // works reliably everywhere unlike backdrop-filter on the popup
+  // itself, which never composited correctly on a real device across
+  // several attempts.
+  overlay.className = 'modal-overlay';
   overlay.innerHTML = `
     <div class="modal modal--providers">
       <header class="modal__header">
@@ -65,11 +69,17 @@ function openProviderPopup() {
     </div>`;
   document.body.appendChild(overlay);
   document.body.style.overflow = 'hidden';
+  // Blur the actual login-screen art behind the popup, not the popup
+  // itself — a plain CSS filter on an <img>-backed layer, which
+  // doesn't depend on backdrop-filter compositing at all.
+  const artWrap = qs('.auth-screen__art-wrap');
+  if (artWrap) artWrap.classList.add('auth-screen__art-wrap--blurred');
 
   const close = () => {
     overlay.remove();
     document.body.style.overflow = '';
     document.removeEventListener('keydown', onKey);
+    if (artWrap) artWrap.classList.remove('auth-screen__art-wrap--blurred');
   };
   const onKey = (e) => { if (e.key === 'Escape') close(); };
   document.addEventListener('keydown', onKey);

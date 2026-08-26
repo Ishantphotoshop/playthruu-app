@@ -1711,8 +1711,18 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   justify-content: flex-end; background: #0b0b10; overflow: hidden;
 }
 /* Full-bleed now — the image covers the entire screen behind
-   everything, not just a capped-height band up top. */
-.auth-screen__art-wrap { position: absolute; inset: 0; z-index: 0; }
+   everything, not just a capped-height band up top. Also blurs while
+   the "Continue with" popup is open (.auth-screen__art-wrap--blurred,
+   toggled by openProviderPopup() in auth-view.js) — a plain filter
+   on the actual art layer, not backdrop-filter on the popup, which
+   never composited reliably. */
+.auth-screen__art-wrap {
+  position: absolute; inset: 0; z-index: 0;
+  transition: filter 320ms ease;
+}
+.auth-screen__art-wrap--blurred {
+  filter: blur(28px) brightness(0.75);
+}
 /* Two stacked layers crossfade between images (Netflix-style rotation).
    Full-bleed cover across the entire screen — the trade-off is a little
    cropping on the edges for images whose proportions don't exactly
@@ -2545,46 +2555,20 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 }
 .provider-row__disc svg { width: 22px; height: 22px; display: block; }
 
-/* ---- provider popup: liquid glass, rebuilt from scratch ----
-   Three previous passes on this (different blur radii, tints, a
-   will-change theory) never visibly rendered on a real device.
-   Rather than keep layering fixes on top of an implementation that
-   might have a compounding problem, everything was removed and
-   rebuilt as the simplest possible version: one flat translucent
-   fill plus backdrop-filter, nothing else stacked on top — no
-   gradient sheen, no multi-layer inset box-shadow, no extra
-   pseudo-element, no will-change override. If this minimal version
-   still doesn't blur, the cause isn't anything written here — it'd
-   mean backdrop-filter itself isn't compositing in whatever's
-   rendering it, which no CSS rewrite can fix from this side. */
-.modal-overlay--glass { background: rgba(4,4,8,0.5); }
-.modal--providers {
-  background: rgba(20,22,30,0.55);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border-top: none;
-}
-/* This sheet's fill stays a fixed dark tint regardless of theme, so
-   the ink tokens inside it (which DO change with theme) need
-   pinning to the dark-theme values — otherwise light theme shows
-   dark-brown text on a sheet that's still dark. */
-.modal--providers {
-  --ink: #f1f0e9;
-  --ink-dim: #8a9086;
-  --ink-faint: #5c6158;
-}
+/* ---- provider popup ----
+   backdrop-filter on the popup itself was the wrong approach —
+   several rebuilds never got it compositing on a real device. What
+   was actually wanted is simpler and far more reliable: blur the
+   login screen's own backdrop art directly (see .auth-screen__art-
+   wrap--blurred, toggled by JS in auth-view.js's openProviderPopup())
+   with a plain CSS filter, and let this popup itself just be a
+   normal flat sheet — same var(--surface) fill as every other .modal
+   in the app, no special-casing needed here at all. */
 .modal--providers .provider-row {
-  background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(255,255,255,0.14);
+  background: var(--surface-high);
+  border: 1px solid var(--line);
 }
-.modal--providers .provider-row:hover { background: rgba(255,255,255,0.13); }
-
-/* Fallback: if a browser can't frost the backdrop, fall back to the
-   solid sheet rather than leaving text over see-through colour. */
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .modal--providers { background: var(--surface); }
-  .modal-overlay--glass { background: rgba(4,4,8,0.68); }
-}
+.modal--providers .provider-row:hover { background: var(--surface-raised); }
 
 /* ---- shared flat sheet (log sheet + mood picker) ---------------------
    Same recipe as the provider popup, generalised so any sheet can wear
