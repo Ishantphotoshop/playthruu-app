@@ -465,30 +465,24 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
   // ---- tour: a short feature carousel, ending on sign-up --------------
   function tourHtml() {
     const slide = TOUR_SLIDES[tourIndex];
-    const isLast = tourIndex === TOUR_SLIDES.length - 1;
     return `
       <div class="tour">
+        <button type="button" class="tour__skip" id="tour-skip">Skip</button>
         <div class="tour__slide" id="tour-slide">
           <div class="tour__art">${tourMockupHtml(slide.icon)}</div>
           <h2 class="tour__title">${esc(slide.title)}</h2>
           <p class="tour__body">${esc(slide.body)}</p>
         </div>
-        <div class="tour__footer">
-          <button type="button" class="tour__skip" id="tour-skip">Skip</button>
-          <div class="tour__dots">
-            ${TOUR_SLIDES.map((_, i) => `<span class="tour__dot${i === tourIndex ? ' tour__dot--active' : ''}"></span>`).join('')}
-          </div>
-          <button type="button" class="tour__continue" id="tour-continue">${isLast ? 'Get Started' : 'Continue'}</button>
+        <div class="tour__dots">
+          ${TOUR_SLIDES.map((_, i) => `<span class="tour__dot${i === tourIndex ? ' tour__dot--active' : ''}"></span>`).join('')}
         </div>
       </div>`;
   }
+  // No Continue button — this is swipe-only now (see wireTourSwipe
+  // below): swipe left to advance, right to go back, and swiping past
+  // the last slide lands on sign-up the same way Skip does.
   function wireTour(stage) {
     qs('#tour-skip', stage).addEventListener('click', () => goToAuth('signup'));
-    qs('#tour-continue', stage).addEventListener('click', () => {
-      if (tourIndex === TOUR_SLIDES.length - 1) { goToAuth('signup'); return; }
-      tourIndex += 1;
-      paintScreen();
-    });
     wireTourSwipe(stage);
   }
 
