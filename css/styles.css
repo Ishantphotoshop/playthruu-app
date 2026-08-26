@@ -2860,145 +2860,60 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .landing-nav .tabbar__item svg { width: 30px; height: 30px; filter: none; }
 
 /* ---- entry screen: brand + one clear action, bottom-anchored over a
-   full-bleed backdrop — a wall of real game covers instead of the
-   original single rotating photo, but structured exactly like that
-   photo was: position:absolute, entirely out of the page's normal
-   layout flow. That's what matters for not scrolling — an EARLIER
-   version of this made the wall an in-flow flex/grid element instead,
-   and its own natural height pushed the buttons below the fold,
-   forcing the whole screen to scroll to reach "Get Started". Anything
-   put back in-flow here will very likely reintroduce that same bug. */
+   brand-first: no cover art, no photo — the mark and wordmark are the
+   whole visual. Centred rather than bottom-anchored (the old layout's
+   bottom-anchoring was there specifically to sit content over the
+   mosaic backdrop, which no longer exists). */
 .landing-entry {
-  /* z-index (not just position:relative) makes this establish its own
-     stacking context — needed now that the mosaic inside it is
-     position:fixed: without one, a fixed descendant's paint order
-     isn't reliably contained by its position:relative parent, and it
-     could end up compositing above .landing-entry__content instead of
-     safely below it. */
-  position: relative; z-index: 0; overflow: hidden;
+  position: relative; overflow: hidden;
   min-height: calc(100dvh - 59px - var(--safe-bottom));
-  display: flex; flex-direction: column; justify-content: flex-end;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: var(--bg);
+  padding: var(--space-5);
 }
-/* position:fixed, not absolute-within-.landing-entry — the nav bar
-   below is a separate fixed element sitting OUTSIDE .landing-entry's
-   own (deliberately shorter) box, so an absolute mosaic stopped exactly
-   at that boundary, leaving nothing behind the nav's glass to blur but
-   the plain page background. Fixed instead means the wall genuinely
-   fills the whole screen, nav included. Needs the exact same
-   centring fix .landing-nav/.tabbar already use — position:fixed
-   anchors to the real browser viewport, not #app's centred 560px
-   column, so plain inset:0 would stretch it edge-to-edge on desktop/
-   localhost the same way the tab bar once did before that was fixed. */
-.landing-entry__mosaic {
-  position: fixed; top: 0; bottom: 0; left: 50%; transform: translateX(-50%);
-  width: 100%; max-width: 560px; z-index: 0; overflow: hidden;
-  background: #000000; /* fallback while covers load in, same role the old photo's own fallback colour played */
-  pointer-events: none; /* a backdrop, not a set of tappable tiles */
-}
-/* 4 side-by-side columns, each scrolling independently (see
-   paintMosaicTiles in landing-view.js) instead of one grid moving as a
-   single block. */
-.landing-mosaic__columns { display: flex; gap: 2px; height: 100%; }
-.landing-mosaic__col { flex: 1; min-width: 0; overflow: hidden; }
-/* Each column's own tile list, written out twice back to back — scrolled
-   exactly one copy's height in a loop, so the moment it reaches ±50% it's
-   showing the exact same pixels it started with and the loop has no
-   visible seam or jump. */
-.landing-mosaic__track { display: flex; flex-direction: column; gap: 2px; }
-/* will-change + backface-visibility promote each column to its own
-   compositor layer, so the browser can animate them by moving
-   pre-painted layers around on the GPU every frame instead of
-   repainting 40-odd cover images each tick — that's what "smooth"
-   actually depends on here, more than the animation's own timing
-   function does. --up and --down share one keyframe (0 -> -50%);
-   --down just plays it backwards, which is a plain reverse-scroll
-   without needing a second, mirrored keyframe. */
-.landing-mosaic__track--up, .landing-mosaic__track--down {
-  animation: landing-mosaic-scroll 130s linear infinite;
-  will-change: transform; backface-visibility: hidden;
-}
-.landing-mosaic__track--down { animation-direction: reverse; }
-@keyframes landing-mosaic-scroll {
-  from { transform: translateY(0); }
-  to { transform: translateY(-50%); }
-}
-.landing-mosaic__tile { aspect-ratio: 3 / 4; overflow: hidden; border-radius: 10px; }
-/* True-instant loading isn't really possible for real images over the
-   network — this is the next best thing: starts invisible and fades in
-   the moment it's actually decoded (see the onload handler in
-   loadMosaic(), landing-view.js) instead of popping in abruptly
-   mid-scroll. */
-.landing-mosaic__tile img {
-  width: 100%; height: 100%; object-fit: cover; display: block;
-  opacity: 0; transition: opacity 0.5s ease;
-}
-.landing-mosaic__tile img.is-loaded { opacity: 1; }
-/* The gradient itself — a short dark cap right at the top (just enough
-   to hold the tagline readable over whatever cover happens to scroll
-   underneath it), fully transparent again through the middle so the
-   covers stay at their true colour where there's nothing to read over
-   them, then the long gradual fade at the bottom — capped well short of
-   fully opaque, not settling into true black like an earlier version of
-   this did. That cap is deliberate: the glass buttons/nav sitting in
-   this bottom zone need actual colour and movement behind them to blur
-   and show through, or "liquid glass" just reads as a plain dark blur
-   with nothing in it, which is exactly what a fully black backdrop
-   behind them produced. */
-.landing-entry__mosaic::after {
-  content: ''; position: absolute; inset: 0; z-index: 1;
-  background: linear-gradient(180deg,
-    rgba(0,0,0,0.6) 0%,
-    rgba(0,0,0,0) 15%,
-    rgba(0,0,0,0) 20%,
-    rgba(0,0,0,0.5) 40%,
-    rgba(0,0,0,0.8) 56%,
-    rgba(0,0,0,0.9) 72%,
-    rgba(0,0,0,0.94) 100%);
-}
-@media (prefers-reduced-motion: reduce) {
-  .landing-mosaic__track--up, .landing-mosaic__track--down { animation: none; }
+/* A quiet radial wash in the brand's own accent, standing in for the
+   depth/movement the mosaic used to provide — fixed so it doesn't shift
+   under the centred content, faint enough to read as atmosphere rather
+   than a coloured panel. */
+.landing-entry::before {
+  content: ''; position: absolute; inset: 0; z-index: 0;
+  background: radial-gradient(120% 70% at 50% 30%, rgba(217,255,63,0.10), transparent 60%);
+  pointer-events: none;
 }
 .landing-entry__content {
-  position: relative; z-index: 2;
+  position: relative; z-index: 1;
   display: flex; flex-direction: column; align-items: center;
-  padding: var(--space-5) var(--space-5) calc(var(--space-6) + var(--safe-bottom));
+  width: 100%;
 }
-/* Sits where the old top-pinned brand header used to, now that that
-   moved down to sit above Get Started instead — same out-of-flow
-   positioning and the same reasoning: it has to stay OUT of
-   .landing-entry's normal layout flow or it adds its own height on top
-   of .landing-entry__content's and reopens the scrolling bug. */
 .landing-entry__tagline {
-  position: absolute; z-index: 2; top: calc(var(--space-5) + var(--safe-top)); left: var(--space-5); right: var(--space-5);
-  margin: 0; text-align: center;
+  margin: 0 0 44px; text-align: center; max-width: 280px;
   font-family: var(--font-body); font-style: italic; font-weight: 600;
-  font-size: 15.5px; color: rgba(255,255,255,0.88); letter-spacing: 0.01em;
-  text-shadow: 0 2px 10px rgba(0,0,0,0.9), 0 1px 3px rgba(0,0,0,0.9), 0 0 22px rgba(217, 255, 63,0.5);
+  font-size: 16px; color: rgba(255,255,255,0.7); letter-spacing: 0.01em;
 }
-/* Mark + wordmark side by side, sitting right above Get Started now
-   (moved down from a top-pinned header lockup) — the one clear thing
-   above the one clear action, instead of a separate brand header up top
-   competing for attention with its own space. In-flow this time (no
-   position:absolute): it's inside .landing-entry__content, which is
-   already the flex column anchored to the bottom of the backdrop, so
-   its height just adds to that column like the button and links below
-   it do — nothing here needs to be pulled out of flow the way the
-   full-bleed mosaic backdrop does. */
+/* Mark + wordmark, stacked and given real room to be the centrepiece
+   now that nothing else on this screen competes for attention. The mark
+   plays a one-time settle-in on mount (see @keyframes mark-settle
+   below) — the closest a static SVG gets to feeling alive without
+   pulling in real motion/Lottie assets. */
 .landing-entry__brand {
-  display: flex; align-items: center; justify-content: center; gap: 10px;
-  margin-bottom: 40px;
+  display: flex; flex-direction: column; align-items: center; gap: 20px;
+  margin-bottom: 20px;
 }
 .landing-entry__mark {
-  width: 42px; height: 42px; border-radius: 11px;
-  filter: drop-shadow(0 2px 10px rgba(0,0,0,0.5));
+  width: 88px; height: 88px; border-radius: 24px;
+  filter: drop-shadow(0 10px 34px rgba(217,255,63,0.2));
+  animation: mark-settle 800ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
-/* Fixed white regardless of theme — this sits on the game-cover
-   backdrop above, not the plain page background, so it doesn't follow
-   var(--ink) the way .topbar__logo and .landing-header__logo do. */
+@keyframes mark-settle {
+  from { opacity: 0; transform: scale(0.55) rotate(-16deg); }
+  to   { opacity: 1; transform: scale(1) rotate(0deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .landing-entry__mark { animation: none; }
+}
 .landing-entry__word {
   font-family: var(--font-brand); font-weight: 800; font-style: normal;
-  font-size: 31px; letter-spacing: -0.015em; color: #ffffff;
-  text-shadow: 0 1px 6px rgba(0,0,0,0.85), 0 1px 2px rgba(0,0,0,0.9);
+  font-size: 40px; letter-spacing: -0.015em; color: #ffffff;
 }
 /* One clear primary action — everything else (signing up, or logging
    in) sits underneath it as text, not a competing row of equal-weight
@@ -3030,7 +2945,6 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .landing-entry__link {
   background: none; border: none; cursor: pointer;
   font-size: 17px; font-weight: 700; color: #ffffff;
-  text-shadow: 0 1px 4px rgba(0,0,0,0.85);
 }
 .landing-entry__link:active { color: rgba(255,255,255,0.75); }
 /* "Already have an account? Login in" is now a <p> holding plain text
@@ -3040,7 +2954,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    tappable, which a single button around both couldn't express. */
 .landing-entry__link--strong {
   font-size: 17px; font-weight: 600; color: rgba(255,255,255,0.7);
-  text-shadow: 0 1px 4px rgba(0,0,0,0.85); margin: 0;
+  margin: 0;
 }
 .landing-entry__link-inline {
   display: inline; background: none; border: none; padding: 0; margin: 0;

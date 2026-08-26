@@ -68,7 +68,6 @@ const PINNED_GAME_TITLES = [
 // from Discover — even though the actual games returned were identical.
 // Living out here, the cache instead survives across every one of those
 // remounts for as long as the page itself stays loaded.
-let mosaicCache = null;    // the entry screen's poster wall — real covers, fetched once and reused
 let gamesCache = null;     // the browse screen's Games tab — grows as more pages load (infinite scroll)
 let gamesPage = 1;
 let gamesHasMore = true;
@@ -215,28 +214,20 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
 
   // ---- entry: brand + one clear action (Get Started, into the tour),
   // with sign-in and anonymous browsing as small secondary links rather
-  // than competing top-level buttons. Bottom-anchored over a full-bleed
-  // backdrop, same structure as the original single-photo version — the
-  // backdrop is now a wall of real game covers instead of one rotating
-  // photo (proof the app is actually full of games), but it's
-  // position:absolute exactly like the photo was, which is what keeps
-  // it OUT of the page's normal layout flow. A first version of this
-  // used an in-flow flex grid instead, which let the grid's own natural
-  // height push the buttons below the fold and make the whole screen
-  // scroll to reach them — this fixes that by going back to how the
-  // photo backdrop was structured, not just what it shows. Non-
-  // interactive by design (pointer-events: none) — it's a backdrop, not
-  // a set of tappable tiles. ----
+  // than competing top-level buttons. Deliberately no cover-art
+  // backdrop (an earlier version scrolled a live wall of real game
+  // covers behind this) — the brief was to lean on the brand itself
+  // rather than borrowed game art, so this is just the mark, wordmark
+  // and tagline, centred on a plain dark field. ----
   function entryHtml() {
     return `
       <div class="landing-entry">
-        <div class="landing-entry__mosaic" id="landing-mosaic" aria-hidden="true"></div>
-        <p class="landing-entry__tagline">The diary for everything you play.</p>
         <div class="landing-entry__content">
           <div class="landing-entry__brand">
             <img src="icons/${getTheme() === 'light' ? 'mark-orange' : 'mark-blue'}.svg" alt="" class="landing-entry__mark">
             <span class="landing-entry__word">PlayThruu</span>
           </div>
+          <p class="landing-entry__tagline">The diary for everything you play.</p>
           <button type="button" class="landing-entry__row" id="entry-tour">Get Started</button>
           <div class="landing-entry__links">
             <p class="landing-entry__link landing-entry__link--strong">Already have an account? <button type="button" class="landing-entry__link-inline" id="entry-signin">Log in</button></p>
@@ -255,94 +246,6 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
     // that made this stack feel cluttered.
     qs('#entry-signin', stage).addEventListener('click', () => goToAuth('signin'));
     qs('#entry-tour', stage).addEventListener('click', () => { screen = 'tour'; tourIndex = 0; paint(); });
-    loadMosaic(stage);
-  }
-
-  // Real popular covers, not placeholder art — three pages' worth
-  // (~60 games, down from four/~80) so there's less to fetch before
-  // anything can even paint. Tried also switching to IGDB's small cover
-  // size (90px wide) to cut load time further, but that made every
-  // tile visibly soft/low-res on an actual phone screen — real covers
-  // at full quality, this is staying at IGDB's normal "big" cover size.
-  // Deduped by id too, as a safety net against IGDB ever handing back
-  // the same game on two different pages. Fetched once per app load
-  // and reused every time someone flips back to this screen (browse ->
-  // entry -> browse...), same caching approach as gamesCache/
-  // reviewsCache below.
-  // The track is the tile list written out twice back to back, then
-  // scrolled up exactly one copy's height on a seamless loop — by the
-  // time the animation reaches -50%, what's on screen is pixel-identical
-  // to the start, so the loop point is invisible instead of jumping or
-  // visibly repeating.
-  // Each cover fades in the moment it's actually decoded rather than
-  // popping in mid-scroll — true "instant" isn't really possible (they're
-  // still real images over the network), so this is the next best thing:
-  // starts transparent, one inline onload flips a class once the browser
-  // has it, and the opacity transition in CSS does the rest.
-  // 4 independent columns instead of one grid scrolling as a single
-  // block — every game still appears exactly once (split round-robin
-  // across the 4), each column just carries its own duplicated track
-  // and animates on its own, alternating direction (col 1 up, 2 down, 3
-  // up, 4 down) so the wall reads as genuinely alive rather than one
-  // flat sheet sliding past.
-  function paintMosaicTiles(grid, games) {
-    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    const columns = [[], [], [], []];
-    // Every column animates over the same fixed 130s regardless of how
-    // tall its own track is — so a column even one tile taller than the
-    // others covers more pixels in that same 130s and visibly outruns
-    // them. Trimming to an exact multiple of 4 before splitting keeps
-    // all 4 counts identical, which is what actually keeps the speeds
-    // identical (a handful of leftover games dropped from the very end
-    // of the list is a fair trade for that).
-    const evenGames = games.slice(0, games.length - (games.length % 4));
-    evenGames.forEach((g, i) => columns[i % 4].push(g));
-    const colHtml = columns.map((colGames, i) => {
-      const tilesHtml = colGames.map((g) => `
-        <div class="landing-mosaic__tile">
-          <img src="${esc(g.cover_url)}" alt="" decoding="async" onload="this.classList.add('is-loaded')">
-        </div>`).join('');
-      const dir = i % 2 === 0 ? 'up' : 'down';
-      return `
-        <div class="landing-mosaic__col">
-          <div class="landing-mosaic__track${reduceMotion ? '' : ` landing-mosaic__track--${dir}`}">${tilesHtml}${reduceMotion ? '' : tilesHtml}</div>
-        </div>`;
-    }).join('');
-    grid.innerHTML = `<div class="landing-mosaic__columns">${colHtml}</div>`;
-  }
-
-  async function loadMosaic(stage) {
-    const grid = qs('#landing-mosaic', stage);
-    if (!grid) return;
-    try {
-      if (mosaicCache) {
-        paintMosaicTiles(grid, mosaicCache);
-        return;
-      }
-      // Painted in two steps instead of waiting on both pages at once —
-      // page 1 alone used to be blocked behind whichever of the 3
-      // parallel requests came back slowest, so the wall stayed blank
-      // the whole time. Now the first ~20 covers appear (and start
-      // downloading) as soon as page 1 is back, and page 2 quietly tops
-      // it up a moment later — the scroll restarts once when that
-      // happens, but that's a much smaller cost than a long blank wait.
-      const dedupe = (games) => {
-        const seen = new Set();
-        return games.filter((g) => g.cover_url && !seen.has(g.igdb_id) && seen.add(g.igdb_id));
-      };
-      const first = await api.browseGames({ sort: 'popular', page: 1 });
-      mosaicCache = dedupe(first.games);
-      if (!qs('#landing-mosaic', root)) return; // navigated away before this resolved
-      paintMosaicTiles(grid, mosaicCache);
-
-      const second = await api.browseGames({ sort: 'popular', page: 2 });
-      mosaicCache = dedupe([...mosaicCache, ...second.games]);
-      if (!qs('#landing-mosaic', root)) return; // navigated away before this resolved
-      paintMosaicTiles(grid, mosaicCache);
-    } catch {
-      // The mosaic is decorative — the panel below still works with an
-      // empty wall behind it, no error state needed for a background.
-    }
   }
 
   // ---- browse: a real poster wall + real reviews ---------------------
