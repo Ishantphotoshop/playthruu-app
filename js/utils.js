@@ -144,7 +144,13 @@ export function enableSwipeToDismiss(modal, close, onDrag) {
     modal.style.transform = `translateY(${dy}px)`;
     const ov = overlay();
     if (ov) ov.style.opacity = String(Math.max(0.25, 1 - dy / 420));
-    if (onDrag) onDrag(Math.min(1, dy / THRESHOLD));
+    // Deliberately NOT tied to THRESHOLD (90px, the dismiss trigger) —
+    // that reaches 1 almost immediately and then sits there for the
+    // rest of a longer drag, so the blur looked like it snapped to nil
+    // instead of easing out with the finger. Spread over the same
+    // longer range as the overlay fade above so it tracks the whole
+    // visible gesture.
+    if (onDrag) onDrag(Math.min(1, dy / 420));
   });
 
   const settle = (e) => {
