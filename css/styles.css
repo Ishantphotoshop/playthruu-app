@@ -2965,15 +2965,34 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 /* ---- feature tour: full-screen carousel, no bottom nav -------------- */
 .landing--tour { background: var(--bg); }
 .landing-stage--tour { padding-bottom: 0; overflow: hidden; }
-.tour { height: 100%; display: flex; flex-direction: column; }
-/* Bottom-anchored, not centred — the slide used to float in the
-   vertical middle of the screen, which on a real phone read as
-   sitting up near the top with a lot of dead air underneath it before
-   the footer. justify-content:flex-end pins it to the bottom of its
-   own flex:1 area instead, right above Continue/Skip. */
-.tour__slide {
-  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
-  text-align: center; padding: var(--space-6) var(--space-5) var(--space-5);
+/* A plain field above, a real bottom sheet below — same recipe as
+   every other sheet in the app (.modal: var(--surface) fill, rounded
+   top corners, a grabber, --shadow-modal), not just text pushed down
+   the page. justify-content:flex-end pins the sheet to the bottom;
+   the empty field above it is deliberate breathing room, not a mistake
+   — that contrast is what makes the sheet read as a distinct panel
+   rather than the whole screen's content just sitting lower. */
+.tour { height: 100%; display: flex; flex-direction: column; justify-content: flex-end; position: relative; }
+.tour::before {
+  content: ''; position: absolute; inset: 0; z-index: 0;
+  background: radial-gradient(120% 60% at 50% 22%, rgba(217,255,63,0.08), transparent 60%);
+  pointer-events: none;
+}
+.tour__sheet {
+  position: relative; z-index: 1;
+  display: flex; flex-direction: column; align-items: center; text-align: center;
+  background: var(--surface);
+  border-radius: var(--radius-l) var(--radius-l) 0 0;
+  border-top: 1px solid var(--line);
+  box-shadow: var(--shadow-modal);
+  padding: 34px var(--space-5) calc(var(--space-4) + var(--safe-bottom));
+}
+/* Same grabber pill every other sheet in the app carries (see
+   .modal::before) — the visual cue that this is a real bottom sheet. */
+.tour__sheet::before {
+  content: ''; position: absolute; top: var(--space-2); left: 50%;
+  width: 36px; height: 4px; margin-left: -18px; border-radius: var(--radius-pill);
+  background: var(--line-strong);
 }
 /* Each slide's mockup replaces the old single abstract glyph with a
    small, real piece of the app's own UI — same classes/visual language
@@ -3026,9 +3045,13 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .tour-mock--list .tour-mock__poster:nth-child(1) { background: linear-gradient(160deg, var(--accent-bright), color-mix(in srgb, var(--accent) 55%, #14150f)); }
 .tour-mock--list .tour-mock__poster:nth-child(2) { background: linear-gradient(160deg, var(--gold), var(--coral)); }
 .tour-mock--list .tour-mock__poster:nth-child(3) { background: linear-gradient(160deg, var(--violet), var(--accent-bright)); }
+/* Now lives inside .tour__sheet, not a separate strip pinned to the
+   page's own bottom edge — the sheet's own padding already accounts
+   for horizontal spacing and the safe-area inset, so this only adds
+   the vertical gap between the body copy above it and itself. */
 .tour__footer {
   display: flex; align-items: center; justify-content: space-between;
-  padding: var(--space-4) var(--space-5) calc(var(--space-5) + var(--safe-bottom));
+  width: 100%; margin-top: var(--space-5);
 }
 .tour__skip { background: none; border: none; color: var(--ink-faint); font-size: 14px; font-weight: 600; cursor: pointer; padding: 10px; }
 .tour__dots { display: flex; align-items: center; gap: 7px; }
