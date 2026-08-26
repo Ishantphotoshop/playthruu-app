@@ -500,7 +500,33 @@ export async function renderGameView(root, { id, igdbId }) {
         });
       });
       wireCastPreviewJump();
+      wireHeroTopbar();
       paintTabContent();
+    }
+
+    // Only when this game actually has a hero image (.gd-hero__bg) —
+    // without one there's nothing for a transparent topbar to sit over,
+    // and it should just stay in its normal solid state. Scroll is read
+    // from #app (the real scroll container the sticky topbar scrolls
+    // within, not window — see #app's overflow-y:auto), and the handler
+    // self-removes once .topbar is no longer in the document (this runs
+    // once per game-page visit, but #app itself persists across every
+    // navigation, so without this the listener would otherwise pile up
+    // one per visit for the lifetime of the session).
+    function wireHeroTopbar() {
+      const topbarEl = qs('.topbar', root);
+      const heroBg = qs('.gd-hero__bg', body);
+      const heroEl = heroBg?.closest('.gd-hero');
+      if (!topbarEl || !heroEl) return;
+      topbarEl.classList.add('topbar--hero');
+      const scrollContainer = document.getElementById('app');
+      const onScroll = () => {
+        if (!topbarEl.isConnected) { scrollContainer.removeEventListener('scroll', onScroll); return; }
+        const solid = heroEl.getBoundingClientRect().bottom <= topbarEl.getBoundingClientRect().bottom;
+        topbarEl.classList.toggle('topbar--hero-solid', solid);
+      };
+      scrollContainer.addEventListener('scroll', onScroll, { passive: true });
+      onScroll();
     }
 
     async function paintTabContent() {

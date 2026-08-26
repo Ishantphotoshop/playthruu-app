@@ -358,6 +358,16 @@ ul { list-style: none; margin: 0; padding: 0; }
   background: var(--bg);
   border-bottom: 1px solid var(--line);
 }
+/* Game pages with a hero backdrop only (see wireHeroTopbar in
+   game-view.js): the topbar starts fully transparent so the sticky bar
+   doesn't cut a hard rectangle out of the scrolling hero image/gradient
+   behind it — .gd-hero__scrim already handles legibility the same way
+   the login screen's backdrop does. --hero-solid is added once the
+   hero has scrolled out from underneath it, fading back to the normal
+   solid fill so the bar reads correctly over ordinary page content
+   below the fold. */
+.topbar--hero { background: transparent; border-bottom-color: transparent; transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease); }
+.topbar--hero.topbar--hero-solid { background: var(--bg); border-bottom-color: var(--line); }
 /* Home only: the wordmark alone, centred, given room to breathe. */
 .topbar--home { justify-content: center; padding-top: calc(var(--space-4) + var(--safe-top)); padding-bottom: var(--space-4); }
 .topbar--home .topbar__logo { font-size: 22px; letter-spacing: 0.14em; }
