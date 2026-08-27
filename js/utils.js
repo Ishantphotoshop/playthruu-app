@@ -127,8 +127,15 @@ export function enableSwipeToDismiss(modal, close, onDrag) {
   let startY = 0, dy = 0, candidate = false, dragging = false;
   const overlay = () => modal.parentElement;
 
+  // Mouse used to be filtered out here ("touch affordance only") on the
+  // assumption this gesture would only ever be tested on a real
+  // touchscreen — but the header's own cursor:grab above already
+  // promises a draggable mouse affordance, and on desktop (e.g. testing
+  // in a plain browser window, no touch emulation) that promise went
+  // nowhere: pointerdown fired, immediately returned, and nothing ever
+  // dragged. Pointer events already unify mouse/pen/touch, so the exact
+  // same listeners below now just work for all three.
   header.addEventListener('pointerdown', (e) => {
-    if (e.pointerType === 'mouse') return; // touch affordance only
     startY = e.clientY; dy = 0; candidate = true; dragging = false;
   });
 
@@ -136,8 +143,11 @@ export function enableSwipeToDismiss(modal, close, onDrag) {
     if (!candidate) return;
     dy = e.clientY - startY;
     if (!dragging) {
-      if (dy > 5) { dragging = true; try { header.setPointerCapture(e.pointerId); } catch { /* fine */ } }
-      else return;
+      if (dy > 5) {
+        dragging = true;
+        header.style.cursor = 'grabbing';
+        try { header.setPointerCapture(e.pointerId); } catch { /* fine */ }
+      } else return;
     }
     if (dy < 0) dy = 0;
     modal.style.transition = 'none';
@@ -157,6 +167,7 @@ export function enableSwipeToDismiss(modal, close, onDrag) {
     if (!candidate) return;
     const wasDragging = dragging;
     candidate = false; dragging = false;
+    header.style.cursor = 'grab';
     try { header.releasePointerCapture(e.pointerId); } catch { /* already released */ }
     if (!wasDragging) return; // it was a tap, not a drag — leave it alone
     const ov = overlay();

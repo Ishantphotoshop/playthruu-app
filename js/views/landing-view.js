@@ -215,14 +215,25 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
 
   // ---- entry: brand + one clear action (Get Started, into the tour),
   // with sign-in and anonymous browsing as small secondary links rather
-  // than competing top-level buttons. Deliberately no cover-art
-  // backdrop (an earlier version scrolled a live wall of real game
-  // covers behind this) — the brief was to lean on the brand itself
-  // rather than borrowed game art, so this is just the mark, wordmark
-  // and tagline, centred on a plain dark field. ----
+  // than competing top-level buttons. No cover-art backdrop (an earlier
+  // version scrolled a live wall of real game covers behind this) — the
+  // brief is still to lean on the brand itself rather than borrowed game
+  // art, but the plain flat field that replaced it read as inert, so the
+  // depth/movement now comes from an ambient "live wallpaper": a handful
+  // of soft, blurred colour orbs pulled from the app's own accent
+  // palette (--accent/--violet/--teal/--gold, see styles.css), each
+  // drifting on its own slow independent loop behind a grain layer and a
+  // vignette that keeps the centre readable. Purely decorative (aria-hidden) —
+  // the mark, wordmark and tagline are still the only actual content. ----
   function entryHtml() {
     return `
       <div class="landing-entry">
+        <div class="landing-entry__wallpaper" aria-hidden="true">
+          <span class="landing-entry__orb landing-entry__orb--1"></span>
+          <span class="landing-entry__orb landing-entry__orb--2"></span>
+          <span class="landing-entry__orb landing-entry__orb--3"></span>
+          <span class="landing-entry__orb landing-entry__orb--4"></span>
+        </div>
         <div class="landing-entry__content">
           <div class="landing-entry__brand">
             <img src="icons/${getTheme() === 'light' ? 'mark-orange' : 'mark-blue'}.svg" alt="" class="landing-entry__mark">
@@ -247,6 +258,43 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
     // that made this stack feel cluttered.
     qs('#entry-signin', stage).addEventListener('click', () => goToAuth('signin'));
     qs('#entry-tour', stage).addEventListener('click', () => { screen = 'tour'; tourIndex = 0; paint(); });
+    wireEntryParallax(stage);
+  }
+
+  // Mouse-only parallax on the live-wallpaper orbs — each one drifts a
+  // little toward the cursor, at a different depth (a bigger DEPTH_PX
+  // reads as "closer"/more responsive), on top of its own independent
+  // orb-drift-N animation from styles.css. The two motions don't fight:
+  // CSS eases --mx/--my itself (see .landing-entry__orb's transition),
+  // so this only ever needs to set a target value, never animate one.
+  // No manual teardown needed — the listener lives on `stage`, the DOM
+  // node .landing-entry itself, which gets discarded (and the listener
+  // with it) the moment the screen re-renders to anything else.
+  function wireEntryParallax(stage) {
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+    const entry = qs('.landing-entry', stage);
+    const orbs = qsa('.landing-entry__orb', stage).map((el, i) => ({
+      el,
+      // Alternating sign so orbs don't all lean the same direction —
+      // reads as depth/parallax rather than the whole wallpaper just
+      // sliding as one flat sheet behind the cursor.
+      depth: [22, -16, 14, -26][i] ?? 16,
+    }));
+    if (!entry || !orbs.length) return;
+    entry.addEventListener('pointermove', (e) => {
+      if (e.pointerType !== 'mouse') return; // a touch drag isn't a hover position
+      const r = entry.getBoundingClientRect();
+      const nx = ((e.clientX - r.left) / r.width) * 2 - 1;  // -1 (left edge) .. 1 (right edge)
+      const ny = ((e.clientY - r.top) / r.height) * 2 - 1;  // -1 (top edge) .. 1 (bottom edge)
+      orbs.forEach(({ el, depth }) => {
+        el.style.setProperty('--mx', `${(nx * depth).toFixed(1)}px`);
+        el.style.setProperty('--my', `${(ny * depth).toFixed(1)}px`);
+      });
+    });
+    entry.addEventListener('pointerleave', (e) => {
+      if (e.pointerType !== 'mouse') return;
+      orbs.forEach(({ el }) => { el.style.setProperty('--mx', '0px'); el.style.setProperty('--my', '0px'); });
+    });
   }
 
   // ---- browse: a real poster wall + real reviews ---------------------
@@ -499,17 +547,30 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
   // a Continue tap doesn't feel like a real carousel. Left = forward
   // (finishes into sign-up on the last slide, matching Continue's own
   // behaviour there), right = back a slide, disabled on the first one.
+  //
+  // Listeners live on .tour (the full min-height:100dvh screen), not on
+  // #tour-slide (.tour__content) — .tour__content only fills the space
+  // left over AFTER .tour's own top/bottom padding, and that padding
+  // strip is exactly where the Skip button and the dots row sit, plus a
+  // fair bit of surrounding blank space. Binding to #tour-slide alone
+  // meant a swipe started anywhere in that top or bottom margin — most
+  // of the screen outside the title/body text itself — was silently
+  // ignored. The drag-follow visuals still only move #tour-slide, since
+  // Skip and the dots are meant to stay put while the slide underneath
+  // them glides.
   function wireTourSwipe(stage) {
+    const container = qs('.tour', stage);
     const slide = qs('#tour-slide', stage);
-    if (!slide) return;
+    if (!container || !slide) return;
     const SWIPE_THRESHOLD = 50;
     let startX = 0, dx = 0, dragging = false;
 
-    slide.addEventListener('pointerdown', (e) => {
+    container.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('.tour__skip')) return; // let Skip's own click through untouched
       startX = e.clientX; dx = 0; dragging = true;
-      try { slide.setPointerCapture(e.pointerId); } catch { /* fine without capture */ }
+      try { container.setPointerCapture(e.pointerId); } catch { /* fine without capture */ }
     });
-    slide.addEventListener('pointermove', (e) => {
+    container.addEventListener('pointermove', (e) => {
       if (!dragging) return;
       dx = e.clientX - startX;
       slide.style.transform = `translateX(${dx}px)`;
@@ -518,7 +579,7 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
     const endSwipe = (e) => {
       if (!dragging) return;
       dragging = false;
-      try { slide.releasePointerCapture(e.pointerId); } catch { /* already released */ }
+      try { container.releasePointerCapture(e.pointerId); } catch { /* already released */ }
       if (dx <= -SWIPE_THRESHOLD) {
         if (tourIndex === TOUR_SLIDES.length - 1) { goToAuth('signup'); return; }
         tourDirection = 'forward';
@@ -538,8 +599,8 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
         setTimeout(() => { slide.style.transition = ''; }, 260);
       }
     };
-    slide.addEventListener('pointerup', endSwipe);
-    slide.addEventListener('pointercancel', endSwipe);
+    container.addEventListener('pointerup', endSwipe);
+    container.addEventListener('pointercancel', endSwipe);
   }
 
   paint();

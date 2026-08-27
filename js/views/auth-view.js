@@ -49,8 +49,15 @@ function openProviderPopup() {
   // instead (see the class toggle below), which works reliably
   // everywhere unlike backdrop-filter on the popup itself, which
   // never composited correctly on a real device across several
-  // attempts.
-  overlay.className = 'modal-overlay';
+  // attempts. modal-overlay--no-scrim drops the shared .modal-overlay's
+  // own dark rgba(4,4,8,0.68) backing — every OTHER modal in the app
+  // relies on that scrim alone for contrast against whatever's behind
+  // it, but this popup already gets its own dedicated background
+  // treatment (.auth-screen--blurred, below), so stacking the scrim on
+  // top of that was a second, separate source of the screen visibly
+  // dimming that a plain filter: blur()/no-brightness() fix alone can
+  // never remove — it's a different element entirely.
+  overlay.className = 'modal-overlay modal-overlay--no-scrim';
   overlay.innerHTML = `
     <div class="modal modal--providers">
       <header class="modal__header">
@@ -92,11 +99,13 @@ function openProviderPopup() {
   document.addEventListener('keydown', onKey);
   overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
   qsa('[data-close]', overlay).forEach((b) => b.addEventListener('click', close));
-  // Ease the screen blur back out as the sheet is dragged down, instead
-  // of it staying pinned at full strength until the finger lifts —
-  // matches .auth-screen--blurred's blur(16px)/brightness(0.94) at
-  // progress 0 (not dragged), fading toward no filter at progress 1
-  // (dragged to the dismiss threshold).
+  // Ease the screen's blur+dim back out as the sheet is dragged down,
+  // instead of it staying pinned at full strength until the finger
+  // lifts — matches .auth-screen--blurred's blur(9px) brightness(0.85)
+  // at progress 0 (not dragged), interpolating both together toward a
+  // fully unfiltered screen at progress 1 (dragged to the dismiss
+  // threshold). No saturate term — that glow read as too vivid once
+  // seen, so this stays plain blur + a light dim, nothing else.
   enableSwipeToDismiss(qs('.modal', overlay), close, (progress) => {
     if (!screen) return;
     if (progress <= 0) {
@@ -106,7 +115,7 @@ function openProviderPopup() {
     }
     screen.style.transition = 'none';
     const p = 1 - progress;
-    screen.style.filter = `blur(${(16 * p).toFixed(1)}px) brightness(${(1 - 0.06 * p).toFixed(3)})`;
+    screen.style.filter = `blur(${(9 * p).toFixed(1)}px) brightness(${(1 - 0.15 * p).toFixed(3)})`;
   });
 
   qsa('[data-provider]', overlay).forEach((btn) => {

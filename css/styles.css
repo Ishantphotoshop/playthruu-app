@@ -75,14 +75,13 @@
      (rounder bowls, a distinctive single-storey 'a' at weight, wider
      apertures) without giving up legibility at the 11-13px sizes the
      metadata rows run at, which is where most trendier faces fall
-     apart. Space Grotesk is kept for the wordmark ONLY — its odd,
-     geometric letterforms are exactly what you want in a logo and
-     exactly what you don't want in a paragraph. */
+     apart. Unbounded is used for the wordmark ONLY — its odd, angular
+     letterforms are exactly what you want in a logo and exactly what
+     you don't want in a paragraph. */
   --font-display: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   --font-body: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-  /* The wordmark's font — Switzer, Gilroy's free-for-commercial-use
-     lookalike (see the <link> in index.html for why). */
-  --font-brand: 'Switzer', system-ui, sans-serif;
+  /* The wordmark's font (see the <link> in index.html). */
+  --font-brand: 'Unbounded', system-ui, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Consolas, monospace;
 
   --text-display: 34px;
@@ -303,7 +302,35 @@ ul { list-style: none; margin: 0; padding: 0; }
   overflow-y: auto;
 }
 
-.boot-loader { flex: 1; display: grid; place-items: center; }
+.boot-loader { flex: 1; display: grid; place-items: center; position: relative; }
+/* A soft ambient glow breathing behind the mark — the same --accent
+   halo the real entry screen already puts behind this exact mark
+   (.landing-entry__mark's drop-shadow, and the live-wallpaper orbs
+   beside it), brought forward to the very first frame anyone ever
+   sees, before the real app or even a theme-aware mark colour is
+   available. Lives on .boot-loader (the plain, backgroundless wrapper),
+   not on .boot-loader__mark itself — the mark's own "icon" IS a CSS
+   background-image, which is already that element's own furthest-back
+   paint layer, so a glow attached there as a child (even at
+   z-index:-1) would still paint ON TOP of it, not behind. Centred via
+   a negative margin rather than transform so the scale keyframe below
+   doesn't have to also carry a translate(-50%,-50%) on every step. */
+.boot-loader::before {
+  content: '';
+  position: absolute; top: 50%; left: 50%;
+  width: 200px; height: 200px; margin: -100px 0 0 -100px;
+  border-radius: 50%; z-index: -1;
+  background: radial-gradient(circle, var(--accent), transparent 70%);
+  opacity: 0.4; filter: blur(30px);
+  animation: boot-glow 1.4s ease-in-out infinite;
+}
+@keyframes boot-glow {
+  0%, 100% { opacity: 0.22; transform: scale(0.8); }
+  50%      { opacity: 0.5;  transform: scale(1.15); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .boot-loader::before { animation: none; opacity: 0.32; }
+}
 /* The real brand mark (icons/mark-blue.svg, icons/mark-orange.svg) — a
    background-image rather than an <img>, so the theme-appropriate one
    can be picked with a plain CSS override instead of JS, which hasn't
@@ -312,13 +339,19 @@ ul { list-style: none; margin: 0; padding: 0; }
    IS already set by then, by the same inline script that avoids a
    flash of the wrong theme on the stylesheet itself. */
 .boot-loader__mark {
+  position: relative; z-index: 1;
   width: 64px; height: 64px;
   border-radius: var(--radius-m);
-  background-image: url('icons/mark-blue.svg');
+  /* Relative to THIS file (css/styles.css), not to index.html — a CSS
+     url() always resolves against the stylesheet's own location, so
+     'icons/...' here was actually requesting css/icons/mark-blue.svg
+     (a 404) and had been showing a blank square on every single app
+     load. '../icons/...' is the real site-root icons/ folder. */
+  background-image: url('../icons/mark-blue.svg');
   background-size: cover;
   animation: pulse 1.4s ease-in-out infinite;
 }
-:root[data-theme="light"] .boot-loader__mark { background-image: url('icons/mark-orange.svg'); }
+:root[data-theme="light"] .boot-loader__mark { background-image: url('../icons/mark-orange.svg'); }
 @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(0.92); } }
 
 .view-body {
@@ -369,7 +402,7 @@ ul { list-style: none; margin: 0; padding: 0; }
    override needed the way the old gradient version required. */
 .topbar__logo {
   font-family: var(--font-brand);
-  font-weight: 800; /* Switzer Extrabold — a chunky, geometric mark, not a thin one */
+  font-weight: 800; /* Unbounded Extrabold — a chunky, geometric mark, not a thin one */
   font-style: normal;
   font-size: 17px;
   letter-spacing: -0.01em;
@@ -1587,6 +1620,14 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   animation: fade-in 320ms ease;
 }
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+/* Used only by the "Continue with" popup (see openProviderPopup in
+   auth-view.js) — that popup's backdrop is already handled by blurring
+   the actual login screen behind it (.auth-screen--blurred), so the
+   normal dark rgba(4,4,8,0.68) scrim every other modal uses would just
+   be a second, independent layer dimming the same screen on top of
+   that. Every other .modal-overlay keeps the real scrim, since none of
+   them have their own background treatment to fall back on. */
+.modal-overlay--no-scrim { background: transparent; }
 /* Sheet, not a box: a grabber, a real spring, and a top-edge highlight
    so it reads as physically sliding over the content behind it. */
 .modal {
@@ -1729,15 +1770,17 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    wordmark, form fields, everything — not just the backdrop art
    layer (.auth-screen--blurred, toggled by openProviderPopup() in
    auth-view.js). A plain filter on the actual screen, not backdrop-
-   filter on the popup, which never composited reliably. Kept fairly
-   light (16px, only a slight dip in brightness) — the earlier 28px/
-   0.75 combo read as the screen going dull/dark rather than just
-   softly out of focus. While the sheet is being dragged down, JS
+   filter on the popup, which never composited reliably. No saturate
+   boost here — a saturate(1.6) "glow" version of this read as too
+   bright/vivid once actually seen, so it's back to plain blur, at 9px,
+   plus a modest brightness dip so the backdrop settles down rather
+   than staying glaring behind a much more transparent glass sheet (see
+   .modal--providers below). While the sheet is being dragged down, JS
    overrides this filter inline (see openProviderPopup's onDrag) so
-   the blur eases back out in step with the swipe instead of staying
-   pinned at full strength until release. */
+   blur and brightness ease back out together in step with the swipe,
+   landing on a fully unfiltered screen right as the sheet is dismissed. */
 .auth-screen--blurred {
-  filter: blur(16px) brightness(0.94);
+  filter: blur(9px) brightness(0.85);
 }
 /* Full-bleed now — the image covers the entire screen behind
    everything, not just a capped-height band up top. */
@@ -1797,8 +1840,8 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .auth-screen__brand h1 {
   /* 'Anton' was referenced here but never actually loaded by any font
      link in index.html, so it was silently falling back the whole time.
-     Switched to the real brand font, Switzer — bold and lowercase now,
-     a chunkier geometric mark instead of thin tracked-out capitals. */
+     Switched to the real brand font (--font-brand) — bold and lowercase
+     now, a chunkier geometric mark instead of thin tracked-out capitals. */
   font-family: var(--font-brand); font-weight: 800; font-style: normal; font-size: 36px;
   color: #fff; letter-spacing: -0.015em; text-transform: none;
   text-shadow: 0 2px 14px rgba(0,0,0,0.9), 0 1px 3px rgba(0,0,0,0.9);
@@ -2606,8 +2649,13 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    to read as glass: a translucent tinted fill plus a soft diagonal
    sheen and specular edge highlights (all plain gradients/box-shadow,
    nothing compositing-dependent) is enough to sell it, and renders
-   reliably everywhere. Ink tokens are pinned since the tint is dark
-   regardless of the active theme. */
+   reliably everywhere. Tint dropped from 0.62 to 0.34 alpha so the
+   already-blurred backdrop actually reads THROUGH the sheet — closer
+   to an iOS-style ultra-thin material than the near-solid panel the
+   heavier tint read as — with the specular top highlight and border
+   ring pushed up slightly to keep the pane's edge legible now that the
+   fill itself is doing a lot less of the work. Ink tokens are pinned
+   since the tint is dark regardless of the active theme. */
 .modal--providers {
   --ink: #f3f2ec;
   --ink-dim: #a9ada2;
@@ -2615,11 +2663,11 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   position: relative;
   background:
     linear-gradient(180deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.02) 38%, rgba(255,255,255,0.06) 100%),
-    rgba(18, 20, 26, 0.62);
+    rgba(18, 20, 26, 0.34);
   border-top: none;
   box-shadow:
-    inset 0 1.5px 0.5px rgba(255,255,255,0.55),
-    inset 0 0 0 0.5px rgba(255,255,255,0.12),
+    inset 0 1.5px 0.5px rgba(255,255,255,0.6),
+    inset 0 0 0 0.5px rgba(255,255,255,0.16),
     inset 0 -10px 24px -14px rgba(255,255,255,0.08),
     0 -1px 3px rgba(0,0,0,0.2),
     0 -24px 60px -14px rgba(0,0,0,0.55);
@@ -2639,10 +2687,10 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 }
 .modal--providers .provider-row {
   position: relative; z-index: 1;
-  background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(255,255,255,0.16);
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
 }
-.modal--providers .provider-row:hover { background: rgba(255,255,255,0.14); }
+.modal--providers .provider-row:hover { background: rgba(255,255,255,0.16); }
 
 /* ---- shared flat sheet (log sheet + mood picker) ---------------------
    Same recipe as the provider popup, generalised so any sheet can wear
@@ -2902,17 +2950,104 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   background: var(--bg);
   padding: var(--space-5);
 }
-/* A quiet radial wash in the brand's own accent, standing in for the
-   depth/movement the mosaic used to provide — fixed so it doesn't shift
-   under the centred content, faint enough to read as atmosphere rather
-   than a coloured panel. */
+/* ---- live wallpaper: a handful of big, softly-blurred colour orbs in
+   the app's own accent palette, each drifting + breathing on its own
+   slow independent loop. This is the actual replacement for the mosaic's
+   depth/movement — a single static gradient (the old .landing-entry::before)
+   read as flat and "boring" against a fully centred, otherwise-empty
+   screen. The blur lives on the wrapper (not each orb) so it's one GPU
+   layer instead of four, and every orb animates transform/opacity only —
+   the two properties a compositor can move without ever re-running
+   layout/paint, which is what keeps four ~20s infinite loops from
+   costing anything on a phone. */
+.landing-entry__wallpaper {
+  position: absolute; inset: 0; z-index: 0;
+  overflow: hidden; filter: blur(64px) saturate(1.2);
+  pointer-events: none;
+}
+/* --mx/--my: how far THIS orb has been pushed by mouse parallax (see
+   wireEntryParallax in landing-view.js), in px, different per orb so
+   they drift at different depths relative to the cursor. Registered
+   via @property purely so they're animatable — an unregistered custom
+   property is just an opaque string to the engine and can't be eased,
+   it can only ever snap. Declared with a real initial-value so an orb
+   that never received a pointermove (touch devices, or before the
+   first move) still resolves the var() below to 0px instead of the
+   invalid empty value undeclared custom properties default to. */
+@property --mx { syntax: '<length>'; inherits: true; initial-value: 0px; }
+@property --my { syntax: '<length>'; inherits: true; initial-value: 0px; }
+.landing-entry__orb {
+  position: absolute; border-radius: 50%;
+  mix-blend-mode: screen; will-change: transform;
+  /* Eases --mx/--my toward whatever JS just set them to, independent of
+     the orb-drift keyframes below (which own the rest of `transform`
+     and keep running on their own clock the whole time) — the parallax
+     glides to a stop instead of snapping to the cursor every event. */
+  transition: --mx 550ms cubic-bezier(0.16, 1, 0.3, 1), --my 550ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+/* Each orb's top/left/right/bottom is a percentage of .landing-entry's
+   own box (the wrapper above sits at inset:0, i.e. it IS that box) —
+   deliberately small negative offsets, not the wrapper itself being
+   oversized, so a corner bleeds tastefully off-frame without pushing
+   the whole orb past the overflow:hidden edge and out of view. */
+.landing-entry__orb--1 {
+  top: -6%; left: -10%; width: 62vmin; height: 62vmin;
+  background: radial-gradient(circle at 50% 50%, var(--accent) 0%, transparent 72%);
+  opacity: 0.55;
+  animation: orb-drift-1 26s ease-in-out infinite alternate;
+}
+.landing-entry__orb--2 {
+  top: 6%; right: -8%; width: 50vmin; height: 50vmin;
+  background: radial-gradient(circle at 50% 50%, var(--violet) 0%, transparent 72%);
+  opacity: 0.42;
+  animation: orb-drift-2 32s ease-in-out infinite alternate;
+}
+.landing-entry__orb--3 {
+  bottom: -8%; left: -6%; width: 48vmin; height: 48vmin;
+  background: radial-gradient(circle at 50% 50%, var(--teal) 0%, transparent 72%);
+  opacity: 0.42;
+  animation: orb-drift-3 22s ease-in-out infinite alternate;
+}
+.landing-entry__orb--4 {
+  bottom: -4%; right: 6%; width: 38vmin; height: 38vmin;
+  background: radial-gradient(circle at 50% 50%, var(--gold) 0%, transparent 72%);
+  opacity: 0.32;
+  animation: orb-drift-4 28s ease-in-out infinite alternate;
+}
+/* Each keyframe now folds in var(--mx)/var(--my) alongside its own
+   drift distance via calc() — the two motions are independent (one on
+   a slow multi-second clock, one following the cursor) but both still
+   have to live on this same transform, since an element only gets one. */
+@keyframes orb-drift-1 { from { transform: translate(var(--mx), var(--my)) scale(1); } to { transform: translate(calc(9% + var(--mx)), calc(12% + var(--my))) scale(1.18); } }
+@keyframes orb-drift-2 { from { transform: translate(var(--mx), var(--my)) scale(1); } to { transform: translate(calc(-12% + var(--mx)), calc(-7% + var(--my))) scale(1.12); } }
+@keyframes orb-drift-3 { from { transform: translate(var(--mx), var(--my)) scale(1); } to { transform: translate(calc(7% + var(--mx)), calc(-10% + var(--my))) scale(1.1); } }
+@keyframes orb-drift-4 { from { transform: translate(var(--mx), var(--my)) scale(1); } to { transform: translate(calc(-9% + var(--mx)), calc(8% + var(--my))) scale(1.22); } }
+@media (prefers-reduced-motion: reduce) {
+  .landing-entry__orb { animation: none; transition: none; }
+}
+/* Vignette above the orbs: a soft dark pool centred where the brand
+   content actually sits, fading out to fully transparent well before
+   the edges — the inverse of a photo vignette, since here it's the
+   MIDDLE that needs protecting from the wallpaper for text contrast,
+   while the corners (where the orbs actually live) should stay clear
+   enough to read as genuinely colourful. */
 .landing-entry::before {
-  content: ''; position: absolute; inset: 0; z-index: 0;
-  background: radial-gradient(120% 70% at 50% 30%, rgba(217,255,63,0.10), transparent 60%);
+  content: ''; position: absolute; inset: 0; z-index: 1;
+  background: radial-gradient(65% 48% at 50% 46%, rgba(5,6,9,0.82) 0%, rgba(5,6,9,0.55) 45%, transparent 88%);
+  pointer-events: none;
+}
+/* Faint film grain, unblurred (a sibling of .landing-entry__wallpaper,
+   not inside it) — without it the blurred orbs alone look like a smooth
+   digital gradient; this is what makes the whole thing read as
+   "wallpaper" rather than "CSS gradient". */
+.landing-entry::after {
+  content: ''; position: absolute; inset: 0; z-index: 1;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity: 0.05; mix-blend-mode: overlay;
   pointer-events: none;
 }
 .landing-entry__content {
-  position: relative; z-index: 1;
+  position: relative; z-index: 2;
   display: flex; flex-direction: column; align-items: center;
   width: 100%;
 }
@@ -3012,10 +3147,17 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    lower half (see the padding split below) rather than dead-centre. */
 .landing--tour { background: var(--bg); }
 .landing-stage--tour { padding-bottom: 0; overflow: hidden; }
+/* wireTourSwipe (landing-view.js) binds its pointer listeners to this
+   element, not to .tour__content below — .tour spans the full
+   min-height:100dvh screen including its own top/bottom padding, which
+   is where Skip and the dots row live, so a swipe started anywhere on
+   screen (not just over the title/body text) registers. touch-action:
+   pan-y leaves vertical browser gestures alone but keeps horizontal
+   drags free for JS to read as the swipe. */
 .tour {
   min-height: 100dvh; position: relative;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  text-align: center;
+  text-align: center; touch-action: pan-y;
   padding: calc(var(--space-6) + var(--safe-top)) var(--space-5) calc(var(--space-7) + var(--space-5) + var(--safe-bottom));
 }
 .tour__skip {
@@ -3023,16 +3165,9 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   background: none; border: none; color: var(--ink-faint); font-size: 14px; font-weight: 600;
   cursor: pointer; padding: 10px;
 }
-/* Fills the full tour area (not just its own text/art's natural size)
-   so a swipe anywhere on the screen registers — wireTourSwipe binds its
-   pointer listeners to this element, and a box only as big as its
-   content would only catch drags starting right over the title/body
-   text, not the empty space around it. touch-action:pan-y leaves
-   vertical browser gestures alone but keeps horizontal drags free for
-   JS to read as the swipe. */
 .tour__content {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  width: 100%; height: 100%; touch-action: pan-y;
+  width: 100%; height: 100%;
 }
 /* The slide glides in from whichever side it was swiped from (see
    tourHtml() choosing --enter-forward/--enter-backward from
