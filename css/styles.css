@@ -2994,46 +2994,83 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   top: -6%; left: -10%; width: 62vmin; height: 62vmin;
   background: radial-gradient(circle at 50% 50%, var(--accent) 0%, transparent 72%);
   opacity: 0.55;
-  animation: orb-drift-1 26s ease-in-out infinite alternate;
+  animation: orb-drift-1 17s ease-in-out infinite alternate;
 }
 .landing-entry__orb--2 {
   top: 6%; right: -8%; width: 50vmin; height: 50vmin;
   background: radial-gradient(circle at 50% 50%, var(--violet) 0%, transparent 72%);
   opacity: 0.42;
-  animation: orb-drift-2 32s ease-in-out infinite alternate;
+  animation: orb-drift-2 22s ease-in-out infinite alternate;
 }
 .landing-entry__orb--3 {
   bottom: -8%; left: -6%; width: 48vmin; height: 48vmin;
   background: radial-gradient(circle at 50% 50%, var(--teal) 0%, transparent 72%);
   opacity: 0.42;
-  animation: orb-drift-3 22s ease-in-out infinite alternate;
+  animation: orb-drift-3 15s ease-in-out infinite alternate;
 }
 .landing-entry__orb--4 {
   bottom: -4%; right: 6%; width: 38vmin; height: 38vmin;
   background: radial-gradient(circle at 50% 50%, var(--gold) 0%, transparent 72%);
   opacity: 0.32;
-  animation: orb-drift-4 28s ease-in-out infinite alternate;
+  animation: orb-drift-4 19s ease-in-out infinite alternate;
 }
 /* Each keyframe now folds in var(--mx)/var(--my) alongside its own
    drift distance via calc() — the two motions are independent (one on
    a slow multi-second clock, one following the cursor) but both still
-   have to live on this same transform, since an element only gets one. */
-@keyframes orb-drift-1 { from { transform: translate(var(--mx), var(--my)) scale(1); } to { transform: translate(calc(9% + var(--mx)), calc(12% + var(--my))) scale(1.18); } }
-@keyframes orb-drift-2 { from { transform: translate(var(--mx), var(--my)) scale(1); } to { transform: translate(calc(-12% + var(--mx)), calc(-7% + var(--my))) scale(1.12); } }
-@keyframes orb-drift-3 { from { transform: translate(var(--mx), var(--my)) scale(1); } to { transform: translate(calc(7% + var(--mx)), calc(-10% + var(--my))) scale(1.1); } }
-@keyframes orb-drift-4 { from { transform: translate(var(--mx), var(--my)) scale(1); } to { transform: translate(calc(-9% + var(--mx)), calc(8% + var(--my))) scale(1.22); } }
+   have to live on this same transform, since an element only gets one.
+   Shortened durations + wider distances than the first pass (was 22-32s
+   / ~7-12%) — the whole point of this wallpaper is to read as "alive"
+   without anyone touching the mouse, and at the original slow/subtle
+   pace the drift was too gradual to actually notice at a glance. */
+@keyframes orb-drift-1 { from { transform: translate(var(--mx), var(--my)) scale(1); } to { transform: translate(calc(14% + var(--mx)), calc(18% + var(--my))) scale(1.22); } }
+@keyframes orb-drift-2 { from { transform: translate(var(--mx), var(--my)) scale(1); } to { transform: translate(calc(-18% + var(--mx)), calc(-11% + var(--my))) scale(1.16); } }
+@keyframes orb-drift-3 { from { transform: translate(var(--mx), var(--my)) scale(1); } to { transform: translate(calc(11% + var(--mx)), calc(-15% + var(--my))) scale(1.14); } }
+@keyframes orb-drift-4 { from { transform: translate(var(--mx), var(--my)) scale(1); } to { transform: translate(calc(-14% + var(--mx)), calc(12% + var(--my))) scale(1.26); } }
 @media (prefers-reduced-motion: reduce) {
   .landing-entry__orb { animation: none; transition: none; }
 }
-/* Vignette above the orbs: a soft dark pool centred where the brand
-   content actually sits, fading out to fully transparent well before
-   the edges — the inverse of a photo vignette, since here it's the
-   MIDDLE that needs protecting from the wallpaper for text contrast,
-   while the corners (where the orbs actually live) should stay clear
-   enough to read as genuinely colourful. */
+/* Star field: unblurred (unlike the orbs, which live inside the
+   .landing-entry__wallpaper filter:blur() wrapper) so every star stays
+   a crisp pinpoint, scattered across the FULL screen — not just the
+   four corners the orbs happen to reach — so there's no dead black
+   space left anywhere, and something is always visibly twinkling even
+   with the cursor sitting still. Sits above the orbs but below the
+   vignette/grain/content (z-index 1), and each star's own random
+   --x/--y/--size/--peak/--dur/--delay come from STARS in
+   landing-view.js, generated once per module load so remounting this
+   screen doesn't reshuffle a star mid-twinkle. */
+.landing-entry__stars {
+  position: absolute; inset: 0; z-index: 1;
+  overflow: hidden; pointer-events: none;
+}
+.landing-entry__star {
+  position: absolute; top: var(--y); left: var(--x);
+  width: var(--size); height: var(--size); border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 calc(var(--size) * 2.5) rgba(255,255,255,0.65);
+  opacity: 0.18;
+  animation: star-twinkle var(--dur) ease-in-out var(--delay) infinite alternate;
+}
+@keyframes star-twinkle {
+  from { opacity: 0.18; transform: scale(0.7); }
+  to   { opacity: var(--peak); transform: scale(1.3); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .landing-entry__star { animation: none; opacity: 0.5; }
+}
+/* Vignette above the orbs+stars: a soft dark pool centred where the
+   brand content actually sits, fading out to fully transparent well
+   before the edges — the inverse of a photo vignette, since here it's
+   the MIDDLE that needs protecting from the wallpaper for text
+   contrast, while everywhere else should stay clear enough to read as
+   genuinely alive. Shrunk and lightened from the first pass (was 65%/
+   48% at up to 0.82 alpha) — that footprint was dark enough to read as
+   mostly-black outside the orbs' own four corners, which is exactly
+   the "too much black" this is meant to fix now that stars fill the
+   rest of the frame. */
 .landing-entry::before {
-  content: ''; position: absolute; inset: 0; z-index: 1;
-  background: radial-gradient(65% 48% at 50% 46%, rgba(5,6,9,0.82) 0%, rgba(5,6,9,0.55) 45%, transparent 88%);
+  content: ''; position: absolute; inset: 0; z-index: 2;
+  background: radial-gradient(50% 36% at 50% 46%, rgba(5,6,9,0.72) 0%, rgba(5,6,9,0.35) 45%, transparent 80%);
   pointer-events: none;
 }
 /* Faint film grain, unblurred (a sibling of .landing-entry__wallpaper,
@@ -3041,13 +3078,13 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    digital gradient; this is what makes the whole thing read as
    "wallpaper" rather than "CSS gradient". */
 .landing-entry::after {
-  content: ''; position: absolute; inset: 0; z-index: 1;
+  content: ''; position: absolute; inset: 0; z-index: 2;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   opacity: 0.05; mix-blend-mode: overlay;
   pointer-events: none;
 }
 .landing-entry__content {
-  position: relative; z-index: 2;
+  position: relative; z-index: 3;
   display: flex; flex-direction: column; align-items: center;
   width: 100%;
 }

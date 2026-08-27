@@ -225,10 +225,37 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
   // art, but the plain flat field that replaced it read as inert, so the
   // depth/movement now comes from an ambient "live wallpaper": a handful
   // of soft, blurred colour orbs pulled from the app's own accent
-  // palette (--accent/--violet/--teal/--gold, see styles.css), each
-  // drifting on its own slow independent loop behind a grain layer and a
-  // vignette that keeps the centre readable. Purely decorative (aria-hidden) —
-  // the mark, wordmark and tagline are still the only actual content. ----
+  // palette (--accent/--violet/--teal/--gold, see styles.css) drifting
+  // on their own loops (sped up + widened so the motion actually reads
+  // at a glance, not just once the mouse-parallax kicks in), plus a full
+  // star field scattered across the ENTIRE screen so there's always
+  // something twinkling regardless of where the orb glow happens to
+  // reach — that's what actually answers "make it live all the time,
+  // not just on mouse move" and "fill in the black", since the orbs
+  // alone only ever lit up their four corners. Behind a grain layer and
+  // a vignette that keeps the centre readable. Purely decorative
+  // (aria-hidden) — the mark, wordmark and tagline are still the only
+  // actual content. ----
+  const STAR_COUNT = 70;
+  // Generated once per module load, not per paint() — landing-entry
+  // remounts every time Account/Browse nav back to it (see the comment
+  // on gamesCache above), and re-randomising the whole sky on every one
+  // of those would make already-mid-twinkle stars visibly jump instead
+  // of continuing their cycle.
+  const STARS = Array.from({ length: STAR_COUNT }, () => ({
+    x: (Math.random() * 100).toFixed(1),
+    y: (Math.random() * 100).toFixed(1),
+    size: (Math.random() * 1.6 + 0.8).toFixed(1),
+    peak: (Math.random() * 0.5 + 0.45).toFixed(2),
+    dur: (Math.random() * 3 + 2).toFixed(1),
+    delay: (Math.random() * 5).toFixed(1),
+  }));
+  function starfieldHtml() {
+    return `
+      <div class="landing-entry__stars" aria-hidden="true">
+        ${STARS.map((s) => `<span class="landing-entry__star" style="--x:${s.x}%;--y:${s.y}%;--size:${s.size}px;--peak:${s.peak};--dur:${s.dur}s;--delay:${s.delay}s;"></span>`).join('')}
+      </div>`;
+  }
   function entryHtml() {
     return `
       <div class="landing-entry">
@@ -238,6 +265,7 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
           <span class="landing-entry__orb landing-entry__orb--3"></span>
           <span class="landing-entry__orb landing-entry__orb--4"></span>
         </div>
+        ${starfieldHtml()}
         <div class="landing-entry__content">
           <div class="landing-entry__brand">
             <img src="icons/${getTheme() === 'light' ? 'mark-orange' : 'mark-blue'}.svg" alt="" class="landing-entry__mark">
