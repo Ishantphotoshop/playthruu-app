@@ -3332,9 +3332,14 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   border-radius: var(--radius-pill); background: var(--surface-raised);
   border: 1px solid var(--line-strong); color: var(--ink-faint);
   font-size: var(--text-body); font-family: inherit; cursor: pointer; text-align: left;
+  transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
 }
 .landing-search svg { width: 18px; height: 18px; flex-shrink: 0; }
-.landing-search:active { background: var(--surface-high); }
+.landing-search:active {
+  background: var(--surface-high);
+  border-color: var(--accent-dim);
+  box-shadow: 0 0 0 3px var(--accent-dim);
+}
 .landing-browseby__heading {
   font-size: var(--text-label); font-weight: 700; text-transform: uppercase;
   letter-spacing: 0.08em; color: var(--ink-faint); margin: var(--space-4) 2px var(--space-2);
@@ -3345,7 +3350,20 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   padding: 14px 2px; background: none; border: none; border-bottom: 1px solid var(--line);
   color: var(--ink); font-size: 15px; font-weight: 600; cursor: pointer; text-align: left;
 }
-.landing-browseby__row svg { width: 16px; height: 16px; color: var(--ink-faint); flex-shrink: 0; }
+/* Leading icon per row — every other list-like surface in the app
+   (tabbar, provider rows) pairs an icon with its label; this was the
+   one plain-text list left. Sits in a fixed-width box so every label
+   still lines up in a column regardless of each icon's own proportions,
+   tinted with the brand accent (at low opacity, not a solid fill) so
+   the row reads as "branded" rather than a generic settings list. */
+.landing-browseby__row-main { display: flex; align-items: center; gap: 13px; min-width: 0; }
+.landing-browseby__row-icon {
+  display: grid; place-items: center; flex-shrink: 0;
+  width: 30px; height: 30px; border-radius: 9px;
+  background: var(--accent-dim); color: var(--accent-bright);
+}
+.landing-browseby__row-icon svg { width: 16px; height: 16px; }
+.landing-browseby__chevron { width: 16px; height: 16px; color: var(--ink-faint); flex-shrink: 0; }
 .landing-browseby__row:active { background: var(--surface-raised); }
 
 /* ---- pull-to-refresh (Feed, Profile) ----------------------------------

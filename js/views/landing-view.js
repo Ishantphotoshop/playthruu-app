@@ -1,5 +1,9 @@
 import * as api from '../api.js';
-import { posterFrame, avatarImg, spinner, emptyState, iconSearch } from '../components.js';
+import {
+  posterFrame, avatarImg, spinner, emptyState, iconSearch,
+  iconTag, iconGamepad, iconFlame, iconStar, iconCalendar, iconTrophy, iconSparkle,
+  iconInfo, iconDiary, iconUserPlus, iconBookmark,
+} from '../components.js';
 import { esc, starRow, qs, qsa, toast } from '../utils.js';
 import { renderAuthView } from './auth-view.js';
 import { navigate } from '../router.js';
@@ -460,6 +464,20 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
   }
 
   // ---- search: a REAL search bar + REAL Discover filters -------------
+  // A leading icon per row (added alongside the trailing chevron that
+  // was already there) — every OTHER list-like surface in the app pairs
+  // an icon with its label (the tabbar, provider rows, tour mockups...);
+  // this was the one plain text list left, and against the entry
+  // screen's live wallpaper right before it, it read as flat/unfinished
+  // by comparison. Icons are matched by feel, not literal precision —
+  // e.g. Highest Rated and "Rate it" share the star, Most Popular gets
+  // the flame already used for trending elsewhere.
+  const CATEGORY_ICON = {
+    Genre: iconTag, Platform: iconGamepad, 'Most Popular': iconFlame,
+    'Highest Rated': iconStar, 'Most Anticipated': iconCalendar,
+    'All-Time Top Rated': iconTrophy, 'Newest Releases': iconSparkle,
+  };
+  const FEATURE_ICON = { new: iconInfo, track: iconDiary, rate: iconStar, friends: iconUserPlus, lists: iconBookmark };
   function searchHtml() {
     const categories = [
       'Genre', 'Platform', 'Most Popular', 'Highest Rated',
@@ -472,6 +490,7 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
       { id: 'friends', label: "Follow friends, see what they're playing" },
       { id: 'lists', label: 'Build lists and a want-to-play queue' },
     ];
+    const chevron = `<svg class="landing-browseby__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"/></svg>`;
     return `
       <div class="landing-search-screen">
         <button type="button" class="landing-search" id="landing-search-bar" aria-label="Search for a game">
@@ -482,16 +501,16 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
         <div class="landing-browseby">
           ${categories.map((c) => `
             <button type="button" class="landing-browseby__row" data-cat="${esc(c)}">
-              <span>${esc(c)}</span>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"/></svg>
+              <span class="landing-browseby__row-main"><span class="landing-browseby__row-icon">${CATEGORY_ICON[c]()}</span><span>${esc(c)}</span></span>
+              ${chevron}
             </button>`).join('')}
         </div>
         <p class="landing-browseby__heading">Playthruu</p>
         <div class="landing-browseby">
           ${features.map((f) => `
             <button type="button" class="landing-browseby__row" data-feature="${f.id}">
-              <span>${esc(f.label)}</span>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"/></svg>
+              <span class="landing-browseby__row-main"><span class="landing-browseby__row-icon">${FEATURE_ICON[f.id]()}</span><span>${esc(f.label)}</span></span>
+              ${chevron}
             </button>`).join('')}
         </div>
       </div>`;
