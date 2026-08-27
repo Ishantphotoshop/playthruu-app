@@ -3,7 +3,13 @@ import { state } from '../state.js';
 import {
   topBar, navBar, activityCard, emptyState, spinner, skeletonRow, iconStamp, iconUser, iconFilter,
   trendingStrip, wireTrendingStrip, friendsPlayingCard, posterFrame, openReportSheet,
+  iconFlame, iconGamepad,
 } from '../components.js';
+
+// Small accent-coloured icon ahead of a feed section heading — see
+// .section-heading__icon in styles.css for why this is a plain inline
+// icon rather than the boxed badge the Search screen's rows use.
+const sectionIcon = (svg) => `<span class="section-heading__icon" aria-hidden="true">${svg}</span>`;
 import { toast, qs, qsa, esc, enableSwipeToDismiss, promptSignIn, tapFeedback, pulseLogTab } from '../utils.js';
 import { openLogModal } from './log-modal.js';
 import { refreshCurrentView, navigate } from '../router.js';
@@ -24,7 +30,7 @@ export async function renderFeedView(root) {
     <div id="feed-sections" class="feed-body--loading">
       <div id="trending-section"></div>
       <div id="friends-section"></div>
-      <h2 class="section-heading">Currently playing</h2>
+      <h2 class="section-heading">${sectionIcon(iconGamepad())}Currently playing</h2>
       <div id="activity-section">${skeletonRow()}</div>
       <div id="discovery-section"></div>
     </div>
@@ -262,13 +268,13 @@ async function paintDiscovery(slot) {
 }
 
 async function paintTrending(slot) {
-  slot.innerHTML = `<h2 class="section-heading">Trending now</h2>${skeletonRow()}`;
+  slot.innerHTML = `<h2 class="section-heading">${sectionIcon(iconFlame())}Trending now</h2>${skeletonRow()}`;
   try {
     const games = await api.getWorldTrending(5, 10);
     if (!games.length) { slot.innerHTML = ''; return; }
     slot.innerHTML = `
       <div class="feed-section-head">
-        <h2 class="section-heading">Trending now</h2>
+        <h2 class="section-heading">${sectionIcon(iconFlame())}Trending now</h2>
         <a href="#/discover" class="see-more-link">See more →</a>
       </div>
       ${trendingStrip(games)}`;
@@ -288,12 +294,12 @@ async function paintTrending(slot) {
 }
 
 async function paintFriendsPlaying(slot) {
-  slot.innerHTML = `<h2 class="section-heading">Friend's recent activity</h2>${skeletonRow()}`;
+  slot.innerHTML = `<h2 class="section-heading">${sectionIcon(iconUser())}Friend's recent activity</h2>${skeletonRow()}`;
   try {
     const entries = await api.getFriendsPlaying(state.user.id, 12);
     if (!entries.length) { slot.innerHTML = ''; return; }
     slot.innerHTML = `
-      <h2 class="section-heading">Friend's recent activity</h2>
+      <h2 class="section-heading">${sectionIcon(iconUser())}Friend's recent activity</h2>
       <div class="trending-strip">${entries.map((e, i) => friendsPlayingCard(e, i)).join('')}</div>`;
   } catch {
     slot.innerHTML = '';

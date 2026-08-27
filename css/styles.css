@@ -897,16 +897,29 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 /* All three feed rows (Trending / Friends Recently Completed /
    Currently Playing) share one definition on purpose — they used to be
    three separate copies that drifted to different sizes and radii,
-   which is what made the rows look misaligned against each other. */
+   which is what made the rows look misaligned against each other.
+   Bumped from 108px to 124px — the feed read as a dense, flat wall of
+   small thumbnails with nothing to actually look at; posters are the
+   whole hook of a diary app like this one, so they get more room. */
 .trending-card, .friend-card, .activity-card {
-  flex-shrink: 0; width: 108px; display: block; position: relative;
+  flex-shrink: 0; width: 124px; display: block; position: relative;
   text-align: left; transition: transform 0.12s ease;
   padding: 0; background: none; border: none;
 }
 .trending-card:active, .friend-card:active, .activity-card:active { transform: scale(0.96); }
 .trending-card__cover, .friend-card__cover, .activity-card__cover {
-  width: 108px; aspect-ratio: var(--ratio-card); object-fit: cover; display: block;
+  width: 124px; aspect-ratio: var(--ratio-card); object-fit: cover; display: block;
   border-radius: var(--radius-s); background: var(--surface); box-shadow: var(--shadow-card);
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+/* Same lift + accent glow .discovery-tile already uses on hover/focus —
+   these three rows never had it, so they were the one interactive
+   poster surface in the app that stayed completely inert on hover. */
+.trending-card:hover .trending-card__cover,
+.friend-card:hover .friend-card__cover,
+.activity-card:hover .activity-card__cover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-card), 0 12px 30px rgba(0,0,0,0.45), 0 0 18px rgba(217, 255, 63, 0.18);
 }
 .trending-card:disabled { opacity: 0.6; }
 .friend-card__avatars { position: absolute; top: 8px; left: 8px; display: flex; }
@@ -918,7 +931,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .friend-card__poster, .activity-card__poster { display: block; }
 .card-who {
   display: flex; align-items: center; gap: 7px; margin-top: 8px;
-  width: 108px; max-width: 108px; /* == poster width, so it never overflows */
+  width: 124px; max-width: 124px; /* == poster width, so it never overflows */
 }
 .card-who .avatar { flex-shrink: 0; }
 .card-who__meta { min-width: 0; display: flex; flex-direction: column; gap: 1px; overflow: hidden; }
@@ -1431,6 +1444,18 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .feed-section-head { display: flex; align-items: baseline; justify-content: space-between; }
 .feed-section-head .section-heading { margin-bottom: 12px; }
 .see-more-link { font-size: 12px; font-weight: 700; color: var(--accent-bright); flex-shrink: 0; }
+/* A small accent-coloured icon ahead of each feed section's heading —
+   the feed used to be four identical "heading + row of posters" blocks
+   in a row with nothing but the text itself telling them apart at a
+   glance; this gives each one its own quick visual anchor when
+   scanning down the page, without needing a boxed badge (too heavy
+   repeated four times down a scrolling feed — that treatment is kept
+   for the Search screen's static list instead, see .landing-browseby__row-icon). */
+.section-heading__icon {
+  display: inline-flex; vertical-align: -3px; margin-right: 8px;
+  width: 18px; height: 18px; color: var(--accent-bright);
+}
+.section-heading__icon svg { width: 100%; height: 100%; }
 
 .icon-btn--small { width: 30px; height: 30px; }
 .icon-btn--small svg { width: 15px; height: 15px; }
