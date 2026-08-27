@@ -91,6 +91,7 @@ export function topBar(title, { back = false, right = '', home = false } = {}) {
   if (home) {
     return `
       <header class="topbar topbar--home">
+        <img src="icons/${getTheme() === 'light' ? 'mark-orange' : 'mark-blue'}.svg" alt="" class="topbar__mark">
         <span class="topbar__logo">PlayThruu</span>
       </header>`;
   }

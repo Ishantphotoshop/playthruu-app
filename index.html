@@ -19,13 +19,19 @@
 <meta name="theme-color" content="#12121a">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<!-- Unbounded: the wordmark's font — a chunky, geometric display face
+<!-- Manrope: the app's general UI font (--font-display/--font-body),
+     everywhere except the "PlayThruu" wordmark. No italic weights
+     requested — Manrope doesn't ship a true italic on Google Fonts, so
+     the two spots that set font-style:italic on --font-body (the entry
+     and auth screen taglines) fall back to the browser's own
+     synthesised oblique, which is fine for a geometric sans like this.
+     Unbounded: the wordmark's font — a chunky, geometric display face
      with distinctive angled cuts on a few letterforms, picked to give
-     the "PlayThruu" mark its own identity instead of reading as a
-     slightly-bolder version of the body text. --font-brand is the only
-     thing that references it, so swapping it again later only means
-     changing this line + that one variable. -->
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,500;1,600&family=IBM+Plex+Mono:wght@400;500&family=Unbounded:wght@700;800;900&display=swap" rel="stylesheet">
+     the mark its own identity instead of reading as a slightly-bolder
+     version of the body text. --font-brand is the only thing that
+     references it, so swapping it again later only means changing this
+     line + that one variable. -->
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&family=Unbounded:wght@700;800;900&display=swap" rel="stylesheet">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/icon-192.png">

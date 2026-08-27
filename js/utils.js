@@ -13,13 +13,21 @@ export function esc(str) {
     .replaceAll("'", '&#39;');
 }
 
-// Renders a row of 5 stars (supports halves) for a rating 0.5–5.
-// interactive=true wires up click/tap handlers via data attributes
-// and lets the caller read the chosen value from the DOM.
+// Renders a row of stars (supports halves) for a rating 0.5–5.
+// interactive=true wires up click/tap handlers via data attributes and
+// lets the caller read the chosen value from the DOM — that picker
+// needs all 5 stars rendered regardless of the current value, since an
+// empty star past the current rating is the only thing there is to tap
+// to raise it. Every other call site is a read-only display of a
+// rating that already exists, so those stop at the last star that
+// actually has something to show (full or half) — a plain display
+// isn't a fixed "X out of 5" scale, so trailing empty stars there were
+// just visual noise, not information.
 export function starRow(rating, { interactive = false, size = 18 } = {}) {
   const r = Number(rating) || 0;
+  const count = interactive ? 5 : Math.ceil(r);
   let html = `<span class="stars${interactive ? ' stars--interactive' : ''}" style="--star-size:${size}px" data-rating="${r}">`;
-  for (let i = 1; i <= 5; i++) {
+  for (let i = 1; i <= count; i++) {
     const fill = r >= i ? 'full' : r >= i - 0.5 ? 'half' : 'empty';
     html += `<span class="star star--${fill}" data-star="${i}" aria-hidden="true"></span>`;
   }

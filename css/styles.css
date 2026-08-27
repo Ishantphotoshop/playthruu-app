@@ -71,15 +71,15 @@
   --warning: #ffc247;
 
   /* --- type ---
-     Plus Jakarta Sans throughout: a touch more character than Inter
-     (rounder bowls, a distinctive single-storey 'a' at weight, wider
-     apertures) without giving up legibility at the 11-13px sizes the
-     metadata rows run at, which is where most trendier faces fall
-     apart. Unbounded is used for the wordmark ONLY — its odd, angular
-     letterforms are exactly what you want in a logo and exactly what
-     you don't want in a paragraph. */
-  --font-display: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-  --font-body: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+     Manrope throughout: a cleaner, more even geometric sans than the
+     Plus Jakarta Sans it replaced (which read as noticeably weaker at
+     both display and body sizes), while keeping the same wide apertures
+     and calm x-height that hold up at the 11-13px metadata rows this
+     app runs a lot of text at. Unbounded is used for the wordmark
+     ONLY — its odd, angular letterforms are exactly what you want in a
+     logo and exactly what you don't want in a paragraph. */
+  --font-display: 'Manrope', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-body: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   /* The wordmark's font (see the <link> in index.html). */
   --font-brand: 'Unbounded', system-ui, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Consolas, monospace;
@@ -391,9 +391,13 @@ ul { list-style: none; margin: 0; padding: 0; }
   background: var(--bg);
   border-bottom: 1px solid var(--line);
 }
-/* Home only: the wordmark alone, centred, given room to breathe. */
+/* Home only: the mark + wordmark, centred as a pair, given room to
+   breathe. The mark sits on .topbar's existing flex row (already
+   gap+align-items:center from the base rule above), so it just needs
+   its own size — everything else about the row layout is inherited. */
 .topbar--home { justify-content: center; padding-top: calc(var(--space-4) + var(--safe-top)); padding-bottom: var(--space-4); }
 .topbar--home .topbar__logo { font-size: 22px; letter-spacing: 0.14em; }
+.topbar__mark { width: 24px; height: 24px; border-radius: 7px; flex-shrink: 0; }
 /* Flat, bold, and the plain theme ink — matches the actual "PlayThruu"
    brand mark exactly (see icons/mark-blue.svg, icons/mark-orange.svg)
    rather than a decorative gradient invented separately from it. Being
@@ -516,31 +520,25 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    the 60%-opacity resting state) — no dot beneath it. */
 .tabbar__item--active { color: #fff; }
 .tabbar__item--active svg { filter: drop-shadow(0 1px 1.5px rgba(0,0,0,0.38)) drop-shadow(0 0 6px rgba(217,255,63,0.35)); }
-/* Sits inline with the other items — the previous version used a
-   negative top margin to make it protrude, which fought the flex
-   centering and left it visibly off-axis. Same height as its
-   siblings now, so it lands dead centre every time.
-   Flat dark fill, not a solid lime disc: a permanent block of accent
-   colour both fought whatever art sits behind the translucent bar
-   and buried the pulse ring (a lime ring is invisible against a lime
-   fill). The mark itself carries the accent instead — matches how
-   sparingly --accent is used everywhere else. Deliberately flat, no
-   glass layering or glow: the specular/rim inset shadows that read as
-   a nice edge on a lime disc showed up as two distracting rings once
-   the fill went dark, and an ambient bloom just re-introduced the
-   same "accent everywhere" problem the flat fill was meant to fix. */
+/* Sits inline with the other items — same min-width/height as its
+   siblings (see .tabbar__item above), so it lands dead centre every
+   time. No badge/disc — a plain white icon like any other tabbar
+   glyph, just sized up a little since it's still the primary action.
+   Earlier versions wrapped it in a lime or dark circular badge; that
+   read as a separate little logo sitting in the middle of the bar
+   rather than a tab like its neighbours. */
 .tabbar__item--primary {
-  color: var(--accent);
-  background: var(--surface-high);
-  width: 64px; height: 64px; min-width: 64px; border-radius: 50%;
+  color: #fff;
+  background: none;
+  min-width: 58px; height: 50px;
   padding: 0; margin: 0; gap: 0; flex-shrink: 0;
-  border: 1.5px solid var(--accent-dim);
+  border: none;
   text-shadow: none;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  box-shadow: none;
 }
 .tabbar__item--primary span { display: none; }
 .tabbar__item--primary svg {
-  width: 34px; height: 34px;
+  width: 28px; height: 28px;
 }
 .tabbar__item--primary::after { display: none; }
 .tabbar__item--primary:active { transform: scale(0.92); }
@@ -567,15 +565,25 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   100% { opacity: 0; transform: scale(1.6); }
 }
 
-/* Unread dot on the Messages tab — see app.js's applyMessageBadge().
-   A plain dot rather than a numbered pill: it only ever means "something
-   changed, go look," never a count worth reading at a glance. */
+/* Unread COUNT on the Messages tab — see app.js's applyMessageBadge(),
+   which sets the actual number as data-badge-count on the element this
+   class lands on. Rendered via attr() rather than as a real child node
+   since navBar() itself stays a plain synchronous template string (see
+   the comment on applyMessageBadge) — a pure ::after pill needs no
+   markup change there. Flat fill, no glow: a permanently-lit blob was
+   the one glowing thing in the bar that never turned off, and a number
+   is already enough on its own to say "go look," it doesn't need to
+   shout too. */
 .tabbar__item--badge { position: relative; }
 .tabbar__item--badge::after {
-  content: ''; position: absolute; top: 4px; right: 12px;
-  width: 8px; height: 8px; border-radius: 50%;
-  background: var(--accent-bright);
-  box-shadow: 0 0 0 2px var(--bg), 0 0 6px rgba(217, 255, 63,0.5);
+  content: attr(data-badge-count);
+  position: absolute; top: 2px; right: 6px;
+  min-width: 16px; height: 16px; padding: 0 4px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: var(--radius-pill);
+  background: var(--accent-bright); color: var(--bg);
+  font-family: var(--font-mono); font-size: 10px; font-weight: 700; line-height: 1;
+  box-shadow: 0 0 0 2px var(--bg);
 }
 
 /* Blur is expensive and some engines fake it badly; without support,
@@ -1444,18 +1452,6 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .feed-section-head { display: flex; align-items: baseline; justify-content: space-between; }
 .feed-section-head .section-heading { margin-bottom: 12px; }
 .see-more-link { font-size: 12px; font-weight: 700; color: var(--accent-bright); flex-shrink: 0; }
-/* A small accent-coloured icon ahead of each feed section's heading —
-   the feed used to be four identical "heading + row of posters" blocks
-   in a row with nothing but the text itself telling them apart at a
-   glance; this gives each one its own quick visual anchor when
-   scanning down the page, without needing a boxed badge (too heavy
-   repeated four times down a scrolling feed — that treatment is kept
-   for the Search screen's static list instead, see .landing-browseby__row-icon). */
-.section-heading__icon {
-  display: inline-flex; vertical-align: -3px; margin-right: 8px;
-  width: 18px; height: 18px; color: var(--accent-bright);
-}
-.section-heading__icon svg { width: 100%; height: 100%; }
 
 .icon-btn--small { width: 30px; height: 30px; }
 .icon-btn--small svg { width: 15px; height: 15px; }
@@ -3055,7 +3051,6 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 }
 .landing-entry__mark {
   width: 88px; height: 88px; border-radius: 24px;
-  filter: drop-shadow(0 10px 34px rgba(217,255,63,0.2));
   animation: mark-settle 800ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 @keyframes mark-settle {

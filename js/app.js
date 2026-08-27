@@ -42,16 +42,16 @@ window.seedLoginBackdrops = api.seedLoginBackdropGames;
 // prompt until it's been added once. Run: `await seedPinnedGames()`.
 window.seedPinnedGames = seedPinnedGames;
 
-// A small dot on the Messages nav icon for "something needs your
-// attention" (an unread reply, or a new request). navBar() itself stays
-// synchronous and side-effect free — every view calls it as part of a
-// plain template string — so the badge is applied here instead, as a
-// class toggle on whatever [data-route="/messages"] element currently
-// exists. That element gets torn down and rebuilt on every single
-// navigation (navBar() re-renders as part of each view), which is why
-// this re-applies on every hashchange rather than once: the count
-// itself only needs recomputing when a conversation actually changes
-// (via the realtime subscription below), but the CSS class has to be
+// A small number on the Messages nav icon for "you have N unread
+// conversations". navBar() itself stays synchronous and side-effect
+// free — every view calls it as part of a plain template string — so
+// the badge is applied here instead, as a class + data attribute on
+// whatever [data-route="/messages"] element currently exists. That
+// element gets torn down and rebuilt on every single navigation
+// (navBar() re-renders as part of each view), which is why this
+// re-applies on every hashchange rather than once: the count itself
+// only needs recomputing when a conversation actually changes (via the
+// realtime subscription below), but the class/attribute have to be
 // reapplied to a fresh DOM node every time the view underneath it swaps.
 let unreadMessageCount = 0;
 let unsubscribeConversations = null;
@@ -59,6 +59,8 @@ let unsubscribeConversations = null;
 function applyMessageBadge() {
   document.querySelectorAll('.tabbar [data-route="/messages"]').forEach((el) => {
     el.classList.toggle('tabbar__item--badge', unreadMessageCount > 0);
+    if (unreadMessageCount > 0) el.setAttribute('data-badge-count', unreadMessageCount > 99 ? '99+' : String(unreadMessageCount));
+    else el.removeAttribute('data-badge-count');
   });
 }
 
