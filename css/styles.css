@@ -2950,95 +2950,26 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   background: var(--bg);
   padding: var(--space-5);
 }
-/* ---- live wallpaper: a handful of big, softly-blurred colour orbs in
-   the app's own accent palette, each drifting + breathing on its own
-   slow independent loop. This is the actual replacement for the mosaic's
-   depth/movement — a single static gradient (the old .landing-entry::before)
-   read as flat and "boring" against a fully centred, otherwise-empty
-   screen. The blur lives on the wrapper (not each orb) so it's one GPU
-   layer instead of four, and every orb animates transform/opacity only —
-   the two properties a compositor can move without ever re-running
-   layout/paint, which is what keeps four ~20s infinite loops from
-   costing anything on a phone. */
+/* ---- live wallpaper: a flat field in the app's own --bg at 60%,
+   nothing else — the colour-orb version (blurred accent-palette blobs
+   drifting behind the stars, with a mouse-parallax layer on top of
+   that) was pulled after actually seeing it next to the star field:
+   the stars alone read as the "space wallpaper" this was going for,
+   and the coloured glow just competed with them. Kept as its own layer
+   (not just relying on .landing-entry's own solid --bg beneath) so a
+   future tweak here doesn't have to touch .landing-entry's base again. */
 .landing-entry__wallpaper {
   position: absolute; inset: 0; z-index: 0;
-  overflow: hidden; filter: blur(64px) saturate(1.2);
+  background: var(--bg); opacity: 0.6;
   pointer-events: none;
 }
-/* --mx/--my: how far THIS orb has been pushed by mouse parallax (see
-   wireEntryParallax in landing-view.js), in px, different per orb so
-   they drift at different depths relative to the cursor. Registered
-   via @property purely so they're animatable — an unregistered custom
-   property is just an opaque string to the engine and can't be eased,
-   it can only ever snap. Declared with a real initial-value so an orb
-   that never received a pointermove (touch devices, or before the
-   first move) still resolves the var() below to 0px instead of the
-   invalid empty value undeclared custom properties default to. */
-@property --mx { syntax: '<length>'; inherits: true; initial-value: 0px; }
-@property --my { syntax: '<length>'; inherits: true; initial-value: 0px; }
-.landing-entry__orb {
-  position: absolute; border-radius: 50%;
-  mix-blend-mode: screen; will-change: transform;
-  /* Eases --mx/--my toward whatever JS just set them to, independent of
-     the orb-drift keyframes below (which own the rest of `transform`
-     and keep running on their own clock the whole time) — the parallax
-     glides to a stop instead of snapping to the cursor every event. */
-  transition: --mx 550ms cubic-bezier(0.16, 1, 0.3, 1), --my 550ms cubic-bezier(0.16, 1, 0.3, 1);
-}
-/* Each orb's top/left/right/bottom is a percentage of .landing-entry's
-   own box (the wrapper above sits at inset:0, i.e. it IS that box) —
-   deliberately small negative offsets, not the wrapper itself being
-   oversized, so a corner bleeds tastefully off-frame without pushing
-   the whole orb past the overflow:hidden edge and out of view. */
-.landing-entry__orb--1 {
-  top: -6%; left: -10%; width: 62vmin; height: 62vmin;
-  background: radial-gradient(circle at 50% 50%, var(--accent) 0%, transparent 72%);
-  opacity: 0.55;
-  animation: orb-drift-1 17s ease-in-out infinite alternate;
-}
-.landing-entry__orb--2 {
-  top: 6%; right: -8%; width: 50vmin; height: 50vmin;
-  background: radial-gradient(circle at 50% 50%, var(--violet) 0%, transparent 72%);
-  opacity: 0.42;
-  animation: orb-drift-2 22s ease-in-out infinite alternate;
-}
-.landing-entry__orb--3 {
-  bottom: -8%; left: -6%; width: 48vmin; height: 48vmin;
-  background: radial-gradient(circle at 50% 50%, var(--teal) 0%, transparent 72%);
-  opacity: 0.42;
-  animation: orb-drift-3 15s ease-in-out infinite alternate;
-}
-.landing-entry__orb--4 {
-  bottom: -4%; right: 6%; width: 38vmin; height: 38vmin;
-  background: radial-gradient(circle at 50% 50%, var(--gold) 0%, transparent 72%);
-  opacity: 0.32;
-  animation: orb-drift-4 19s ease-in-out infinite alternate;
-}
-/* Each keyframe now folds in var(--mx)/var(--my) alongside its own
-   drift distance via calc() — the two motions are independent (one on
-   a slow multi-second clock, one following the cursor) but both still
-   have to live on this same transform, since an element only gets one.
-   Shortened durations + wider distances than the first pass (was 22-32s
-   / ~7-12%) — the whole point of this wallpaper is to read as "alive"
-   without anyone touching the mouse, and at the original slow/subtle
-   pace the drift was too gradual to actually notice at a glance. */
-@keyframes orb-drift-1 { from { transform: translate(var(--mx), var(--my)) scale(1); } to { transform: translate(calc(14% + var(--mx)), calc(18% + var(--my))) scale(1.22); } }
-@keyframes orb-drift-2 { from { transform: translate(var(--mx), var(--my)) scale(1); } to { transform: translate(calc(-18% + var(--mx)), calc(-11% + var(--my))) scale(1.16); } }
-@keyframes orb-drift-3 { from { transform: translate(var(--mx), var(--my)) scale(1); } to { transform: translate(calc(11% + var(--mx)), calc(-15% + var(--my))) scale(1.14); } }
-@keyframes orb-drift-4 { from { transform: translate(var(--mx), var(--my)) scale(1); } to { transform: translate(calc(-14% + var(--mx)), calc(12% + var(--my))) scale(1.26); } }
-@media (prefers-reduced-motion: reduce) {
-  .landing-entry__orb { animation: none; transition: none; }
-}
-/* Star field: unblurred (unlike the orbs, which live inside the
-   .landing-entry__wallpaper filter:blur() wrapper) so every star stays
-   a crisp pinpoint, scattered across the FULL screen — not just the
-   four corners the orbs happen to reach — so there's no dead black
-   space left anywhere, and something is always visibly twinkling even
-   with the cursor sitting still. Sits above the orbs but below the
-   vignette/grain/content (z-index 1), and each star's own random
-   --x/--y/--size/--peak/--dur/--delay come from STARS in
-   landing-view.js, generated once per module load so remounting this
-   screen doesn't reshuffle a star mid-twinkle. */
+/* Star field: scattered across the FULL screen so there's no dead
+   black space left anywhere, and something is always visibly twinkling
+   even with the cursor sitting still. Sits above the flat wallpaper
+   fill but below the vignette/grain/content (z-index 1), and each
+   star's own random --x/--y/--size/--peak/--dur/--delay come from
+   STARS in landing-view.js, generated once per module load so
+   remounting this screen doesn't reshuffle a star mid-twinkle. */
 .landing-entry__stars {
   position: absolute; inset: 0; z-index: 1;
   overflow: hidden; pointer-events: none;
@@ -3058,25 +2989,20 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 @media (prefers-reduced-motion: reduce) {
   .landing-entry__star { animation: none; opacity: 0.5; }
 }
-/* Vignette above the orbs+stars: a soft dark pool centred where the
-   brand content actually sits, fading out to fully transparent well
-   before the edges — the inverse of a photo vignette, since here it's
-   the MIDDLE that needs protecting from the wallpaper for text
-   contrast, while everywhere else should stay clear enough to read as
-   genuinely alive. Shrunk and lightened from the first pass (was 65%/
-   48% at up to 0.82 alpha) — that footprint was dark enough to read as
-   mostly-black outside the orbs' own four corners, which is exactly
-   the "too much black" this is meant to fix now that stars fill the
-   rest of the frame. */
+/* Vignette above the stars: a soft dark pool centred where the brand
+   content actually sits, fading out to fully transparent well before
+   the edges — the inverse of a photo vignette, since here it's the
+   MIDDLE that needs protecting (from the star field) for text
+   contrast, while everywhere else should stay clear enough for stars
+   to read as genuinely alive. */
 .landing-entry::before {
   content: ''; position: absolute; inset: 0; z-index: 2;
   background: radial-gradient(50% 36% at 50% 46%, rgba(5,6,9,0.72) 0%, rgba(5,6,9,0.35) 45%, transparent 80%);
   pointer-events: none;
 }
-/* Faint film grain, unblurred (a sibling of .landing-entry__wallpaper,
-   not inside it) — without it the blurred orbs alone look like a smooth
-   digital gradient; this is what makes the whole thing read as
-   "wallpaper" rather than "CSS gradient". */
+/* Faint film grain, unblurred — without it the flat wallpaper fill
+   looks like a plain CSS colour; this (plus the stars) is what makes
+   the whole thing read as "wallpaper" rather than "background: var(--bg)". */
 .landing-entry::after {
   content: ''; position: absolute; inset: 0; z-index: 2;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");

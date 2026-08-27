@@ -222,18 +222,15 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
   // than competing top-level buttons. No cover-art backdrop (an earlier
   // version scrolled a live wall of real game covers behind this) — the
   // brief is still to lean on the brand itself rather than borrowed game
-  // art, but the plain flat field that replaced it read as inert, so the
-  // depth/movement now comes from an ambient "live wallpaper": a handful
-  // of soft, blurred colour orbs pulled from the app's own accent
-  // palette (--accent/--violet/--teal/--gold, see styles.css) drifting
-  // on their own loops (sped up + widened so the motion actually reads
-  // at a glance, not just once the mouse-parallax kicks in), plus a full
-  // star field scattered across the ENTIRE screen so there's always
-  // something twinkling regardless of where the orb glow happens to
-  // reach — that's what actually answers "make it live all the time,
-  // not just on mouse move" and "fill in the black", since the orbs
-  // alone only ever lit up their four corners. Behind a grain layer and
-  // a vignette that keeps the centre readable. Purely decorative
+  // art, so the "live wallpaper" here is a flat field in the app's own
+  // --bg (see .landing-entry__wallpaper in styles.css) plus a star field
+  // scattered across the ENTIRE screen, always twinkling on its own
+  // clock regardless of the cursor. An earlier version replaced the flat
+  // field with drifting colour orbs (plus a mouse-parallax layer on top
+  // of those) — pulled after actually seeing it next to the stars, which
+  // read as the "space wallpaper" this was going for on their own; the
+  // coloured glow just competed with them. Behind a grain layer and a
+  // vignette that keeps the centre readable. Purely decorative
   // (aria-hidden) — the mark, wordmark and tagline are still the only
   // actual content. ----
   const STAR_COUNT = 70;
@@ -259,12 +256,7 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
   function entryHtml() {
     return `
       <div class="landing-entry">
-        <div class="landing-entry__wallpaper" aria-hidden="true">
-          <span class="landing-entry__orb landing-entry__orb--1"></span>
-          <span class="landing-entry__orb landing-entry__orb--2"></span>
-          <span class="landing-entry__orb landing-entry__orb--3"></span>
-          <span class="landing-entry__orb landing-entry__orb--4"></span>
-        </div>
+        <div class="landing-entry__wallpaper" aria-hidden="true"></div>
         ${starfieldHtml()}
         <div class="landing-entry__content">
           <div class="landing-entry__brand">
@@ -290,43 +282,6 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
     // that made this stack feel cluttered.
     qs('#entry-signin', stage).addEventListener('click', () => goToAuth('signin'));
     qs('#entry-tour', stage).addEventListener('click', () => { screen = 'tour'; tourIndex = 0; paint(); });
-    wireEntryParallax(stage);
-  }
-
-  // Mouse-only parallax on the live-wallpaper orbs — each one drifts a
-  // little toward the cursor, at a different depth (a bigger DEPTH_PX
-  // reads as "closer"/more responsive), on top of its own independent
-  // orb-drift-N animation from styles.css. The two motions don't fight:
-  // CSS eases --mx/--my itself (see .landing-entry__orb's transition),
-  // so this only ever needs to set a target value, never animate one.
-  // No manual teardown needed — the listener lives on `stage`, the DOM
-  // node .landing-entry itself, which gets discarded (and the listener
-  // with it) the moment the screen re-renders to anything else.
-  function wireEntryParallax(stage) {
-    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
-    const entry = qs('.landing-entry', stage);
-    const orbs = qsa('.landing-entry__orb', stage).map((el, i) => ({
-      el,
-      // Alternating sign so orbs don't all lean the same direction —
-      // reads as depth/parallax rather than the whole wallpaper just
-      // sliding as one flat sheet behind the cursor.
-      depth: [22, -16, 14, -26][i] ?? 16,
-    }));
-    if (!entry || !orbs.length) return;
-    entry.addEventListener('pointermove', (e) => {
-      if (e.pointerType !== 'mouse') return; // a touch drag isn't a hover position
-      const r = entry.getBoundingClientRect();
-      const nx = ((e.clientX - r.left) / r.width) * 2 - 1;  // -1 (left edge) .. 1 (right edge)
-      const ny = ((e.clientY - r.top) / r.height) * 2 - 1;  // -1 (top edge) .. 1 (bottom edge)
-      orbs.forEach(({ el, depth }) => {
-        el.style.setProperty('--mx', `${(nx * depth).toFixed(1)}px`);
-        el.style.setProperty('--my', `${(ny * depth).toFixed(1)}px`);
-      });
-    });
-    entry.addEventListener('pointerleave', (e) => {
-      if (e.pointerType !== 'mouse') return;
-      orbs.forEach(({ el }) => { el.style.setProperty('--mx', '0px'); el.style.setProperty('--my', '0px'); });
-    });
   }
 
   // ---- browse: a real poster wall + real reviews ---------------------
