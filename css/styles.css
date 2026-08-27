@@ -59,6 +59,12 @@
   --accent-deep: #a8cc20;
   --accent-dim: rgba(217, 255, 63, 0.15);
   --gold: #ffc247;
+  /* The rating-star colour specifically — a bolder olive-yellow than
+     --gold's warmer orange, matching a reference the user provided.
+     Kept separate from --gold since that token is also used for
+     unrelated gold accents (GOTY badges, tour mockups) that were never
+     meant to change here. */
+  --star-fill: #c9c92c;
   --coral: #ff6b6b;
   --teal: #4dabff;
   --violet: #a78bfa;
@@ -131,7 +137,11 @@
   --dur: 0.28s;
   --dur-slow: 0.45s;
 
-  --star-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 .587l3.668 7.431 8.2 1.192-5.934 5.783 1.401 8.172L12 18.897l-7.335 3.868 1.401-8.172L.132 9.21l8.2-1.192z'/%3E%3C/svg%3E");
+  /* A bolder, plumper 5-point star than the old thin/spiky one — a
+     mathematically clean 10-point star (outer radius 11, inner radius
+     5.7, centred in the 24x24 box) rather than a hand-tweaked path, to
+     match a reference the user provided of a solid, chunky star shape. */
+  --star-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 1L15.35 7.39L22.46 8.6L17.42 13.76L18.47 20.9L12 17.7L5.53 20.9L6.58 13.76L1.54 8.6L8.65 7.39Z'/%3E%3C/svg%3E");
   /* Star fill — the muted chartreuse-gold from the reference image, not
      the amber used elsewhere, so ratings match what Ishan showed. */
   --star-fill: #c6c42e;
@@ -396,8 +406,11 @@ ul { list-style: none; margin: 0; padding: 0; }
    gap+align-items:center from the base rule above), so it just needs
    its own size — everything else about the row layout is inherited. */
 .topbar--home { justify-content: center; padding-top: calc(var(--space-4) + var(--safe-top)); padding-bottom: var(--space-4); }
-.topbar--home .topbar__logo { font-size: 22px; letter-spacing: 0.14em; }
-.topbar__mark { width: 24px; height: 24px; border-radius: 7px; flex-shrink: 0; }
+/* Tight tracking, not the wide letter-spacing this used to carry —
+   a bold wordmark sitting close to its mark reads as one confident
+   lockup; spread out, it read as two unrelated pieces. */
+.topbar--home .topbar__logo { font-size: 26px; letter-spacing: -0.01em; }
+.topbar__mark { width: 28px; height: 28px; border-radius: 8px; flex-shrink: 0; }
 /* Flat, bold, and the plain theme ink — matches the actual "PlayThruu"
    brand mark exactly (see icons/mark-blue.svg, icons/mark-orange.svg)
    rather than a decorative gradient invented separately from it. Being
@@ -1434,13 +1447,17 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 /* Sentence case, not uppercase — uppercase everywhere was making the
    app shout. Bright ink instead of dim so sections read as real
    structure rather than faint labels. */
-/* Light weight at a larger size — the opposite of the usual "bold it
-   so it reads as a heading" instinct, and the main reason a console UI
-   feels composed rather than busy. Space above does the separating
-   that a heavy weight would otherwise be doing. */
+/* Unbounded (the wordmark's font, --font-brand) at 700, not the plain
+   --font-display body font at a light weight — the earlier light-weight
+   treatment was a deliberate "quiet console" choice, but it read as
+   weak/unfinished for something meant to anchor a whole section, and
+   the user was explicit that plain-weight body text there looked
+   wrong. Reusing --font-brand rather than loading a fifth typeface
+   also ties every section heading in the app back to the same brand
+   mark the wordmark uses. */
 .section-heading {
-  font-family: var(--font-display); font-weight: var(--weight-heading);
-  font-size: var(--text-heading); letter-spacing: -0.012em;
+  font-family: var(--font-brand); font-weight: 700;
+  font-size: var(--text-heading); letter-spacing: -0.01em;
   color: var(--ink); margin: var(--space-6) 0 var(--space-4);
 }
 /* Tighter rhythm on the feed specifically — the gaps between the strips
@@ -3040,17 +3057,18 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   font-family: var(--font-body); font-style: italic; font-weight: 600;
   font-size: 16px; color: rgba(255,255,255,0.7); letter-spacing: 0.01em;
 }
-/* Mark + wordmark, stacked and given real room to be the centrepiece
-   now that nothing else on this screen competes for attention. The mark
-   plays a one-time settle-in on mount (see @keyframes mark-settle
-   below) — the closest a static SVG gets to feeling alive without
-   pulling in real motion/Lottie assets. */
+/* Mark + wordmark side by side (was stacked) — a horizontal lockup,
+   same composition as the topbar's own mark+wordmark pairing, sized so
+   the mark reads as roughly a cap-height taller than the wordmark
+   beside it. The mark still plays a one-time settle-in on mount (see
+   @keyframes mark-settle below) — the closest a static SVG gets to
+   feeling alive without pulling in real motion/Lottie assets. */
 .landing-entry__brand {
-  display: flex; flex-direction: column; align-items: center; gap: 20px;
+  display: flex; flex-direction: row; align-items: center; gap: 14px;
   margin-bottom: 20px;
 }
 .landing-entry__mark {
-  width: 88px; height: 88px; border-radius: 24px;
+  width: 52px; height: 52px; border-radius: 14px;
   animation: mark-settle 800ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 @keyframes mark-settle {
@@ -3062,7 +3080,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 }
 .landing-entry__word {
   font-family: var(--font-brand); font-weight: 800; font-style: normal;
-  font-size: 40px; letter-spacing: -0.015em; color: #ffffff;
+  font-size: 36px; letter-spacing: -0.015em; color: #ffffff;
 }
 /* One clear primary action — everything else (signing up, or logging
    in) sits underneath it as text, not a competing row of equal-weight
