@@ -42,22 +42,38 @@ export function navBar(activeBase = '/feed') {
         <a href="#/search" class="tabbar__item${activeBase === '/search' ? ' tabbar__item--active' : ''}" data-route="/search" aria-label="Search">${iconSearch()}</a>
       </nav>`;
   }
-  const items = [
+  // Left/right item counts (2 and 3) are deliberately uneven — with 5 real
+  // destinations plus Log, an even split isn't possible, but Log itself
+  // still needs to land dead centre regardless. Each side is its own
+  // flex:1 group (see .tabbar__group), so the two groups always claim
+  // equal width no matter how many items are inside them, and Log — sitting
+  // between the two groups rather than as a sibling counted in either
+  // one's spacing — is centred on the bar itself, not on the item list.
+  // Before News existed there were only 4 real destinations (an even
+  // 2-and-2 split either side of Log), so this same centring fell out for
+  // free from plain space-around; adding a 5th destination broke that.
+  const leftItems = [
     { route: '/feed', icon: iconHome(), label: 'Feed' },
     { route: '/search', icon: iconSearch(), label: 'Search' },
-    { route: '/log', icon: iconBrandMark(), label: 'Log', primary: true },
+  ];
+  const rightItems = [
     { route: '/news', icon: iconNewspaper(), label: 'News' },
     { route: '/messages', icon: iconMessage(), label: 'Messages' },
     { route: '/me', icon: iconUser(), label: 'Profile' },
   ];
+  const navLink = (it) => `
+    <a href="#${it.route}" class="tabbar__item${activeBase === it.route ? ' tabbar__item--active' : ''}" data-route="${it.route}">
+      ${it.icon}
+      <span>${it.label}</span>
+    </a>`;
   return `
     <nav class="tabbar">
-      ${items.map(it => `
-        <a href="#${it.route}" class="tabbar__item${it.primary ? ' tabbar__item--primary' : ''}${activeBase === it.route ? ' tabbar__item--active' : ''}" data-route="${it.route}">
-          ${it.icon}
-          <span>${it.label}</span>
-        </a>
-      `).join('')}
+      <div class="tabbar__group">${leftItems.map(navLink).join('')}</div>
+      <a href="#/log" class="tabbar__item tabbar__item--primary${activeBase === '/log' ? ' tabbar__item--active' : ''}" data-route="/log">
+        ${iconBrandMark()}
+        <span>Log</span>
+      </a>
+      <div class="tabbar__group">${rightItems.map(navLink).join('')}</div>
     </nav>`;
 }
 function iconAccountNav() {

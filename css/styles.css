@@ -499,6 +499,12 @@ ul { list-style: none; margin: 0; padding: 0; }
 .tabbar::after { display: none; }
 
 .tabbar::before { display: none; }
+/* Both groups claim equal width (flex: 1) no matter how many items are
+   inside them — 2 on the left, 3 on the right — so Log, sitting between
+   the two groups rather than being spaced as one of the items itself,
+   always lands exactly in the middle of the bar. See the comment on
+   navBar() in components.js for why the split is uneven at all. */
+.tabbar__group { display: flex; flex: 1; justify-content: space-around; align-items: center; min-width: 0; }
 .tabbar__item {
   position: relative;
   /* Above the sheen and refraction layers, so the glass never washes
