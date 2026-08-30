@@ -919,17 +919,21 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    Currently Playing) share one definition on purpose — they used to be
    three separate copies that drifted to different sizes and radii,
    which is what made the rows look misaligned against each other.
-   Bumped from 108px to 124px — the feed read as a dense, flat wall of
-   small thumbnails with nothing to actually look at; posters are the
-   whole hook of a diary app like this one, so they get more room. */
+   Bumped 108px -> 124px -> 140px across two rounds — the feed read as
+   a dense, flat wall of small thumbnails with nothing to actually
+   look at; posters are the whole hook of a diary app like this one,
+   so they get more room. Desktop-only value (the >=560px fallback on
+   --feed-card-w): the mobile media query below has its own formula
+   already tuned for "3 full cards + a slim peek of the 4th," so it's
+   not touched here. */
 .trending-card, .friend-card, .activity-card {
-  flex-shrink: 0; width: var(--feed-card-w, 124px); display: block; position: relative;
+  flex-shrink: 0; width: var(--feed-card-w, 140px); display: block; position: relative;
   text-align: left; transition: transform 0.12s ease;
   padding: 0; background: none; border: none;
 }
 .trending-card:active, .friend-card:active, .activity-card:active { transform: scale(0.96); }
 .trending-card__cover, .friend-card__cover, .activity-card__cover {
-  width: var(--feed-card-w, 124px); aspect-ratio: var(--ratio-card); object-fit: cover; display: block;
+  width: var(--feed-card-w, 140px); aspect-ratio: var(--ratio-card); object-fit: cover; display: block;
   border-radius: var(--radius-s); background: var(--surface); box-shadow: var(--shadow-card);
   transition: box-shadow 0.15s ease, transform 0.15s ease;
 }
@@ -952,7 +956,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .friend-card__poster, .activity-card__poster { display: block; }
 .card-who {
   display: flex; align-items: center; gap: 7px; margin-top: 8px;
-  width: var(--feed-card-w, 124px); max-width: var(--feed-card-w, 124px); /* == poster width, so it never overflows */
+  width: var(--feed-card-w, 140px); max-width: var(--feed-card-w, 140px); /* == poster width, so it never overflows */
 }
 /* On a real phone, 124px cards only fit ~2.4 of them across the row —
    the "3 full, 4th visibly cut off" scroll affordance the desktop
