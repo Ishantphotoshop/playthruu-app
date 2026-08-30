@@ -961,12 +961,26 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    that width. Solved with one shared width variable instead of a
    second hard-coded card size: (100vw - 86px) accounts for the row's
    own horizontal insets (.view-body's 20px each side + .trending-strip's
-   2px each side), then /3.6 is "3 full cards + 3 full gaps + 60% of a
-   4th card" — the exact ratio that leaves the next card meaningfully
-   peeking rather than either fully hidden or fully shown. Scales with
-   the actual device width instead of being tuned to one phone size. */
+   2px each side), then /3.2 is "3 full cards + 3 full gaps + 20% of a
+   4th card" — a slim Letterboxd-style sliver rather than a big chunk of
+   the next poster, which also makes the 3 full cards noticeably bigger
+   than the old /3.6 version for the same reason (less width is being
+   reserved for the peek). Scales with the actual device width instead
+   of being tuned to one phone size. */
 @media (max-width: 560px) {
-  :root { --feed-card-w: calc((100vw - 86px) / 3.6); }
+  :root { --feed-card-w: calc((100vw - 86px) / 3.2); }
+}
+/* The sliver itself reads as a deliberate "more this way" cue, not a
+   card that just got clipped mid-render, once its cut edge fades into
+   the background instead of ending in a hard rectangular edge —
+   Letterboxd's own scroll rows do the same thing. Static (fades the
+   right edge only) rather than tracking scroll position to also fade
+   the left edge once scrolled — the simpler version already gets the
+   visual the ask was for; happy to add the scroll-aware version if it
+   turns out to be worth the extra JS. */
+.trending-strip {
+  -webkit-mask-image: linear-gradient(to right, #000 0%, #000 92%, transparent 100%);
+  mask-image: linear-gradient(to right, #000 0%, #000 92%, transparent 100%);
 }
 .card-who .avatar { flex-shrink: 0; }
 .card-who__meta { min-width: 0; display: flex; flex-direction: column; gap: 1px; overflow: hidden; }
