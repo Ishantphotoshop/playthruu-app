@@ -970,18 +970,6 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 @media (max-width: 560px) {
   :root { --feed-card-w: calc((100vw - 86px) / 3.2); }
 }
-/* The sliver itself reads as a deliberate "more this way" cue, not a
-   card that just got clipped mid-render, once its cut edge fades into
-   the background instead of ending in a hard rectangular edge —
-   Letterboxd's own scroll rows do the same thing. Static (fades the
-   right edge only) rather than tracking scroll position to also fade
-   the left edge once scrolled — the simpler version already gets the
-   visual the ask was for; happy to add the scroll-aware version if it
-   turns out to be worth the extra JS. */
-.trending-strip {
-  -webkit-mask-image: linear-gradient(to right, #000 0%, #000 92%, transparent 100%);
-  mask-image: linear-gradient(to right, #000 0%, #000 92%, transparent 100%);
-}
 .card-who .avatar { flex-shrink: 0; }
 .card-who__meta { min-width: 0; display: flex; flex-direction: column; gap: 1px; overflow: hidden; }
 .card-who__name {
