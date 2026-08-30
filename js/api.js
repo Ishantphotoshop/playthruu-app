@@ -45,6 +45,30 @@ async function igdb(endpoint, query) {
   }
 }
 
+// All game-news traffic goes through a Supabase Edge Function (see
+// supabase/functions/news-proxy) rather than fetching RSS feeds straight
+// from the browser — none of those publishers send CORS headers, so a
+// direct fetch from a live domain gets silently blocked. Unlike IGDB,
+// no secret is involved; the proxy just merges public RSS server-side.
+const NEWS_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/news-proxy`;
+
+// Longer than the default 3.5s timeout — a cold-started function pulling
+// 5 outlets' RSS feeds genuinely needs more headroom than a single IGDB
+// query does, and this only ever runs once per News tab visit (results
+// are cached server-side for 10 minutes after that).
+export async function getGameNews() {
+  try {
+    const res = await fetchWithTimeout(NEWS_FUNCTION_URL, {
+      headers: { Authorization: `Bearer ${SUPABASE_ANON_KEY}` },
+    }, 8000);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data.articles) ? data.articles : [];
+  } catch {
+    return [];
+  }
+}
+
 // ------------------------------------------------------------
 // PROFILES
 // ------------------------------------------------------------

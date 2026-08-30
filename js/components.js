@@ -46,6 +46,7 @@ export function navBar(activeBase = '/feed') {
     { route: '/feed', icon: iconHome(), label: 'Feed' },
     { route: '/search', icon: iconSearch(), label: 'Search' },
     { route: '/log', icon: iconBrandMark(), label: 'Log', primary: true },
+    { route: '/news', icon: iconNewspaper(), label: 'News' },
     { route: '/messages', icon: iconMessage(), label: 'Messages' },
     { route: '/me', icon: iconUser(), label: 'Profile' },
   ];
@@ -574,6 +575,7 @@ export function skeletonList(count = 4) {
 
 // ---- icons (inline SVG, currentColor, no external requests) ----
 export function iconHome() { return `<svg viewBox="0 0 24 24" fill="none"><path d="M4 11.5 12 4l8 7.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 10v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`; }
+export function iconNewspaper() { return `<svg viewBox="0 0 24 24" fill="none"><rect x="3.5" y="5.5" width="13" height="14" rx="1.5" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M16.5 9h2.5a1.5 1.5 0 0 1 1.5 1.5v8a1.5 1.5 0 0 1-1.5 1.5h-13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 9.5h5M7 12.5h5M7 15.5h3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`; }
 export function iconSearch() { return `<svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="6.5" stroke="currentColor" stroke-width="2"/><path d="m20 20-4.3-4.3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`; }
 export function iconFilter() { return `<svg viewBox="0 0 24 24" fill="none"><path d="M4 6h16M7 12h10M10.5 18h3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`; }
 export function iconList() { return `<svg viewBox="0 0 24 24" fill="none"><path d="M8 6h12M8 12h12M8 18h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="4" cy="6" r="1.4" fill="currentColor"/><circle cx="4" cy="12" r="1.4" fill="currentColor"/><circle cx="4" cy="18" r="1.4" fill="currentColor"/></svg>`; }

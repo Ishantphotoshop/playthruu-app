@@ -22,6 +22,7 @@ import { renderPersonView } from './views/person-view.js';
 import { renderDirectorView } from './views/director-view.js';
 import { renderStudioView } from './views/studio-view.js';
 import { renderSettingsView } from './views/settings-view.js';
+import { renderNewsView } from './views/news-view.js';
 import { openLogModal } from './views/log-modal.js';
 import { toast, qs } from './utils.js';
 import { iconClose, iconLock } from './components.js';
@@ -99,6 +100,7 @@ function registerRoutes() {
   routesRegistered = true;
   registerPublicRoutes();
   route('/feed', () => renderFeedView(appEl));
+  route('/news', () => renderNewsView(appEl));
   route('/list/:id', (p) => renderListDetailView(appEl, p));
   route('/messages', () => renderMessagesView(appEl));
   route('/messages/new/:userId', (p) => renderMessageThreadView(appEl, { otherUserId: p.userId }));

@@ -33,6 +33,7 @@ css/styles.css                       all styling
 js/                                  app code (plain ES modules, no bundler needed)
   config.js                           ← you paste your Supabase project details here (step 2)
 supabase/functions/igdb-proxy/       Edge Function that talks to IGDB (step 3)
+supabase/functions/news-proxy/       Edge Function that merges gaming RSS feeds (step 3b)
 manifest.json                       makes it installable as an app
 service-worker.js                   offline caching
 icons/                               app icons
@@ -137,6 +138,22 @@ To let people log in with their username instead of just their email,
 also run `migrations/2026-08-06_username_login.sql` once in the SQL
 Editor. Without it, logging in by username will show "No account found"
 even for real accounts — email login still works fine either way.
+
+## Step 3b — Turn on the News tab (2 min)
+
+The News tab shows gaming headlines pulled from a handful of outlets
+(IGN, GameSpot, Eurogamer, PC Gamer, Kotaku) via their public RSS feeds.
+Unlike IGDB, there's no account to make and no secret to store — the
+proxy just merges public feeds server-side (their CORS policy blocks a
+browser from fetching them directly, which is the only reason a proxy is
+needed at all). If you already did Step 3's CLI setup, this is one command:
+
+```bash
+npx supabase functions deploy news-proxy
+```
+
+Without it deployed, the News tab shows "Couldn't load news right now" —
+nothing else in the app is affected.
 
 ## Step 4 — Try it locally
 

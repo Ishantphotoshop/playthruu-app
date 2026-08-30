@@ -1202,6 +1202,29 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .result-row__meta { font-size: 12px; color: var(--ink-dim); margin-top: 3px; font-family: var(--font-mono); }
 .result-row__add-badge { background: var(--accent-bright); color: var(--bg); font-size: 9.5px; font-weight: 700; padding: 2px 7px; border-radius: 999px; flex-shrink: 0; }
 
+/* ------------------------------------------------------------ news */
+.news-list { display: flex; flex-direction: column; gap: 10px; }
+.news-card {
+  display: flex; align-items: stretch; gap: 12px; padding: var(--space-3);
+  border-radius: var(--radius-s); background: var(--surface-raised); border: 1px solid var(--line);
+  text-decoration: none; color: inherit;
+  transition: background var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+}
+.news-card:active { transform: scale(0.99); background: var(--surface-high); }
+/* Landscape, not the poster-shaped 3/4 used everywhere else — article
+   art is shot/cropped for a wide frame, not a game cover. */
+.news-card__cover {
+  width: 92px; aspect-ratio: 4/3; flex-shrink: 0; border-radius: 6px;
+  background: var(--surface) center/cover no-repeat;
+}
+.news-card__info { min-width: 0; flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 3px; }
+.news-card__title { font-weight: var(--weight-strong); font-size: 14.5px; line-height: 1.3; }
+.news-card__summary {
+  font-size: 12.5px; color: var(--ink-dim); line-height: 1.35;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.news-card__meta { font-size: 11px; color: var(--ink-dim); font-family: var(--font-mono); margin-top: 1px; }
+
 /* Posters fit across the screen with no cutoff and no horizontal
    scroll, so this is a grid (not the flex+overflow strip other
    horizontal lists use) sized off the container width rather than a
