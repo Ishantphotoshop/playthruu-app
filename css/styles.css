@@ -939,9 +939,13 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    read as a stray "sharp edge" rather than a soft lift. Posters stay
    flat at rest in both themes; the hover state below still gets its
    own lift + glow, just no longer stacked on top of this base shadow. */
+/* A smaller, dedicated radius (not the shared --radius-s: 8px every
+   other poster/cover in the app uses) — these three feed rows read as
+   too heavily rounded at this size specifically; other posters
+   elsewhere are unaffected since this doesn't touch the shared token. */
 .trending-card__cover, .friend-card__cover, .activity-card__cover {
   width: var(--feed-card-w, 140px); aspect-ratio: var(--ratio-card); object-fit: cover; display: block;
-  border-radius: var(--radius-s); background: var(--surface);
+  border-radius: 5px; background: var(--surface);
   transition: box-shadow 0.15s ease, transform 0.15s ease;
 }
 /* Same lift + accent glow .discovery-tile already uses on hover/focus —
@@ -970,18 +974,17 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    column gets for free (it's fixed at a 560px-wide column, always) has
    to be recreated explicitly once the viewport itself drops below
    that width. Solved with one shared width variable instead of a
-   second hard-coded card size: (100vw - 74px) accounts for the row's
+   second hard-coded card size: (100vw - 62px) accounts for the row's
    own horizontal insets (.view-body's 20px each side + .trending-strip's
-   2px each side = 44px) plus the 3 inter-card gaps at the tightened
-   mobile gap of 10px (3 x 10 = 30px); then /3.15 is "3 full cards + 3
-   full gaps + 15% of a 4th card" — this is the priority screen (mobile,
-   not desktop), so the peek is trimmed to a thinner sliver than before
-   and the row gap tightened too, both purely to free up more width for
-   the 3 full posters. Scales with the actual device width instead of
-   being tuned to one phone size. */
+   2px each side = 44px) plus the 3 inter-card gaps at a tight mobile
+   gap of 6px (3 x 6 = 18px); then /3.15 is "3 full cards + 3 full gaps
+   + 15% of a 4th card". This is the priority screen (mobile, not
+   desktop) — gap cut down further from an earlier 10px specifically to
+   free up more width for the 3 full posters. Scales with the actual
+   device width instead of being tuned to one phone size. */
 @media (max-width: 560px) {
-  :root { --feed-card-w: calc((100vw - 74px) / 3.15); }
-  .trending-strip { gap: 10px; }
+  :root { --feed-card-w: calc((100vw - 62px) / 3.15); }
+  .trending-strip { gap: 6px; }
 }
 .card-who .avatar { flex-shrink: 0; }
 .card-who__meta { min-width: 0; display: flex; flex-direction: column; gap: 1px; overflow: hidden; }
