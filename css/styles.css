@@ -923,13 +923,13 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    small thumbnails with nothing to actually look at; posters are the
    whole hook of a diary app like this one, so they get more room. */
 .trending-card, .friend-card, .activity-card {
-  flex-shrink: 0; width: 124px; display: block; position: relative;
+  flex-shrink: 0; width: var(--feed-card-w, 124px); display: block; position: relative;
   text-align: left; transition: transform 0.12s ease;
   padding: 0; background: none; border: none;
 }
 .trending-card:active, .friend-card:active, .activity-card:active { transform: scale(0.96); }
 .trending-card__cover, .friend-card__cover, .activity-card__cover {
-  width: 124px; aspect-ratio: var(--ratio-card); object-fit: cover; display: block;
+  width: var(--feed-card-w, 124px); aspect-ratio: var(--ratio-card); object-fit: cover; display: block;
   border-radius: var(--radius-s); background: var(--surface); box-shadow: var(--shadow-card);
   transition: box-shadow 0.15s ease, transform 0.15s ease;
 }
@@ -952,7 +952,21 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .friend-card__poster, .activity-card__poster { display: block; }
 .card-who {
   display: flex; align-items: center; gap: 7px; margin-top: 8px;
-  width: 124px; max-width: 124px; /* == poster width, so it never overflows */
+  width: var(--feed-card-w, 124px); max-width: var(--feed-card-w, 124px); /* == poster width, so it never overflows */
+}
+/* On a real phone, 124px cards only fit ~2.4 of them across the row —
+   the "3 full, 4th visibly cut off" scroll affordance the desktop
+   column gets for free (it's fixed at a 560px-wide column, always) has
+   to be recreated explicitly once the viewport itself drops below
+   that width. Solved with one shared width variable instead of a
+   second hard-coded card size: (100vw - 86px) accounts for the row's
+   own horizontal insets (.view-body's 20px each side + .trending-strip's
+   2px each side), then /3.6 is "3 full cards + 3 full gaps + 60% of a
+   4th card" — the exact ratio that leaves the next card meaningfully
+   peeking rather than either fully hidden or fully shown. Scales with
+   the actual device width instead of being tuned to one phone size. */
+@media (max-width: 560px) {
+  :root { --feed-card-w: calc((100vw - 86px) / 3.6); }
 }
 .card-who .avatar { flex-shrink: 0; }
 .card-who__meta { min-width: 0; display: flex; flex-direction: column; gap: 1px; overflow: hidden; }
