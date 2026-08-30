@@ -970,20 +970,28 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   display: flex; align-items: center; gap: 7px; margin-top: 8px;
   width: var(--feed-card-w, 140px); max-width: var(--feed-card-w, 140px); /* == poster width, so it never overflows */
 }
-/* Posters are the priority on mobile, ahead of fitting a 3rd full
-   card — two rounds of "3 full cards + a slim peek of the 4th" (first
-   ~95px, then ~104px) both still read as "too small, barely
-   different" against a reference like Letterboxd's own feed, where
-   the posters are unmistakably the main event and only 2 full cards
-   fit before a big, genuinely-sized chunk of the next one. Same
-   formula shape as before — (100vw - 56px) covers the row's own
-   horizontal insets (44px) plus 2 inter-card gaps at 6px (12px) — but
-   now solving for "2 full cards + 60% of a 3rd" (/2.6) instead of "3
-   full + 15% of a 4th" (/3.15), which is what actually buys a size
-   jump big enough to notice rather than a few more pixels. Scales with
-   the actual device width instead of being tuned to one phone size. */
+/* Every card in the row is the SAME width (--feed-card-w) — there's no
+   such thing as independently sizing "how much of the 3rd card shows"
+   separately from "how much of the 4th shows"; a card's own visible
+   slice is just whatever the container's edge happens to land on,
+   which falls out of card-width + gap alone. An earlier version here
+   tried to solve for "2 full + 40% of a 3rd + 10% of a 4th" in one
+   step and got the algebra wrong: the 4th card's position depends on
+   the 3rd card's FULL width (layout doesn't care what's visually
+   clipped), not 40% of it — so it never actually appeared, the 3rd
+   card just ended up showing ~55-70% instead of the intended 40%.
+   Confirmed by directly measuring each card's getBoundingClientRect()
+   against the row's real clipping edge, not by eyeballing a
+   screenshot. Reverted to the simpler, verified-correct shape: solve
+   for exactly ONE trailing partial card. (100vw - 62px) is the row's
+   horizontal insets (44px: .view-body's 20px each side + .trending-
+   strip's own 2px each side) plus 3 full inter-card gaps at 6px
+   (18px); /3.2 is "3 full cards + 3 full gaps + 20% of a 4th" — a
+   clearly visible (not razor-thin) cut of the 4th poster, which the
+   user said matters more here than the largest possible size. Scales
+   with the actual device width instead of being tuned to one phone. */
 @media (max-width: 560px) {
-  :root { --feed-card-w: calc((100vw - 56px) / 2.6); }
+  :root { --feed-card-w: calc((100vw - 62px) / 3.2); }
   .trending-strip { gap: 6px; }
 }
 .card-who .avatar { flex-shrink: 0; }
