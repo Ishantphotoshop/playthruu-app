@@ -948,14 +948,15 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   border-radius: 5px; background: var(--surface);
   transition: box-shadow 0.15s ease, transform 0.15s ease;
 }
-/* Same lift + accent glow .discovery-tile already uses on hover/focus —
-   these three rows never had it, so they were the one interactive
-   poster surface in the app that stayed completely inert on hover. */
+/* Lift only, no shadow/glow — an earlier version added the same
+   drop-shadow-based lift .discovery-tile uses on hover, but that
+   shadow is exactly the "comes back when I put my cursor on it" the
+   user flagged: they want no shadow ever, on any interaction, not
+   just at rest. The translateY lift alone still gives hover feedback. */
 .trending-card:hover .trending-card__cover,
 .friend-card:hover .friend-card__cover,
 .activity-card:hover .activity-card__cover {
   transform: translateY(-3px);
-  box-shadow: 0 12px 30px rgba(0,0,0,0.45), 0 0 18px rgba(217, 255, 63, 0.18);
 }
 .trending-card:disabled { opacity: 0.6; }
 .friend-card__avatars { position: absolute; top: 8px; left: 8px; display: flex; }
@@ -969,21 +970,20 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   display: flex; align-items: center; gap: 7px; margin-top: 8px;
   width: var(--feed-card-w, 140px); max-width: var(--feed-card-w, 140px); /* == poster width, so it never overflows */
 }
-/* On a real phone, 140px cards only fit ~2 of them across the row —
-   the "3 full, 4th visibly cut off" scroll affordance the desktop
-   column gets for free (it's fixed at a 560px-wide column, always) has
-   to be recreated explicitly once the viewport itself drops below
-   that width. Solved with one shared width variable instead of a
-   second hard-coded card size: (100vw - 62px) accounts for the row's
-   own horizontal insets (.view-body's 20px each side + .trending-strip's
-   2px each side = 44px) plus the 3 inter-card gaps at a tight mobile
-   gap of 6px (3 x 6 = 18px); then /3.15 is "3 full cards + 3 full gaps
-   + 15% of a 4th card". This is the priority screen (mobile, not
-   desktop) — gap cut down further from an earlier 10px specifically to
-   free up more width for the 3 full posters. Scales with the actual
-   device width instead of being tuned to one phone size. */
+/* Posters are the priority on mobile, ahead of fitting a 3rd full
+   card — two rounds of "3 full cards + a slim peek of the 4th" (first
+   ~95px, then ~104px) both still read as "too small, barely
+   different" against a reference like Letterboxd's own feed, where
+   the posters are unmistakably the main event and only 2 full cards
+   fit before a big, genuinely-sized chunk of the next one. Same
+   formula shape as before — (100vw - 56px) covers the row's own
+   horizontal insets (44px) plus 2 inter-card gaps at 6px (12px) — but
+   now solving for "2 full cards + 60% of a 3rd" (/2.6) instead of "3
+   full + 15% of a 4th" (/3.15), which is what actually buys a size
+   jump big enough to notice rather than a few more pixels. Scales with
+   the actual device width instead of being tuned to one phone size. */
 @media (max-width: 560px) {
-  :root { --feed-card-w: calc((100vw - 62px) / 3.15); }
+  :root { --feed-card-w: calc((100vw - 56px) / 2.6); }
   .trending-strip { gap: 6px; }
 }
 .card-who .avatar { flex-shrink: 0; }
@@ -1996,9 +1996,12 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    Scoped to (hover: hover) so touchscreens never get a "stuck" hover
    state after tapping — only real pointer devices see these. */
 @media (hover: hover) {
+  /* trending-card/friend-card deliberately left out of this list — see
+     the dedicated (and shadow-free) hover rule right after
+     .trending-card__cover's definition above. This is the second,
+     separate place a hover shadow was coming from for those two: the
+     lift below still applies to them, just not this box-shadow. */
   .game-card:hover .game-card__cover,
-  .trending-card:hover .trending-card__cover,
-  .friend-card:hover .friend-card__cover,
   .showcase-slot:hover .showcase-slot__cover,
   .result-row:hover .result-row__cover {
     box-shadow: 0 8px 24px rgba(0,0,0,0.5);
