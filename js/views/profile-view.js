@@ -9,14 +9,23 @@ import { esc, formatDate, statusStamp, starRow, qs, qsa, toast, debounce, pulseL
 import { refreshCurrentView, navigate } from '../router.js';
 import { wirePullToRefresh } from './feed-view.js';
 import { openNewListForm } from './lists-view.js';
+import { getCached, setCached } from '../cache.js';
 
 export async function renderProfileView(root, { username }) {
   const isOwn = state.profile && username === state.profile.username;
   const headerRight = isOwn
     ? `<a class="icon-btn" href="#/settings" aria-label="Settings">${iconSettings()}</a>`
     : '';
+  const cacheKey = `profile:${username}`;
+  // Painting last visit's profile immediately (instead of a spinner)
+  // removes the wait when bouncing back to your own profile tab — all
+  // seven fetches below still run and fully re-render + re-wire the page
+  // exactly as before, this just fills the gap while that's in flight.
+  // The cached snapshot itself has no listeners wired yet (it's just
+  // copied markup), so it's briefly non-interactive until that finishes.
+  const cachedProfile = getCached(cacheKey);
   root.innerHTML = topBar(isOwn ? 'Profile' : username, { back: !isOwn, right: headerRight }) +
-    `<div class="view-body" id="profile-body">${spinner()}</div>` + navBar(isOwn ? '/me' : '');
+    `<div class="view-body" id="profile-body">${cachedProfile || spinner()}</div>` + navBar(isOwn ? '/me' : '');
   const body = qs('#profile-body', root);
   wirePullToRefresh(body);
 
@@ -266,8 +275,12 @@ export async function renderProfileView(root, { username }) {
       }
     });
 
+    setCached(cacheKey, body.innerHTML);
   } catch (err) {
-    body.innerHTML = `<p class="muted" style="padding:24px">Couldn't load this profile: ${esc(err.message)}</p>`;
+    // A cached version of this profile is already showing — leave it up
+    // rather than replacing it with an error over a background refresh
+    // hiccup (the pull-to-refresh above still works if they want to retry).
+    if (!cachedProfile) body.innerHTML = `<p class="muted" style="padding:24px">Couldn't load this profile: ${esc(err.message)}</p>`;
   }
 }
 

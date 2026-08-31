@@ -7,12 +7,24 @@ import {
 import { toast, qs, qsa, esc, enableSwipeToDismiss, promptSignIn, tapFeedback, pulseLogTab } from '../utils.js';
 import { openLogModal } from './log-modal.js';
 import { refreshCurrentView, navigate } from '../router.js';
+import { getCached, setCached } from '../cache.js';
+
+const FEED_CACHE_KEY = 'feed';
 
 export async function renderFeedView(root) {
   root.innerHTML = topBar('', { home: true }) + `<div class="view-body" id="feed-body"></div>` + navBar('/feed');
   wireStamp(root);
   const body = qs('#feed-body', root);
   wirePullToRefresh(body);
+
+  // Reopening the feed after a visit earlier this session paints
+  // whatever was on screen last time immediately (fully visible, not
+  // hidden behind feed-body--loading) instead of an empty skeleton —
+  // that gap, however brief, is what read as "reloading every time I
+  // switch tabs". The four sections below still refetch and repaint
+  // themselves in place right after, exactly as before; the cache only
+  // fills the wait with the last known-good content instead of nothing.
+  const cachedSections = getCached(FEED_CACHE_KEY);
 
   // The loading spinner is a SIBLING of the section wrapper below, not
   // nested inside it — feed-body--loading hides that wrapper via
@@ -21,12 +33,14 @@ export async function renderFeedView(root) {
   // else it's there to stand in for.
   body.innerHTML = `
     <div class="view-loading" id="feed-loading" hidden>${spinner()}</div>
-    <div id="feed-sections" class="feed-body--loading">
-      <div id="trending-section"></div>
-      <div id="friends-section"></div>
-      <h2 class="section-heading">Currently playing</h2>
-      <div id="activity-section">${skeletonRow()}</div>
-      <div id="discovery-section"></div>
+    <div id="feed-sections" class="${cachedSections ? '' : 'feed-body--loading'}">
+      ${cachedSections || `
+        <div id="trending-section"></div>
+        <div id="friends-section"></div>
+        <h2 class="section-heading">Currently playing</h2>
+        <div id="activity-section">${skeletonRow()}</div>
+        <div id="discovery-section"></div>
+      `}
     </div>
   `;
 
@@ -40,18 +54,20 @@ export async function renderFeedView(root) {
   // well under 200ms, and flashing a spinner for a fraction of a second
   // reads as jankier than showing nothing at all. allSettled: one slow
   // or failing section must not hold the rest hostage, since each
-  // already renders its own empty/error state.
+  // already renders its own empty/error state. Skipped entirely when a
+  // cached feed is already fully visible — there's nothing to hide.
   const loadingEl = qs('#feed-loading', body);
-  const showLoadingTimer = setTimeout(() => { loadingEl.hidden = false; }, 200);
+  const showLoadingTimer = cachedSections ? null : setTimeout(() => { loadingEl.hidden = false; }, 200);
   await Promise.allSettled([
     paintTrending(qs('#trending-section', body)),
     paintFriendsPlaying(qs('#friends-section', body)),
     paintCurrentlyPlaying(qs('#activity-section', body)),
     paintDiscovery(qs('#discovery-section', body)),
   ]);
-  clearTimeout(showLoadingTimer);
+  if (showLoadingTimer) clearTimeout(showLoadingTimer);
   qs('#feed-sections', body)?.classList.remove('feed-body--loading');
   loadingEl?.remove();
+  setCached(FEED_CACHE_KEY, qs('#feed-sections', body)?.innerHTML || '');
 }
 
 // "Bored? Try these" — an endless vertical list that changes with the
@@ -262,7 +278,12 @@ async function paintDiscovery(slot) {
 }
 
 async function paintTrending(slot) {
-  slot.innerHTML = `<h2 class="section-heading">Trending now</h2>${skeletonRow()}`;
+  // Only blank the section to a skeleton when it's actually empty — when
+  // a cached feed already painted real content into it (see
+  // renderFeedView), overwriting that synchronously here would erase the
+  // instant paint the cache exists to provide, replacing it with a
+  // loading skeleton for the entire time this fetch is in flight.
+  if (!slot.innerHTML.trim()) slot.innerHTML = `<h2 class="section-heading">Trending now</h2>${skeletonRow()}`;
   try {
     const games = await api.getWorldTrending(5, 10);
     if (!games.length) { slot.innerHTML = ''; return; }
@@ -288,7 +309,8 @@ async function paintTrending(slot) {
 }
 
 async function paintFriendsPlaying(slot) {
-  slot.innerHTML = `<h2 class="section-heading">Friend's recent activity</h2>${skeletonRow()}`;
+  // Same reasoning as paintTrending above.
+  if (!slot.innerHTML.trim()) slot.innerHTML = `<h2 class="section-heading">Friend's recent activity</h2>${skeletonRow()}`;
   try {
     const entries = await api.getFriendsPlaying(state.user.id, 12);
     if (!entries.length) { slot.innerHTML = ''; return; }

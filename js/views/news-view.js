@@ -1,6 +1,9 @@
 import * as api from '../api.js';
 import { topBar, navBar, spinner, emptyState } from '../components.js';
 import { esc, timeAgo, qs } from '../utils.js';
+import { getCached, setCached } from '../cache.js';
+
+const NEWS_CACHE_KEY = 'news';
 
 // Articles link straight out to the publisher (target="_blank") rather
 // than opening in-app — this is an aggregator, not a reader, and these
@@ -18,16 +21,29 @@ function newsCard(article) {
 }
 
 export async function renderNewsView(root) {
+  // The proxy itself already caches merged articles for 10 minutes
+  // server-side (see supabase/functions/news-proxy), but that still
+  // costs a network round trip and a spinner on every single tab open.
+  // Painting last visit's list immediately removes that wait entirely;
+  // the fetch below still runs right after to catch anything newer.
+  const cachedList = getCached(NEWS_CACHE_KEY);
   root.innerHTML = topBar('News', { back: true }) + `
     <div class="view-body">
-      <div id="news-list">${spinner()}</div>
+      <div id="news-list">${cachedList || spinner()}</div>
     </div>` + navBar('/news');
 
   const listEl = qs('#news-list', root);
   const articles = await api.getGameNews();
   if (!listEl.isConnected) return; // navigated away before this landed
 
-  listEl.innerHTML = articles.length
-    ? `<div class="news-list">${articles.map(newsCard).join('')}</div>`
-    : emptyState("Couldn't load news right now. Try again in a bit.");
+  if (articles.length) {
+    const html = `<div class="news-list">${articles.map(newsCard).join('')}</div>`;
+    listEl.innerHTML = html;
+    setCached(NEWS_CACHE_KEY, html);
+  } else if (!cachedList) {
+    // Only replace the screen with an error when there's nothing already
+    // showing — a background refetch hiccup shouldn't yank away
+    // headlines that were displaying just fine a moment ago.
+    listEl.innerHTML = emptyState("Couldn't load news right now. Try again in a bit.");
+  }
 }

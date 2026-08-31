@@ -4,6 +4,9 @@ import { topBar, navBar, spinner, emptyState, avatarImg, iconPlus, iconClose, ic
 import { esc, qs, qsa, toast, timeAgo, debounce, enableSwipeToDismiss } from '../utils.js';
 import { navigate } from '../router.js';
 import { wirePullToRefresh } from './feed-view.js';
+import { getCached, setCached } from '../cache.js';
+
+const MESSAGES_CACHE_KEY = 'messages';
 
 // The inbox: two tabs sharing one fetch (see api.getConversations) —
 // "Messages" is every thread that's either accepted, or one you started
@@ -13,7 +16,11 @@ import { wirePullToRefresh } from './feed-view.js';
 // aren't mutual follows yet, messaging you for the first time.
 export async function renderMessagesView(root) {
   let tab = 'messages';
-  let all = [];
+  // Painting from last visit's conversation list immediately (instead of
+  // a spinner) is what removes the "reloads every time" feeling — load()
+  // below still runs unconditionally right after, same as always, so a
+  // new message that landed while you were away still shows up promptly.
+  let all = getCached(MESSAGES_CACHE_KEY) || [];
   let unsubscribe = null;
 
   root.innerHTML = topBar('Messages', { right: `<button class="icon-btn" id="compose-btn" aria-label="New message">${iconPlus()}</button>` }) +
@@ -22,11 +29,13 @@ export async function renderMessagesView(root) {
          <button type="button" class="segmented__item segmented__item--active" data-tab="messages">Messages</button>
          <button type="button" class="segmented__item" data-tab="requests" id="requests-tab-btn">Requests</button>
        </div>
-       <div id="messages-list">${spinner()}</div>
+       <div id="messages-list">${all.length ? '' : spinner()}</div>
      </div>` + navBar('/messages');
 
   const body = qs('#messages-body', root);
   wirePullToRefresh(body);
+
+  if (all.length) paint();
 
   qs('#compose-btn', root).addEventListener('click', openComposeModal);
   qsa('.segmented__item', qs('#messages-tabs', body)).forEach((btn) => {
@@ -40,9 +49,12 @@ export async function renderMessagesView(root) {
   async function load() {
     try {
       all = await api.getConversations(state.user.id);
+      setCached(MESSAGES_CACHE_KEY, all);
       paint();
     } catch (err) {
-      qs('#messages-list', body).innerHTML = `<p class="muted" style="padding:24px">Couldn't load your messages: ${esc(err.message)}</p>`;
+      // A cached inbox is already on screen — leave it up rather than
+      // replacing it with an error over a background refresh hiccup.
+      if (!all.length) qs('#messages-list', body).innerHTML = `<p class="muted" style="padding:24px">Couldn't load your messages: ${esc(err.message)}</p>`;
     }
   }
 

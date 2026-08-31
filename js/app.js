@@ -25,6 +25,7 @@ import { renderSettingsView } from './views/settings-view.js';
 import { renderNewsView } from './views/news-view.js';
 import { openLogModal } from './views/log-modal.js';
 import { toast, qs } from './utils.js';
+import { clearViewCache } from './cache.js';
 import { iconClose, iconLock } from './components.js';
 
 const appEl = document.getElementById('app');
@@ -342,6 +343,7 @@ function handleSignedOut() {
   unsubscribeConversations = null;
   unreadMessageCount = 0;
   applyMessageBadge();
+  clearViewCache();
   state.user = null;
   state.profile = null;
   // replaceState (not location.hash =) so this doesn't fire a
