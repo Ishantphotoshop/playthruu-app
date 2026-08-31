@@ -551,12 +551,21 @@ ul { list-style: none; margin: 0; padding: 0; }
 .tabbar {
   position: fixed; left: 50%; right: auto; bottom: 0; transform: translateX(-50%);
   width: 100%; max-width: 560px;
-  display: flex; justify-content: space-around; align-items: center;
-  /* Top padding cut from 8px to 4px — slimmer from the top edge
-     specifically, not a symmetric shrink, since bottom still needs its
-     safe-area room and the icons themselves (25px, unchanged) don't
-     get any smaller. */
-  padding: 4px var(--space-2) calc(var(--space-2) + var(--safe-bottom));
+  /* space-evenly, not space-around — the two outer edges (before Feed,
+     after Profile) get the exact same gap as every gap between icons,
+     instead of half of it. Zero horizontal padding is load-bearing here:
+     padding sits OUTSIDE what space-evenly distributes, so any nonzero
+     left/right value would add extra width on top of the edge gaps only
+     and break the equality space-evenly already guarantees everywhere
+     else — confirmed by measurement (14px between every icon AND at
+     both edges, not 14px inside vs 22px at the edges like before). */
+  display: flex; justify-content: space-evenly; align-items: center;
+  /* Symmetric top/bottom now (6px each) — the earlier asymmetric 4px-
+     top/8px-bottom read as the icons sitting off-centre in the bar
+     rather than genuinely slimmer. safe-bottom is still added on top of
+     the bottom value for real notched devices; it's additional hardware
+     clearance, not part of the visual gap this needs to match. */
+  padding: 6px 0 calc(6px + var(--safe-bottom));
   background: var(--surface-raised);
   border: none; border-top: 1px solid var(--line);
   border-radius: 0;
@@ -574,11 +583,6 @@ ul { list-style: none; margin: 0; padding: 0; }
 .tabbar::after { display: none; }
 
 .tabbar::before { display: none; }
-/* Both groups claim equal width (flex: 1) no matter how many items are
-   inside them, so Log, sitting between the two groups rather than being
-   spaced as one of the items itself, always lands exactly in the middle
-   of the bar regardless of how many destinations end up on either side. */
-.tabbar__group { display: flex; flex: 1; justify-content: space-around; align-items: center; min-width: 0; }
 .tabbar__item {
   position: relative;
   /* Above the sheen and refraction layers, so the glass never washes
@@ -1011,6 +1015,12 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   scrollbar-width: none; -ms-overflow-style: none;
 }
 .trending-strip::-webkit-scrollbar { display: none; }
+/* The "see more" destinations (friends-playing-view.js, currently-
+   playing-view.js) reuse the exact same cards as the feed's own strips
+   — same width (--feed-card-w), same card classes — just wrapped into
+   a grid instead of one long horizontal scroll, since a full "see
+   everything" list is what those pages are for. */
+.card-grid { display: flex; flex-wrap: wrap; gap: var(--space-3); }
 /* All three feed rows (Trending / Friends Recently Completed /
    Currently Playing) share one definition on purpose — they used to be
    three separate copies that drifted to different sizes and radii,
@@ -1632,6 +1642,17 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .feed-section-head { display: flex; align-items: baseline; justify-content: space-between; }
 .feed-section-head .section-heading { margin-bottom: 12px; }
 .see-more-link { font-size: 12px; font-weight: 700; color: var(--accent-bright); flex-shrink: 0; }
+/* Icon-only "see more" for the three feed strips (see feedSectionHead()
+   in components.js) — deliberately plainer than .see-more-link's text +
+   accent colour, since this only shows up when a row actually has more
+   than a screenful to browse, not on every row regardless of content. */
+.see-more-icon {
+  display: flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px; flex-shrink: 0;
+  color: var(--ink-dim);
+  align-self: center;
+}
+.see-more-icon svg { width: 18px; height: 18px; }
 
 .icon-btn--small { width: 30px; height: 30px; }
 .icon-btn--small svg { width: 15px; height: 15px; }
@@ -1937,7 +1958,10 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 }
 .skeleton::after {
   content: ''; position: absolute; inset: 0; transform: translateX(-100%);
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent);
+  /* Was rgba(255,255,255,0.05) — the animation itself always ran, but at
+     5% opacity the sweep was invisible in practice, which read as "the
+     loading animation doesn't even work" rather than just being subtle. */
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.14), transparent);
   animation: skeleton-sweep 1.4s infinite;
 }
 @keyframes skeleton-sweep { to { transform: translateX(100%); } }

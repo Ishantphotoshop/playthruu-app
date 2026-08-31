@@ -43,15 +43,17 @@ export function navBar(activeBase = '/feed') {
       </nav>`;
   }
   // News lives in the Feed/News tabs at the top of the home screen now
-  // (see homeTabs() below), not down here too — an even 2-and-2 split
-  // either side of Log, each in its own flex:1 .tabbar__group so Log
-  // always lands dead centre regardless of how many items end up on
-  // either side (see the comment on .tabbar__group in styles.css).
-  const leftItems = [
+  // (see homeTabs() below), not down here too — 5 real destinations
+  // (odd), so a single flat row with justify-content: space-evenly
+  // (see .tabbar in styles.css) already lands Log dead centre AND gives
+  // every gap — between icons and at the two outer edges — the exact
+  // same width. The two-group flex trick used while News made this 6
+  // (even) is gone; it's no longer needed and was giving the outer
+  // edges a different gap than the inner ones once padding was tightened.
+  const items = [
     { route: '/feed', icon: iconHomeFilled(), label: 'Feed' },
     { route: '/search', icon: iconSearchFilled(), label: 'Search' },
-  ];
-  const rightItems = [
+    { route: '/log', icon: iconBrandMark(), label: 'Log', primary: true },
     { route: '/messages', icon: iconMessageFilled(), label: 'Messages' },
     { route: '/me', icon: iconUserFilled(), label: 'Profile' },
   ];
@@ -59,16 +61,12 @@ export function navBar(activeBase = '/feed') {
   // nav above already used. aria-label carries the name instead so it's
   // still announced to screen readers even though nothing's printed.
   const navLink = (it) => `
-    <a href="#${it.route}" class="tabbar__item${activeBase === it.route ? ' tabbar__item--active' : ''}" data-route="${it.route}" aria-label="${it.label}">
+    <a href="#${it.route}" class="tabbar__item${it.primary ? ' tabbar__item--primary' : ''}${activeBase === it.route ? ' tabbar__item--active' : ''}" data-route="${it.route}" aria-label="${it.label}">
       ${it.icon}
     </a>`;
   return `
     <nav class="tabbar">
-      <div class="tabbar__group">${leftItems.map(navLink).join('')}</div>
-      <a href="#/log" class="tabbar__item tabbar__item--primary${activeBase === '/log' ? ' tabbar__item--active' : ''}" data-route="/log" aria-label="Log">
-        ${iconBrandMark()}
-      </a>
-      <div class="tabbar__group">${rightItems.map(navLink).join('')}</div>
+      ${items.map(navLink).join('')}
     </nav>`;
 }
 
@@ -85,6 +83,22 @@ export function homeTabs(active = 'feed') {
         <button type="button" class="home-tabs__item${active === 'feed' ? ' home-tabs__item--active' : ''}" data-tab="feed">Feed</button>
         <button type="button" class="home-tabs__item${active === 'news' ? ' home-tabs__item--active' : ''}" data-tab="news">News</button>
       </nav>
+    </div>`;
+}
+
+// Shared by all three feed strips (Trending now, Friend's recent
+// activity, Currently playing) — a "see more" affordance only earns its
+// place once there's genuinely more to browse than the strip already
+// shows; a link that always sits there even for 2-3 items just points
+// at an empty page. Icon-only (no text), since these three headings
+// already read fine on their own and a text link doubled the visual
+// weight of the row for what's really just an escape hatch.
+export function feedSectionHead(title, { seeMoreHref, count = 0 } = {}) {
+  const showSeeMore = seeMoreHref && count > 12;
+  return `
+    <div class="feed-section-head">
+      <h2 class="section-heading">${esc(title)}</h2>
+      ${showSeeMore ? `<a href="#${seeMoreHref}" class="see-more-icon" aria-label="See more">${iconChevronRight()}</a>` : ''}
     </div>`;
 }
 // Filled/solid variant, picked from the 6-way icon-style comparison —
@@ -655,6 +669,7 @@ export function iconHeart() { return `<svg viewBox="0 0 24 24" fill="none" strok
 export function iconClose() { return `<svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>`; }
 export function iconChevronUp() { return `<svg viewBox="0 0 24 24" fill="none"><path d="M5 15l7-7 7 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`; }
 export function iconChevronDown() { return `<svg viewBox="0 0 24 24" fill="none"><path d="M5 9l7 7 7-7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`; }
+export function iconChevronRight() { return `<svg viewBox="0 0 24 24" fill="none"><path d="M9 5l7 7-7 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`; }
 export function iconPlus() { return `<svg viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>`; }
 export function iconCalendar() { return `<svg viewBox="0 0 24 24" fill="none" class="date-input-wrap__icon"><rect x="4" y="5.5" width="16" height="15" rx="2.5" stroke="currentColor" stroke-width="2"/><path d="M4 10h16M8 3.5v3M16 3.5v3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`; }
 export function iconSettings() { return `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>`; }

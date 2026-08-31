@@ -1,7 +1,7 @@
 import * as api from '../api.js';
 import { state } from '../state.js';
 import {
-  topBar, navBar, homeTabs, activityCard, emptyState, spinner, skeletonRow, iconStamp, iconUser, iconFilter,
+  topBar, navBar, homeTabs, feedSectionHead, activityCard, emptyState, spinner, skeletonRow, iconStamp, iconUser, iconFilter,
   trendingStrip, wireTrendingStrip, friendsPlayingCard, posterFrame, openReportSheet,
 } from '../components.js';
 import { toast, qs, qsa, esc, timeAgo, enableSwipeToDismiss, promptSignIn, tapFeedback, pulseLogTab } from '../utils.js';
@@ -62,8 +62,7 @@ async function paintFeedTab(body) {
       ${cachedSections || `
         <div id="trending-section"></div>
         <div id="friends-section"></div>
-        <h2 class="section-heading">Currently playing</h2>
-        <div id="activity-section">${skeletonRow()}</div>
+        <div id="activity-section"><h2 class="section-heading">Currently playing</h2>${skeletonRow()}</div>
         <div id="discovery-section"></div>
       `}
     </div>
@@ -378,10 +377,13 @@ async function paintTrending(slot) {
   // loading skeleton for the entire time this fetch is in flight.
   if (!slot.innerHTML.trim()) slot.innerHTML = `<h2 class="section-heading">Trending now</h2>${skeletonRow()}`;
   try {
-    const games = await api.getWorldTrending(5, 10);
+    // Was limit 5 — bumped to 15 so there's enough here for the "see
+    // more" icon's >12 threshold to ever actually trigger; still just
+    // one horizontally-scrollable strip either way.
+    const games = await api.getWorldTrending(15, 10);
     if (!games.length) { slot.innerHTML = ''; return; }
     slot.innerHTML = `
-      <h2 class="section-heading">Trending now</h2>
+      ${feedSectionHead('Trending now', { seeMoreHref: '/discover', count: games.length })}
       ${trendingStrip(games)}`;
     wireTrendingStrip(slot, games, {
       onSelect: async (g) => {
@@ -402,10 +404,11 @@ async function paintFriendsPlaying(slot) {
   // Same reasoning as paintTrending above.
   if (!slot.innerHTML.trim()) slot.innerHTML = `<h2 class="section-heading">Friend's recent activity</h2>${skeletonRow()}`;
   try {
-    const entries = await api.getFriendsPlaying(state.user.id, 12);
+    // Was limit 12 — bumped to 15, same reasoning as Trending above.
+    const entries = await api.getFriendsPlaying(state.user.id, 15);
     if (!entries.length) { slot.innerHTML = ''; return; }
     slot.innerHTML = `
-      <h2 class="section-heading">Friend's recent activity</h2>
+      ${feedSectionHead("Friend's recent activity", { seeMoreHref: '/friends-playing', count: entries.length })}
       <div class="trending-strip">${entries.map((e, i) => friendsPlayingCard(e, i)).join('')}</div>`;
   } catch {
     slot.innerHTML = '';
@@ -416,23 +419,33 @@ async function paintFriendsPlaying(slot) {
 // anything logged recently, playing OR played) — this is specifically
 // what people you follow have marked as in-progress right now.
 async function paintCurrentlyPlaying(slot) {
+  // Same reasoning as paintTrending/paintFriendsPlaying above — this
+  // heading used to live as a static sibling outside this function
+  // entirely, which was the one section not owning its own heading the
+  // way the other two do, so it couldn't carry a "see more" icon either.
+  if (!slot.innerHTML.trim()) slot.innerHTML = `<h2 class="section-heading">Currently playing</h2>${skeletonRow()}`;
   try {
     const { logs, isFallback } = await api.getFeed(state.user.id, 30, 'playing');
 
     if (!logs.length) {
-      slot.innerHTML = isFallback
-        ? emptyState('Nobody\'s currently playing anything yet. Be the first to log one.', { icon: iconStamp(), actionLabel: 'Log your first game', actionRoute: '/log' })
-        : emptyState('The people you follow aren\'t currently playing anything.', { icon: iconUser(), actionLabel: 'Find more people to follow', actionRoute: '/search' });
+      slot.innerHTML = `
+        <h2 class="section-heading">Currently playing</h2>
+        ${isFallback
+          ? emptyState('Nobody\'s currently playing anything yet. Be the first to log one.', { icon: iconStamp(), actionLabel: 'Log your first game', actionRoute: '/log' })
+          : emptyState('The people you follow aren\'t currently playing anything.', { icon: iconUser(), actionLabel: 'Find more people to follow', actionRoute: '/search' })}`;
       return;
     }
 
     slot.innerHTML = `
+      ${feedSectionHead('Currently playing', { seeMoreHref: '/currently-playing', count: logs.length })}
       ${isFallback ? `<div class="banner">You're not following anyone yet — here's what's happening across Playthruu. <a href="#/search">Find people to follow</a></div>` : ''}
       <div class="trending-strip">
         ${logs.map((l) => activityCard(l)).join('')}
       </div>`;
   } catch (err) {
-    slot.innerHTML = `<p class="muted" style="padding:24px">Couldn't load current activity: ${err.message}</p>`;
+    slot.innerHTML = `
+      <h2 class="section-heading">Currently playing</h2>
+      <p class="muted" style="padding:24px">Couldn't load current activity: ${err.message}</p>`;
   }
 }
 

@@ -14,6 +14,8 @@ import { renderMessageThreadView } from './views/message-thread-view.js';
 import { renderProfileView } from './views/profile-view.js';
 import { renderConnectionsView } from './views/connections-view.js';
 import { renderActivityView } from './views/activity-view.js';
+import { renderFriendsPlayingView } from './views/friends-playing-view.js';
+import { renderCurrentlyPlayingView } from './views/currently-playing-view.js';
 import { renderLogListView } from './views/log-list-view.js';
 import { renderGameView } from './views/game-view.js';
 import { renderGameReviewsView } from './views/game-reviews-view.js';
@@ -101,6 +103,8 @@ function registerRoutes() {
   registerPublicRoutes();
   route('/feed', () => renderFeedView(appEl));
   route('/news', () => renderFeedView(appEl, { initialTab: 'news' }));
+  route('/friends-playing', () => renderFriendsPlayingView(appEl));
+  route('/currently-playing', () => renderCurrentlyPlayingView(appEl));
   route('/list/:id', (p) => renderListDetailView(appEl, p));
   route('/messages', () => renderMessagesView(appEl));
   route('/messages/new/:userId', (p) => renderMessageThreadView(appEl, { otherUserId: p.userId }));
