@@ -142,8 +142,8 @@ function wireGlobalChrome() {
   });
 }
 
-// Every modal/sheet in the app (log entry, GIF picker, poster viewer,
-// auth sheet, QR code, etc.) appends its .modal-overlay/.poster-viewer
+// Every modal/sheet in the app (log entry, GIF picker, poster/avatar/
+// message-image viewers, auth sheet, QR code, etc.) appends itself
 // straight onto <body>, deliberately outside #app — that's what lets it
 // sit above the tab bar and cover the whole screen. But it also means a
 // route change (any hashchange: the browser's own back/forward buttons,
@@ -152,12 +152,21 @@ function wireGlobalChrome() {
 // replaced. Left unhandled, that's exactly what made back "a mess": the
 // screen underneath changes but the modal stays glued on top of it, and
 // document.body.style.overflow stays 'hidden' forever since the modal's
-// own close() (the only thing that resets it) never runs. This is the
-// same cleanup wireHardwareBack already did for Android's physical back
-// button below — just generalized to every hashchange, so the browser's
-// native back/forward buttons on web get it too.
+// own close() (the only thing that resets it) never runs.
+//
+// Every such overlay's own class, kept in one place so this selector
+// can't quietly go stale again the way it already did once — the first
+// version of this fix only listed .modal-overlay and .poster-viewer,
+// which missed .avatar-viewer (profile-view.js) and .image-viewer
+// (message-thread-view.js) entirely, so back still stuck around on
+// exactly those two screens.
+const OVERLAY_SELECTOR = '.modal-overlay, .poster-viewer, .avatar-viewer, .image-viewer';
+
+// This is the same cleanup wireHardwareBack already did for Android's
+// physical back button below — just generalized to every hashchange, so
+// the browser's native back/forward buttons on web get it too.
 function closeStrayOverlays() {
-  const overlays = document.querySelectorAll('.modal-overlay, .poster-viewer');
+  const overlays = document.querySelectorAll(OVERLAY_SELECTOR);
   if (!overlays.length) return;
   overlays.forEach((el) => el.remove());
   document.body.style.overflow = '';
@@ -186,7 +195,7 @@ async function wireHardwareBack() {
       // recently opened one, not the first. A single back press should
       // only dismiss that one layer, not reach past it to whatever a
       // querySelector's first match happened to be.
-      const overlays = document.querySelectorAll('.modal-overlay, .poster-viewer');
+      const overlays = document.querySelectorAll(OVERLAY_SELECTOR);
       if (overlays.length) {
         overlays[overlays.length - 1].remove();
         if (overlays.length === 1) document.body.style.overflow = '';
@@ -232,7 +241,7 @@ async function wireAuthDeepLink() {
       } catch {
         toast('Sign-in did not complete. Try again.', 'error');
       } finally {
-        document.querySelectorAll('.modal-overlay, .poster-viewer').forEach((el) => el.remove());
+        document.querySelectorAll(OVERLAY_SELECTOR).forEach((el) => el.remove());
         document.body.style.overflow = '';
         window.Capacitor?.Plugins?.Browser?.close().catch(() => {});
       }
