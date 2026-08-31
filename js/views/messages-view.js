@@ -1,6 +1,6 @@
 import * as api from '../api.js';
 import { state } from '../state.js';
-import { topBar, navBar, spinner, emptyState, avatarImg, iconPlus, iconClose, iconMessage, iconTrash, profileRow } from '../components.js';
+import { navBar, spinner, emptyState, avatarImg, iconPlus, iconClose, iconMessage, iconTrash, profileRow } from '../components.js';
 import { esc, qs, qsa, toast, timeAgo, debounce, enableSwipeToDismiss } from '../utils.js';
 import { navigate } from '../router.js';
 import { wirePullToRefresh } from './feed-view.js';
@@ -23,8 +23,9 @@ export async function renderMessagesView(root) {
   let all = getCached(MESSAGES_CACHE_KEY) || [];
   let unsubscribe = null;
 
-  root.innerHTML = topBar('', { home: true, wordmark: false, right: `<button class="icon-btn" id="compose-btn" aria-label="New message">${iconPlus()}</button>` }) +
-    `<div class="view-body" id="messages-body">
+  root.innerHTML =
+    `<div class="view-body view-body--no-topbar" id="messages-body">
+       <button type="button" class="view-body__corner-action" id="compose-btn" aria-label="New message">${iconPlus()}</button>
        <div class="segmented segmented--wide" id="messages-tabs">
          <button type="button" class="segmented__item segmented__item--active" data-tab="messages">Messages</button>
          <button type="button" class="segmented__item" data-tab="requests" id="requests-tab-btn">Requests</button>

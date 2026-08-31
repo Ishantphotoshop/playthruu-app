@@ -383,6 +383,23 @@ ul { list-style: none; margin: 0; padding: 0; }
   overflow-y: auto;
   animation: view-enter var(--dur) var(--ease);
 }
+/* Search/Messages/Profile have no topbar at all now — content starts
+   right at the top, so this view-body has to supply the safe-area top
+   clearance a topbar would normally have provided. Taller than the
+   space-4 other screens get: 54px leaves .view-body__corner-action (a
+   38px chip) its own clear row above the segmented tabs instead of
+   sitting on the same line and overlapping their text. */
+.view-body--no-topbar { padding-top: calc(var(--safe-top) + 54px); }
+/* Compose (Messages) / settings (own Profile): with no topbar to hold a
+   right-side action, it floats in the corner of the content itself
+   instead — same round chip as .icon-btn, positioned in the reserved
+   row above (not beside) the segmented tabs so it never overlaps them. */
+.view-body__corner-action {
+  position: absolute; top: calc(var(--safe-top) + 8px); right: var(--space-4);
+  width: 38px; height: 38px; display: grid; place-items: center;
+  background: var(--surface-raised); border: 1px solid var(--line);
+  border-radius: 50%; color: var(--ink); z-index: 5;
+}
 /* A page's real content is only ever hidden BEHIND this, never inside
    it — it has to sit outside whatever gets faded to opacity:0 while
    data loads (see .feed-body--loading), or it would vanish along with

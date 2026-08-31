@@ -13,9 +13,6 @@ import { getCached, setCached } from '../cache.js';
 
 export async function renderProfileView(root, { username }) {
   const isOwn = state.profile && username === state.profile.username;
-  const headerRight = isOwn
-    ? `<a class="icon-btn" href="#/settings" aria-label="Settings">${iconSettings()}</a>`
-    : '';
   const cacheKey = `profile:${username}`;
   // Painting last visit's profile immediately (instead of a spinner)
   // removes the wait when bouncing back to your own profile tab — all
@@ -24,15 +21,15 @@ export async function renderProfileView(root, { username }) {
   // The cached snapshot itself has no listeners wired yet (it's just
   // copied markup), so it's briefly non-interactive until that finishes.
   const cachedProfile = getCached(cacheKey);
-  // Own profile gets the same home-style header as Feed/Search/Messages
-  // (mark + wordmark, settings tucked into the corner) rather than a
-  // plain "Profile" title bar — someone else's profile still needs the
-  // back button and their actual name, so that case is untouched.
-  const topBarHtml = isOwn
-    ? topBar('', { home: true, wordmark: false, right: headerRight })
-    : topBar(username, { back: true, right: headerRight });
-  root.innerHTML = topBarHtml +
-    `<div class="view-body" id="profile-body">${cachedProfile || spinner()}</div>` + navBar(isOwn ? '/me' : '');
+  // Own profile drops the header bar entirely, same as Search/Messages —
+  // just the settings icon floating in the corner of the content itself.
+  // Someone else's profile still needs the back button and their actual
+  // name, so that case keeps its real topBar untouched.
+  root.innerHTML = (isOwn ? '' : topBar(username, { back: true })) +
+    `<div class="view-body${isOwn ? ' view-body--no-topbar' : ''}" id="profile-body">
+       ${isOwn ? `<a class="view-body__corner-action" href="#/settings" aria-label="Settings">${iconSettings()}</a>` : ''}
+       ${cachedProfile || spinner()}
+     </div>` + navBar(isOwn ? '/me' : '');
   const body = qs('#profile-body', root);
   wirePullToRefresh(body);
 

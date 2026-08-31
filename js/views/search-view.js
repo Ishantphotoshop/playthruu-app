@@ -1,6 +1,6 @@
 import * as api from '../api.js';
 import { state } from '../state.js';
-import { topBar, navBar, combinedGameResultsList, wireCombinedGameResults, profileRow, wireFollowButtons, spinner, skeletonList, emptyState, iconSearch, iconFilter, posterFrame } from '../components.js';
+import { navBar, combinedGameResultsList, wireCombinedGameResults, profileRow, wireFollowButtons, spinner, skeletonList, emptyState, iconSearch, iconFilter, posterFrame } from '../components.js';
 import { qs, qsa, esc, toast, promptSignIn, getRecentlyViewed, recordRecentSearch, getRecentSearches, removeRecentSearch, clearRecentSearches } from '../utils.js';
 import { navigate } from '../router.js';
 
@@ -26,8 +26,8 @@ async function importAndOpen(g) {
 export function renderSearchView(root) {
   let tab = 'games';
 
-  root.innerHTML = topBar('', { home: true, wordmark: false }) + `
-    <div class="view-body">
+  root.innerHTML = `
+    <div class="view-body view-body--no-topbar">
       <div class="segmented segmented--wide" id="search-tabs">
         <button class="segmented__item segmented__item--active" data-tab="games">Games</button>
         <button class="segmented__item" data-tab="people">Players</button>
