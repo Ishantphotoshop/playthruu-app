@@ -894,12 +894,19 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   -webkit-mask: var(--star-mask) center / contain no-repeat;
   mask: var(--star-mask) center / contain no-repeat;
 }
-.star::before { background: var(--line); }
+/* Was var(--line) (8% opacity) — nearly invisible against the app's
+   near-black surfaces, so a half-filled star's unfilled remainder all
+   but disappeared instead of reading as "half of a full-sized star",
+   making that one star look shrunken next to a neighbouring full 5-star
+   rating. --ink-faint is what the interactive rating picker already
+   used for this exact same "empty star" layer — this just brings the
+   read-only display in line with it instead of a fainter, separate
+   value nobody had a reason to keep different. */
+.star::before { background: var(--ink-faint); }
 .star::after { background: var(--star-fill, var(--gold)); clip-path: inset(0 100% 0 0); }
 .star--half::after { clip-path: inset(0 50% 0 0); }
 .star--full::after { clip-path: inset(0 0 0 0); }
 .stars--interactive .star { cursor: pointer; }
-.stars--interactive .star::before { background: var(--ink-faint); }
 /* Swipe-to-rate: the row owns horizontal drags so sliding across the
    stars sets the rating instead of scrolling the sheet, and never
    text-selects mid-drag. */
