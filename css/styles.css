@@ -1032,16 +1032,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .game-grid--3col { grid-template-columns: repeat(3, 1fr); gap: 8px; }
 
 .trending-strip {
-  display: flex; gap: var(--space-3); overflow-x: auto;
-  /* Top padding needs real clearance above the cards, not just visual
-     breathing room: overflow-x: auto with no explicit overflow-y forces
-     overflow-y to auto too (a CSS rule — one axis non-visible drags the
-     other off 'visible'), so this strip clips vertically at its own
-     padding edge. The hover lift below moves a card up 3px, and the
-     4px this used to have (var(--space-1)) left only ~1px of slack —
-     enough to clip under real subpixel rounding, which is exactly the
-     "cut off from the top" the lift showed. 10px gives it real room. */
-  padding: 10px 2px var(--space-4);
+  display: flex; gap: var(--space-3); overflow-x: auto; padding: var(--space-1) 2px var(--space-4);
   scrollbar-width: none; -ms-overflow-style: none;
 }
 .trending-strip::-webkit-scrollbar { display: none; }
@@ -1100,18 +1091,14 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .trending-card__cover, .friend-card__cover, .activity-card__cover {
   width: var(--feed-card-w, 140px); aspect-ratio: var(--ratio-card); object-fit: cover; display: block;
   border-radius: 5px; background: var(--surface);
-  transition: box-shadow 0.15s ease, transform 0.15s ease;
+  transition: box-shadow 0.15s ease;
 }
-/* Lift only, no shadow/glow — an earlier version added the same
-   drop-shadow-based lift .discovery-tile uses on hover, but that
-   shadow is exactly the "comes back when I put my cursor on it" the
-   user flagged: they want no shadow ever, on any interaction, not
-   just at rest. The translateY lift alone still gives hover feedback. */
-.trending-card:hover .trending-card__cover,
-.friend-card:hover .friend-card__cover,
-.activity-card:hover .activity-card__cover {
-  transform: translateY(-3px);
-}
+/* No hover motion at all here on purpose — a translateY lift was tried
+   (both on the cover here, and separately on the whole card via the
+   shared (hover: hover) block further down), and with both active at
+   once a hover ended up moving the poster twice, which read as janky
+   rather than as feedback. Asked to just drop it entirely rather than
+   fix the stacking, so these covers now sit still on hover. */
 .trending-card:disabled { opacity: 0.6; }
 .friend-card__avatars { position: absolute; top: 8px; left: 8px; display: flex; }
 .friend-card__avatars .avatar { border: 2px solid var(--bg); margin-right: -8px; }
@@ -2210,17 +2197,17 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    Scoped to (hover: hover) so touchscreens never get a "stuck" hover
    state after tapping — only real pointer devices see these. */
 @media (hover: hover) {
-  /* trending-card/friend-card deliberately left out of this list — see
-     the dedicated (and shadow-free) hover rule right after
-     .trending-card__cover's definition above. This is the second,
-     separate place a hover shadow was coming from for those two: the
-     lift below still applies to them, just not this box-shadow. */
+  /* trending-card/friend-card/activity-card deliberately left out of
+     both rules below — they used to share this same lift+shadow with
+     game-card/showcase-slot, but asked to have no hover motion at all
+     (it doubled up with a second lift on the cover itself and read as
+     janky), so they were pulled out of this list entirely. */
   .game-card:hover .game-card__cover,
   .showcase-slot:hover .showcase-slot__cover,
   .result-row:hover .result-row__cover {
     box-shadow: 0 8px 24px rgba(0,0,0,0.5);
   }
-  .game-card:hover, .trending-card:hover, .friend-card:hover, .showcase-slot:hover {
+  .game-card:hover, .showcase-slot:hover {
     transform: translateY(-3px);
   }
   .log-card:hover { box-shadow: 0 8px 28px rgba(0,0,0,0.45); }
