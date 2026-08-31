@@ -80,10 +80,12 @@ export function navBar(activeBase = '/feed') {
 // own thing" rather than a second global nav competing with the real one.
 export function homeTabs(active = 'feed') {
   return `
-    <nav class="home-tabs">
-      <a href="#/feed" class="home-tabs__item${active === 'feed' ? ' home-tabs__item--active' : ''}">Feed</a>
-      <a href="#/news" class="home-tabs__item${active === 'news' ? ' home-tabs__item--active' : ''}">News</a>
-    </nav>`;
+    <div class="home-tabs">
+      <nav class="home-tabs__pill">
+        <a href="#/feed" class="home-tabs__item${active === 'feed' ? ' home-tabs__item--active' : ''}">Feed</a>
+        <a href="#/news" class="home-tabs__item${active === 'news' ? ' home-tabs__item--active' : ''}">News</a>
+      </nav>
+    </div>`;
 }
 function iconAccountNav() {
   return `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">

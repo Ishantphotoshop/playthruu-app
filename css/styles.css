@@ -412,16 +412,20 @@ ul { list-style: none; margin: 0; padding: 0; }
    gap+align-items:center from the base rule above), so it just needs
    its own size — everything else about the row layout is inherited. */
 .topbar--home { justify-content: center; padding-top: calc(var(--space-4) + var(--safe-top)); padding-bottom: var(--space-3); border-bottom: none; }
-/* Sits directly under the home topbar, above "Trending now" — a quick
-   switch between Feed and News, set in the same bold brand font as the
-   wordmark above it rather than the body font used everywhere else in
-   the app. Same recipe as .tabbar itself (surface-raised fill, hairline
-   border, full pill radius, same soft float shadow) rather than a plain
-   underline row, so this reads as "the same rounded-capsule language as
-   the bottom nav" instead of a different control shape invented here. */
-.home-tabs {
-  display: flex; justify-content: center; align-items: center; gap: 4px;
-  width: fit-content; margin: 4px auto 20px;
+/* body has its own ambient radial glow behind everything (see body's
+   background further down) — .topbar--home is opaque and blocks it
+   right up to its own edge, but .home-tabs used to be transparent, so
+   that glow showed through in the gap between the two and read as a
+   seam/colour mismatch between "the PlayThruu header" and "the tabs
+   right under it". Same solid --bg here joins them into one section
+   with no visible break. */
+.home-tabs { background: var(--bg); padding: 4px var(--space-4) 20px; display: flex; justify-content: center; }
+/* The pill itself: same recipe as .tabbar (surface-raised fill,
+   hairline border, full pill radius, same float shadow), so it reads
+   as the same rounded-capsule language as the bottom nav bar. */
+.home-tabs__pill {
+  display: flex; align-items: center; gap: 4px;
+  width: fit-content;
   background: var(--surface-raised);
   border: 1px solid var(--line);
   border-radius: var(--radius-pill);
@@ -430,18 +434,15 @@ ul { list-style: none; margin: 0; padding: 0; }
 }
 .home-tabs__item {
   font-family: var(--font-brand); font-weight: 700; font-size: 14px;
-  letter-spacing: -0.01em; color: rgba(255,255,255,0.60);
+  letter-spacing: -0.01em; color: var(--ink-dim);
   padding: 10px 26px;
   border-radius: var(--radius-pill);
-  transition: color var(--dur) var(--ease);
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
 }
-/* Same white-glow-on-active language as .tabbar__item--active's icons
-   (see styles.css), just as a text-shadow instead of an SVG filter
-   since these are words, not glyphs. */
-.home-tabs__item--active {
-  color: #fff;
-  text-shadow: 0 0 10px rgba(217,255,63,0.4);
-}
+/* The active tab gets its own inset highlight — same treatment as
+   .segmented__item--active (Search's Games/Players tabs) — rather than
+   just a colour/glow change on plain text. */
+.home-tabs__item--active { background: var(--surface-high); color: var(--ink); }
 /* Tight tracking, not the wide letter-spacing this used to carry —
    a bold wordmark sitting close to its mark reads as one confident
    lockup; spread out, it read as two unrelated pieces. */
