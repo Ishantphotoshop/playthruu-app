@@ -34,8 +34,27 @@ const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: "@_
 const CACHE_MS = 10 * 60 * 1000;
 let cache: { at: number; articles: unknown[] } | null = null;
 
+// RSS titles/descriptions routinely arrive with HTML entities still
+// literal in the text (e.g. a curly apostrophe as "&#8217;") — the XML
+// parser above only decodes XML's own five entities, not HTML's, so
+// without this every "&#8217;" showed up on screen as that exact
+// literal string instead of an apostrophe once esc() on the client
+// re-escaped the leading "&" into "&amp;".
+const NAMED_ENTITIES: Record<string, string> = {
+  amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " ",
+};
+function decodeEntities(text: string): string {
+  return text.replace(/&(#\d+|#x[0-9a-fA-F]+|[a-zA-Z]+);/g, (match, code) => {
+    if (code[0] === "#") {
+      const codePoint = code[1] === "x" || code[1] === "X" ? parseInt(code.slice(2), 16) : parseInt(code.slice(1), 10);
+      return Number.isNaN(codePoint) ? match : String.fromCodePoint(codePoint);
+    }
+    return NAMED_ENTITIES[code] ?? match;
+  });
+}
+
 function stripHtml(html: unknown): string {
-  return String(html ?? "").replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
+  return decodeEntities(String(html ?? "").replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim());
 }
 
 function firstImage(item: any): string {

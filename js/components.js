@@ -73,17 +73,17 @@ export function navBar(activeBase = '/feed') {
 }
 
 // Sits right under the home screen's wordmark, above "Trending now" —
-// a quick switch between the two feed-shaped screens (Feed's social
-// activity vs. News's headlines) without detouring through the bottom
-// tab bar, which still keeps its own News icon too. Only rendered on
-// those two screens, not the whole app, so it stays "the home area's
-// own thing" rather than a second global nav competing with the real one.
+// a segmented pair like Search's Games/Players tabs (see .segmented),
+// not links: plain buttons that swap what's painted into the same body
+// (wired in feed-view.js), no navigation and no route change. News no
+// longer has its own icon in the bottom tab bar — this is its only
+// entry point now, besides the /news deep link itself.
 export function homeTabs(active = 'feed') {
   return `
     <div class="home-tabs">
       <nav class="home-tabs__pill">
-        <a href="#/feed" class="home-tabs__item${active === 'feed' ? ' home-tabs__item--active' : ''}">Feed</a>
-        <a href="#/news" class="home-tabs__item${active === 'news' ? ' home-tabs__item--active' : ''}">News</a>
+        <button type="button" class="home-tabs__item${active === 'feed' ? ' home-tabs__item--active' : ''}" data-tab="feed">Feed</button>
+        <button type="button" class="home-tabs__item${active === 'news' ? ' home-tabs__item--active' : ''}" data-tab="news">News</button>
       </nav>
     </div>`;
 }

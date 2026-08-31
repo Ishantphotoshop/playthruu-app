@@ -425,22 +425,24 @@ ul { list-style: none; margin: 0; padding: 0; }
    right under it". Same solid --bg here joins them into one section
    with no visible break. */
 .home-tabs { background: var(--bg); padding: 4px var(--space-4) 20px; display: flex; justify-content: center; }
-/* The pill itself: same recipe as .tabbar (surface-raised fill,
-   hairline border, full pill radius, same float shadow), so it reads
-   as the same rounded-capsule language as the bottom nav bar. */
+/* The pill itself: same recipe as .segmented (Search's Games/Players
+   tabs) — full width of its container rather than sized to its own
+   content, each item taking an equal flex:1 share instead of just
+   hugging its label. */
 .home-tabs__pill {
-  display: flex; align-items: center; gap: 4px;
-  width: fit-content;
+  display: flex; align-items: center; gap: var(--space-1);
+  width: 100%;
   background: var(--surface-raised);
   border: 1px solid var(--line);
   border-radius: var(--radius-pill);
   box-shadow: 0 10px 34px -8px rgba(0,0,0,0.55);
-  padding: var(--space-2);
+  padding: var(--space-1);
 }
 .home-tabs__item {
+  flex: 1; text-align: center;
   font-family: var(--font-brand); font-weight: 700; font-size: 14px;
   letter-spacing: -0.01em; color: var(--ink-dim);
-  padding: 10px 26px;
+  padding: 10px var(--space-2);
   border-radius: var(--radius-pill);
   transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
 }
@@ -518,17 +520,19 @@ ul { list-style: none; margin: 0; padding: 0; }
    label shadows further down, not by making the surface opaque.       */
 /* Docked edge-to-edge and flush to the bottom now, not the floating
    pill with side/bottom breathing room this used to be — same "docked,
-   full-width, square corners, solid black" recipe .landing-nav.tabbar
-   already used below (that override still applies on top of this
-   unchanged). max-width matches #app's own 560px column so the bar is
-   genuinely edge-to-edge against the app's real width at any viewport
-   size, not just wider than before. */
+   full-width, square corners" shape .landing-nav.tabbar already used
+   below (that override still applies on top of this unchanged), but
+   keeping this bar's own surface-raised fill rather than switching to
+   solid black — black was only ever meant for the PlayThruu/home-tabs
+   section above it, not this bar. max-width matches #app's own 560px
+   column so the bar is genuinely edge-to-edge against the app's real
+   width at any viewport size, not just wider than before. */
 .tabbar {
   position: fixed; left: 50%; right: auto; bottom: 0; transform: translateX(-50%);
   width: 100%; max-width: 560px;
   display: flex; justify-content: space-around; align-items: center;
   padding: var(--space-2) var(--space-2) calc(var(--space-2) + var(--safe-bottom));
-  background: var(--bg);
+  background: var(--surface-raised);
   border: none; border-top: 1px solid var(--line);
   border-radius: 0;
   box-shadow: 0 10px 34px -8px rgba(0,0,0,0.55);

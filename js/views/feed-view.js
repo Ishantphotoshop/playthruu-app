@@ -4,19 +4,44 @@ import {
   topBar, navBar, homeTabs, activityCard, emptyState, spinner, skeletonRow, iconStamp, iconUser, iconFilter,
   trendingStrip, wireTrendingStrip, friendsPlayingCard, posterFrame, openReportSheet,
 } from '../components.js';
-import { toast, qs, qsa, esc, enableSwipeToDismiss, promptSignIn, tapFeedback, pulseLogTab } from '../utils.js';
+import { toast, qs, qsa, esc, timeAgo, enableSwipeToDismiss, promptSignIn, tapFeedback, pulseLogTab } from '../utils.js';
 import { openLogModal } from './log-modal.js';
 import { refreshCurrentView, navigate } from '../router.js';
 import { getCached, setCached } from '../cache.js';
 
 const FEED_CACHE_KEY = 'feed';
+const NEWS_CACHE_KEY = 'news';
 
-export async function renderFeedView(root) {
-  root.innerHTML = topBar('', { home: true }) + homeTabs('feed') + `<div class="view-body" id="feed-body"></div>` + navBar('/feed');
+// Feed and News behave as one segmented pair now, exactly like Search's
+// Games/Players tabs — a plain client-side swap of what's painted into
+// the same body, not two destinations you navigate between. /news is
+// still a real route (still deep-linkable/bookmarkable), it just lands
+// here with News pre-selected instead of rendering its own separate page.
+export async function renderFeedView(root, { initialTab = 'feed' } = {}) {
+  let activeTab = initialTab;
+  root.innerHTML = topBar('', { home: true }) + homeTabs(activeTab) + `<div class="view-body" id="feed-body"></div>` + navBar('/feed');
   wireStamp(root);
   const body = qs('#feed-body', root);
   wirePullToRefresh(body);
 
+  qsa('.home-tabs__item', root).forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const tab = btn.dataset.tab;
+      if (tab === activeTab) return;
+      activeTab = tab;
+      qsa('.home-tabs__item', root).forEach((b) => b.classList.toggle('home-tabs__item--active', b === btn));
+      paintActiveTab();
+    });
+  });
+
+  function paintActiveTab() {
+    return activeTab === 'news' ? paintNewsTab(body) : paintFeedTab(body);
+  }
+
+  await paintActiveTab();
+}
+
+async function paintFeedTab(body) {
   // Reopening the feed after a visit earlier this session paints
   // whatever was on screen last time immediately (fully visible, not
   // hidden behind feed-body--loading) instead of an empty skeleton —
@@ -68,6 +93,44 @@ export async function renderFeedView(root) {
   qs('#feed-sections', body)?.classList.remove('feed-body--loading');
   loadingEl?.remove();
   setCached(FEED_CACHE_KEY, qs('#feed-sections', body)?.innerHTML || '');
+}
+
+// Articles link straight out to the publisher (target="_blank") rather
+// than opening in-app — this is an aggregator, not a reader, and these
+// outlets' own pages are where the ads/analytics that fund them live.
+function newsCard(article) {
+  return `
+    <a class="news-card" href="${esc(article.link)}" target="_blank" rel="noopener noreferrer">
+      <span class="news-card__cover" style="${article.image ? `background-image:url('${esc(article.image)}')` : ''}"></span>
+      <span class="news-card__info">
+        <span class="news-card__title">${esc(article.title)}</span>
+        ${article.summary ? `<span class="news-card__summary">${esc(article.summary)}</span>` : ''}
+        <span class="news-card__meta">${esc(article.source)} · ${timeAgo(article.pubDate)}</span>
+      </span>
+    </a>`;
+}
+
+async function paintNewsTab(body) {
+  // Same reasoning as paintFeedTab's cache above — the news-proxy Edge
+  // Function already caches merged articles for 10 minutes server-side,
+  // but that still costs a round trip and a spinner on every tab switch.
+  const cachedList = getCached(NEWS_CACHE_KEY);
+  body.innerHTML = `<div id="news-list">${cachedList || spinner()}</div>`;
+
+  const listEl = qs('#news-list', body);
+  const articles = await api.getGameNews();
+  if (!listEl.isConnected) return; // switched tabs again before this landed
+
+  if (articles.length) {
+    const html = `<div class="news-list">${articles.map(newsCard).join('')}</div>`;
+    listEl.innerHTML = html;
+    setCached(NEWS_CACHE_KEY, html);
+  } else if (!cachedList) {
+    // Only replace the screen with an error when there's nothing already
+    // showing — a background refetch hiccup shouldn't yank away
+    // headlines that were displaying just fine a moment ago.
+    listEl.innerHTML = emptyState("Couldn't load news right now. Try again in a bit.");
+  }
 }
 
 // "Bored? Try these" — an endless vertical list that changes with the
