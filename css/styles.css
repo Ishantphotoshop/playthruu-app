@@ -411,7 +411,37 @@ ul { list-style: none; margin: 0; padding: 0; }
    breathe. The mark sits on .topbar's existing flex row (already
    gap+align-items:center from the base rule above), so it just needs
    its own size — everything else about the row layout is inherited. */
-.topbar--home { justify-content: center; padding-top: calc(var(--space-4) + var(--safe-top)); padding-bottom: var(--space-4); }
+/* No border-bottom on this variant — .home-tabs sits directly under it
+   now and owns the boundary between "header" and "content" itself, via
+   its active tab's underline rather than a hairline across the whole
+   width right above it. */
+.topbar--home { justify-content: center; padding-top: calc(var(--space-4) + var(--safe-top)); padding-bottom: var(--space-3); border-bottom: none; }
+/* Sits directly under the home topbar, above "Trending now" — a quick
+   switch between Feed and News, set in the same bold brand font as the
+   wordmark above it rather than the body font used everywhere else in
+   the app. The active tab's glowing underline reuses the same treatment
+   already established for the browse screen's Games/People tabs, so it
+   reads as this app's "cool tab" look rather than a one-off. */
+.home-tabs {
+  display: flex; justify-content: center; align-items: center; gap: 32px;
+  background: var(--bg);
+  padding: 2px var(--space-4) 18px;
+  border-bottom: 1px solid var(--line);
+}
+.home-tabs__item {
+  position: relative;
+  font-family: var(--font-brand); font-weight: 700; font-size: 15px;
+  letter-spacing: -0.01em; color: var(--ink-faint);
+  padding: 4px 2px 12px;
+  transition: color var(--dur) var(--ease);
+}
+.home-tabs__item--active { color: var(--ink); }
+.home-tabs__item--active::after {
+  content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 3px;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(90deg, var(--accent-bright), var(--accent));
+  box-shadow: 0 0 10px 1px color-mix(in srgb, var(--accent-bright) 55%, transparent);
+}
 /* Tight tracking, not the wide letter-spacing this used to carry —
    a bold wordmark sitting close to its mark reads as one confident
    lockup; spread out, it read as two unrelated pieces. */
@@ -531,8 +561,11 @@ ul { list-style: none; margin: 0; padding: 0; }
      see-through over bright cover art without losing legibility. */
   text-shadow: 0 1px 2px rgba(0,0,0,0.42);
 }
+/* Bigger than the old 21px — icon-only now (no label underneath to
+   share the item's height with), so the glyph can carry more weight
+   on its own without the item looking empty. */
 .tabbar__item svg {
-  width: 21px; height: 21px;
+  width: 25px; height: 25px;
   filter: drop-shadow(0 1px 1.5px rgba(0,0,0,0.38));
 }
 /* The signed-out "Sign in" item is a <button>, not an <a> like the rest
@@ -561,7 +594,6 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   text-shadow: none;
   box-shadow: none;
 }
-.tabbar__item--primary span { display: none; }
 .tabbar__item--primary svg {
   width: 28px; height: 28px;
 }

@@ -1,7 +1,7 @@
 import * as api from '../api.js';
 import { state } from '../state.js';
 import {
-  topBar, navBar, activityCard, emptyState, spinner, skeletonRow, iconStamp, iconUser, iconFilter,
+  topBar, navBar, homeTabs, activityCard, emptyState, spinner, skeletonRow, iconStamp, iconUser, iconFilter,
   trendingStrip, wireTrendingStrip, friendsPlayingCard, posterFrame, openReportSheet,
 } from '../components.js';
 import { toast, qs, qsa, esc, enableSwipeToDismiss, promptSignIn, tapFeedback, pulseLogTab } from '../utils.js';
@@ -12,7 +12,7 @@ import { getCached, setCached } from '../cache.js';
 const FEED_CACHE_KEY = 'feed';
 
 export async function renderFeedView(root) {
-  root.innerHTML = topBar('', { home: true }) + `<div class="view-body" id="feed-body"></div>` + navBar('/feed');
+  root.innerHTML = topBar('', { home: true }) + homeTabs('feed') + `<div class="view-body" id="feed-body"></div>` + navBar('/feed');
   wireStamp(root);
   const body = qs('#feed-body', root);
   wirePullToRefresh(body);

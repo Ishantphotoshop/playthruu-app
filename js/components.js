@@ -61,19 +61,34 @@ export function navBar(activeBase = '/feed') {
     { route: '/messages', icon: iconMessage(), label: 'Messages' },
     { route: '/me', icon: iconUser(), label: 'Profile' },
   ];
+  // Icon-only now, no label underneath — same convention the signed-out
+  // nav above already used. aria-label carries the name instead so it's
+  // still announced to screen readers even though nothing's printed.
   const navLink = (it) => `
-    <a href="#${it.route}" class="tabbar__item${activeBase === it.route ? ' tabbar__item--active' : ''}" data-route="${it.route}">
+    <a href="#${it.route}" class="tabbar__item${activeBase === it.route ? ' tabbar__item--active' : ''}" data-route="${it.route}" aria-label="${it.label}">
       ${it.icon}
-      <span>${it.label}</span>
     </a>`;
   return `
     <nav class="tabbar">
       <div class="tabbar__group">${leftItems.map(navLink).join('')}</div>
-      <a href="#/log" class="tabbar__item tabbar__item--primary${activeBase === '/log' ? ' tabbar__item--active' : ''}" data-route="/log">
+      <a href="#/log" class="tabbar__item tabbar__item--primary${activeBase === '/log' ? ' tabbar__item--active' : ''}" data-route="/log" aria-label="Log">
         ${iconBrandMark()}
-        <span>Log</span>
       </a>
       <div class="tabbar__group">${rightItems.map(navLink).join('')}</div>
+    </nav>`;
+}
+
+// Sits right under the home screen's wordmark, above "Trending now" —
+// a quick switch between the two feed-shaped screens (Feed's social
+// activity vs. News's headlines) without detouring through the bottom
+// tab bar, which still keeps its own News icon too. Only rendered on
+// those two screens, not the whole app, so it stays "the home area's
+// own thing" rather than a second global nav competing with the real one.
+export function homeTabs(active = 'feed') {
+  return `
+    <nav class="home-tabs">
+      <a href="#/feed" class="home-tabs__item${active === 'feed' ? ' home-tabs__item--active' : ''}">Feed</a>
+      <a href="#/news" class="home-tabs__item${active === 'news' ? ' home-tabs__item--active' : ''}">News</a>
     </nav>`;
 }
 function iconAccountNav() {
