@@ -383,7 +383,7 @@ async function paintTrending(slot) {
     const games = await api.getWorldTrending(15, 10);
     if (!games.length) { slot.innerHTML = ''; return; }
     slot.innerHTML = `
-      ${feedSectionHead('Trending now', { seeMoreHref: '/discover', count: games.length })}
+      ${feedSectionHead('Trending now', { seeMoreHref: '/trending', count: games.length })}
       ${trendingStrip(games)}`;
     wireTrendingStrip(slot, games, {
       onSelect: async (g) => {

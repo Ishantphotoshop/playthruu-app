@@ -1639,7 +1639,11 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 #feed-body .trending-strip { padding-bottom: var(--space-2); }
 #feed-body .discovery-active { margin-top: 2px; }
 
-.feed-section-head { display: flex; align-items: baseline; justify-content: space-between; }
+/* align-items: center, not baseline — an SVG icon's "baseline" defaults
+   to its bottom edge (it isn't text), so pairing it against a heading's
+   real text baseline sat it visibly low/off against the letters. Center
+   is what actually reads as "aligned" for an icon-next-to-text row. */
+.feed-section-head { display: flex; align-items: center; justify-content: space-between; }
 .feed-section-head .section-heading { margin-bottom: 12px; }
 .see-more-link { font-size: 12px; font-weight: 700; color: var(--accent-bright); flex-shrink: 0; }
 /* Icon-only "see more" for the three feed strips (see feedSectionHead()
@@ -1650,7 +1654,6 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   display: flex; align-items: center; justify-content: center;
   width: 26px; height: 26px; flex-shrink: 0;
   color: var(--ink-dim);
-  align-self: center;
 }
 .see-more-icon svg { width: 18px; height: 18px; }
 
@@ -3113,11 +3116,9 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    breathing room. This has to match .landing-entry's min-height calc
    below exactly, or the two disagree about where the bottom actually is
    and a visible gap opens up between them. The real height (see
-   .landing-nav.tabbar and .tabbar__item below): 1px border-top + 8px
-   padding-top + the 50px item itself = 59px, NOT a round 64 — that
-   5px difference was exactly the sliver of page background visible
-   above the bar. */
-.landing-stage { flex: 1; overflow-y: auto; padding-bottom: calc(59px + var(--safe-bottom)); background: var(--bg); }
+   .landing-nav.tabbar and .tabbar__item below): 1px border-top + 6px
+   padding-top + the 50px item itself + 6px padding-bottom = 63px. */
+.landing-stage { flex: 1; overflow-y: auto; padding-bottom: calc(63px + var(--safe-bottom)); background: var(--bg); }
 
 /* Docked edge-to-edge, not the floating pill the real in-app tabbar
    uses — full width, square top corners, flush to the bottom and both
@@ -3138,7 +3139,11 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   position: fixed; left: 50%; right: auto; bottom: 0; transform: translateX(-50%);
   width: 100%; max-width: 560px;
   border-radius: 0; border: none; border-top: 1px solid rgba(255,255,255,0.12);
-  padding-bottom: var(--safe-bottom);
+  /* Same symmetric 6px top/bottom as the real in-app .tabbar now
+     (spelled out explicitly here rather than left to inherit, since
+     .landing-stage/.landing-entry's height budgets above depend on this
+     exact value). */
+  padding: 6px 0 calc(6px + var(--safe-bottom));
   /* Flat solid surface, not glass — matches the real in-app .tabbar
      (see above) and every other panel in the app now. */
   background: #101014;
@@ -3160,15 +3165,15 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   color: rgba(255,255,255,0.7); text-shadow: none;
 }
 .landing-nav .tabbar__item--active { color: #ffffff; }
-/* Icon-only — no label underneath, so every icon can be noticeably
-   bigger and still fit comfortably in the bar. No drop-shadow glow —
-   flat lime on flat black, full stop. Sized/padded exactly like the
-   base .tabbar__item (50px tall) with nothing overridden here — that
-   50px is what the reserved nav space below (.landing-stage,
-   .landing-entry) is calculated against; changing this height without
-   updating those is exactly what reopened the gap above the bar the
-   last time this was touched. */
-.landing-nav .tabbar__item svg { width: 30px; height: 30px; filter: none; }
+/* Icon-only — no label underneath. No drop-shadow glow — flat lime on
+   flat black, full stop. Same 25px size as the real in-app nav's icons
+   now (was 30px) — matching its look was the whole point of redoing
+   this bar. Item height/padding still comes from the base .tabbar__item
+   (50px tall) with nothing overridden here — that 50px is what the
+   reserved nav space below (.landing-stage, .landing-entry) is
+   calculated against; changing it without updating those is exactly
+   what reopened the gap above the bar the last time this was touched. */
+.landing-nav .tabbar__item svg { width: 25px; height: 25px; filter: none; }
 
 /* ---- entry screen: brand + one clear action, bottom-anchored over a
    brand-first: no cover art, no photo — the mark and wordmark are the
@@ -3177,7 +3182,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    mosaic backdrop, which no longer exists). */
 .landing-entry {
   position: relative; overflow: hidden;
-  min-height: calc(100dvh - 59px - var(--safe-bottom));
+  min-height: calc(100dvh - 63px - var(--safe-bottom));
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   background: var(--bg);
   padding: var(--space-5);

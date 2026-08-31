@@ -36,10 +36,10 @@ export function navBar(activeBase = '/feed') {
   if (!state.user) {
     return `
       <nav class="tabbar landing-nav">
-        <button type="button" class="tabbar__item" data-action="account" aria-label="Account">${iconAccountNav()}</button>
-        <button type="button" class="tabbar__item" data-action="browse" aria-label="Browse">${iconBrowseNav()}</button>
-        <a href="#/discover" class="tabbar__item${activeBase === '/discover' ? ' tabbar__item--active' : ''}" data-route="/discover" aria-label="Discover">${iconCompassNav()}</a>
-        <a href="#/search" class="tabbar__item${activeBase === '/search' ? ' tabbar__item--active' : ''}" data-route="/search" aria-label="Search">${iconSearch()}</a>
+        <button type="button" class="tabbar__item" data-action="account" aria-label="Account">${iconUserFilled()}</button>
+        <button type="button" class="tabbar__item" data-action="browse" aria-label="Browse">${iconBrowseNavFilled()}</button>
+        <a href="#/discover" class="tabbar__item${activeBase === '/discover' ? ' tabbar__item--active' : ''}" data-route="/discover" aria-label="Discover">${iconCompassNavFilled()}</a>
+        <a href="#/search" class="tabbar__item${activeBase === '/search' ? ' tabbar__item--active' : ''}" data-route="/search" aria-label="Search">${iconSearchFilled()}</a>
       </nav>`;
   }
   // News lives in the Feed/News tabs at the top of the home screen now
@@ -118,27 +118,22 @@ function iconMessageFilled() {
 function iconUserFilled() {
   return `<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5" fill="currentColor"/><path fill="currentColor" d="M12 13c-4 0-7.5 2.4-8.6 6.4A1 1 0 0 0 4.4 20.7h15.2a1 1 0 0 0 1-1.3C19.5 15.4 16 13 12 13z"/></svg>`;
 }
-function iconAccountNav() {
-  return `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-    <circle cx="12" cy="8" r="3.7" stroke="currentColor" stroke-width="2.3"/>
-    <path d="M4.3 20c1.3-3.6 3.7-5.7 6.6-6.2" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"/>
-    <rect x="14" y="14" width="7.5" height="6.5" rx="1.4" stroke="currentColor" stroke-width="2.1"/>
-    <path d="M15.8 14v-1.6a1.95 1.95 0 0 1 3.9 0V14" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/>
+// Filled, matching the signed-in nav's new filled style (see
+// iconHomeFilled and friends above) — Account reuses iconUserFilled
+// directly (same underlying idea, a person), Browse and Discover are
+// solid versions of their old outline shapes rather than new icons
+// entirely, so the signed-out nav genuinely looks like the same design
+// language as the signed-in one instead of two different icon sets.
+function iconBrowseNavFilled() {
+  return `<svg viewBox="0 0 24 24" aria-hidden="true">
+    <rect x="3" y="3" width="8" height="8" rx="1.6" fill="currentColor"/>
+    <rect x="13" y="3" width="8" height="8" rx="1.6" fill="currentColor"/>
+    <rect x="3" y="13" width="8" height="8" rx="1.6" fill="currentColor"/>
+    <rect x="13" y="13" width="8" height="8" rx="1.6" fill="currentColor"/>
   </svg>`;
 }
-function iconBrowseNav() {
-  return `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-    <rect x="3" y="3" width="7.7" height="7.7" rx="1.6" stroke="currentColor" stroke-width="2.3"/>
-    <rect x="13.3" y="3" width="7.7" height="7.7" rx="1.6" stroke="currentColor" stroke-width="2.3"/>
-    <rect x="3" y="13.3" width="7.7" height="7.7" rx="1.6" stroke="currentColor" stroke-width="2.3"/>
-    <rect x="13.3" y="13.3" width="7.7" height="7.7" rx="1.6" stroke="currentColor" stroke-width="2.3"/>
-  </svg>`;
-}
-function iconCompassNav() {
-  return `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-    <circle cx="12" cy="12" r="9.2" stroke="currentColor" stroke-width="2.3"/>
-    <path d="m15.3 8.7-4.2 2.8-2.1 4.1 4.2-2.8 2.1-4.1z" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/>
-  </svg>`;
+function iconCompassNavFilled() {
+  return `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2 14.5 9.5 22 12 14.5 14.5 12 22 9.5 14.5 2 12 9.5 9.5z"/></svg>`;
 }
 
 // Three shapes, not one:
