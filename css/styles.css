@@ -424,10 +424,9 @@ ul { list-style: none; margin: 0; padding: 0; }
    seam/colour mismatch between "the PlayThruu header" and "the tabs
    right under it". Same solid --bg here joins them into one section
    with no visible break. */
-/* Bottom padding trimmed from 20px to 8px — combined with .view-body's
-   own 20px top padding right after it, the pill and "Trending now" were
-   sitting a full 40px apart, further than any other gap on this screen. */
-.home-tabs { background: var(--bg); padding: 4px var(--space-4) 8px; display: flex; justify-content: center; }
+/* Bottom padding trimmed from 20px to 0 — .view-body's own 20px top
+   padding right after this is what supplies the remaining gap now. */
+.home-tabs { background: var(--bg); padding: 4px var(--space-4) 0; display: flex; justify-content: center; }
 /* The pill itself: same recipe as .segmented (Search's Games/Players
    tabs) — full width of its container rather than sized to its own
    content, each item taking an equal flex:1 share instead of just
@@ -1606,6 +1605,10 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 /* Tighter rhythm on the feed specifically — the gaps between the strips
    and the next heading were too airy. */
 #feed-body .section-heading { margin: var(--space-4) 0 var(--space-3); }
+/* "Trending now" is the very first thing in the scroll area — its own
+   20px top margin was stacking on top of .view-body's own 20px top
+   padding, doubling the gap under the Feed/News pill above it. */
+#trending-section .section-heading { margin-top: 0; }
 #feed-body .trending-strip { padding-bottom: var(--space-2); }
 #feed-body .discovery-active { margin-top: 2px; }
 
