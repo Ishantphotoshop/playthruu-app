@@ -142,6 +142,27 @@ function wireGlobalChrome() {
   });
 }
 
+// Every modal/sheet in the app (log entry, GIF picker, poster viewer,
+// auth sheet, QR code, etc.) appends its .modal-overlay/.poster-viewer
+// straight onto <body>, deliberately outside #app — that's what lets it
+// sit above the tab bar and cover the whole screen. But it also means a
+// route change (any hashchange: the browser's own back/forward buttons,
+// or a link tapped from inside the modal) only ever re-renders #app —
+// nothing tears the modal down, since it was never part of what got
+// replaced. Left unhandled, that's exactly what made back "a mess": the
+// screen underneath changes but the modal stays glued on top of it, and
+// document.body.style.overflow stays 'hidden' forever since the modal's
+// own close() (the only thing that resets it) never runs. This is the
+// same cleanup wireHardwareBack already did for Android's physical back
+// button below — just generalized to every hashchange, so the browser's
+// native back/forward buttons on web get it too.
+function closeStrayOverlays() {
+  const overlays = document.querySelectorAll('.modal-overlay, .poster-viewer');
+  if (!overlays.length) return;
+  overlays.forEach((el) => el.remove());
+  document.body.style.overflow = '';
+}
+
 // Android's hardware/gesture back button.
 //
 // Inside the packaged app the WebView doesn't wire this up to page
@@ -159,9 +180,18 @@ async function wireHardwareBack() {
     const { App } = await import('@capacitor/app');
     App.addListener('backButton', ({ canGoBack }) => {
       const onRootScreen = (location.hash.slice(1) || '/feed') === '/feed';
-      // A modal/overlay is the top layer — close that before navigating.
-      const overlay = document.querySelector('.modal-overlay, .poster-viewer');
-      if (overlay) { overlay.remove(); document.body.style.overflow = ''; return; }
+      // Multiple overlays can stack (e.g. "Add to list" opened from a
+      // button inside the log modal) — appendChild always adds to the
+      // end of <body>, so the LAST match here is the topmost/most
+      // recently opened one, not the first. A single back press should
+      // only dismiss that one layer, not reach past it to whatever a
+      // querySelector's first match happened to be.
+      const overlays = document.querySelectorAll('.modal-overlay, .poster-viewer');
+      if (overlays.length) {
+        overlays[overlays.length - 1].remove();
+        if (overlays.length === 1) document.body.style.overflow = '';
+        return;
+      }
       if (canGoBack && !onRootScreen) history.back();
       else App.exitApp();
     });
@@ -331,6 +361,7 @@ async function boot() {
   wireHardwareBack();
   wireAuthDeepLink();
   window.addEventListener('hashchange', applyMessageBadge);
+  window.addEventListener('hashchange', closeStrayOverlays);
 
   const { data: { session } } = await supabase.auth.getSession();
   if (session?.user) {
