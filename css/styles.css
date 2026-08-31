@@ -550,10 +550,9 @@ ul { list-style: none; margin: 0; padding: 0; }
 
 .tabbar::before { display: none; }
 /* Both groups claim equal width (flex: 1) no matter how many items are
-   inside them — 2 on the left, 3 on the right — so Log, sitting between
-   the two groups rather than being spaced as one of the items itself,
-   always lands exactly in the middle of the bar. See the comment on
-   navBar() in components.js for why the split is uneven at all. */
+   inside them, so Log, sitting between the two groups rather than being
+   spaced as one of the items itself, always lands exactly in the middle
+   of the bar regardless of how many destinations end up on either side. */
 .tabbar__group { display: flex; flex: 1; justify-content: space-around; align-items: center; min-width: 0; }
 .tabbar__item {
   position: relative;
@@ -581,6 +580,19 @@ ul { list-style: none; margin: 0; padding: 0; }
 .tabbar__item svg {
   width: 25px; height: 25px;
   filter: drop-shadow(0 1px 1.5px rgba(0,0,0,0.38));
+}
+/* Ultra-thin variant, picked from a 6-way icon-style comparison — a CSS
+   override here rather than editing iconHome/iconSearch/iconMessage/
+   iconUser themselves, since those are shared with empty states, form
+   fields, and profile-photo fallbacks all over the app; this keeps the
+   thinner stroke scoped to just the nav bar. stroke-width is inherited
+   by SVG children, but each icon's own <path>/<circle> already carries
+   its own stroke-width attribute — a presentation attribute always
+   loses to an actual CSS declaration, inherited or not, so this wins
+   without needing !important. Excludes the primary Log icon, which is
+   a plain filled shape with no stroke to begin with. */
+.tabbar__item:not(.tabbar__item--primary) svg * {
+  stroke-width: 1.2;
 }
 /* The signed-out "Sign in" item is a <button>, not an <a> like the rest
    — needs its own reset so it doesn't carry the browser's default
