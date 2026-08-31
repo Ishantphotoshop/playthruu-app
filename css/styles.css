@@ -424,7 +424,10 @@ ul { list-style: none; margin: 0; padding: 0; }
    seam/colour mismatch between "the PlayThruu header" and "the tabs
    right under it". Same solid --bg here joins them into one section
    with no visible break. */
-.home-tabs { background: var(--bg); padding: 4px var(--space-4) 20px; display: flex; justify-content: center; }
+/* Bottom padding trimmed from 20px to 8px — combined with .view-body's
+   own 20px top padding right after it, the pill and "Trending now" were
+   sitting a full 40px apart, further than any other gap on this screen. */
+.home-tabs { background: var(--bg); padding: 4px var(--space-4) 8px; display: flex; justify-content: center; }
 /* The pill itself: same recipe as .segmented (Search's Games/Players
    tabs) — full width of its container rather than sized to its own
    content, each item taking an equal flex:1 share instead of just
