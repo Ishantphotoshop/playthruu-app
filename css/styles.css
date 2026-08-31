@@ -304,7 +304,16 @@ ul { list-style: none; margin: 0; padding: 0; }
   background: transparent;
   overflow-x: hidden;
   overflow-y: auto;
+  /* #app is a second, independent scroll container underneath
+     .view-body's own (already scrollbar-hidden) one — normally it never
+     needs to scroll itself since .view-body absorbs all the content
+     height, but during a route change there's a brief moment where the
+     outgoing view is gone and the incoming one hasn't been laid out
+     yet, and #app's own native scrollbar would flash into view for
+     that instant. Hidden here the same way .view-body's is. */
+  scrollbar-width: none; -ms-overflow-style: none;
 }
+#app::-webkit-scrollbar { display: none; }
 
 .boot-loader { flex: 1; display: grid; place-items: center; position: relative; }
 /* A soft ambient glow breathing behind the mark — the same --accent
@@ -428,9 +437,12 @@ ul { list-style: none; margin: 0; padding: 0; }
    breathe. The mark sits on .topbar's existing flex row (already
    gap+align-items:center from the base rule above), so it just needs
    its own size — everything else about the row layout is inherited. */
-/* True #000, not --bg (#0a0b0f) — this section specifically was asked
-   to be pure black, not the app's usual near-black. */
-.topbar--home { justify-content: center; padding-top: calc(var(--space-4) + var(--safe-top)); padding-bottom: var(--space-3); border-bottom: none; background: #000; }
+/* Was a literal #000 — asked for at the time to read as pure black, but
+   that only worked against the dark theme's near-black page background.
+   Against the light theme's cream --bg it sat there as a flat black
+   slab with no relation to the rest of the app. var(--bg) instead
+   matches whichever theme is active, same as every other surface. */
+.topbar--home { justify-content: center; padding-top: calc(var(--space-4) + var(--safe-top)); padding-bottom: var(--space-3); border-bottom: none; background: var(--bg); }
 /* Compose (Messages) / settings (own Profile) still need a right-side
    action even on the home-style header — absolutely positioned rather
    than another flex sibling, since the header's justify-content:center
@@ -438,13 +450,10 @@ ul { list-style: none; margin: 0; padding: 0; }
    that off-centre. .topbar--home is already position:sticky, which is
    enough of a positioning context for this to anchor to. */
 .topbar__right--home { position: absolute; right: var(--space-4); top: 50%; transform: translateY(-50%); }
-/* body has its own ambient radial glow behind everything (see body's
-   background further down) — .topbar--home is opaque and blocks it
-   right up to its own edge, but .home-tabs used to be transparent, so
-   that glow showed through in the gap between the two and read as a
-   seam/colour mismatch between "the PlayThruu header" and "the tabs
-   right under it". Same solid black here joins them into one section
-   with no visible break.
+/* Same background as .topbar--home, and for the same reason: matching
+   it (rather than leaving it transparent, or hardcoded black) is what
+   joins the two into one seamless section with no visible seam between
+   "the PlayThruu header" and "the tabs right under it", in either theme.
    Bottom padding: was 20px, trimmed to 0 to pull "Trending now" up —
    but with 0 padding, the pill's own curved bottom edge sits exactly on
    the line where this opaque section ends and the page's ambient
@@ -452,7 +461,7 @@ ul { list-style: none; margin: 0; padding: 0; }
    glitch/seam right under the pill. A small amount back (10px) moves
    that transition into plain background instead of the pill's edge,
    without meaningfully reopening the gap the last fix closed. */
-.home-tabs { background: #000; padding: 4px var(--space-4) 10px; display: flex; justify-content: center; }
+.home-tabs { background: var(--bg); padding: 4px var(--space-4) 10px; display: flex; justify-content: center; }
 /* The pill itself: same recipe as .segmented (Search's Games/Players
    tabs) — full width of its container rather than sized to its own
    content, each item taking an equal flex:1 share instead of just
@@ -1018,7 +1027,16 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .game-grid--3col { grid-template-columns: repeat(3, 1fr); gap: 8px; }
 
 .trending-strip {
-  display: flex; gap: var(--space-3); overflow-x: auto; padding: var(--space-1) 2px var(--space-4);
+  display: flex; gap: var(--space-3); overflow-x: auto;
+  /* Top padding needs real clearance above the cards, not just visual
+     breathing room: overflow-x: auto with no explicit overflow-y forces
+     overflow-y to auto too (a CSS rule — one axis non-visible drags the
+     other off 'visible'), so this strip clips vertically at its own
+     padding edge. The hover lift below moves a card up 3px, and the
+     4px this used to have (var(--space-1)) left only ~1px of slack —
+     enough to clip under real subpixel rounding, which is exactly the
+     "cut off from the top" the lift showed. 10px gives it real room. */
+  padding: 10px 2px var(--space-4);
   scrollbar-width: none; -ms-overflow-style: none;
 }
 .trending-strip::-webkit-scrollbar { display: none; }
@@ -1107,17 +1125,17 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    card just ended up showing ~55-70% instead of the intended 40%.
    Confirmed by directly measuring each card's getBoundingClientRect()
    against the row's real clipping edge, not by eyeballing a
-   screenshot. Reverted to the simpler, verified-correct shape: solve
-   for exactly ONE trailing partial card. (100vw - 62px) is the row's
-   horizontal insets (44px: .view-body's 20px each side + .trending-
-   strip's own 2px each side) plus 3 full inter-card gaps at 6px
-   (18px); /3.2 is "3 full cards + 3 full gaps + 20% of a 4th" — a
-   clearly visible (not razor-thin) cut of the 4th poster, which the
-   user said matters more here than the largest possible size. Scales
-   with the actual device width instead of being tuned to one phone. */
+   screenshot. Solves for exactly ONE trailing partial card. (100vw -
+   53px) is the row's horizontal insets (44px: .view-body's 20px each
+   side + .trending-strip's own 2px each side) plus 3 full inter-card
+   gaps at 3px (9px); /2.9 is "3 full cards + 3 full gaps + a thin sliver
+   of a 4th" — asked to be bigger with a tighter gap than the earlier
+   6px/3.2 tuning, so both moved: the gap shrank and the divisor came
+   down, which grows every card. Scales with the actual device width
+   instead of being tuned to one phone. */
 @media (max-width: 560px) {
-  :root { --feed-card-w: calc((100vw - 62px) / 3.2); }
-  .trending-strip { gap: 6px; }
+  :root { --feed-card-w: calc((100vw - 53px) / 2.9); }
+  .trending-strip { gap: 3px; }
 }
 .card-who .avatar { flex-shrink: 0; }
 .card-who__meta { min-width: 0; display: flex; flex-direction: column; gap: 1px; overflow: hidden; }
