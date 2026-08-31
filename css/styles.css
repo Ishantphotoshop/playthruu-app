@@ -227,14 +227,6 @@
   --shadow-accent: 0 6px 20px rgba(43, 29, 14, 0.12);
   --glow-focus: 0 0 0 2px rgba(255,255,255,0.9), 0 0 22px rgba(107, 138, 18, 0.45);
 }
-/* body's own ambient-light gradient is a literal colour, not a token
-   (see the .body rule below) — needs its own light-mode override or it
-   keeps bleeding dark navy across the top of an otherwise cream page. */
-:root[data-theme="light"] body {
-  background:
-    radial-gradient(120% 70% at 50% 0%, #fff6e2 0%, transparent 62%),
-    var(--bg);
-}
 
 /* .tabbar's own background/border now use theme-aware tokens (var(--
    surface-raised), var(--line)) directly, so it no longer needs a
@@ -267,13 +259,9 @@
 html, body { height: 100%; overflow-x: hidden; }
 body {
   margin: 0;
-  /* Matches the website's own body background exactly (same gradient,
-     same colour) — brought back after removing it earlier this
-     session, once the actual problem (lime-on-lime glows clashing on
-     buttons/tab icons) turned out to be those buttons, not this. */
-  background:
-    radial-gradient(120% 70% at 50% 0%, #1a1d12 0%, transparent 62%),
-    var(--bg);
+  /* Flat, not the website's own radial ambient-glow gradient this used
+     to match — asked to be plain background colour, no gradient. */
+  background: var(--bg);
   background-attachment: fixed;
   color: var(--ink);
   font-family: var(--font-body);
