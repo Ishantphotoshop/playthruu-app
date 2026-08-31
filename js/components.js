@@ -142,7 +142,7 @@ function iconCompassNavFilled() {
 //  - back:  back arrow + page title (sub-pages)
 //  - plain: page title only, no wordmark — the wordmark repeating on
 //           every tab was visual noise, so it now appears once, on home
-export function topBar(title, { back = false, right = '', home = false, wordmark = true } = {}) {
+export function topBar(title, { back = false, right = '', home = false, wordmark = true, brand = false } = {}) {
   if (home) {
     return `
       <header class="topbar topbar--home">
@@ -154,7 +154,7 @@ export function topBar(title, { back = false, right = '', home = false, wordmark
   return `
     <header class="topbar">
       ${back ? `<button class="topbar__back" data-action="back" aria-label="Back">${iconBack()}</button>` : ''}
-      <h1 class="topbar__title">${esc(title)}</h1>
+      <h1 class="topbar__title${brand ? ' topbar__title--brand' : ''}">${esc(title)}</h1>
       <div class="topbar__right">${right}</div>
     </header>`;
 }

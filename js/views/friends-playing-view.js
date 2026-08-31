@@ -7,7 +7,7 @@ import { qs } from '../utils.js';
 // is the "see more" destination for it, so it asks for everything
 // instead, wrapped into a grid rather than one long horizontal scroll.
 export async function renderFriendsPlayingView(root) {
-  root.innerHTML = topBar("Friend's activity", { back: true }) +
+  root.innerHTML = topBar("Friend's activity", { back: true, brand: true }) +
     `<div class="view-body" id="friends-playing-body">${spinner()}</div>` + navBar('');
   const body = qs('#friends-playing-body', root);
 

@@ -10,7 +10,7 @@ import { navigate } from '../router.js';
 // markup trendingStrip() itself uses, just laid out in .card-grid
 // instead of .trending-strip's own wrapper.
 export async function renderTrendingView(root) {
-  root.innerHTML = topBar('Trending now', { back: true }) +
+  root.innerHTML = topBar('Trending now', { back: true, brand: true }) +
     `<div class="view-body" id="trending-body">${spinner()}</div>` + navBar('');
   const body = qs('#trending-body', root);
 

@@ -472,7 +472,6 @@ ul { list-style: none; margin: 0; padding: 0; }
   background: var(--surface-raised);
   border: 1px solid var(--line);
   border-radius: var(--radius-pill);
-  box-shadow: 0 10px 34px -8px rgba(0,0,0,0.55);
   padding: var(--space-1);
 }
 .home-tabs__item {
@@ -511,6 +510,12 @@ ul { list-style: none; margin: 0; padding: 0; }
   flex: 1; letter-spacing: -0.012em;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
+/* Trending/Friends/Currently-playing's "see more" destinations are the
+   direct continuation of the feed rows they're launched from — those
+   rows' own headings are the brand font (--font-brand, Unbounded), so
+   the page you land on carries the same identity rather than switching
+   to the generic --font-display every other back-navigated page uses. */
+.topbar__title--brand { font-family: var(--font-brand); font-weight: 700; letter-spacing: -0.01em; }
 .topbar__back, .icon-btn {
   width: 38px; height: 38px; display: grid; place-items: center;
   background: var(--surface-raised);
@@ -1051,11 +1056,17 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    instead. Every card class reads var(--feed-card-w, 140px) for both
    itself and its own cover, so redefining the one custom property here
    is enough to make every card fill its grid cell exactly, no extra
-   overrides needed per card type. */
+   overrides needed per card type.
+   Gap is intentionally much tighter than the feed strip's own
+   var(--space-3) — asked to kill the space between posters here (this
+   grid specifically, not the feed page) and let them grow into it:
+   since every card fills its grid cell exactly (--feed-card-w: 100%
+   above), a smaller gap directly hands each of the 3 columns more
+   width, no separate size formula needed the way the strip needs one. */
 .card-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: var(--space-3);
+  gap: var(--space-1);
   --feed-card-w: 100%;
 }
 /* All three feed rows (Trending / Friends Recently Completed /
@@ -1125,17 +1136,21 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    card just ended up showing ~55-70% instead of the intended 40%.
    Confirmed by directly measuring each card's getBoundingClientRect()
    against the row's real clipping edge, not by eyeballing a
-   screenshot. Solves for exactly ONE trailing partial card. (100vw -
-   53px) is the row's horizontal insets (44px: .view-body's 20px each
-   side + .trending-strip's own 2px each side) plus 3 full inter-card
-   gaps at 3px (9px); /2.9 is "3 full cards + 3 full gaps + a thin sliver
-   of a 4th" — asked to be bigger with a tighter gap than the earlier
-   6px/3.2 tuning, so both moved: the gap shrank and the divisor came
-   down, which grows every card. Scales with the actual device width
-   instead of being tuned to one phone. */
+   screenshot. Reverted to the simpler, verified-correct shape: solve
+   for exactly ONE trailing partial card. (100vw - 62px) is the row's
+   horizontal insets (44px: .view-body's 20px each side + .trending-
+   strip's own 2px each side) plus 3 full inter-card gaps at 6px
+   (18px); /3.2 is "3 full cards + 3 full gaps + 20% of a 4th" — a
+   clearly visible (not razor-thin) cut of the 4th poster, which the
+   user said matters more here than the largest possible size. Scales
+   with the actual device width instead of being tuned to one phone.
+   (A tighter gap + bigger card was tried here once, but the "kill the
+   gap, make it bigger" ask was actually about the grid-view "see more"
+   pages below, not this feed strip — reverted back to the original
+   tuning.) */
 @media (max-width: 560px) {
-  :root { --feed-card-w: calc((100vw - 53px) / 2.9); }
-  .trending-strip { gap: 3px; }
+  :root { --feed-card-w: calc((100vw - 62px) / 3.2); }
+  .trending-strip { gap: 6px; }
 }
 .card-who .avatar { flex-shrink: 0; }
 .card-who__meta { min-width: 0; display: flex; flex-direction: column; gap: 1px; overflow: hidden; }

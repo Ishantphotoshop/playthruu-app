@@ -7,7 +7,7 @@ import { qs } from '../utils.js';
 // the feed's own capped strip, into everything instead, wrapped into a
 // grid rather than one long horizontal scroll.
 export async function renderCurrentlyPlayingView(root) {
-  root.innerHTML = topBar('Currently playing', { back: true }) +
+  root.innerHTML = topBar('Currently playing', { back: true, brand: true }) +
     `<div class="view-body" id="currently-playing-body">${spinner()}</div>` + navBar('');
   const body = qs('#currently-playing-body', root);
 
