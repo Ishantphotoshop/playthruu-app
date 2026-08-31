@@ -23,7 +23,7 @@ export async function renderMessagesView(root) {
   let all = getCached(MESSAGES_CACHE_KEY) || [];
   let unsubscribe = null;
 
-  root.innerHTML = topBar('', { home: true, right: `<button class="icon-btn" id="compose-btn" aria-label="New message">${iconPlus()}</button>` }) +
+  root.innerHTML = topBar('', { home: true, wordmark: false, right: `<button class="icon-btn" id="compose-btn" aria-label="New message">${iconPlus()}</button>` }) +
     `<div class="view-body" id="messages-body">
        <div class="segmented segmented--wide" id="messages-tabs">
          <button type="button" class="segmented__item segmented__item--active" data-tab="messages">Messages</button>

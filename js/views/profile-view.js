@@ -29,7 +29,7 @@ export async function renderProfileView(root, { username }) {
   // plain "Profile" title bar — someone else's profile still needs the
   // back button and their actual name, so that case is untouched.
   const topBarHtml = isOwn
-    ? topBar('', { home: true, right: headerRight })
+    ? topBar('', { home: true, wordmark: false, right: headerRight })
     : topBar(username, { back: true, right: headerRight });
   root.innerHTML = topBarHtml +
     `<div class="view-body" id="profile-body">${cachedProfile || spinner()}</div>` + navBar(isOwn ? '/me' : '');

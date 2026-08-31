@@ -128,16 +128,17 @@ function iconCompassNav() {
 }
 
 // Three shapes, not one:
-//  - home:  centred PLAYTHRUU wordmark, nothing else
+//  - home:  centred mark (+ wordmark on Feed/News only — see wordmark
+//           below), nothing else
 //  - back:  back arrow + page title (sub-pages)
 //  - plain: page title only, no wordmark — the wordmark repeating on
 //           every tab was visual noise, so it now appears once, on home
-export function topBar(title, { back = false, right = '', home = false } = {}) {
+export function topBar(title, { back = false, right = '', home = false, wordmark = true } = {}) {
   if (home) {
     return `
       <header class="topbar topbar--home">
-        <img src="icons/${getTheme() === 'light' ? 'mark-orange' : 'mark-blue'}.svg" alt="" class="topbar__mark">
-        <span class="topbar__logo">PlayThruu</span>
+        <img src="icons/${getTheme() === 'light' ? 'mark-orange' : 'mark-blue'}.svg" alt="PlayThruu" class="topbar__mark">
+        ${wordmark ? `<span class="topbar__logo">PlayThruu</span>` : ''}
         ${right ? `<div class="topbar__right topbar__right--home">${right}</div>` : ''}
       </header>`;
   }
