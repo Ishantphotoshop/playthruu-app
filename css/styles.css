@@ -374,7 +374,12 @@ ul { list-style: none; margin: 0; padding: 0; }
   position: relative; /* anchors .pull-refresh's indicator, wherever the gesture is wired */
   flex: 1;
   min-width: 0;
-  padding: var(--space-4) var(--space-4) calc(120px + var(--safe-bottom));
+  /* Was 120px, sized for the old floating pill (its own ~66px height
+     plus the gap it floated above the true edge by). The docked bar
+     below is shorter and flush, so less reserved space is needed to
+     clear it — kept a little more than the bar's own ~67px footprint
+     for breathing room, not cut exactly to it. */
+  padding: var(--space-4) var(--space-4) calc(90px + var(--safe-bottom));
   overflow-y: auto;
   animation: view-enter var(--dur) var(--ease);
 }
@@ -511,17 +516,21 @@ ul { list-style: none; margin: 0; padding: 0; }
    The fill is kept very low-alpha on purpose: posters must stay
    recognisable through it. Legibility is bought back with the icon and
    label shadows further down, not by making the surface opaque.       */
+/* Docked edge-to-edge and flush to the bottom now, not the floating
+   pill with side/bottom breathing room this used to be — same "docked,
+   full-width, square corners, solid black" recipe .landing-nav.tabbar
+   already used below (that override still applies on top of this
+   unchanged). max-width matches #app's own 560px column so the bar is
+   genuinely edge-to-edge against the app's real width at any viewport
+   size, not just wider than before. */
 .tabbar {
-  position: fixed; left: 50%; transform: translateX(-50%);
-  bottom: calc(var(--space-3) + var(--safe-bottom));
-  width: calc(100% - var(--space-6)); max-width: 460px;
+  position: fixed; left: 50%; right: auto; bottom: 0; transform: translateX(-50%);
+  width: 100%; max-width: 560px;
   display: flex; justify-content: space-around; align-items: center;
-  padding: var(--space-2);
-  /* Flat solid surface, not glass — matches every other panel in the
-     app now instead of being the one translucent exception. */
-  background: var(--surface-raised);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-pill);
+  padding: var(--space-2) var(--space-2) calc(var(--space-2) + var(--safe-bottom));
+  background: var(--bg);
+  border: none; border-top: 1px solid var(--line);
+  border-radius: 0;
   box-shadow: 0 10px 34px -8px rgba(0,0,0,0.55);
   z-index: 30;
   isolation: isolate;
@@ -1853,7 +1862,11 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 
 /* ------------------------------------------------------------ misc: toast, spinner, empty, banner */
 .toast {
-  position: fixed; left: 50%; bottom: calc(90px + var(--safe-bottom)); transform: translateX(-50%) translateY(12px);
+  /* Was 90px, clearing the old floating pill's ~80px total footprint
+     (its own height plus the gap it floated above the edge by) with
+     room to spare. The tab bar is docked flush now (~67px tall, 0px
+     gap), so less clearance is needed to still float above it. */
+  position: fixed; left: 50%; bottom: calc(80px + var(--safe-bottom)); transform: translateX(-50%) translateY(12px);
   background: var(--surface-raised); color: var(--ink); padding: 11px 18px; border-radius: 999px;
   font-size: 13.5px; font-weight: 500; box-shadow: var(--shadow-modal);
   opacity: 0; pointer-events: none; transition: opacity 0.2s ease, transform 0.2s ease;
