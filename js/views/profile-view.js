@@ -24,7 +24,14 @@ export async function renderProfileView(root, { username }) {
   // The cached snapshot itself has no listeners wired yet (it's just
   // copied markup), so it's briefly non-interactive until that finishes.
   const cachedProfile = getCached(cacheKey);
-  root.innerHTML = topBar(isOwn ? 'Profile' : username, { back: !isOwn, right: headerRight }) +
+  // Own profile gets the same home-style header as Feed/Search/Messages
+  // (mark + wordmark, settings tucked into the corner) rather than a
+  // plain "Profile" title bar — someone else's profile still needs the
+  // back button and their actual name, so that case is untouched.
+  const topBarHtml = isOwn
+    ? topBar('', { home: true, right: headerRight })
+    : topBar(username, { back: true, right: headerRight });
+  root.innerHTML = topBarHtml +
     `<div class="view-body" id="profile-body">${cachedProfile || spinner()}</div>` + navBar(isOwn ? '/me' : '');
   const body = qs('#profile-body', root);
   wirePullToRefresh(body);

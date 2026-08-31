@@ -416,17 +416,31 @@ ul { list-style: none; margin: 0; padding: 0; }
    breathe. The mark sits on .topbar's existing flex row (already
    gap+align-items:center from the base rule above), so it just needs
    its own size — everything else about the row layout is inherited. */
-.topbar--home { justify-content: center; padding-top: calc(var(--space-4) + var(--safe-top)); padding-bottom: var(--space-3); border-bottom: none; }
+/* True #000, not --bg (#0a0b0f) — this section specifically was asked
+   to be pure black, not the app's usual near-black. */
+.topbar--home { justify-content: center; padding-top: calc(var(--space-4) + var(--safe-top)); padding-bottom: var(--space-3); border-bottom: none; background: #000; }
+/* Compose (Messages) / settings (own Profile) still need a right-side
+   action even on the home-style header — absolutely positioned rather
+   than another flex sibling, since the header's justify-content:center
+   centres the mark+wordmark as a pair and a third flex item would throw
+   that off-centre. .topbar--home is already position:sticky, which is
+   enough of a positioning context for this to anchor to. */
+.topbar__right--home { position: absolute; right: var(--space-4); top: 50%; transform: translateY(-50%); }
 /* body has its own ambient radial glow behind everything (see body's
    background further down) — .topbar--home is opaque and blocks it
    right up to its own edge, but .home-tabs used to be transparent, so
    that glow showed through in the gap between the two and read as a
    seam/colour mismatch between "the PlayThruu header" and "the tabs
-   right under it". Same solid --bg here joins them into one section
-   with no visible break. */
-/* Bottom padding trimmed from 20px to 0 — .view-body's own 20px top
-   padding right after this is what supplies the remaining gap now. */
-.home-tabs { background: var(--bg); padding: 4px var(--space-4) 0; display: flex; justify-content: center; }
+   right under it". Same solid black here joins them into one section
+   with no visible break.
+   Bottom padding: was 20px, trimmed to 0 to pull "Trending now" up —
+   but with 0 padding, the pill's own curved bottom edge sits exactly on
+   the line where this opaque section ends and the page's ambient
+   gradient begins, and a curve meeting a hard colour cutoff read as a
+   glitch/seam right under the pill. A small amount back (10px) moves
+   that transition into plain background instead of the pill's edge,
+   without meaningfully reopening the gap the last fix closed. */
+.home-tabs { background: #000; padding: 4px var(--space-4) 10px; display: flex; justify-content: center; }
 /* The pill itself: same recipe as .segmented (Search's Games/Players
    tabs) — full width of its container rather than sized to its own
    content, each item taking an equal flex:1 share instead of just
@@ -582,19 +596,6 @@ ul { list-style: none; margin: 0; padding: 0; }
 .tabbar__item svg {
   width: 25px; height: 25px;
   filter: drop-shadow(0 1px 1.5px rgba(0,0,0,0.38));
-}
-/* Ultra-thin variant, picked from a 6-way icon-style comparison — a CSS
-   override here rather than editing iconHome/iconSearch/iconMessage/
-   iconUser themselves, since those are shared with empty states, form
-   fields, and profile-photo fallbacks all over the app; this keeps the
-   thinner stroke scoped to just the nav bar. stroke-width is inherited
-   by SVG children, but each icon's own <path>/<circle> already carries
-   its own stroke-width attribute — a presentation attribute always
-   loses to an actual CSS declaration, inherited or not, so this wins
-   without needing !important. Excludes the primary Log icon, which is
-   a plain filled shape with no stroke to begin with. */
-.tabbar__item:not(.tabbar__item--primary) svg * {
-  stroke-width: 1.2;
 }
 /* The signed-out "Sign in" item is a <button>, not an <a> like the rest
    — needs its own reset so it doesn't carry the browser's default
@@ -807,9 +808,16 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   border: 1px solid var(--line);
 }
 .segmented--wide { margin-bottom: var(--space-4); }
+/* Unbounded (the wordmark/home-tabs font), not the body font — every
+   segmented control in the app (Search's Games/Players, Messages'
+   Messages/Requests, Profile's Journal/Want to Play/Lists) shares this
+   one class, so this one change covers all of them at once. Weight 700
+   because only 700/800/900 are loaded for Unbounded (see index.html) —
+   the old 600 has nothing to fall back to in this face. */
 .segmented__item {
   flex: 1; text-align: center; padding: 10px var(--space-2); border-radius: var(--radius-pill);
-  font-size: var(--text-meta); font-weight: 600; color: var(--ink-dim); min-height: 40px;
+  font-family: var(--font-brand); font-size: 12.5px; font-weight: 700; letter-spacing: -0.01em;
+  color: var(--ink-dim); min-height: 40px;
   transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
 }
 .segmented__item--active {

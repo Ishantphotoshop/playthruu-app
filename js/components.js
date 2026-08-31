@@ -48,12 +48,12 @@ export function navBar(activeBase = '/feed') {
   // always lands dead centre regardless of how many items end up on
   // either side (see the comment on .tabbar__group in styles.css).
   const leftItems = [
-    { route: '/feed', icon: iconHome(), label: 'Feed' },
-    { route: '/search', icon: iconSearch(), label: 'Search' },
+    { route: '/feed', icon: iconHomeFilled(), label: 'Feed' },
+    { route: '/search', icon: iconSearchFilled(), label: 'Search' },
   ];
   const rightItems = [
-    { route: '/messages', icon: iconMessage(), label: 'Messages' },
-    { route: '/me', icon: iconUser(), label: 'Profile' },
+    { route: '/messages', icon: iconMessageFilled(), label: 'Messages' },
+    { route: '/me', icon: iconUserFilled(), label: 'Profile' },
   ];
   // Icon-only now, no label underneath — same convention the signed-out
   // nav above already used. aria-label carries the name instead so it's
@@ -86,6 +86,23 @@ export function homeTabs(active = 'feed') {
         <button type="button" class="home-tabs__item${active === 'news' ? ' home-tabs__item--active' : ''}" data-tab="news">News</button>
       </nav>
     </div>`;
+}
+// Filled/solid variant, picked from the 6-way icon-style comparison —
+// nav-bar-only functions rather than changing iconHome/iconSearch/
+// iconMessage/iconUser themselves, since those outline versions are
+// reused for empty states, form fields, and profile-photo fallbacks
+// throughout the app and were never meant to change there.
+function iconHomeFilled() {
+  return `<svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 3.3 3 11h2v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-9h2z"/></svg>`;
+}
+function iconSearchFilled() {
+  return `<svg viewBox="0 0 24 24"><path fill="currentColor" d="M11 3a8 8 0 1 0 4.9 14.3l4.4 4.4 1.4-1.4-4.4-4.4A8 8 0 0 0 11 3zm0 2a6 6 0 1 1 0 12 6 6 0 0 1 0-12z"/></svg>`;
+}
+function iconMessageFilled() {
+  return `<svg viewBox="0 0 24 24"><path fill="currentColor" d="M6.5 4h11A2.5 2.5 0 0 1 20 6.5v7a2.5 2.5 0 0 1-2.5 2.5H10l-4.5 4v-4H6.5A2.5 2.5 0 0 1 4 13.5v-7A2.5 2.5 0 0 1 6.5 4z"/></svg>`;
+}
+function iconUserFilled() {
+  return `<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5" fill="currentColor"/><path fill="currentColor" d="M12 13c-4 0-7.5 2.4-8.6 6.4A1 1 0 0 0 4.4 20.7h15.2a1 1 0 0 0 1-1.3C19.5 15.4 16 13 12 13z"/></svg>`;
 }
 function iconAccountNav() {
   return `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -121,6 +138,7 @@ export function topBar(title, { back = false, right = '', home = false } = {}) {
       <header class="topbar topbar--home">
         <img src="icons/${getTheme() === 'light' ? 'mark-orange' : 'mark-blue'}.svg" alt="" class="topbar__mark">
         <span class="topbar__logo">PlayThruu</span>
+        ${right ? `<div class="topbar__right topbar__right--home">${right}</div>` : ''}
       </header>`;
   }
   return `

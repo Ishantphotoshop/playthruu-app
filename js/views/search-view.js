@@ -26,7 +26,7 @@ async function importAndOpen(g) {
 export function renderSearchView(root) {
   let tab = 'games';
 
-  root.innerHTML = topBar('Search') + `
+  root.innerHTML = topBar('', { home: true }) + `
     <div class="view-body">
       <div class="segmented segmented--wide" id="search-tabs">
         <button class="segmented__item segmented__item--active" data-tab="games">Games</button>
