@@ -369,8 +369,15 @@ ul { list-style: none; margin: 0; padding: 0; }
      for breathing room, not cut exactly to it. */
   padding: var(--space-4) var(--space-4) calc(90px + var(--safe-bottom));
   overflow-y: auto;
+  /* Same "scroll still works, the track just isn't drawn" treatment
+     .trending-strip already used for its own horizontal scroll — a
+     visible vertical scrollbar track down the right edge of every
+     screen read as UI chrome, not something worth showing on a touch
+     app where the gesture itself is how anyone actually scrolls. */
+  scrollbar-width: none; -ms-overflow-style: none;
   animation: view-enter var(--dur) var(--ease);
 }
+.view-body::-webkit-scrollbar { display: none; }
 /* Search/Messages/Profile have no topbar at all now — content starts
    right at the top, so this view-body has to supply the safe-area top
    clearance a topbar would normally have provided. Taller than the
@@ -1015,12 +1022,24 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   scrollbar-width: none; -ms-overflow-style: none;
 }
 .trending-strip::-webkit-scrollbar { display: none; }
-/* The "see more" destinations (friends-playing-view.js, currently-
-   playing-view.js) reuse the exact same cards as the feed's own strips
-   — same width (--feed-card-w), same card classes — just wrapped into
-   a grid instead of one long horizontal scroll, since a full "see
-   everything" list is what those pages are for. */
-.card-grid { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+/* The "see more" destinations (trending-view.js, friends-playing-
+   view.js, currently-playing-view.js) reuse the exact same card
+   classes as the feed's own strips, in a real 3-column grid instead of
+   one long horizontal scroll. --feed-card-w is redefined to 100% here
+   rather than left at its feed value — that formula deliberately sizes
+   cards to leave a partial 4th one peeking at the edge of a SCROLLING
+   strip, which in a wrapping/grid layout has nothing to scroll to, so
+   it just showed up as dead empty space at the end of every row
+   instead. Every card class reads var(--feed-card-w, 140px) for both
+   itself and its own cover, so redefining the one custom property here
+   is enough to make every card fill its grid cell exactly, no extra
+   overrides needed per card type. */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-3);
+  --feed-card-w: 100%;
+}
 /* All three feed rows (Trending / Friends Recently Completed /
    Currently Playing) share one definition on purpose — they used to be
    three separate copies that drifted to different sizes and radii,

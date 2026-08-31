@@ -25,9 +25,18 @@ export async function renderProfileView(root, { username }) {
   // just the settings icon floating in the corner of the content itself.
   // Someone else's profile still needs the back button and their actual
   // name, so that case keeps its real topBar untouched.
+  //
+  // The settings link is a SIBLING of #profile-body here, not nested
+  // inside it — it used to be a child, and the real fetch below replaces
+  // #profile-body's entire innerHTML once it lands, which silently wiped
+  // the button out the moment real data arrived (it only ever survived
+  // the brief spinner/cached-paint window before that). #app already has
+  // position:relative and doesn't itself scroll, so position:absolute
+  // here still anchors correctly and stays put regardless of what
+  // #profile-body's own content does.
   root.innerHTML = (isOwn ? '' : topBar(username, { back: true })) +
+    (isOwn ? `<a class="view-body__corner-action" href="#/settings" aria-label="Settings">${iconSettings()}</a>` : '') +
     `<div class="view-body${isOwn ? ' view-body--no-topbar' : ''}" id="profile-body">
-       ${isOwn ? `<a class="view-body__corner-action" href="#/settings" aria-label="Settings">${iconSettings()}</a>` : ''}
        ${cachedProfile || spinner()}
      </div>` + navBar(isOwn ? '/me' : '');
   const body = qs('#profile-body', root);
