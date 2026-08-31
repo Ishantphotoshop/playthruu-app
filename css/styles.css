@@ -552,7 +552,11 @@ ul { list-style: none; margin: 0; padding: 0; }
   position: fixed; left: 50%; right: auto; bottom: 0; transform: translateX(-50%);
   width: 100%; max-width: 560px;
   display: flex; justify-content: space-around; align-items: center;
-  padding: var(--space-2) var(--space-2) calc(var(--space-2) + var(--safe-bottom));
+  /* Top padding cut from 8px to 4px — slimmer from the top edge
+     specifically, not a symmetric shrink, since bottom still needs its
+     safe-area room and the icons themselves (25px, unchanged) don't
+     get any smaller. */
+  padding: 4px var(--space-2) calc(var(--space-2) + var(--safe-bottom));
   background: var(--surface-raised);
   border: none; border-top: 1px solid var(--line);
   border-radius: 0;

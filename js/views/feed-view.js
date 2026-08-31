@@ -133,21 +133,36 @@ async function paintNewsTab(body) {
   }
 }
 
+const DISCOVERY_CACHE_KEY = 'discovery';
+
 // "Bored? Try these" — an endless vertical list that changes with the
 // picked collection. Sits last on the feed on purpose: social content
 // first, then something to fall into when there's nothing new from
 // friends. Auto-loads the next page as you approach the bottom, with a
 // manual button as a fallback for browsers without IntersectionObserver.
+//
+// Unlike Trending/Friends/Currently-playing above, this section is
+// stateful (page, scroll position through a paginated list, which mood
+// is active) — the outer feed-level cache only ever snapshotted its
+// rendered HTML, so switching tabs and back always threw that state
+// away and restarted from page 1. Caches {activeId, page, hasMore,
+// games} here instead, so a revisit resumes exactly where it left off
+// with no refetch at all, not just a faster-looking one.
 async function paintDiscovery(slot) {
-  let activeId = api.DISCOVERY_COLLECTIONS[0].id;
-  let page = 1;
-  let hasMore = true;
+  const cached = getCached(DISCOVERY_CACHE_KEY);
+  let activeId = cached?.activeId || api.DISCOVERY_COLLECTIONS[0].id;
+  let page = cached?.page || 1;
+  let hasMore = cached?.hasMore ?? true;
   let loading = false;
-  let games = [];
+  let games = cached?.games || [];
   let observer = null;
 
   function activeCollection() {
     return api.DISCOVERY_COLLECTIONS.find((c) => c.id === activeId);
+  }
+
+  function skeletonTiles(n) {
+    return Array.from({ length: n }, () => `<div class="skeleton skeleton--tile"></div>`).join('');
   }
 
   function shell() {
@@ -159,9 +174,10 @@ async function paintDiscovery(slot) {
         </button>
       </div>
       <p class="discovery-active">${esc(activeCollection().label)}</p>
-      <div class="discovery-grid" id="discovery-list"></div>
+      <div class="discovery-grid" id="discovery-list">${games.length ? rowsHtml(games, 0) : skeletonTiles(9)}</div>
       <div id="discovery-more"></div>`;
     qs('#discovery-filter', slot).addEventListener('click', openPicker);
+    if (games.length) wireRows(qs('#discovery-list', slot));
   }
 
   // Posters only, no titles or metadata — the artwork is the hook here,
@@ -281,9 +297,13 @@ async function paintDiscovery(slot) {
       hasMore = res.hasMore;
       page += 1;
       if (listEl) {
-        listEl.insertAdjacentHTML('beforeend', rowsHtml(withCovers, offset));
+        // First page replaces the skeleton tiles shell() painted rather
+        // than appending after them — every later page still appends.
+        if (offset === 0) listEl.innerHTML = rowsHtml(withCovers, 0);
+        else listEl.insertAdjacentHTML('beforeend', rowsHtml(withCovers, offset));
         wireRows(listEl);
       }
+      setCached(DISCOVERY_CACHE_KEY, { activeId, page, hasMore, games });
     } catch {
       hasMore = false;
       const moreEl = qs('#discovery-more', slot);
@@ -337,7 +357,17 @@ async function paintDiscovery(slot) {
     loadMore();
   }
 
-  reset();
+  // A cache hit means there's already at least one real page of games
+  // restored above — paint those and wire the "load more"/sentinel
+  // footer against the real hasMore, with no fetch at all. Only a
+  // genuinely first-ever visit (or a manually picked new mood, via
+  // reset() above) actually hits the network.
+  if (games.length) {
+    shell();
+    paintFooter();
+  } else {
+    reset();
+  }
 }
 
 async function paintTrending(slot) {
@@ -351,10 +381,7 @@ async function paintTrending(slot) {
     const games = await api.getWorldTrending(5, 10);
     if (!games.length) { slot.innerHTML = ''; return; }
     slot.innerHTML = `
-      <div class="feed-section-head">
-        <h2 class="section-heading">Trending now</h2>
-        <a href="#/discover" class="see-more-link">See more →</a>
-      </div>
+      <h2 class="section-heading">Trending now</h2>
       ${trendingStrip(games)}`;
     wireTrendingStrip(slot, games, {
       onSelect: async (g) => {
