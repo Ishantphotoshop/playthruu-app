@@ -359,13 +359,21 @@ export function wireTrendingStrip(container, games, { onSelect }) {
 // between them (however small) only made that worse. One real star +
 // the actual number reads instantly at a glance, and costs far less
 // width in a footer this narrow.
-function cardWho(profile, rating) {
+// { playing } is what makes activityCard's version of this footer read
+// as "in progress right now" instead of just "a rating-less card" —
+// Currently Playing entries never have a rating (the game isn't
+// finished), so that slot used to render empty there, which was three
+// visually identical rows differing only in whether the last one
+// happened to have text in this one spot.
+function cardWho(profile, rating, { playing = false } = {}) {
   return `
     <a href="#/profile/${esc(profile.username)}" class="card-who">
       ${avatarImg(profile, 24)}
       <span class="card-who__meta">
         <span class="card-who__name">${esc(profile.display_name || profile.username)}</span>
-        <span class="card-who__stars">${rating ? `
+        <span class="card-who__stars">${playing ? `
+          <span class="card-who__playing"><span class="card-who__playing-dot"></span>Playing</span>
+        ` : rating ? `
           <svg class="card-who__star-icon" viewBox="0 0 24 24" fill="var(--star-fill)"><path d="M12 1L14.46 8.62L22.46 8.6L15.98 13.29L18.47 20.9L12 16.18L5.53 20.9L8.02 13.29L1.54 8.6L9.54 8.62Z"/></svg>
           <span class="card-who__rating-num">${formatRatingNum(rating)}</span>
         ` : ''}</span>
@@ -407,7 +415,7 @@ export function activityCard(log) {
       <a href="#/game/${g.id}" class="activity-card__poster">
         ${posterFrame(g.cover_url, g.title, 'activity-card__cover')}
       </a>
-      ${cardWho(a, null)}
+      ${cardWho(a, null, { playing: true })}
     </div>`;
 }
 
