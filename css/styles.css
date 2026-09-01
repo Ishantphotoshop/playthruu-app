@@ -872,8 +872,14 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 .search-input:focus { border-color: var(--accent-bright); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-bright) 18%, transparent); }
-.filter-btn {
-  flex-shrink: 0; width: 46px; height: 46px; display: grid; place-items: center;
+/* One size, everywhere it appears (Search's browse button, Feed's
+   "Bored? Try these" chip) — used to be two different circle sizes
+   (46px / 34px) with the icon separately reconciled between them,
+   which never actually read as "the same button" no matter how the
+   icon itself was matched. Picked from a side-by-side comparison of
+   circle+icon pairs shown at real scale. */
+.filter-btn, .filter-btn--sm {
+  flex-shrink: 0; width: 40px; height: 40px; display: grid; place-items: center;
   background: var(--surface); border: 1.5px solid var(--line); border-radius: 50%;
   color: var(--ink); transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
 }
@@ -881,17 +887,9 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    but the funnel's own shape is top-heavy — wide flat top, narrow
    stem below — so true centre reads as sitting a touch high and left.
    This small nudge is optical correction on top of that, not undoing
-   it. Matching .filter-btn--sm's fill RATIO (both ~61% of their
-   circle) made this one read visibly bolder than the sm version once
-   compared side by side — it's a solid-fill shape, so pixel area (and
-   with it, perceived weight) scales with size squared, not linearly.
-   Using the exact same absolute icon size + nudge as .filter-btn--sm
-   instead — same icon, just more surrounding circle here — is what
-   actually reads as "the same icon everywhere". */
-.filter-btn svg { width: 21px; height: 21px; transform: translate(0.3px, 1.35px); }
-.filter-btn:active { transform: scale(0.94); background: var(--surface-raised); }
-.filter-btn--sm { width: 34px; height: 34px; flex-shrink: 0; }
-.filter-btn--sm svg { width: 21px; height: 21px; transform: translate(0.3px, 1.35px); }
+   it. */
+.filter-btn svg, .filter-btn--sm svg { width: 20px; height: 20px; transform: translate(0.29px, 1.29px); }
+.filter-btn:active, .filter-btn--sm:active { transform: scale(0.94); background: var(--surface-raised); }
 
 /* --- discovery shelf --- */
 .discovery-active {
