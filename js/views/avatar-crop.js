@@ -1,3 +1,4 @@
+import { iconClose, iconCheck } from '../components.js';
 import { qs } from '../utils.js';
 
 const OUTPUT_SIZE = 600;
@@ -11,53 +12,37 @@ const MAX_ZOOM = 4;
 // Blob once the user applies, or null if they cancel — the caller
 // decides what to do with either.
 //
-// Rebuilt to match Instagram's own "new profile photo" screen after
-// actually checking how it works, not guessing: a SQUARE frame with
-// camera-viewfinder corner brackets (not a circle — the circle is only
-// how it displays afterward, everywhere else in the app), a plain
-// black backdrop, and pinch/drag/wheel only — no zoom slider at all.
+// Gesture set mirrors openAvatarLightbox in profile-view.js (pointer-id
+// tracked pinch + single-finger pan) for the same feel as the rest of
+// the app, adapted here for panning/zooming the photo INSIDE a fixed
+// square frame instead of free full-screen viewing.
 export function openAvatarCropModal(file) {
   return new Promise((resolve) => {
     const overlay = document.createElement('div');
     overlay.className = 'avatar-crop';
     overlay.innerHTML = `
       <header class="avatar-crop__header">
-        <button type="button" class="avatar-crop__cancel">Cancel</button>
-        <h2>New profile photo</h2>
-        <button type="button" class="avatar-crop__apply">Done</button>
+        <button type="button" class="avatar-crop__cancel" aria-label="Cancel">${iconClose()}</button>
+        <h2>Adjust photo</h2>
+        <button type="button" class="avatar-crop__apply" aria-label="Save">${iconCheck()}</button>
       </header>
       <div class="avatar-crop__stage-wrap">
         <div class="avatar-crop__stage">
           <img class="avatar-crop__img" draggable="false" alt="">
-          <div class="avatar-crop__grid" aria-hidden="true">
-            <span></span><span></span><span></span><span></span>
-          </div>
-          <i class="avatar-crop__corner avatar-crop__corner--tl" aria-hidden="true"></i>
-          <i class="avatar-crop__corner avatar-crop__corner--tr" aria-hidden="true"></i>
-          <i class="avatar-crop__corner avatar-crop__corner--bl" aria-hidden="true"></i>
-          <i class="avatar-crop__corner avatar-crop__corner--br" aria-hidden="true"></i>
         </div>
       </div>
-      <p class="avatar-crop__hint">Drag to reposition — pinch or scroll to zoom</p>`;
+      <div class="avatar-crop__controls">
+        <input type="range" class="avatar-crop__zoom" min="1" max="${MAX_ZOOM}" step="0.01" value="1" aria-label="Zoom">
+      </div>
+      <p class="avatar-crop__hint">Drag to reposition — pinch, scroll, or use the slider to zoom</p>`;
     document.body.appendChild(overlay);
     document.body.style.overflow = 'hidden';
 
     const img = qs('.avatar-crop__img', overlay);
     const stage = qs('.avatar-crop__stage', overlay);
-    const grid = qs('.avatar-crop__grid', overlay);
+    const zoomSlider = qs('.avatar-crop__zoom', overlay);
     const objectUrl = URL.createObjectURL(file);
     img.src = objectUrl;
-
-    // Rule-of-thirds grid, shown only while actively framing the shot
-    // (dragging, pinching, wheel-zooming) rather than sitting on screen
-    // permanently — the same "only while adjusting" treatment
-    // Instagram/Photoshop/Lightroom's own crop tools use.
-    let gridHideTimer = null;
-    function showGrid() {
-      grid.classList.add('avatar-crop__grid--visible');
-      clearTimeout(gridHideTimer);
-      gridHideTimer = setTimeout(() => grid.classList.remove('avatar-crop__grid--visible'), 500);
-    }
 
     let naturalW = 0, naturalH = 0, baseScale = 1;
     // zoom is a multiplier ON TOP of baseScale (baseScale alone = the
@@ -94,6 +79,7 @@ export function openAvatarCropModal(file) {
       const ratio = zoom / prevZoom;
       tx = px - (px - tx) * ratio;
       ty = py - (py - ty) * ratio;
+      zoomSlider.value = zoom;
       clampPan();
       render();
     }
@@ -131,12 +117,12 @@ export function openAvatarCropModal(file) {
       const prev = points.get(e.pointerId);
       points.set(e.pointerId, { x: e.clientX, y: e.clientY });
       const pts = [...points.values()];
-      showGrid();
 
       if (pts.length >= 2 && startDist > 0) {
         e.preventDefault();
         const next = dist(pts[0], pts[1]) / startDist;
         zoom = Math.min(MAX_ZOOM, Math.max(1, startZoom * next));
+        zoomSlider.value = zoom;
         const m = mid(pts[0], pts[1]);
         if (startMid) { tx = startTx + (m.x - startMid.x); ty = startTy + (m.y - startMid.y); }
         clampPan();
@@ -158,10 +144,14 @@ export function openAvatarCropModal(file) {
     // equivalent, zooming toward wherever the cursor is.
     stage.addEventListener('wheel', (e) => {
       e.preventDefault();
-      showGrid();
       const rect = stage.getBoundingClientRect();
       zoomTo(zoom - e.deltaY * 0.0025, e.clientX - rect.left, e.clientY - rect.top);
     }, { passive: false });
+
+    zoomSlider.addEventListener('input', () => {
+      const center = stageSize() / 2;
+      zoomTo(Number(zoomSlider.value), center, center);
+    });
 
     function cleanup() {
       URL.revokeObjectURL(objectUrl);
@@ -170,6 +160,7 @@ export function openAvatarCropModal(file) {
     }
 
     qs('.avatar-crop__cancel', overlay).addEventListener('click', () => { cleanup(); resolve(null); });
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) { cleanup(); resolve(null); } });
 
     qs('.avatar-crop__apply', overlay).addEventListener('click', () => {
       // Map the visible frame back to a region of the ORIGINAL image at
