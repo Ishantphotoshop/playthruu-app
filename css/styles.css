@@ -2393,35 +2393,19 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 }
 
 /* ---- avatar crop/align step, shown before a new photo ever uploads --
-   A source photo can be any aspect ratio; this is what turns it into
-   the square every avatar on the app assumes, with the same
-   pinch/drag feel as the viewer above rather than a plain static
-   preview. touch-action: none on the stage for the same reason as
-   .avatar-viewer — without it the browser claims pinch/drag for page
-   zoom before the gesture handlers ever see them. */
-/* background is a solid, fully opaque colour — not decoration. The
-   backdrop photo below takes a moment to decode, and this is what
-   sits behind it (and behind the tiny sliver any imperfect blur edge
-   might miss) in the meantime, so the real page underneath the modal
-   can never show through no matter what. */
+   Rebuilt to match Instagram's own "new profile photo" screen after
+   actually checking how it works: a plain black backdrop, a SQUARE
+   frame with camera-viewfinder corner brackets (the circle only shows
+   up afterward, wherever an avatar actually displays — cropping itself
+   is square), and pinch/drag/wheel only, no zoom slider at all.
+   touch-action: none on the stage for the same reason as .avatar-viewer
+   — without it the browser claims pinch/drag for page zoom before the
+   gesture handlers ever see them. */
 .avatar-crop {
   position: fixed; inset: 0; z-index: 130;
   display: flex; flex-direction: column;
-  background: #0a0b0f;
+  background: #000;
   animation: fade-in var(--dur-fast) var(--ease);
-}
-/* Ambient backdrop: the SAME photo being cropped, sharp (not blurred),
-   just dimmed, filling the whole screen behind the actual crop stage —
-   so the screen reads as one scene built from the photo itself instead
-   of a plain dark sheet dropped over whatever page happened to be open
-   before this. */
-.avatar-crop__backdrop {
-  position: absolute; inset: 0; z-index: 0;
-  width: 100%; height: 100%; object-fit: cover;
-  filter: brightness(0.42);
-}
-.avatar-crop__header, .avatar-crop__stage-wrap, .avatar-crop__controls, .avatar-crop__hint {
-  position: relative; z-index: 1;
 }
 .avatar-crop__header {
   display: flex; align-items: center; justify-content: space-between;
@@ -2429,38 +2413,27 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   flex-shrink: 0;
 }
 .avatar-crop__header h2 { font-size: 15px; font-weight: 700; color: #fff; }
+/* Plain text links, not icon buttons in filled circles — Instagram's
+   own header here is exactly this: "Cancel" / title / "Done", flat
+   text on black, nothing else. */
 .avatar-crop__cancel, .avatar-crop__apply {
-  width: 36px; height: 36px; display: grid; place-items: center;
-  border-radius: 50%; color: #fff; background: rgba(255,255,255,0.14);
-  flex-shrink: 0;
+  font-size: 15px; color: #fff; flex-shrink: 0; padding: 4px;
 }
-.avatar-crop__apply { background: var(--accent); color: #0a0b0f; }
-.avatar-crop__cancel svg, .avatar-crop__apply svg { width: 16px; height: 16px; }
+.avatar-crop__apply { font-weight: 700; color: var(--accent-bright); }
 .avatar-crop__stage-wrap {
   flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center;
 }
 /* The stage IS the crop square — not a full-bleed area with a visual
    frame drawn on top of it. JS reads the stage's own bounding rect as
    the crop bounds, so if the visible frame were smaller than the
-   element being measured (as an earlier version of this had it: a
-   full-bleed stage with a smaller circular mask drawn over it), the
-   math and what the user sees would quietly disagree — the exported
-   image would be a wider crop than the circle ever showed. Sizing the
-   stage itself to --frame keeps those two things impossible to
-   desync. The circular border is just a guide for how this ends up
-   displayed everywhere (avatars are circular chips) — the crop
-   underneath, and the exported file, are still the full square. */
+   element being measured, the math and what the user sees would
+   quietly disagree — the exported image would be a wider crop than
+   the frame ever showed. Sizing the stage itself to --frame keeps
+   those two things impossible to desync. */
 .avatar-crop__stage {
   position: relative; width: var(--frame); height: var(--frame);
-  --frame: min(78vw, 78vh, 360px);
+  --frame: min(84vw, 78vh, 400px);
   overflow: hidden; touch-action: none;
-  border-radius: 50%; border: 1.5px solid rgba(255,255,255,0.65);
-  /* Was 0.72 — with only the plain dark background behind it, that
-     read as "too dark" once the blurred-photo backdrop above went in:
-     the backdrop already does real dimming work of its own
-     (brightness(0.55)), so this only needs to be enough to separate
-     the crop circle from the backdrop around it, not to blot it out. */
-  box-shadow: 0 0 0 2000px rgba(6,6,10,0.45);
 }
 .avatar-crop__img {
   /* top: 0; left: 0 — not 50%/50% — is load-bearing: JS's crop math
@@ -2492,24 +2465,17 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .avatar-crop__grid span:nth-child(2) { left: 66.667%; top: 0; bottom: 0; width: 1px; }
 .avatar-crop__grid span:nth-child(3) { top: 33.333%; left: 0; right: 0; height: 1px; }
 .avatar-crop__grid span:nth-child(4) { top: 66.667%; left: 0; right: 0; height: 1px; }
-.avatar-crop__controls { padding: var(--space-3) var(--space-5) 0; flex-shrink: 0; }
-.avatar-crop__zoom {
-  width: 100%; height: 32px; -webkit-appearance: none; appearance: none;
-  background: transparent;
+/* Camera-viewfinder corner brackets — Instagram's actual frame marker,
+   not a solid border around the square. Each is an L-shape built from
+   two borders on a small absolutely-positioned box at one corner. */
+.avatar-crop__corner {
+  position: absolute; width: 22px; height: 22px; pointer-events: none;
+  border-color: #fff; border-style: solid; border-width: 0;
 }
-.avatar-crop__zoom::-webkit-slider-runnable-track {
-  height: 4px; border-radius: 2px; background: rgba(255,255,255,0.2);
-}
-.avatar-crop__zoom::-webkit-slider-thumb {
-  -webkit-appearance: none; margin-top: -8px;
-  width: 20px; height: 20px; border-radius: 50%;
-  background: var(--accent); border: 2px solid #0a0b0f;
-}
-.avatar-crop__zoom::-moz-range-track { height: 4px; border-radius: 2px; background: rgba(255,255,255,0.2); }
-.avatar-crop__zoom::-moz-range-thumb {
-  width: 20px; height: 20px; border-radius: 50%;
-  background: var(--accent); border: 2px solid #0a0b0f;
-}
+.avatar-crop__corner--tl { top: -1.5px; left: -1.5px; border-top-width: 2.5px; border-left-width: 2.5px; }
+.avatar-crop__corner--tr { top: -1.5px; right: -1.5px; border-top-width: 2.5px; border-right-width: 2.5px; }
+.avatar-crop__corner--bl { bottom: -1.5px; left: -1.5px; border-bottom-width: 2.5px; border-left-width: 2.5px; }
+.avatar-crop__corner--br { bottom: -1.5px; right: -1.5px; border-bottom-width: 2.5px; border-right-width: 2.5px; }
 .avatar-crop__hint {
   text-align: center; font-size: var(--text-meta); color: rgba(255,255,255,0.5);
   padding: var(--space-2) var(--space-4) calc(var(--space-4) + var(--safe-bottom));
