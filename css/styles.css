@@ -2428,55 +2428,53 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .avatar-crop__stage-wrap {
   flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center;
 }
-/* The canvas is a bigger area than the crop frame itself — this is
-   what actually shows the "rest of the photo" (dimmed) around the
-   kept circle, instead of clipping straight to the frame's own edge
-   the way an earlier version did. */
-.avatar-crop__canvas {
-  position: relative; overflow: hidden; touch-action: none;
-  width: min(94vw, 70vh, 480px); height: min(94vw, 70vh, 480px);
-}
-/* The frame is the actual crop boundary — JS reads ITS bounding rect
-   (not the canvas's) for every size/pan/zoom/export calculation, so
-   what's mathematically cropped and what the circle visually shows can
-   never drift apart regardless of how much bigger the canvas around it
-   gets. Centred inside the canvas via absolute + translate(-50%,-50%).
-   No border here on purpose — box-sizing: border-box (global) means a
-   border here would shrink this element's own CONTENT box inward by
-   the border width, and the sharp image inside anchors its top:0/
-   left:0 to that content box, not the border box JS measures via
-   getBoundingClientRect() — a 1.5px border quietly shifted the sharp
-   layer 1.5px off from the dim layer underneath it. The ring below is
-   the same border, drawn as its own element instead so it can't touch
-   this one's coordinate system. */
+/* The stage IS the crop square — not a full-bleed area with a visual
+   frame drawn on top of it. JS reads the stage's own bounding rect as
+   the crop bounds, so if the visible frame were smaller than the
+   element being measured, the math and what the user sees would
+   quietly disagree — the exported image would be a wider crop than
+   the circle ever showed. Sizing the stage itself to --frame keeps
+   those two things impossible to desync. No border here — box-sizing:
+   border-box (global) means a border would shrink this element's own
+   content box inward by the border width, and the image inside
+   anchors its top:0/left:0 to that content box, not the border box
+   this width is set from; the ring below carries the visible border
+   instead so it can't touch the crop's own coordinate system. */
 .avatar-crop__stage {
-  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-  width: var(--frame); height: var(--frame);
-  --frame: min(78vw, 50vh, 320px);
-  overflow: hidden; border-radius: 50%;
-  z-index: 1;
+  position: relative; width: var(--frame); height: var(--frame);
+  --frame: min(78vw, 78vh, 360px);
+  overflow: hidden; touch-action: none; border-radius: 50%;
 }
-.avatar-crop__ring {
-  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-  width: var(--frame); height: var(--frame);
-  border-radius: 50%; border: 1.5px solid var(--ink);
-  pointer-events: none; z-index: 2;
+.avatar-crop__stage::after {
+  content: ''; position: absolute; inset: 0; border-radius: 50%;
+  border: 1.5px solid var(--ink); pointer-events: none;
 }
 .avatar-crop__img {
   /* top: 0; left: 0 — not 50%/50% — is load-bearing: JS's crop math
-     treats the inline transform it sets as the image's offset from its
-     OWN container's top-left corner. A center-anchored base position
+     treats tx/ty (the inline transform it sets) as the image's offset
+     from the STAGE's top-left corner. A center-anchored base position
      here would still get overwritten by that same inline transform
-     (same property, inline always wins), but the top/left percentage
-     offset is separate and stays active underneath it. */
+     (same property, and inline always wins), but the top/left percentage
+     offset is separate and stays active underneath it — the image
+     silently rendered ~half the stage size away from where every tx/ty
+     calculation assumed it was. */
   position: absolute; top: 0; left: 0;
   max-width: none; max-height: none;
   user-select: none; -webkit-user-select: none; -webkit-user-drag: none;
 }
-/* 30% — visible enough to see what's being left out (and to drag
-   toward), dim enough that the kept circle unmistakably reads as "the
-   part that counts". */
-.avatar-crop__img--dim { opacity: 0.3; }
+/* Rule-of-thirds guide, shown only while actively framing the shot
+   (dragging, pinching, wheel- or slider-zooming) — fades out 2s after
+   the gesture stops, rather than sitting on screen permanently. */
+.avatar-crop__grid {
+  position: absolute; inset: 0; pointer-events: none;
+  opacity: 0; transition: opacity 0.15s var(--ease);
+}
+.avatar-crop__grid--visible { opacity: 1; }
+.avatar-crop__grid span { position: absolute; background: rgba(255,255,255,0.5); }
+.avatar-crop__grid span:nth-child(1) { left: 33.333%; top: 0; bottom: 0; width: 1px; }
+.avatar-crop__grid span:nth-child(2) { left: 66.667%; top: 0; bottom: 0; width: 1px; }
+.avatar-crop__grid span:nth-child(3) { top: 33.333%; left: 0; right: 0; height: 1px; }
+.avatar-crop__grid span:nth-child(4) { top: 66.667%; left: 0; right: 0; height: 1px; }
 .avatar-crop__controls { padding: var(--space-3) var(--space-5) 0; flex-shrink: 0; }
 .avatar-crop__zoom {
   width: 100%; height: 32px; -webkit-appearance: none; appearance: none;
