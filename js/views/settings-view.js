@@ -4,6 +4,7 @@ import { topBar, navBar, avatarImg, combinedGameResults, wireCombinedGameResults
 import { esc, toast, qs, qsa, debounce, placeholderCover, enableSwipeToDismiss } from '../utils.js';
 import { changePassword, changeEmail, signOut } from '../auth.js';
 import { getTheme, setTheme } from '../theme.js';
+import { openAvatarCropModal } from './avatar-crop.js';
 
 const PRONOUN_OPTIONS = ['he/his', 'she/her', 'they/their', 'custom'];
 
@@ -112,14 +113,21 @@ export function renderSettingsView(root) {
   });
 
   // ---- avatar upload ----
+  // The crop step (opened before anything uploads) is what guarantees
+  // every avatar_url actually IS square — previously the raw picked
+  // file went straight to storage, whatever its real aspect ratio was.
   qs('#avatar-file', body).addEventListener('change', async (e) => {
     const file = e.target.files[0];
+    e.target.value = ''; // lets picking the exact same file again re-fire change
     if (!file) return;
+    const cropped = await openAvatarCropModal(file);
+    if (!cropped) return; // user cancelled — original avatar untouched
     const preview = qs('#avatar-preview', body);
     const prevHtml = preview.innerHTML;
     preview.innerHTML = '<div class="spinner"></div>';
     try {
-      const url = await api.uploadAvatar(state.user.id, file);
+      const squareFile = new File([cropped], 'avatar.jpg', { type: 'image/jpeg' });
+      const url = await api.uploadAvatar(state.user.id, squareFile);
       const updated = await api.updateProfile(state.user.id, { avatar_url: url });
       state.profile = updated;
       preview.innerHTML = avatarImg(updated, 84);

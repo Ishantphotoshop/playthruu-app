@@ -2384,6 +2384,90 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   pointer-events: none;
 }
 
+/* ---- avatar crop/align step, shown before a new photo ever uploads --
+   A source photo can be any aspect ratio; this is what turns it into
+   the square every avatar on the app assumes, with the same
+   pinch/drag feel as the viewer above rather than a plain static
+   preview. touch-action: none on the stage for the same reason as
+   .avatar-viewer — without it the browser claims pinch/drag for page
+   zoom before the gesture handlers ever see them. */
+.avatar-crop {
+  position: fixed; inset: 0; z-index: 130;
+  display: flex; flex-direction: column;
+  background: rgba(6,6,10,0.97);
+  animation: fade-in var(--dur-fast) var(--ease);
+}
+.avatar-crop__header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: calc(14px + var(--safe-top)) var(--space-4) var(--space-3);
+  flex-shrink: 0;
+}
+.avatar-crop__header h2 { font-size: 15px; font-weight: 700; color: #fff; }
+.avatar-crop__cancel, .avatar-crop__apply {
+  width: 36px; height: 36px; display: grid; place-items: center;
+  border-radius: 50%; color: #fff; background: rgba(255,255,255,0.14);
+  flex-shrink: 0;
+}
+.avatar-crop__apply { background: var(--accent); color: #0a0b0f; }
+.avatar-crop__cancel svg, .avatar-crop__apply svg { width: 16px; height: 16px; }
+.avatar-crop__stage-wrap {
+  flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center;
+}
+/* The stage IS the crop square — not a full-bleed area with a visual
+   frame drawn on top of it. JS reads the stage's own bounding rect as
+   the crop bounds, so if the visible frame were smaller than the
+   element being measured (as an earlier version of this had it: a
+   full-bleed stage with a smaller circular mask drawn over it), the
+   math and what the user sees would quietly disagree — the exported
+   image would be a wider crop than the circle ever showed. Sizing the
+   stage itself to --frame keeps those two things impossible to
+   desync. The circular border is just a guide for how this ends up
+   displayed everywhere (avatars are circular chips) — the crop
+   underneath, and the exported file, are still the full square. */
+.avatar-crop__stage {
+  position: relative; width: var(--frame); height: var(--frame);
+  --frame: min(78vw, 78vh, 360px);
+  overflow: hidden; touch-action: none;
+  border-radius: 50%; border: 1.5px solid rgba(255,255,255,0.65);
+  box-shadow: 0 0 0 2000px rgba(6,6,10,0.72);
+}
+.avatar-crop__img {
+  /* top: 0; left: 0 — not 50%/50% — is load-bearing: JS's crop math
+     treats tx/ty (the inline transform it sets) as the image's offset
+     from the STAGE's top-left corner. A center-anchored base position
+     here would still get overwritten by that same inline transform
+     (same property, and inline always wins), but the top/left percentage
+     offset is separate and stays active underneath it — the image
+     silently rendered ~half the stage size away from where every tx/ty
+     calculation assumed it was. */
+  position: absolute; top: 0; left: 0;
+  max-width: none; max-height: none;
+  user-select: none; -webkit-user-select: none; -webkit-user-drag: none;
+}
+.avatar-crop__controls { padding: var(--space-3) var(--space-5) 0; flex-shrink: 0; }
+.avatar-crop__zoom {
+  width: 100%; height: 32px; -webkit-appearance: none; appearance: none;
+  background: transparent;
+}
+.avatar-crop__zoom::-webkit-slider-runnable-track {
+  height: 4px; border-radius: 2px; background: rgba(255,255,255,0.2);
+}
+.avatar-crop__zoom::-webkit-slider-thumb {
+  -webkit-appearance: none; margin-top: -8px;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: var(--accent); border: 2px solid #0a0b0f;
+}
+.avatar-crop__zoom::-moz-range-track { height: 4px; border-radius: 2px; background: rgba(255,255,255,0.2); }
+.avatar-crop__zoom::-moz-range-thumb {
+  width: 20px; height: 20px; border-radius: 50%;
+  background: var(--accent); border: 2px solid #0a0b0f;
+}
+.avatar-crop__hint {
+  text-align: center; font-size: var(--text-meta); color: rgba(255,255,255,0.5);
+  padding: var(--space-2) var(--space-4) calc(var(--space-4) + var(--safe-bottom));
+  flex-shrink: 0;
+}
+
 /* ============================================================
    GAME DETAIL — hairline layout
    ------------------------------------------------------------
