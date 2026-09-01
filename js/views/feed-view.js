@@ -440,11 +440,14 @@ async function paintCurrentlyPlaying(slot) {
       return;
     }
 
+    // The strip itself shows at most 12 — logs.length (up to 15) still
+    // goes to feedSectionHead's count so "see more" still shows up
+    // correctly whenever there's more than the 12 on display.
     slot.innerHTML = `
       ${feedSectionHead('Currently playing', { seeMoreHref: '/currently-playing', count: logs.length })}
       ${isFallback ? `<div class="banner">You're not following anyone yet — here's what's happening across Playthruu. <a href="#/search">Find people to follow</a></div>` : ''}
       <div class="trending-strip">
-        ${logs.map((l) => activityCard(l)).join('')}
+        ${logs.slice(0, 12).map((l) => activityCard(l)).join('')}
       </div>`;
   } catch (err) {
     slot.innerHTML = `

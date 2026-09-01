@@ -21,6 +21,7 @@ export function openAvatarCropModal(file) {
     const overlay = document.createElement('div');
     overlay.className = 'avatar-crop';
     overlay.innerHTML = `
+      <img class="avatar-crop__backdrop" alt="" aria-hidden="true">
       <header class="avatar-crop__header">
         <button type="button" class="avatar-crop__cancel" aria-label="Cancel">${iconClose()}</button>
         <h2>Adjust photo</h2>
@@ -39,10 +40,12 @@ export function openAvatarCropModal(file) {
     document.body.style.overflow = 'hidden';
 
     const img = qs('.avatar-crop__img', overlay);
+    const backdrop = qs('.avatar-crop__backdrop', overlay);
     const stage = qs('.avatar-crop__stage', overlay);
     const zoomSlider = qs('.avatar-crop__zoom', overlay);
     const objectUrl = URL.createObjectURL(file);
     img.src = objectUrl;
+    backdrop.src = objectUrl;
 
     let naturalW = 0, naturalH = 0, baseScale = 1;
     // zoom is a multiplier ON TOP of baseScale (baseScale alone = the

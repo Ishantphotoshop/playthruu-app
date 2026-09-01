@@ -432,6 +432,14 @@ ul { list-style: none; margin: 0; padding: 0; }
    overlay that looks like a blocking loading state. :has() lets this
    be a pure CSS fix with no JS changes needed at each call site. */
 .view-body:has(> .view-loading:not([hidden])) { overflow: hidden; }
+/* .view-loading is the exception, not the rule — most views (Search,
+   Profile, Trending's "see more" page, and most others) use a much
+   simpler pattern: .view-body's entire content IS just spinner() until
+   the real fetch resolves and replaces it outright, no wrapper element
+   at all. The rule above never touched any of those, which is most of
+   the app — this is what actually locks scroll during a route's real
+   loading window in the common case. */
+.view-body:has(> .spinner:only-child) { overflow: hidden; }
 @keyframes view-enter {
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: translateY(0); }
@@ -2391,11 +2399,31 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    preview. touch-action: none on the stage for the same reason as
    .avatar-viewer — without it the browser claims pinch/drag for page
    zoom before the gesture handlers ever see them. */
+/* background is a solid, fully opaque colour — not decoration. The
+   backdrop photo below takes a moment to decode, and this is what
+   sits behind it (and behind the tiny sliver any imperfect blur edge
+   might miss) in the meantime, so the real page underneath the modal
+   can never show through no matter what. */
 .avatar-crop {
   position: fixed; inset: 0; z-index: 130;
   display: flex; flex-direction: column;
-  background: rgba(6,6,10,0.97);
+  background: #0a0b0f;
   animation: fade-in var(--dur-fast) var(--ease);
+}
+/* Ambient backdrop: the SAME photo being cropped, blurred and dimmed,
+   filling the whole screen behind the actual crop stage — the familiar
+   "blurred version of the art behind the art" treatment (Apple Music,
+   Spotify, most photo pickers), so the screen reads as one scene
+   built from the photo itself instead of a plain dark sheet dropped
+   over whatever page happened to be open before this. */
+.avatar-crop__backdrop {
+  position: absolute; inset: 0; z-index: 0;
+  width: 100%; height: 100%; object-fit: cover;
+  filter: blur(50px) brightness(0.55) saturate(1.15);
+  transform: scale(1.15); /* keeps the blur's own soft edge off-screen */
+}
+.avatar-crop__header, .avatar-crop__stage-wrap, .avatar-crop__controls, .avatar-crop__hint {
+  position: relative; z-index: 1;
 }
 .avatar-crop__header {
   display: flex; align-items: center; justify-content: space-between;
@@ -2429,7 +2457,12 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   --frame: min(78vw, 78vh, 360px);
   overflow: hidden; touch-action: none;
   border-radius: 50%; border: 1.5px solid rgba(255,255,255,0.65);
-  box-shadow: 0 0 0 2000px rgba(6,6,10,0.72);
+  /* Was 0.72 — with only the plain dark background behind it, that
+     read as "too dark" once the blurred-photo backdrop above went in:
+     the backdrop already does real dimming work of its own
+     (brightness(0.55)), so this only needs to be enough to separate
+     the crop circle from the backdrop around it, not to blot it out. */
+  box-shadow: 0 0 0 2000px rgba(6,6,10,0.45);
 }
 .avatar-crop__img {
   /* top: 0; left: 0 — not 50%/50% — is load-bearing: JS's crop math
