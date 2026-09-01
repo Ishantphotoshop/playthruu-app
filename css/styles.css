@@ -873,7 +873,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .filter-btn svg { width: 19px; height: 19px; }
 .filter-btn:active { transform: scale(0.94); background: var(--surface-raised); }
 .filter-btn--sm { width: 34px; height: 34px; flex-shrink: 0; }
-.filter-btn--sm svg { width: 16px; height: 16px; }
+.filter-btn--sm svg { width: 19px; height: 19px; }
 
 /* --- discovery shelf --- */
 .discovery-active {
