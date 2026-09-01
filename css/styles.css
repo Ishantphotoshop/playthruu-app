@@ -1699,19 +1699,24 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    real text baseline sat it visibly low/off against the letters. Center
    is what actually reads as "aligned" for an icon-next-to-text row. */
 .feed-section-head { display: flex; align-items: center; justify-content: space-between; }
-/* margin-top: 0 here, not just margin-bottom, is what actually keeps
-   the see-more icon aligned the same way across every section. The
-   heading is a flex item in this row, so any top margin on it doesn't
-   collapse away like a normal block margin would — it inflates the
-   row's own height, which then re-centres the icon lower inside it.
-   #trending-section's heading already had its 20px top margin zeroed
-   (to avoid doubling the gap under the pill above it), which is
-   exactly why Trending's icon sat higher than Friend's/Currently
-   playing's: those two still carried the full margin into this flex
-   row's height, nothing to do with the icon itself.
-   #feed-body prefix is load-bearing, not decoration: without it this
-   loses on specificity to #feed-body .section-heading's own margin-top
-   (an ID + 1 class beats 2 plain classes) and silently does nothing. */
+/* The gap above each section used to come from the heading's own 20px
+   top margin. Moved here, onto the row itself, instead: the heading is
+   a flex item in .feed-section-head, so a margin on IT doesn't create
+   plain space above the row the way a block margin would — it inflates
+   the row's own height instead, which re-centres the see-more icon
+   lower inside it. That's what made Trending's icon sit higher than
+   Friend's/Currently playing's (Trending's heading already had this
+   margin zeroed, to avoid doubling the gap under the pill above it).
+   Zeroing the heading's own top margin fixes the icon; putting the
+   same 20px back as a real margin on the row itself (excluded for
+   Trending below, same reason as always) is what keeps the section-to-
+   section spacing from collapsing along with it — losing one without
+   the other was the actual bug. #feed-body prefix on both rules is
+   required, not decoration: without it these lose on specificity to
+   #feed-body .section-heading's own margin (an ID + 1 class beats 2
+   plain classes) and silently do nothing. */
+#feed-body .feed-section-head { margin-top: var(--space-4); }
+#feed-body #trending-section .feed-section-head { margin-top: 0; }
 #feed-body .feed-section-head .section-heading { margin-top: 0; margin-bottom: 12px; }
 .see-more-link { font-size: 12px; font-weight: 700; color: var(--accent-bright); flex-shrink: 0; }
 /* Icon-only "see more" for the three feed strips (see feedSectionHead()
