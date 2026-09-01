@@ -275,7 +275,14 @@ body {
 }
 h1, h2, h3, p, figure { margin: 0; }
 a { color: inherit; text-decoration: none; }
-button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; }
+/* padding: 0 is load-bearing, not decoration — the browser's own default
+   button padding (Chromium: 1px 6px, not symmetric) was never zeroed
+   here, so every icon-only circular button centering its icon with
+   place-items: center was quietly off-centre by that leftover padding.
+   Invisible on most buttons since text has room to spare either way,
+   but on a small icon-only circle (the filter button) it read as a
+   clearly misaligned glyph no amount of resizing the icon could fix. */
+button { font: inherit; color: inherit; background: none; border: none; padding: 0; cursor: pointer; }
 input, textarea { font: inherit; color: inherit; }
 img { max-width: 100%; display: block; }
 ul { list-style: none; margin: 0; padding: 0; }
