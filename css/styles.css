@@ -885,7 +885,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    stem below — so true centre reads as sitting a touch high and left.
    This small nudge is optical correction on top of that, not undoing
    it. */
-.filter-btn--sm svg { width: 23px; height: 23px; transform: translate(1.5px, 1.5px); }
+.filter-btn--sm svg { width: 23px; height: 23px; transform: translate(0.75px, 1.5px); }
 
 /* --- discovery shelf --- */
 .discovery-active {
