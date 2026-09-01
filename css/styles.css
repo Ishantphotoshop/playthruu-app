@@ -880,7 +880,12 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .filter-btn svg { width: 19px; height: 19px; }
 .filter-btn:active { transform: scale(0.94); background: var(--surface-raised); }
 .filter-btn--sm { width: 34px; height: 34px; flex-shrink: 0; }
-.filter-btn--sm svg { width: 23px; height: 23px; }
+/* Mathematically centred (equal margins on all 4 sides, verified),
+   but the funnel's own shape is top-heavy — wide flat top, narrow
+   stem below — so true centre reads as sitting a touch high and left.
+   This small nudge is optical correction on top of that, not undoing
+   it. */
+.filter-btn--sm svg { width: 23px; height: 23px; transform: translate(1.5px, 1.5px); }
 
 /* --- discovery shelf --- */
 .discovery-active {
