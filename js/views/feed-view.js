@@ -425,7 +425,11 @@ async function paintCurrentlyPlaying(slot) {
   // way the other two do, so it couldn't carry a "see more" icon either.
   if (!slot.innerHTML.trim()) slot.innerHTML = `<h2 class="section-heading">Currently playing</h2>${skeletonRow()}`;
   try {
-    const { logs, isFallback } = await api.getFeed(state.user.id, 30, 'playing');
+    // Was 30 — the only one of the three feed strips fetching more than
+    // Trending/Friends' shared 15, which just meant an unbounded-feeling
+    // strip as more people marked games "playing" instead of the same
+    // capped single-scroll every other row keeps to.
+    const { logs, isFallback } = await api.getFeed(state.user.id, 15, 'playing');
 
     if (!logs.length) {
       slot.innerHTML = `

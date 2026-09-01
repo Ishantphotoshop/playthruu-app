@@ -426,6 +426,12 @@ ul { list-style: none; margin: 0; padding: 0; }
    UA-stylesheet rule, lowest priority in the cascade regardless of
    selector specificity) unless something authored overrides it back. */
 .view-loading[hidden] { display: none; }
+/* .view-loading only ever covers the content visually (position:
+   absolute, opaque background) — it never touched scrolling, so the
+   real content underneath was still fully scrollable through an
+   overlay that looks like a blocking loading state. :has() lets this
+   be a pure CSS fix with no JS changes needed at each call site. */
+.view-body:has(> .view-loading:not([hidden])) { overflow: hidden; }
 @keyframes view-enter {
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: translateY(0); }
@@ -1166,8 +1172,17 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    posters above them stay perfectly aligned regardless of which entries
    have a rating and which don't. 11px matches the star size passed to
    starRow() above. */
-.card-who__stars { display: block; min-height: 11px; line-height: 11px; }
-.card-who__stars .stars { gap: 1px; }
+/* One real star + the number, not five tiny ones — five 11px stars
+   packed at a 1px gap still read as a smudge rather than a rating at
+   this size, and any gap between them looked like too much regardless
+   of how small it was. min-height keeps every card the same total
+   height whether or not this row has content. */
+.card-who__stars { display: flex; align-items: center; gap: 3px; min-height: 11px; line-height: 11px; }
+.card-who__star-icon { width: 10px; height: 10px; flex-shrink: 0; }
+.card-who__rating-num {
+  font-family: var(--font-mono); font-weight: 500; font-size: 10.5px;
+  color: var(--ink-dim); line-height: 11px; font-variant-numeric: tabular-nums;
+}
 
 /* ---- a single review on its own page -------------------------------- */
 .review-page { max-width: 640px; margin: 0 auto; }

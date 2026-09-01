@@ -56,7 +56,16 @@ export async function renderProfileView(root, { username }) {
 
     const diary = logs.filter((l) => l.status === 'played' || l.status === 'dropped');
     const backlog = logs.filter((l) => l.status === 'backlog');
-    const playing = logs.filter((l) => l.status === 'playing');
+    // logs itself is ordered by played_date first (right for the diary),
+    // but "playing" entries never have a played_date, so that ordering
+    // is meaningless for them — they'd sort as a block by created_at
+    // instead, which stays put even when an old backlog entry is what
+    // just got marked "playing". Re-sorted by updated_at (bumped by a DB
+    // trigger on every change) so whichever game was most recently
+    // marked playing actually shows first.
+    const playing = logs
+      .filter((l) => l.status === 'playing')
+      .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
 
     const showcaseSlots = favorites.length
       ? favorites.slice(0, SHOWCASE_MAX).map((f) => {

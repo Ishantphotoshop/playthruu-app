@@ -1756,7 +1756,13 @@ export async function getFeed(userId, limit = 30, statusFilter = null) {
       .select('*, games!logs_game_id_fkey(*), profiles!logs_user_id_fkey(*)')
       .eq('is_public', true);
     if (statusFilter) q = q.eq('status', statusFilter);
-    const { data, error } = await q.order('created_at', { ascending: false }).limit(limit);
+    // updated_at, not created_at: marking an existing log as "playing"
+    // is an UPDATE on a row that may have been created long ago (e.g. a
+    // backlog entry someone finally started), so created_at wouldn't
+    // move — updated_at does (there's a DB trigger keeping it current
+    // on every row change), which is what actually reflects "just
+    // started playing this" for the getFeed(..., 'playing') callers.
+    const { data, error } = await q.order('updated_at', { ascending: false }).limit(limit);
     if (error) throw error;
     // The blocklist is per-viewer, so it can't be a SQL filter — the same
     // row stays visible to everyone else. This matters most on the
@@ -1771,7 +1777,8 @@ export async function getFeed(userId, limit = 30, statusFilter = null) {
     .in('user_id', followingIds)
     .eq('is_public', true);
   if (statusFilter) q = q.eq('status', statusFilter);
-  const { data, error } = await q.order('created_at', { ascending: false }).limit(limit);
+  // updated_at — see the same ordering note in the fallback branch above.
+  const { data, error } = await q.order('updated_at', { ascending: false }).limit(limit);
   if (error) throw error;
   return { logs: await filterBlocked(data || []), isFallback: false };
 }
