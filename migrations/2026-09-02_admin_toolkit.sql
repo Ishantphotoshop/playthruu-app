@@ -25,6 +25,13 @@
 -- 2026-08-14_security_hardening.sql and 2026-08-17_ban_enforcement.sql)
 -- — this migration doesn't invent the admin concept, it just gives it
 -- something to control.
+--
+-- It also closes a privilege-escalation hole that giving is_admin real
+-- power would otherwise have made serious: until now anyone signed in
+-- could set is_admin on their own profile row. See the trigger at the
+-- bottom of this file. That fix is part of THIS migration on purpose —
+-- the flag must not become powerful in one script and get protected in
+-- a later one.
 
 -- ------------------------------------------------------------
 -- Admin check helper
@@ -198,6 +205,57 @@ create policy reports_admin_update
   on public.reports for update
   using (public.is_app_admin())
   with check (public.is_app_admin());
+
+-- ------------------------------------------------------------
+-- Close the self-promotion hole (IMPORTANT)
+-- ------------------------------------------------------------
+-- profiles_owner_update is "auth.uid() = id AND NOT is_suspended()" with
+-- no WITH CHECK clause, and the authenticated role holds column-level
+-- UPDATE on every column including is_admin and is_suspended. Postgres
+-- falls back to the USING expression as the check when WITH CHECK is
+-- omitted, so that policy happily permits:
+--
+--     update profiles set is_admin = true where id = auth.uid();
+--
+-- i.e. ANY signed-in person could make themselves an admin, and any
+-- suspended person could quietly lift their own suspension. The second
+-- of those was already true before this migration; the first only
+-- becomes dangerous now, because until this file ran, is_admin gated
+-- almost nothing. Everything above hands it real power, so the hole has
+-- to close in the SAME migration that opens that power — never in a
+-- follow-up.
+--
+-- A trigger rather than a tightened policy, deliberately: it applies no
+-- matter which policy let the row through (including the admin policy
+-- below it), so there's no way to add a future policy that accidentally
+-- reopens this.
+create or replace function public.guard_profile_privileges()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if (new.is_admin is distinct from old.is_admin)
+     or (new.is_suspended is distinct from old.is_suspended) then
+    -- auth.uid() is null for service_role and for anything run straight
+    -- in the SQL editor, which is exactly how the first admin gets
+    -- promoted — that path stays open. RLS still blocks anonymous
+    -- PostgREST callers, since profiles_owner_update requires
+    -- auth.uid() = id and null never matches.
+    if auth.uid() is not null and not public.is_app_admin() then
+      raise exception 'Only an admin can change is_admin or is_suspended'
+        using errcode = '42501';
+    end if;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists profiles_guard_privileges on public.profiles;
+create trigger profiles_guard_privileges
+  before update on public.profiles
+  for each row execute function public.guard_profile_privileges();
 
 -- games.is_hidden has existed since the IGDB migration but nothing ever
 -- set it. The admin app uses it to pull a game out of search/trending
