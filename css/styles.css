@@ -109,6 +109,13 @@
   --space-2: 8px;
   --space-3: 14px;
   --space-4: 20px;
+  /* Screen-edge gutter only (.view-body's own left/right padding) —
+     kept separate from --space-4 (used everywhere else for general
+     spacing) so it can run tighter than the rest of the scale without
+     shrinking every gap in the app. Nav bar sits flush against the
+     real edge with zero padding; content wanted more of that same
+     width instead of the old 20px gutter matching --space-4. */
+  --view-pad-x: 12px;
   --space-5: 28px;
   --space-6: 40px;
   --space-7: 56px;
@@ -383,7 +390,7 @@ ul { list-style: none; margin: 0; padding: 0; }
      below is shorter and flush, so less reserved space is needed to
      clear it — kept a little more than the bar's own ~67px footprint
      for breathing room, not cut exactly to it. */
-  padding: var(--space-4) var(--space-4) calc(90px + var(--safe-bottom));
+  padding: var(--space-4) var(--view-pad-x) calc(90px + var(--safe-bottom));
   overflow-y: auto;
   /* Same "scroll still works, the track just isn't drawn" treatment
      .trending-strip already used for its own horizontal scroll — a
@@ -406,7 +413,7 @@ ul { list-style: none; margin: 0; padding: 0; }
    instead — same round chip as .icon-btn, positioned in the reserved
    row above (not beside) the segmented tabs so it never overlaps them. */
 .view-body__corner-action {
-  position: absolute; top: calc(var(--safe-top) + 8px); right: var(--space-4);
+  position: absolute; top: calc(var(--safe-top) + 8px); right: var(--view-pad-x);
   width: 38px; height: 38px; display: grid; place-items: center;
   background: var(--surface-raised); border: 1px solid var(--line);
   border-radius: 50%; color: var(--ink); z-index: 5;
@@ -449,7 +456,7 @@ ul { list-style: none; margin: 0; padding: 0; }
 .topbar {
   position: sticky; top: 0; z-index: 20;
   display: flex; align-items: center; gap: var(--space-3);
-  padding: calc(var(--space-3) + var(--safe-top)) var(--space-4) var(--space-3);
+  padding: calc(var(--space-3) + var(--safe-top)) var(--view-pad-x) var(--space-3);
   /* Solid, not glass — glass is kept on the nav bar + login only. */
   background: var(--bg);
   border-bottom: 1px solid var(--line);
@@ -470,7 +477,7 @@ ul { list-style: none; margin: 0; padding: 0; }
    centres the mark+wordmark as a pair and a third flex item would throw
    that off-centre. .topbar--home is already position:sticky, which is
    enough of a positioning context for this to anchor to. */
-.topbar__right--home { position: absolute; right: var(--space-4); top: 50%; transform: translateY(-50%); }
+.topbar__right--home { position: absolute; right: var(--view-pad-x); top: 50%; transform: translateY(-50%); }
 /* Same background as .topbar--home, and for the same reason: matching
    it (rather than leaving it transparent, or hardcoded black) is what
    joins the two into one seamless section with no visible seam between
@@ -482,7 +489,7 @@ ul { list-style: none; margin: 0; padding: 0; }
    glitch/seam right under the pill. A small amount back (10px) moves
    that transition into plain background instead of the pill's edge,
    without meaningfully reopening the gap the last fix closed. */
-.home-tabs { background: var(--bg); padding: 4px var(--space-4) 10px; display: flex; justify-content: center; }
+.home-tabs { background: var(--bg); padding: 4px var(--view-pad-x) 10px; display: flex; justify-content: center; }
 /* The pill itself: same recipe as .segmented (Search's Games/Players
    tabs) — full width of its container rather than sized to its own
    content, each item taking an equal flex:1 share instead of just
@@ -556,7 +563,7 @@ ul { list-style: none; margin: 0; padding: 0; }
    its own position:relative — stays visually pinned exactly like a
    fixed/sticky element would, with none of sticky's flex/flow
    requirements. Sits above .gd-hero (z-index 0) either way. */
-.game-back { position: absolute; z-index: 20; top: calc(var(--space-3) + var(--safe-top)); left: var(--space-4); }
+.game-back { position: absolute; z-index: 20; top: calc(var(--space-3) + var(--safe-top)); left: var(--view-pad-x); }
 
 /* ------------------------------------------------------------ tabbar
    Floats above the content rather than sitting flush at the bottom
@@ -1154,8 +1161,8 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    Confirmed by directly measuring each card's getBoundingClientRect()
    against the row's real clipping edge, not by eyeballing a
    screenshot. Reverted to the simpler, verified-correct shape: solve
-   for exactly ONE trailing partial card. (100vw - 62px) is the row's
-   horizontal insets (44px: .view-body's 20px each side + .trending-
+   for exactly ONE trailing partial card. (100vw - 46px) is the row's
+   horizontal insets (28px: .view-body's 12px each side + .trending-
    strip's own 2px each side) plus 3 full inter-card gaps at 6px
    (18px); /3.2 is "3 full cards + 3 full gaps + 20% of a 4th" — a
    clearly visible (not razor-thin) cut of the 4th poster, which the
@@ -1164,9 +1171,10 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    (A tighter gap + bigger card was tried here once, but the "kill the
    gap, make it bigger" ask was actually about the grid-view "see more"
    pages below, not this feed strip — reverted back to the original
-   tuning.) */
+   tuning. The 62px constant above dropped to 46px when .view-body's
+   own gutter shrank from 20px to var(--view-pad-x)/12px.) */
 @media (max-width: 560px) {
-  :root { --feed-card-w: calc((100vw - 62px) / 3.2); }
+  :root { --feed-card-w: calc((100vw - 46px) / 3.2); }
   .trending-strip { gap: 6px; }
 }
 .card-who .avatar { flex-shrink: 0; }
@@ -1199,7 +1207,10 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    combination's real rendered width against the available space, not
    just eyeballed. */
 .card-who__stars { display: flex; align-items: center; gap: 1px; min-height: 10px; line-height: 10px; }
-.card-who__stars .stars { gap: 0; }
+/* A real (if small) gap, not 0 — at 0 the star glyphs' own points
+   touched their neighbours and read as one solid smear instead of 5
+   distinct stars. */
+.card-who__stars .stars { gap: 1.5px; }
 .card-who__icon { width: 9px; height: 9px; flex-shrink: 0; display: flex; }
 .card-who__icon svg { width: 100%; height: 100%; }
 .card-who__icon--loved { color: var(--coral); }
@@ -2577,7 +2588,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    the fallback for games without one. */
 .gd-hero {
   position: relative; overflow: hidden;
-  margin: calc(-1 * var(--space-4)) calc(-1 * var(--space-4)) 0;
+  margin: calc(-1 * var(--space-4)) calc(-1 * var(--view-pad-x)) 0;
   /* Was a flat 260px, which only happened to roughly match the image's
      own rendered height (16:9 of the hero's width) at one specific
      viewport width — narrower than that and the image+its fade were
@@ -2592,7 +2603,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
      up slightly into the fade's own tail (already mostly transparent by
      then) for a tighter, Letterboxd-style poster-over-backdrop overlap
      rather than a hard gap. */
-  padding: calc(56.25% - 40px) var(--space-4) var(--space-4);
+  padding: calc(56.25% - 40px) var(--view-pad-x) var(--space-4);
   /* Shared by .gd-hero__bg and .gd-hero__scrim below — see the note
      there for why masking both to transparent, rather than fading the
      scrim to a hand-matched solid colour, is what actually makes the
