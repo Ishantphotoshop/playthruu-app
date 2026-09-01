@@ -354,29 +354,30 @@ export function wireTrendingStrip(container, games, { onSelect }) {
 // above them drifted out of alignment with each other. An empty span
 // still reserves its line height via CSS, so every card is now the same
 // height regardless of what data it has.
-// Redesigned from the old 5-star row: at 11px each, five tiny stars
-// packed this tight read as a smudge more than a rating, and the gap
-// between them (however small) only made that worse. One real star +
-// the actual number reads instantly at a glance, and costs far less
-// width in a footer this narrow.
 // { playing } is what makes activityCard's version of this footer read
 // as "in progress right now" instead of just "a rating-less card" —
 // Currently Playing entries never have a rating (the game isn't
 // finished), so that slot used to render empty there, which was three
 // visually identical rows differing only in whether the last one
-// happened to have text in this one spot.
-function cardWho(profile, rating, { playing = false } = {}) {
+// happened to have text in this one spot. { loved }/{ hasReview } stack
+// alongside the stars (all independent — someone can rate AND love AND
+// review the same log), each its own small icon so every combination
+// stays legible instead of trying to cram one composite glyph.
+function cardWho(profile, rating, { playing = false, loved = false, hasReview = false } = {}) {
+  const bits = [];
+  if (playing) {
+    bits.push(`<span class="card-who__playing"><span class="card-who__playing-dot"></span>Playing</span>`);
+  } else {
+    if (rating) bits.push(starRow(rating, { size: 10 }));
+    if (loved) bits.push(`<span class="card-who__icon card-who__icon--loved">${iconHeart()}</span>`);
+    if (hasReview) bits.push(`<span class="card-who__icon card-who__icon--review">${iconMessage()}</span>`);
+  }
   return `
     <a href="#/profile/${esc(profile.username)}" class="card-who">
       ${avatarImg(profile, 24)}
       <span class="card-who__meta">
         <span class="card-who__name">${esc(profile.display_name || profile.username)}</span>
-        <span class="card-who__stars">${playing ? `
-          <span class="card-who__playing"><span class="card-who__playing-dot"></span>Playing</span>
-        ` : rating ? `
-          <svg class="card-who__star-icon" viewBox="0 0 24 24" fill="var(--star-fill)"><path d="M12 1L14.46 8.62L22.46 8.6L15.98 13.29L18.47 20.9L12 16.18L5.53 20.9L8.02 13.29L1.54 8.6L9.54 8.62Z"/></svg>
-          <span class="card-who__rating-num">${formatRatingNum(rating)}</span>
-        ` : ''}</span>
+        <span class="card-who__stars">${bits.join('')}</span>
       </span>
     </a>`;
 }
@@ -401,7 +402,7 @@ export function friendsPlayingCard(entry) {
       <a href="#/review/${entry.logId}" class="friend-card__poster" aria-label="Open ${esc(f.display_name || f.username)}'s log of ${esc(g.title)}">
         ${posterFrame(g.cover_url, g.title, 'friend-card__cover')}
       </a>
-      ${cardWho(f, entry.rating)}
+      ${cardWho(f, entry.rating, { loved: entry.loved, hasReview: entry.hasReview })}
     </div>`;
 }
 

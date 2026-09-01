@@ -36,7 +36,7 @@ export function openLogModal({ game = null, existingLog = null, defaultReplay = 
               <span class="quick-act__icon quick-act__icon--pad">${iconGamepad()}</span>
               <span class="quick-act__label">Played</span>
             </button>
-            <button type="button" class="quick-act" id="q-love" data-on="">
+            <button type="button" class="quick-act" id="q-love" data-on="${existingLog?.loved ? '1' : ''}">
               <span class="quick-act__icon quick-act__icon--heart">${iconHeart()}</span>
               <span class="quick-act__label">Love</span>
             </button>
@@ -127,7 +127,11 @@ export function openLogModal({ game = null, existingLog = null, defaultReplay = 
     const qPlayed = qs('#q-played', overlay);
     const qLove = qs('#q-love', overlay);
     const qSave = qs('#q-save', overlay);
-    let loved = false;
+    // Was hardcoded false regardless of existingLog — editing an
+    // already-loved entry always reopened with the heart looking
+    // un-pressed. Seeded from the button's own initial data-on now
+    // (set from existingLog?.loved above), so the two can't disagree.
+    let loved = qLove?.dataset.on === '1';
 
     if (qPlayed) qPlayed.addEventListener('click', () => {
       const on = qPlayed.dataset.on === '1';
@@ -398,6 +402,7 @@ export function openLogModal({ game = null, existingLog = null, defaultReplay = 
         user_id: state.user.id,
         status: currentStatus,
         rating: rating > 0 ? rating : null,
+        loved,
         review: form.get('review')?.trim() || null,
         // 0 means "didn't say", not "took no time".
         hours_played: hoursValue && hoursValue > 0 ? hoursValue : null,
