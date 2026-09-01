@@ -1699,7 +1699,20 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    real text baseline sat it visibly low/off against the letters. Center
    is what actually reads as "aligned" for an icon-next-to-text row. */
 .feed-section-head { display: flex; align-items: center; justify-content: space-between; }
-.feed-section-head .section-heading { margin-bottom: 12px; }
+/* margin-top: 0 here, not just margin-bottom, is what actually keeps
+   the see-more icon aligned the same way across every section. The
+   heading is a flex item in this row, so any top margin on it doesn't
+   collapse away like a normal block margin would — it inflates the
+   row's own height, which then re-centres the icon lower inside it.
+   #trending-section's heading already had its 20px top margin zeroed
+   (to avoid doubling the gap under the pill above it), which is
+   exactly why Trending's icon sat higher than Friend's/Currently
+   playing's: those two still carried the full margin into this flex
+   row's height, nothing to do with the icon itself.
+   #feed-body prefix is load-bearing, not decoration: without it this
+   loses on specificity to #feed-body .section-heading's own margin-top
+   (an ID + 1 class beats 2 plain classes) and silently does nothing. */
+#feed-body .feed-section-head .section-heading { margin-top: 0; margin-bottom: 12px; }
 .see-more-link { font-size: 12px; font-weight: 700; color: var(--accent-bright); flex-shrink: 0; }
 /* Icon-only "see more" for the three feed strips (see feedSectionHead()
    in components.js) — deliberately plainer than .see-more-link's text +
