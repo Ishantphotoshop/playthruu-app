@@ -2396,20 +2396,13 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    A source photo can be any aspect ratio; this is what turns it into
    the square every avatar on the app assumes, with the same
    pinch/drag feel as the viewer above rather than a plain static
-   preview. touch-action: none on the stage for the same reason as
-   .avatar-viewer — without it the browser claims pinch/drag for page
-   zoom before the gesture handlers ever see them. */
-/* Solid opaque grey, not a near-black rgba — was rgba(6,6,10,0.97),
-   which read as "80% dark" against the app's actual near-black --bg
-   sitting right behind it (two dark layers stacking), and made the
-   full-opacity #fff header text/icons look dim by comparison even
-   though they were never touched. Fully opaque on purpose: no alpha
-   channel at all, so the real page behind this modal can never bleed
-   through regardless of how light this tone gets. */
+   preview. Uses the app's own surface/ink tokens throughout (not a
+   fixed dark palette) so it matches whichever theme is active, same
+   as every other screen. */
 .avatar-crop {
   position: fixed; inset: 0; z-index: 130;
   display: flex; flex-direction: column;
-  background: #2b2e37;
+  background: var(--bg);
   animation: fade-in var(--dur-fast) var(--ease);
 }
 .avatar-crop__header {
@@ -2417,82 +2410,93 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   padding: calc(14px + var(--safe-top)) var(--space-4) var(--space-3);
   flex-shrink: 0;
 }
-.avatar-crop__header h2 { font-size: 15px; font-weight: 700; color: #fff; }
+.avatar-crop__header h2 { font-size: 15px; font-weight: 700; color: var(--ink); }
 .avatar-crop__cancel, .avatar-crop__apply {
   width: 36px; height: 36px; display: grid; place-items: center;
-  border-radius: 50%; color: #fff; background: rgba(255,255,255,0.16);
+  border-radius: 50%; color: var(--ink); background: var(--surface-raised);
+  border: 1px solid var(--line);
   flex-shrink: 0;
 }
-/* A fixed bright lime, not var(--accent) — that token is theme-aware
-   (a muted dark olive in light theme, tuned for a cream background),
-   but this modal's own chrome is always dark regardless of which app
-   theme is active. Using the theme token here meant the tick rendered
-   in the LIGHT-theme olive against this always-dark modal whenever the
-   app was in light mode — exactly the "tick looks dark too" report. */
-.avatar-crop__apply { background: #d9ff3f; color: #0a0b0f; }
+/* A fixed bright lime, not var(--accent) — that token goes a muted
+   dark olive in light theme (tuned for sitting on a cream background),
+   which is illegible as a filled circle on top of ANOTHER light-theme
+   surface here. The literal dark-theme accent value stays vivid as a
+   small accent chip in both themes, the way a call-to-action often
+   does regardless of surrounding theme. */
+.avatar-crop__apply { background: #d9ff3f; color: #0a0b0f; border-color: transparent; }
 .avatar-crop__cancel svg, .avatar-crop__apply svg { width: 16px; height: 16px; }
 .avatar-crop__stage-wrap {
   flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center;
 }
-/* The stage IS the crop square — not a full-bleed area with a visual
-   frame drawn on top of it. JS reads the stage's own bounding rect as
-   the crop bounds, so if the visible frame were smaller than the
-   element being measured (as an earlier version of this had it: a
-   full-bleed stage with a smaller circular mask drawn over it), the
-   math and what the user sees would quietly disagree — the exported
-   image would be a wider crop than the circle ever showed. Sizing the
-   stage itself to --frame keeps those two things impossible to
-   desync. The circular border is just a guide for how this ends up
-   displayed everywhere (avatars are circular chips) — the crop
-   underneath, and the exported file, are still the full square. */
+/* The canvas is a bigger area than the crop frame itself — this is
+   what actually shows the "rest of the photo" (dimmed) around the
+   kept circle, instead of clipping straight to the frame's own edge
+   the way an earlier version did. */
+.avatar-crop__canvas {
+  position: relative; overflow: hidden; touch-action: none;
+  width: min(94vw, 70vh, 480px); height: min(94vw, 70vh, 480px);
+}
+/* The frame is the actual crop boundary — JS reads ITS bounding rect
+   (not the canvas's) for every size/pan/zoom/export calculation, so
+   what's mathematically cropped and what the circle visually shows can
+   never drift apart regardless of how much bigger the canvas around it
+   gets. Centred inside the canvas via absolute + translate(-50%,-50%).
+   No border here on purpose — box-sizing: border-box (global) means a
+   border here would shrink this element's own CONTENT box inward by
+   the border width, and the sharp image inside anchors its top:0/
+   left:0 to that content box, not the border box JS measures via
+   getBoundingClientRect() — a 1.5px border quietly shifted the sharp
+   layer 1.5px off from the dim layer underneath it. The ring below is
+   the same border, drawn as its own element instead so it can't touch
+   this one's coordinate system. */
 .avatar-crop__stage {
-  position: relative; width: var(--frame); height: var(--frame);
-  --frame: min(78vw, 78vh, 360px);
-  overflow: hidden; touch-action: none;
-  border-radius: 50%; border: 1.5px solid rgba(255,255,255,0.65);
-  /* Was 0.72 on top of the modal's own already-dark background — two
-     dark layers stacked, which is most of what made the whole screen
-     read as "80% dark". Lighter now that the base .avatar-crop
-     background itself carries real tone instead of near-black. */
-  box-shadow: 0 0 0 2000px rgba(20,22,27,0.3);
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: var(--frame); height: var(--frame);
+  --frame: min(78vw, 50vh, 320px);
+  overflow: hidden; border-radius: 50%;
+  z-index: 1;
+}
+.avatar-crop__ring {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: var(--frame); height: var(--frame);
+  border-radius: 50%; border: 1.5px solid var(--ink);
+  pointer-events: none; z-index: 2;
 }
 .avatar-crop__img {
   /* top: 0; left: 0 — not 50%/50% — is load-bearing: JS's crop math
-     treats tx/ty (the inline transform it sets) as the image's offset
-     from the STAGE's top-left corner. A center-anchored base position
+     treats the inline transform it sets as the image's offset from its
+     OWN container's top-left corner. A center-anchored base position
      here would still get overwritten by that same inline transform
-     (same property, and inline always wins), but the top/left percentage
-     offset is separate and stays active underneath it — the image
-     silently rendered ~half the stage size away from where every tx/ty
-     calculation assumed it was. */
+     (same property, inline always wins), but the top/left percentage
+     offset is separate and stays active underneath it. */
   position: absolute; top: 0; left: 0;
   max-width: none; max-height: none;
   user-select: none; -webkit-user-select: none; -webkit-user-drag: none;
 }
+/* 30% — visible enough to see what's being left out (and to drag
+   toward), dim enough that the kept circle unmistakably reads as "the
+   part that counts". */
+.avatar-crop__img--dim { opacity: 0.3; }
 .avatar-crop__controls { padding: var(--space-3) var(--space-5) 0; flex-shrink: 0; }
 .avatar-crop__zoom {
   width: 100%; height: 32px; -webkit-appearance: none; appearance: none;
   background: transparent;
 }
-/* Track was rgba(255,255,255,0.2) — barely visible against this dark
-   background, which read as "dull, like it's behind the image".
-   Thumb was var(--accent), the same theme-aware token that made the
-   Done tick go dim in light theme — fixed lime here too. */
 .avatar-crop__zoom::-webkit-slider-runnable-track {
-  height: 4px; border-radius: 2px; background: rgba(255,255,255,0.4);
+  height: 4px; border-radius: 2px; background: var(--line-strong);
 }
 .avatar-crop__zoom::-webkit-slider-thumb {
   -webkit-appearance: none; margin-top: -8px;
   width: 20px; height: 20px; border-radius: 50%;
-  background: #d9ff3f; border: 2px solid #0a0b0f;
+  background: #d9ff3f; border: 2px solid var(--bg);
 }
-.avatar-crop__zoom::-moz-range-track { height: 4px; border-radius: 2px; background: rgba(255,255,255,0.4); }
+.avatar-crop__zoom::-moz-range-track { height: 4px; border-radius: 2px; background: var(--line-strong); }
 .avatar-crop__zoom::-moz-range-thumb {
   width: 20px; height: 20px; border-radius: 50%;
-  background: #d9ff3f; border: 2px solid #0a0b0f;
+  background: #d9ff3f; border: 2px solid var(--bg);
 }
 .avatar-crop__hint {
-  text-align: center; font-size: var(--text-meta); color: rgba(255,255,255,0.5);
+  text-align: center; font-size: var(--text-meta); color: var(--ink-dim);
   padding: var(--space-2) var(--space-4) calc(var(--space-4) + var(--safe-bottom));
   flex-shrink: 0;
 }
