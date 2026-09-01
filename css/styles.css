@@ -881,9 +881,11 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    but the funnel's own shape is top-heavy — wide flat top, narrow
    stem below — so true centre reads as sitting a touch high and left.
    This small nudge is optical correction on top of that, not undoing
-   it. Scaled to match the same proportion of icon size as the tuned
-   .filter-btn--sm value below (23px icon, 0.75/1.5px nudge). */
-.filter-btn svg { width: 19px; height: 19px; transform: translate(0.6px, 1.25px); }
+   it. Both size (31px, ~16% margin) and nudge are scaled to match the
+   exact same fill ratio as the tuned .filter-btn--sm below (23px in a
+   34px circle) — at the old 19px this read as noticeably smaller/
+   thinner than the sm version once the two sat side by side. */
+.filter-btn svg { width: 31px; height: 31px; transform: translate(1px, 2px); }
 .filter-btn:active { transform: scale(0.94); background: var(--surface-raised); }
 .filter-btn--sm { width: 34px; height: 34px; flex-shrink: 0; }
 .filter-btn--sm svg { width: 23px; height: 23px; transform: translate(0.75px, 1.5px); }
