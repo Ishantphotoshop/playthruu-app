@@ -2399,10 +2399,17 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    preview. touch-action: none on the stage for the same reason as
    .avatar-viewer — without it the browser claims pinch/drag for page
    zoom before the gesture handlers ever see them. */
+/* Solid opaque grey, not a near-black rgba — was rgba(6,6,10,0.97),
+   which read as "80% dark" against the app's actual near-black --bg
+   sitting right behind it (two dark layers stacking), and made the
+   full-opacity #fff header text/icons look dim by comparison even
+   though they were never touched. Fully opaque on purpose: no alpha
+   channel at all, so the real page behind this modal can never bleed
+   through regardless of how light this tone gets. */
 .avatar-crop {
   position: fixed; inset: 0; z-index: 130;
   display: flex; flex-direction: column;
-  background: rgba(6,6,10,0.97);
+  background: #2b2e37;
   animation: fade-in var(--dur-fast) var(--ease);
 }
 .avatar-crop__header {
@@ -2413,10 +2420,16 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .avatar-crop__header h2 { font-size: 15px; font-weight: 700; color: #fff; }
 .avatar-crop__cancel, .avatar-crop__apply {
   width: 36px; height: 36px; display: grid; place-items: center;
-  border-radius: 50%; color: #fff; background: rgba(255,255,255,0.14);
+  border-radius: 50%; color: #fff; background: rgba(255,255,255,0.16);
   flex-shrink: 0;
 }
-.avatar-crop__apply { background: var(--accent); color: #0a0b0f; }
+/* A fixed bright lime, not var(--accent) — that token is theme-aware
+   (a muted dark olive in light theme, tuned for a cream background),
+   but this modal's own chrome is always dark regardless of which app
+   theme is active. Using the theme token here meant the tick rendered
+   in the LIGHT-theme olive against this always-dark modal whenever the
+   app was in light mode — exactly the "tick looks dark too" report. */
+.avatar-crop__apply { background: #d9ff3f; color: #0a0b0f; }
 .avatar-crop__cancel svg, .avatar-crop__apply svg { width: 16px; height: 16px; }
 .avatar-crop__stage-wrap {
   flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center;
@@ -2437,7 +2450,11 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   --frame: min(78vw, 78vh, 360px);
   overflow: hidden; touch-action: none;
   border-radius: 50%; border: 1.5px solid rgba(255,255,255,0.65);
-  box-shadow: 0 0 0 2000px rgba(6,6,10,0.72);
+  /* Was 0.72 on top of the modal's own already-dark background — two
+     dark layers stacked, which is most of what made the whole screen
+     read as "80% dark". Lighter now that the base .avatar-crop
+     background itself carries real tone instead of near-black. */
+  box-shadow: 0 0 0 2000px rgba(20,22,27,0.3);
 }
 .avatar-crop__img {
   /* top: 0; left: 0 — not 50%/50% — is load-bearing: JS's crop math
@@ -2457,18 +2474,22 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   width: 100%; height: 32px; -webkit-appearance: none; appearance: none;
   background: transparent;
 }
+/* Track was rgba(255,255,255,0.2) — barely visible against this dark
+   background, which read as "dull, like it's behind the image".
+   Thumb was var(--accent), the same theme-aware token that made the
+   Done tick go dim in light theme — fixed lime here too. */
 .avatar-crop__zoom::-webkit-slider-runnable-track {
-  height: 4px; border-radius: 2px; background: rgba(255,255,255,0.2);
+  height: 4px; border-radius: 2px; background: rgba(255,255,255,0.4);
 }
 .avatar-crop__zoom::-webkit-slider-thumb {
   -webkit-appearance: none; margin-top: -8px;
   width: 20px; height: 20px; border-radius: 50%;
-  background: var(--accent); border: 2px solid #0a0b0f;
+  background: #d9ff3f; border: 2px solid #0a0b0f;
 }
-.avatar-crop__zoom::-moz-range-track { height: 4px; border-radius: 2px; background: rgba(255,255,255,0.2); }
+.avatar-crop__zoom::-moz-range-track { height: 4px; border-radius: 2px; background: rgba(255,255,255,0.4); }
 .avatar-crop__zoom::-moz-range-thumb {
   width: 20px; height: 20px; border-radius: 50%;
-  background: var(--accent); border: 2px solid #0a0b0f;
+  background: #d9ff3f; border: 2px solid #0a0b0f;
 }
 .avatar-crop__hint {
   text-align: center; font-size: var(--text-meta); color: rgba(255,255,255,0.5);
