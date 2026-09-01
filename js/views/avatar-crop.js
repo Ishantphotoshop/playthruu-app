@@ -30,6 +30,9 @@ export function openAvatarCropModal(file) {
       <div class="avatar-crop__stage-wrap">
         <div class="avatar-crop__stage">
           <img class="avatar-crop__img" draggable="false" alt="">
+          <div class="avatar-crop__grid" aria-hidden="true">
+            <span></span><span></span><span></span><span></span>
+          </div>
         </div>
       </div>
       <div class="avatar-crop__controls">
@@ -42,10 +45,23 @@ export function openAvatarCropModal(file) {
     const img = qs('.avatar-crop__img', overlay);
     const backdrop = qs('.avatar-crop__backdrop', overlay);
     const stage = qs('.avatar-crop__stage', overlay);
+    const grid = qs('.avatar-crop__grid', overlay);
     const zoomSlider = qs('.avatar-crop__zoom', overlay);
     const objectUrl = URL.createObjectURL(file);
     img.src = objectUrl;
     backdrop.src = objectUrl;
+
+    // Rule-of-thirds grid, shown only while actively framing the shot
+    // (dragging, pinching, wheel- or slider-zooming) rather than sitting
+    // on screen permanently — the same "only while adjusting" treatment
+    // Photoshop/Lightroom's own crop tools use, so it helps with
+    // composition without becoming visual clutter the rest of the time.
+    let gridHideTimer = null;
+    function showGrid() {
+      grid.classList.add('avatar-crop__grid--visible');
+      clearTimeout(gridHideTimer);
+      gridHideTimer = setTimeout(() => grid.classList.remove('avatar-crop__grid--visible'), 500);
+    }
 
     let naturalW = 0, naturalH = 0, baseScale = 1;
     // zoom is a multiplier ON TOP of baseScale (baseScale alone = the
@@ -120,6 +136,7 @@ export function openAvatarCropModal(file) {
       const prev = points.get(e.pointerId);
       points.set(e.pointerId, { x: e.clientX, y: e.clientY });
       const pts = [...points.values()];
+      showGrid();
 
       if (pts.length >= 2 && startDist > 0) {
         e.preventDefault();
@@ -147,11 +164,13 @@ export function openAvatarCropModal(file) {
     // equivalent, zooming toward wherever the cursor is.
     stage.addEventListener('wheel', (e) => {
       e.preventDefault();
+      showGrid();
       const rect = stage.getBoundingClientRect();
       zoomTo(zoom - e.deltaY * 0.0025, e.clientX - rect.left, e.clientY - rect.top);
     }, { passive: false });
 
     zoomSlider.addEventListener('input', () => {
+      showGrid();
       const center = stageSize() / 2;
       zoomTo(Number(zoomSlider.value), center, center);
     });
