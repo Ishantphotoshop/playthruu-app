@@ -1723,10 +1723,16 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    in components.js) — deliberately plainer than .see-more-link's text +
    accent colour, since this only shows up when a row actually has more
    than a screenful to browse, not on every row regardless of content. */
+/* translateY(-4px): centered against the flex row's own height (align-
+   items: center on .feed-section-head), the icon sits consistently a
+   touch below the heading text's own vertical centre — same offset on
+   every heading (verified), but asked to be nudged up to sit level
+   with the text specifically, not just consistent with itself. */
 .see-more-icon {
   display: flex; align-items: center; justify-content: center;
   width: 26px; height: 26px; flex-shrink: 0;
   color: var(--ink-dim);
+  transform: translateY(-4px);
 }
 .see-more-icon svg { width: 18px; height: 18px; }
 
