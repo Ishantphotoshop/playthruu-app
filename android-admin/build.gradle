@@ -1,0 +1,5 @@
+// Version pinned to what's already in the local Gradle cache, so the
+// build doesn't depend on fetching a different AGP release.
+plugins {
+    id 'com.android.application' version '8.13.1' apply false
+}

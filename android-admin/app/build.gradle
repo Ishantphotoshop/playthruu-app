@@ -1,0 +1,56 @@
+plugins {
+    id 'com.android.application'
+}
+
+// The signing details live in keystore.properties, which is NOT in git
+// (see .gitignore) — the APK is personal, so there's no release-key
+// continuity to preserve; if the file goes missing, regenerate it with
+// the keytool command in android-admin/README.md and rebuild.
+def keystorePropsFile = rootProject.file('keystore.properties')
+def keystoreProps = new Properties()
+if (keystorePropsFile.exists()) {
+    keystoreProps.load(new FileInputStream(keystorePropsFile))
+}
+
+android {
+    namespace 'com.playthruu.admin'
+    compileSdk 36
+
+    defaultConfig {
+        applicationId "com.playthruu.admin"
+        minSdk 26
+        targetSdk 36
+        versionCode 1
+        versionName "1.0"
+    }
+
+    signingConfigs {
+        release {
+            if (keystorePropsFile.exists()) {
+                storeFile rootProject.file(keystoreProps['storeFile'])
+                storePassword keystoreProps['storePassword']
+                keyAlias keystoreProps['keyAlias']
+                keyPassword keystoreProps['keyPassword']
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            // Falls back to an unsigned build if the keystore is absent,
+            // rather than failing the whole build with a confusing error.
+            signingConfig keystorePropsFile.exists() ? signingConfigs.release : null
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+// No dependencies at all — not even AndroidX. This is one Activity
+// holding one WebView, and every library it could pull in would be
+// another thing to download and keep current for no gain.
+dependencies { }

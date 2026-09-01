@@ -2,7 +2,7 @@ import * as api from '../api.js';
 import { state } from '../state.js';
 import {
   topBar, navBar, homeTabs, feedSectionHead, activityCard, emptyState, spinner, skeletonRow, iconStamp, iconUser, iconFilter,
-  trendingStrip, wireTrendingStrip, friendsPlayingCard, posterFrame, openReportSheet,
+  trendingStrip, wireTrendingStrip, friendsPlayingCard, posterFrame, openReportSheet, iconChevronRight,
 } from '../components.js';
 import { toast, qs, qsa, esc, timeAgo, enableSwipeToDismiss, promptSignIn, tapFeedback, pulseLogTab } from '../utils.js';
 import { openLogModal } from './log-modal.js';
@@ -57,6 +57,7 @@ async function paintFeedTab(body) {
   // too, so the spinner would disappear right along with everything
   // else it's there to stand in for.
   body.innerHTML = `
+    <div id="announce-slot"></div>
     <div class="view-loading" id="feed-loading" hidden>${spinner()}</div>
     <div id="feed-sections" class="${cachedSections ? '' : 'feed-body--loading'}">
       ${cachedSections || `
@@ -67,6 +68,12 @@ async function paintFeedTab(body) {
       `}
     </div>
   `;
+
+  // Deliberately OUTSIDE #feed-sections, which is what gets cached and
+  // replayed on the next visit — a banner that had since been switched
+  // off would otherwise keep reappearing from that cache. This slot is
+  // always painted from a live read instead.
+  paintAnnouncement(qs('#announce-slot', body));
 
   // The sections used to be painted independently and each one revealed
   // itself the moment its own request came back, so opening the feed
@@ -94,19 +101,49 @@ async function paintFeedTab(body) {
   setCached(FEED_CACHE_KEY, qs('#feed-sections', body)?.innerHTML || '');
 }
 
+// A banner pushed from the admin build. Renders nothing at all in the
+// normal case (no active announcement), so the feed is untouched unless
+// there's genuinely something to say.
+async function paintAnnouncement(slot) {
+  if (!slot) return;
+  let announcement = null;
+  try {
+    announcement = await api.getActiveAnnouncement();
+  } catch {
+    return;
+  }
+  if (!announcement) return;
+
+  const body = `
+    <span class="announce__dot"></span>
+    <span class="announce__text">${esc(announcement.message)}</span>
+    ${announcement.link ? `<span class="announce__chev">${iconChevronRight()}</span>` : ''}`;
+
+  slot.innerHTML = announcement.link
+    ? `<a class="announce" href="${esc(announcement.link)}" target="_blank" rel="noopener noreferrer">${body}</a>`
+    : `<div class="announce">${body}</div>`;
+}
+
 // Articles link straight out to the publisher (target="_blank") rather
 // than opening in-app — this is an aggregator, not a reader, and these
 // outlets' own pages are where the ads/analytics that fund them live.
+// A post written in the admin build may have no link at all, though, and
+// an <a href=""> would "navigate" to the current page on tap — so those
+// render as a plain, non-clickable card instead.
 function newsCard(article) {
+  const tag = article.link ? 'a' : 'div';
+  const linkAttrs = article.link
+    ? ` href="${esc(article.link)}" target="_blank" rel="noopener noreferrer"`
+    : '';
   return `
-    <a class="news-card" href="${esc(article.link)}" target="_blank" rel="noopener noreferrer">
+    <${tag} class="news-card${article.isCustom ? ' news-card--own' : ''}"${linkAttrs}>
       <span class="news-card__cover" style="${article.image ? `background-image:url('${esc(article.image)}')` : ''}"></span>
       <span class="news-card__info">
         <span class="news-card__title">${esc(article.title)}</span>
         ${article.summary ? `<span class="news-card__summary">${esc(article.summary)}</span>` : ''}
         <span class="news-card__meta">${esc(article.source)} · ${timeAgo(article.pubDate)}</span>
       </span>
-    </a>`;
+    </${tag}>`;
 }
 
 async function paintNewsTab(body) {

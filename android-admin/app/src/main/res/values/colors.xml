@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="window_bg">#0a0b0f</color>
+    <!-- Amber, matching the admin web app's accent — the whole point is
+         that this icon can't be mistaken for the real PlayThruu app
+         sitting next to it on the home screen. -->
+    <color name="ic_launcher_background">#FFB020</color>
+</resources>

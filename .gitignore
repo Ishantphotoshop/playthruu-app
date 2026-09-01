@@ -1,0 +1,13 @@
+# Android build output and machine-specific / secret build config.
+# The site itself is served straight from this repo by GitHub Pages, so
+# only the Android shell in android-admin/ has anything to ignore.
+android-admin/.gradle/
+android-admin/build/
+android-admin/app/build/
+android-admin/local.properties
+android-admin/keystore.properties
+android-admin/*.jks
+android-admin/*.keystore
+
+# Supabase CLI scratch state
+supabase/.temp/

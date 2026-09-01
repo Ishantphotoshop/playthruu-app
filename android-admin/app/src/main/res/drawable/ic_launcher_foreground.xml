@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The PlayThruu mark, taken straight from icons/mark-blue.svg — its
+     path data is already in a form Android's pathData accepts, so this
+     is the same geometry the web app uses rather than a redrawn
+     approximation.
+
+     The source art is a 120-unit square; an adaptive icon's foreground
+     is 108 units with only the middle 66 guaranteed to be visible after
+     the launcher applies its own mask. Scaling by 0.55 (120 * 0.55 = 66)
+     and offsetting by (108 - 66) / 2 = 21 lands it exactly in that safe
+     circle, so no launcher shape can clip the notch. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:scaleX="0.55"
+        android:scaleY="0.55"
+        android:translateX="21"
+        android:translateY="21">
+        <path
+            android:fillColor="#12130F"
+            android:pathData="M 113.4045,52 A 54,54 0 1,0 113.4045,68 L 64,68 A 8,8 0 0,1 64,52 Z" />
+    </group>
+</vector>

@@ -56,7 +56,7 @@ const NEWS_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/news-proxy`;
 // 5 outlets' RSS feeds genuinely needs more headroom than a single IGDB
 // query does, and this only ever runs once per News tab visit (results
 // are cached server-side for 10 minutes after that).
-export async function getGameNews() {
+async function fetchRssNews() {
   try {
     const res = await fetchWithTimeout(NEWS_FUNCTION_URL, {
       headers: { Authorization: `Bearer ${SUPABASE_ANON_KEY}` },
@@ -67,6 +67,48 @@ export async function getGameNews() {
   } catch {
     return [];
   }
+}
+
+// Posts written in the admin build, shaped into exactly what an RSS
+// article looks like so the News tab doesn't need to know the
+// difference. Empty (never throwing) if the admin migration hasn't run.
+async function fetchCustomNews() {
+  try {
+    const { data, error } = await supabase
+      .from('custom_news')
+      .select('id, title, summary, image_url, source, link, published_at, pinned')
+      .eq('is_published', true)
+      .order('published_at', { ascending: false })
+      .limit(30);
+    if (error) return [];
+    return (data || []).map((p) => ({
+      title: p.title,
+      summary: p.summary || '',
+      image: p.image_url || '',
+      source: p.source || 'PlayThruu',
+      link: p.link || '',
+      pubDate: p.published_at,
+      pinned: !!p.pinned,
+      isCustom: true,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+// Own posts first (the pinned ones), then everything else — custom and
+// RSS together — newest first. Both sources are fetched at once rather
+// than in sequence so adding this can't make the News tab slower than
+// the RSS call it already waited on.
+export async function getGameNews() {
+  const [custom, rss] = await Promise.all([fetchCustomNews(), fetchRssNews()]);
+  if (!custom.length) return rss;
+
+  const pinned = custom.filter((a) => a.pinned);
+  const mixed = [...custom.filter((a) => !a.pinned), ...rss]
+    .sort((a, b) => new Date(b.pubDate || 0) - new Date(a.pubDate || 0));
+
+  return [...pinned, ...mixed];
 }
 
 // ------------------------------------------------------------
@@ -116,6 +158,11 @@ export async function searchGames(query, limit = 20) {
     .from('games')
     .select('*')
     .ilike('title', `%${query}%`)
+    // is_hidden is what the admin build sets to pull a game out of the
+    // app without deleting the row (and everyone's logs of it). "not is
+    // true" rather than "eq false" on purpose: rows predating the column
+    // have it NULL, and eq(false) would quietly hide every one of them.
+    .not('is_hidden', 'is', true)
     .order('title')
     .limit(limit);
   if (error) throw error;
@@ -842,10 +889,92 @@ export const BROWSE_SORTS = [
   { label: 'Newest Releases', value: 'newest' }, { label: 'A–Z', value: 'az' },
 ];
 
+// ------------------------------------------------------------
+// CURATED TRENDING (admin build)
+// ------------------------------------------------------------
+// Everything below degrades to "behave exactly as before" if the admin
+// migration hasn't been run or the tables are empty — the whole point is
+// that shipping this can't change what anyone sees until a real pick is
+// made in the admin app. So every failure path returns a neutral value
+// instead of throwing: a missing table is a normal state here, not an
+// error worth surfacing to somebody scrolling their feed.
+async function getCuratedTrending() {
+  try {
+    const { data, error } = await supabase
+      .from('curated_trending')
+      .select('position, games(*)')
+      .order('position', { ascending: true });
+    if (error) return [];
+    return (data || []).map((r) => r.games).filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
+async function getAppSetting(key, fallbackValue) {
+  try {
+    const { data, error } = await supabase.from('app_settings').select('value').eq('key', key).maybeSingle();
+    if (error) return fallbackValue;
+    return data?.value ?? fallbackValue;
+  } catch {
+    return fallbackValue;
+  }
+}
+
+// A banner the admin build can push across the top of everyone's feed.
+// Returns null when there isn't one, which is the overwhelmingly common
+// case — the feed only renders anything when this is non-null.
+export async function getActiveAnnouncement() {
+  try {
+    const { data, error } = await supabase
+      .from('announcements')
+      .select('id, message, link, created_at')
+      .eq('is_active', true)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) return null;
+    return data || null;
+  } catch {
+    return null;
+  }
+}
+
 // "What's the World Playing" — roughly the 10 games with the most
 // rating activity on IGDB over the last month. This is real-world
 // popularity, not just this app's own (still-small) activity.
+//
+// Hand-picked games from the admin build lead the list (or replace it
+// outright, depending on the trending_mode setting). With no picks
+// saved, this is a straight passthrough to the live IGDB list below.
 export async function getWorldTrending(limit = 10, days = 30) {
+  const curated = await getCuratedTrending();
+  if (!curated.length) return fetchLiveTrending(limit, days);
+
+  const mode = await getAppSetting('trending_mode', 'lead');
+  if (mode === 'replace' && curated.length >= limit) return curated.slice(0, limit);
+
+  let live = [];
+  try {
+    live = await fetchLiveTrending(limit, days);
+  } catch {
+    live = [];
+  }
+
+  // A curated game is very often already in IGDB's popular list, and
+  // showing it twice would look broken. Matching on igdb_id first (the
+  // stable identity) and falling back to a normalised title covers both
+  // catalog rows that came from IGDB and ones that didn't.
+  const pickedIgdb = new Set(curated.map((g) => g.igdb_id).filter(Boolean));
+  const pickedTitles = new Set(curated.map((g) => (g.title || '').trim().toLowerCase()));
+  const rest = live.filter((g) =>
+    !(g.igdb_id && pickedIgdb.has(g.igdb_id)) &&
+    !pickedTitles.has((g.title || '').trim().toLowerCase()));
+
+  return [...curated, ...rest].slice(0, Math.max(limit, curated.length));
+}
+
+async function fetchLiveTrending(limit = 10, days = 30) {
   // Match IGDB's own "Popular Right Now" (their PopScore) instead of raw
   // rating counts. The old query sorted recently-released games by
   // total_rating_count, which surfaced obscure just-out titles with a
@@ -1674,7 +1803,9 @@ export async function addGame({ title, cover_url, background_url, platform, rele
 }
 
 export async function recentGames(limit = 20) {
-  const { data, error } = await supabase.from('games').select('*').order('created_at', { ascending: false }).limit(limit);
+  const { data, error } = await supabase.from('games').select('*')
+    .not('is_hidden', 'is', true)
+    .order('created_at', { ascending: false }).limit(limit);
   if (error) throw error;
   return data;
 }
