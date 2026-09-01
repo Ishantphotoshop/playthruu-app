@@ -227,6 +227,9 @@ a { color: inherit; }
   padding: 11px 16px; border-radius: 10px;
   font-weight: 700; font-size: 14px; letter-spacing: -0.005em;
   background: var(--surface-raised); border: 1px solid var(--line); color: var(--ink);
+  /* Some buttons are real <a>s (the link out to the Supabase editor),
+     which would otherwise carry an underline no other button has. */
+  text-decoration: none;
   transition: transform var(--dur) var(--ease), background var(--dur) var(--ease), opacity var(--dur) var(--ease);
 }
 .btn:active { transform: scale(0.96); }

@@ -225,55 +225,37 @@ function loginScreen(prefill = '') {
   });
 }
 
-function notAdminScreen(userId) {
-  const sql = `update public.profiles\n   set is_admin = true\n where id = '${userId}';`;
-  root.innerHTML = `
-    <div class="gate">
-      <div class="gate__mark"></div>
-      <h1 class="gate__title">Almost there</h1>
-      <p class="gate__sub">You're signed in, but this account isn't an admin yet. Run this once and reopen the app.</p>
-
-      <div class="step">
-        <span class="step__num">1</span>
-        <span class="step__text">Open the <strong>Supabase SQL editor</strong> for this project.</span>
-      </div>
-      <div class="step">
-        <span class="step__num">2</span>
-        <span class="step__text">Paste and run the statement below — it's scoped to <strong>your</strong> account id, nobody else's.</span>
-      </div>
-
-      <code class="code">${esc(sql)}</code>
-
-      <div class="btn-row">
-        <button class="btn" id="copy-sql">Copy SQL</button>
-        <a class="btn btn--accent" href="${SQL_EDITOR_URL}" target="_blank" rel="noopener">Open editor</a>
-      </div>
-      <div class="btn-row">
-        <button class="btn" id="recheck">I've run it — recheck</button>
-      </div>
-      <p class="hint">Signed in as <span class="mono">${esc(state.user?.email || userId)}</span></p>
-      <div class="btn-row"><button class="btn" id="signout">Sign out</button></div>
-    </div>`;
-
-  qs('#copy-sql').addEventListener('click', () => copy(sql, 'SQL copied'));
-  qs('#recheck').addEventListener('click', boot);
-  qs('#signout').addEventListener('click', signOut);
+// Both first-run gaps — the tables not existing, and this account not
+// being flagged as an admin — are fixed by SQL, and the grant needs an
+// id you only have once you're signed in. So they're deliberately ONE
+// screen handing over ONE block to paste, rather than two rounds of
+// "copy this, run it, come back, now copy this other thing".
+function grantSql(userId) {
+  return `-- Make this account an admin\nupdate public.profiles\n   set is_admin = true\n where id = '${userId}';`;
 }
 
-async function setupScreen() {
+async function setupScreen(userId, { needsMigration, needsAdmin }) {
+  const both = needsMigration && needsAdmin;
+  const title = needsMigration ? 'One-time setup' : 'Almost there';
+  const sub = both
+    ? "Two things to switch on, both in one go. Copy the SQL below, run it once in Supabase, and this screen never comes back."
+    : needsMigration
+      ? "The admin tables aren't in the database yet. Run the migration once and this screen goes away for good."
+      : "You're signed in, but this account isn't an admin yet. Run this once and reopen the app.";
+
   root.innerHTML = `
     <div class="gate">
       <div class="gate__mark"></div>
-      <h1 class="gate__title">One-time setup</h1>
-      <p class="gate__sub">The admin tables aren't in the database yet. Run the migration once and this screen goes away for good.</p>
+      <h1 class="gate__title">${esc(title)}</h1>
+      <p class="gate__sub">${esc(sub)}</p>
 
       <div class="step">
         <span class="step__num">1</span>
-        <span class="step__text">Tap <strong>Copy migration</strong> below.</span>
+        <span class="step__text">Tap <strong>Copy setup SQL</strong>.</span>
       </div>
       <div class="step">
         <span class="step__num">2</span>
-        <span class="step__text">Open the <strong>Supabase SQL editor</strong>, paste, and hit Run. It's safe to run more than once.</span>
+        <span class="step__text">Tap <strong>Open editor</strong>, paste, and hit Run. It's safe to run more than once.</span>
       </div>
       <div class="step">
         <span class="step__num">3</span>
@@ -281,24 +263,40 @@ async function setupScreen() {
       </div>
 
       <div class="btn-row">
-        <button class="btn" id="copy-migration">Copy migration</button>
+        <button class="btn" id="copy-sql">Copy setup SQL</button>
         <a class="btn btn--accent" href="${SQL_EDITOR_URL}" target="_blank" rel="noopener">Open editor</a>
       </div>
       <div class="btn-row">
         <button class="btn" id="recheck">Recheck</button>
       </div>
-      <p class="hint">Creates <span class="mono">curated_trending</span>, <span class="mono">custom_news</span>,
-      <span class="mono">announcements</span> and <span class="mono">app_settings</span>, all admin-write-only.</p>
+
+      ${needsAdmin ? `<p class="hint">The grant below is scoped to your own account id, nobody else's.</p>
+        <code class="code">${esc(grantSql(userId))}</code>` : ''}
+      ${needsMigration ? `<p class="hint">Creates <span class="mono">curated_trending</span>, <span class="mono">custom_news</span>,
+        <span class="mono">announcements</span> and <span class="mono">app_settings</span> — all readable by the app, writable only by admins.</p>` : ''}
+
+      <p class="hint">Signed in as <span class="mono">${esc(state.user?.email || userId)}</span></p>
+      <div class="btn-row"><button class="btn" id="signout">Sign out</button></div>
     </div>`;
 
   qs('#recheck').addEventListener('click', boot);
-  qs('#copy-migration').addEventListener('click', async () => {
+  qs('#signout').addEventListener('click', signOut);
+
+  qs('#copy-sql').addEventListener('click', async () => {
     try {
-      const res = await fetch(MIGRATION_PATH, { cache: 'no-store' });
-      if (!res.ok) throw new Error('Could not load the migration file');
-      await copy(await res.text(), 'Migration copied');
+      let sql = '';
+      if (needsMigration) {
+        const res = await fetch(MIGRATION_PATH, { cache: 'no-store' });
+        if (!res.ok) throw new Error('Could not load the migration file');
+        sql += await res.text();
+      }
+      // The grant goes last on purpose: if both are needed it wants the
+      // profiles table to already be settled, and putting it at the end
+      // means the run finishes on the statement that unlocks the app.
+      if (needsAdmin) sql += `\n\n${grantSql(userId)}\n`;
+      await copy(sql, both ? 'Setup SQL copied' : 'Copied');
     } catch (err) {
-      fail(err, 'Could not load the migration file');
+      fail(err, 'Could not build the setup SQL');
     }
   });
 }
@@ -1087,11 +1085,19 @@ async function boot() {
   if (profErr) { fail(profErr, 'Could not load your profile'); loginScreen(); return; }
   state.profile = profile;
 
-  if (!profile?.is_admin) { notAdminScreen(session.user.id); return; }
-
-  // Admin confirmed — now check the toolkit tables actually exist.
+  // Both checks run before either is reported, so a first launch can
+  // hand over one combined block of SQL instead of sending you to the
+  // dashboard and back twice.
   const { error: setupErr } = await supabase.from('app_settings').select('key').limit(1);
-  if (setupErr && isMissingTable(setupErr)) { setupScreen(); return; }
+  const needsMigration = !!(setupErr && isMissingTable(setupErr));
+  const needsAdmin = !profile?.is_admin;
+
+  if (setupErr && !needsMigration) { fail(setupErr, 'Could not reach the database'); }
+
+  if (needsMigration || needsAdmin) {
+    setupScreen(session.user.id, { needsMigration, needsAdmin });
+    return;
+  }
 
   render(location.hash.replace(/^#\/?/, '') || 'home');
 }
