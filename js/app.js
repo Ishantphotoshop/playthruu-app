@@ -283,10 +283,41 @@ async function loadSession(user) {
   registerRoutes();
   startRouter();
   promptUsernameIfPlaceholder();
+  startPresenceHeartbeat(user.id);
 
   refreshMessageBadge();
   unsubscribeConversations?.();
   unsubscribeConversations = api.subscribeToConversations(user.id, refreshMessageBadge);
+}
+
+// Records that this account is currently using the app, so the admin
+// build can show who's online and when everyone else was last around.
+//
+// Three things keep this cheap. It only writes every PRESENCE_EVERY ms
+// however often it's poked; it stops writing entirely while the app is
+// in the background (a phone left on the feed overnight shouldn't look
+// "online" until morning); and it's deliberately started AFTER the
+// suspended-account check above returns, so a banned account never
+// registers as present.
+const PRESENCE_EVERY = 60_000;
+let presenceTimer = null;
+let lastPresenceWrite = 0;
+
+function startPresenceHeartbeat(userId) {
+  const beat = (force = false) => {
+    if (document.visibilityState !== 'visible') return;
+    const now = Date.now();
+    if (!force && now - lastPresenceWrite < PRESENCE_EVERY) return;
+    lastPresenceWrite = now;
+    api.touchPresence(userId);
+  };
+
+  beat(true);
+  clearInterval(presenceTimer);
+  presenceTimer = setInterval(beat, PRESENCE_EVERY);
+  // Coming back to the app should register immediately rather than
+  // waiting out the rest of an interval that ticked while hidden.
+  document.addEventListener('visibilitychange', () => beat());
 }
 
 // Shown in place of the whole app when the signed-in account is

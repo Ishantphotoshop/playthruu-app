@@ -1,403 +1,170 @@
 /* ============================================================
-   PLAYTHRUU ADMIN — standalone stylesheet.
+   PLAYTHRUU ADMIN — the thin layer on top of the app's own stylesheet.
 
-   Deliberately NOT importing the main app's css/styles.css. This build
-   has to be impossible to confuse with the real app at a glance (you're
-   one tap from suspending somebody), and sharing a stylesheet would
-   also mean any tuning here could ripple back into production. So the
-   ground and type match PlayThruu, and the accent doesn't: the app is
-   lime, the control room is amber.
+   ../css/styles.css does the heavy lifting: colour tokens, both themes,
+   type scale, .btn, .field, .list-card, .modal, .topbar, .stamp, and so
+   on. Everything here is either genuinely absent from the app (a
+   presence dot, a SQL block) or a small adjustment where an app
+   component is being used for a slightly different job.
+
+   Nothing in this file may redefine an app token. If a colour is needed,
+   it comes from var(--...) so light theme keeps working.
    ============================================================ */
 
-:root {
-  --bg: #0a0b0f;
-  --surface: #14161d;
-  --surface-raised: #1b1e27;
-  --surface-high: #232733;
-  --line: rgba(255, 255, 255, 0.09);
-  --line-strong: rgba(255, 255, 255, 0.16);
+/* ---------------------------------------------------------- shell */
+/* The app gives #app a min-height and a max-height but no definite
+   height, so a flex child with overflow:auto can't resolve against it —
+   tall content grows #app to its 1000px cap instead of scrolling inside
+   .view-body, and the extra height spills past the viewport as a
+   document-level scrollbar down the right edge. Pinning an explicit
+   height fixes that while keeping the app's own desktop cap, so the
+   panel still reads phone-shaped on a big monitor rather than
+   stretching to fill it. Scoped to the admin build; the app's own
+   stylesheet is untouched. */
+#app { height: min(100dvh, 1000px); }
 
-  --ink: #f2f3f5;
-  --ink-dim: #9aa0ad;
-  --ink-faint: #646b7a;
+/* ---------------------------------------------------------- identity */
+/* The build is marked with the app's own .stamp rather than a different
+   accent colour, so it reads as part of PlayThruu while still being
+   impossible to mistake for the app itself. */
+.adm-stamp { flex-shrink: 0; }
 
-  --accent: #ffb020;
-  --accent-soft: rgba(255, 176, 32, 0.14);
-  --danger: #ff5f56;
-  --danger-soft: rgba(255, 95, 86, 0.14);
-  --success: #4ade80;
-  --success-soft: rgba(74, 222, 128, 0.14);
-
-  --font-brand: 'Unbounded', system-ui, sans-serif;
-  --font-body: 'Manrope', system-ui, -apple-system, sans-serif;
-  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
-
-  --radius-s: 8px;
-  --radius-m: 14px;
-  --radius-l: 20px;
-
-  --pad-x: 16px;
-  --safe-top: env(safe-area-inset-top, 0px);
-  --safe-bottom: env(safe-area-inset-bottom, 0px);
-
-  --dur: 180ms;
-  --ease: cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-* { box-sizing: border-box; }
-html, body { margin: 0; padding: 0; }
-body {
-  background: var(--bg);
-  color: var(--ink);
-  font-family: var(--font-body);
-  font-size: 15px;
-  line-height: 1.45;
-  -webkit-font-smoothing: antialiased;
-  overscroll-behavior-y: none;
-}
-button { font: inherit; color: inherit; background: none; border: none; padding: 0; cursor: pointer; }
-input, textarea, select { font: inherit; color: inherit; }
-img { max-width: 100%; display: block; }
-a { color: inherit; }
-:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
-
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
-}
-
-#admin-root {
-  max-width: 560px;
-  margin: 0 auto;
-  min-height: 100dvh;
-  display: flex;
-  flex-direction: column;
-  position: relative;
-}
-
-/* ---------------------------------------------------------- boot */
-.boot { flex: 1; display: grid; place-items: center; gap: 14px; align-content: center; min-height: 100dvh; }
-.boot__mark {
-  width: 54px; height: 54px; border-radius: 14px;
-  background: url('../icons/mark-blue.svg') center / cover;
-  animation: boot-pulse 1.4s ease-in-out infinite;
-}
-.boot__label {
-  font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.18em;
-  text-transform: uppercase; color: var(--ink-faint); margin: 0;
-}
-@keyframes boot-pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(0.92); opacity: 0.6; } }
-
-/* ---------------------------------------------------------- header */
-.topbar {
-  position: sticky; top: 0; z-index: 20;
-  display: flex; align-items: center; gap: 12px;
-  padding: calc(12px + var(--safe-top)) var(--pad-x) 12px;
-  background: var(--bg);
-  border-bottom: 1px solid var(--line);
-}
-.topbar__back {
-  width: 36px; height: 36px; flex-shrink: 0;
+/* ---------------------------------------------------------- tiles */
+/* .list-card expects a 104x72 poster collage on the left; the section
+   menu wants a small icon instead, so this replaces that slot. */
+.adm-tile__icon {
+  width: 46px; height: 46px; flex-shrink: 0;
   display: grid; place-items: center;
-  background: var(--surface-raised); border: 1px solid var(--line);
-  border-radius: 50%;
-  transition: background var(--dur) var(--ease), transform var(--dur) var(--ease);
+  border-radius: var(--radius-m);
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+  color: var(--accent-bright);
 }
-.topbar__back:active { transform: scale(0.92); background: var(--surface-high); }
-.topbar__back svg { width: 17px; height: 17px; }
-.topbar__title {
-  font-family: var(--font-brand); font-weight: 700; font-size: 17px;
-  letter-spacing: -0.01em; flex: 1;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.topbar__badge {
-  font-family: var(--font-mono); font-size: 9.5px; font-weight: 500;
-  letter-spacing: 0.14em; text-transform: uppercase;
-  color: var(--accent); background: var(--accent-soft);
-  border: 1px solid rgba(255, 176, 32, 0.3);
-  padding: 4px 8px; border-radius: 999px; flex-shrink: 0;
-}
+.adm-tile__icon svg { width: 21px; height: 21px; }
+.adm-tile { width: 100%; text-align: left; }
+/* The section menu's titles are single-line labels, not the two-line
+   wrapping list names .list-card__name is built for. */
+.adm-tile .list-card__name { -webkit-line-clamp: 1; }
 
-.body {
-  flex: 1;
-  padding: 18px var(--pad-x) calc(40px + var(--safe-bottom));
-  animation: enter var(--dur) var(--ease);
-}
-@keyframes enter { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
-
-/* ---------------------------------------------------------- type */
-.h-section {
-  font-family: var(--font-mono); font-size: 10.5px; font-weight: 500;
-  letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-faint);
-  margin: 26px 2px 10px;
-}
-.h-section:first-child { margin-top: 4px; }
-.muted { color: var(--ink-dim); }
-.faint { color: var(--ink-faint); }
-.mono { font-family: var(--font-mono); }
-.hint { font-size: 13px; color: var(--ink-faint); line-height: 1.5; margin: 8px 2px 0; }
-
-/* ---------------------------------------------------------- stat tiles */
-.stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.stat {
-  background: var(--surface); border: 1px solid var(--line);
-  border-radius: var(--radius-m); padding: 13px 10px 11px;
-  text-align: center;
-}
-.stat__num {
-  font-family: var(--font-mono); font-size: 21px; font-weight: 500;
-  color: var(--ink); line-height: 1.1; font-variant-numeric: tabular-nums;
-}
-.stat__label {
-  font-size: 10.5px; color: var(--ink-faint); margin-top: 4px;
-  letter-spacing: 0.03em;
-}
-
-/* ---------------------------------------------------------- section list */
-.nav-list { display: flex; flex-direction: column; gap: 8px; }
-.nav-row {
-  display: flex; align-items: center; gap: 13px; width: 100%; text-align: left;
-  background: var(--surface); border: 1px solid var(--line);
-  border-radius: var(--radius-m); padding: 14px 14px;
-  transition: background var(--dur) var(--ease), transform var(--dur) var(--ease);
-}
-.nav-row:active { transform: scale(0.985); background: var(--surface-raised); }
-.nav-row__icon {
-  width: 38px; height: 38px; flex-shrink: 0;
-  display: grid; place-items: center; border-radius: 11px;
-  background: var(--accent-soft); color: var(--accent);
-}
-.nav-row__icon svg { width: 19px; height: 19px; }
-/* A column flex container, not a bare span — the title and subtitle
-   inside are spans too, so without this they lay out inline and read as
-   one run-on sentence ("Trending now Hand-pick what the feed features")
-   rather than a heading with a caption under it. */
-.nav-row__text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.nav-row__title { font-weight: 700; font-size: 15px; letter-spacing: -0.01em; }
-.nav-row__sub { font-size: 12.5px; color: var(--ink-faint); margin-top: 1px; }
-.nav-row__chev { color: var(--ink-faint); flex-shrink: 0; }
-.nav-row__chev svg { width: 17px; height: 17px; }
-.nav-row__count {
+.adm-count {
   font-family: var(--font-mono); font-size: 11px; font-weight: 500;
   background: var(--danger); color: #fff;
   min-width: 20px; height: 20px; padding: 0 6px;
-  border-radius: 999px; display: grid; place-items: center; flex-shrink: 0;
+  border-radius: var(--radius-pill);
+  display: grid; place-items: center; flex-shrink: 0;
 }
 
-/* ---------------------------------------------------------- cards / rows */
-.card {
-  background: var(--surface); border: 1px solid var(--line);
-  border-radius: var(--radius-m); padding: 14px;
-}
-.card + .card { margin-top: 8px; }
-
-.row {
-  display: flex; align-items: center; gap: 11px;
-  background: var(--surface); border: 1px solid var(--line);
-  border-radius: var(--radius-m); padding: 10px 12px;
-}
-.row + .row { margin-top: 8px; }
-.row__main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.row__title {
-  font-weight: 600; font-size: 14.5px; letter-spacing: -0.01em;
+/* ---------------------------------------------------------- rows */
+.adm-row { width: 100%; text-align: left; margin-bottom: var(--space-2); }
+.adm-row__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.adm-row__title {
+  font-weight: var(--weight-strong); font-size: 14.5px; line-height: 1.3;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.row__sub {
-  font-size: 12px; color: var(--ink-faint); margin-top: 2px;
+.adm-row__title--wrap { white-space: normal; }
+.adm-row__meta {
+  font-size: var(--text-meta); color: var(--ink-dim); font-family: var(--font-mono);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.row__actions { display: flex; gap: 6px; flex-shrink: 0; }
+.adm-row__actions { display: flex; gap: 6px; flex-shrink: 0; }
 
-.thumb {
-  width: 40px; height: 54px; flex-shrink: 0; border-radius: 6px;
-  object-fit: cover; background: var(--surface-high);
+.adm-thumb {
+  width: 42px; aspect-ratio: var(--ratio-card); flex-shrink: 0;
+  border-radius: var(--radius-s); object-fit: cover; background: var(--surface);
 }
-.thumb--wide { width: 62px; height: 40px; border-radius: 7px; }
-.avatar {
-  width: 38px; height: 38px; flex-shrink: 0; border-radius: 50%;
-  object-fit: cover; background: var(--surface-high);
-}
-.avatar--fallback {
-  display: grid; place-items: center;
-  font-family: var(--font-mono); font-size: 12px; color: var(--ink-faint);
+.adm-thumb--wide { width: 64px; aspect-ratio: 4/3; }
+
+.adm-pos {
+  font-family: var(--font-mono); font-size: 11.5px; color: var(--accent-bright);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  border-radius: 6px; padding: 3px 7px; flex-shrink: 0;
 }
 
-/* ---------------------------------------------------------- buttons */
-.btn {
-  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
-  padding: 11px 16px; border-radius: 10px;
-  font-weight: 700; font-size: 14px; letter-spacing: -0.005em;
-  background: var(--surface-raised); border: 1px solid var(--line); color: var(--ink);
-  /* Some buttons are real <a>s (the link out to the Supabase editor),
-     which would otherwise carry an underline no other button has. */
-  text-decoration: none;
-  transition: transform var(--dur) var(--ease), background var(--dur) var(--ease), opacity var(--dur) var(--ease);
+/* ---------------------------------------------------------- presence */
+/* Green + pulsing only while someone is actually on the app right now;
+   everyone else gets a still, muted dot and a "last seen" time. The
+   pulse is the same idea as the feed's own "Playing" indicator, so the
+   two read as the same language. */
+.adm-presence { display: inline-flex; align-items: center; gap: 5px; }
+.adm-presence__dot {
+  width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+  background: var(--ink-faint);
 }
-.btn:active { transform: scale(0.96); }
-.btn:disabled { opacity: 0.45; pointer-events: none; }
-.btn svg { width: 16px; height: 16px; }
-.btn--accent { background: var(--accent); color: #12130f; border-color: transparent; }
-.btn--danger { background: var(--danger-soft); color: var(--danger); border-color: rgba(255, 95, 86, 0.3); }
-.btn--block { display: flex; width: 100%; }
-.btn--sm { padding: 7px 11px; font-size: 12.5px; border-radius: 8px; }
-.btn--icon { padding: 0; width: 34px; height: 34px; border-radius: 9px; flex-shrink: 0; }
-.btn--icon svg { width: 16px; height: 16px; }
-.btn-row { display: flex; gap: 8px; margin-top: 14px; }
-.btn-row .btn { flex: 1; }
+.adm-presence--online { color: var(--success); }
+.adm-presence--online .adm-presence__dot {
+  background: var(--success);
+  animation: adm-pulse 1.8s ease-in-out infinite;
+}
+@keyframes adm-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.78); }
+}
 
-/* ---------------------------------------------------------- forms */
-.field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 13px; }
-.field__label {
-  font-family: var(--font-mono); font-size: 10.5px; font-weight: 500;
-  letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-faint);
+/* ---------------------------------------------------------- setup */
+.adm-code {
+  display: block; width: 100%;
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius-s); padding: 13px;
+  font-family: var(--font-mono); font-size: 11.5px; line-height: 1.65;
+  color: var(--ink-dim); white-space: pre-wrap; word-break: break-all;
+  margin: var(--space-3) 0; text-align: left;
 }
-.input, .textarea, .select {
-  width: 100%; background: var(--surface-raised);
-  border: 1px solid var(--line); border-radius: 10px;
-  padding: 12px 13px; font-size: 15px; color: var(--ink);
-  transition: border-color var(--dur) var(--ease);
+.adm-step { display: flex; gap: 11px; margin-bottom: var(--space-3); text-align: left; }
+.adm-step__num {
+  width: 22px; height: 22px; flex-shrink: 0; border-radius: 50%;
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--accent-bright);
+  font-family: var(--font-mono); font-size: 11px;
+  display: grid; place-items: center; margin-top: 1px;
 }
-.input:focus, .textarea:focus, .select:focus { outline: none; border-color: var(--accent); }
-.input::placeholder, .textarea::placeholder { color: var(--ink-faint); }
-.textarea { resize: vertical; min-height: 84px; line-height: 1.5; }
-.select { appearance: none; }
+.adm-step__text { flex: 1; font-size: var(--text-body); line-height: 1.5; color: var(--ink-dim); }
+.adm-step__text strong { color: var(--ink); font-weight: var(--weight-strong); }
 
-.switch-row {
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  padding: 12px 0;
+.adm-gate {
+  min-height: 100dvh; display: flex; flex-direction: column; justify-content: center;
+  padding: var(--space-5) var(--space-4) calc(var(--space-5) + var(--safe-bottom));
 }
-.switch-row + .switch-row { border-top: 1px solid var(--line); }
-.switch-row__text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.switch-row__title { font-weight: 600; font-size: 14.5px; }
-.switch-row__sub { font-size: 12.5px; color: var(--ink-faint); margin-top: 2px; }
-.switch {
-  width: 46px; height: 28px; border-radius: 999px; flex-shrink: 0;
+.adm-gate__mark {
+  width: 52px; height: 52px; border-radius: var(--radius-m);
+  background: url('../icons/mark-blue.svg') center / cover;
+  margin-bottom: var(--space-3);
+}
+:root[data-theme="light"] .adm-gate__mark { background-image: url('../icons/mark-orange.svg'); }
+.adm-gate__title {
+  font-family: var(--font-brand); font-weight: 800; font-size: 26px;
+  letter-spacing: -0.02em; margin: 0 0 var(--space-2);
+}
+.adm-gate__sub { color: var(--ink-dim); font-size: var(--text-body); line-height: 1.5; margin: 0 0 var(--space-4); }
+
+/* ---------------------------------------------------------- misc */
+.adm-btn-row { display: flex; gap: var(--space-2); margin-top: var(--space-3); }
+.adm-btn-row .btn, .adm-btn-row a.btn { flex: 1; }
+/* .btn is used on real <a>s here (the link out to the Supabase editor),
+   which would otherwise carry an underline no other button has. */
+a.btn { text-decoration: none; }
+
+.adm-switch-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--space-3); padding: var(--space-3) 0;
+}
+.adm-switch-row + .adm-switch-row { border-top: 1px solid var(--line); }
+.adm-switch-row__text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.adm-switch-row__title { font-weight: var(--weight-strong); font-size: 14.5px; }
+.adm-switch-row__sub { font-size: var(--text-meta); color: var(--ink-faint); line-height: 1.4; }
+.adm-switch {
+  width: 46px; height: 28px; border-radius: var(--radius-pill); flex-shrink: 0;
   background: var(--surface-high); border: 1px solid var(--line);
   position: relative; transition: background var(--dur) var(--ease);
 }
-.switch::after {
+.adm-switch::after {
   content: ''; position: absolute; top: 3px; left: 3px;
   width: 20px; height: 20px; border-radius: 50%;
   background: var(--ink-faint);
   transition: transform var(--dur) var(--ease), background var(--dur) var(--ease);
 }
-.switch[aria-checked="true"] { background: var(--accent-soft); border-color: rgba(255, 176, 32, 0.4); }
-.switch[aria-checked="true"]::after { transform: translateX(18px); background: var(--accent); }
+.adm-switch[aria-checked="true"] { background: color-mix(in srgb, var(--accent) 22%, transparent); border-color: var(--accent); }
+.adm-switch[aria-checked="true"]::after { transform: translateX(18px); background: var(--accent-bright); }
+.adm-switch[disabled] { opacity: 0.45; }
 
-/* ---------------------------------------------------------- badges */
-.badge {
-  display: inline-block;
-  font-family: var(--font-mono); font-size: 9.5px; font-weight: 500;
-  letter-spacing: 0.1em; text-transform: uppercase;
-  padding: 3px 7px; border-radius: 5px;
-  background: var(--surface-high); color: var(--ink-dim);
-}
-.badge--accent { background: var(--accent-soft); color: var(--accent); }
-.badge--danger { background: var(--danger-soft); color: var(--danger); }
-.badge--success { background: var(--success-soft); color: var(--success); }
-
-/* ---------------------------------------------------------- states */
-.empty {
-  text-align: center; padding: 42px 20px; color: var(--ink-faint);
-}
-.empty svg { width: 32px; height: 32px; margin-bottom: 12px; opacity: 0.5; }
-.empty p { margin: 0; font-size: 14px; line-height: 1.55; }
-
-.spinner {
-  width: 26px; height: 26px; margin: 40px auto;
-  border: 2.5px solid var(--line-strong); border-top-color: var(--accent);
-  border-radius: 50%; animation: spin 0.7s linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-
-/* ---------------------------------------------------------- gate screens */
-.gate { padding: 0 var(--pad-x) 40px; display: flex; flex-direction: column; min-height: 100dvh; justify-content: center; gap: 8px; }
-.gate__mark {
-  width: 52px; height: 52px; border-radius: 14px; margin-bottom: 6px;
-  background: url('../icons/mark-blue.svg') center / cover;
-}
-.gate__title {
-  font-family: var(--font-brand); font-weight: 800; font-size: 25px;
-  letter-spacing: -0.02em; margin: 0;
-}
-.gate__sub { color: var(--ink-dim); font-size: 14.5px; line-height: 1.5; margin: 0 0 18px; }
-
-.code {
-  display: block; width: 100%;
-  background: #06070a; border: 1px solid var(--line);
-  border-radius: 10px; padding: 13px;
-  font-family: var(--font-mono); font-size: 11.5px; line-height: 1.65;
-  color: #cdd3de; white-space: pre-wrap; word-break: break-all;
-  margin: 10px 0; text-align: left;
-}
-.step { display: flex; gap: 11px; margin-bottom: 14px; }
-.step__num {
-  width: 22px; height: 22px; flex-shrink: 0; border-radius: 50%;
-  background: var(--accent-soft); color: var(--accent);
-  font-family: var(--font-mono); font-size: 11px; font-weight: 500;
-  display: grid; place-items: center; margin-top: 1px;
-}
-.step__text { flex: 1; font-size: 14px; line-height: 1.5; color: var(--ink-dim); }
-.step__text strong { color: var(--ink); font-weight: 600; }
-
-/* ---------------------------------------------------------- toast */
-.toast {
-  position: fixed; left: 50%; bottom: calc(26px + var(--safe-bottom));
-  transform: translateX(-50%);
-  background: var(--surface-high); border: 1px solid var(--line-strong);
-  color: var(--ink); font-size: 13.5px; font-weight: 600;
-  padding: 11px 17px; border-radius: 999px;
-  z-index: 200; max-width: 86%; text-align: center;
-  box-shadow: 0 12px 34px -10px rgba(0, 0, 0, 0.7);
-  animation: toast-in 220ms var(--ease);
-}
-.toast--error { border-color: rgba(255, 95, 86, 0.4); color: #ffb3ae; }
-.toast--ok { border-color: rgba(74, 222, 128, 0.35); color: #a7f3c6; }
-@keyframes toast-in { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }
-
-/* ---------------------------------------------------------- sheet */
-.sheet-backdrop {
-  position: fixed; inset: 0; z-index: 100;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
-  display: flex; align-items: flex-end; justify-content: center;
-  animation: fade var(--dur) var(--ease);
-}
-@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
-.sheet {
-  width: 100%; max-width: 560px;
-  background: var(--surface); border-top: 1px solid var(--line);
-  border-radius: var(--radius-l) var(--radius-l) 0 0;
-  padding: 8px var(--pad-x) calc(20px + var(--safe-bottom));
-  max-height: 88dvh; overflow-y: auto;
-  animation: sheet-up 260ms var(--ease);
-}
-@keyframes sheet-up { from { transform: translateY(100%); } to { transform: none; } }
-.sheet__grab {
-  width: 38px; height: 4px; border-radius: 999px;
-  background: var(--line-strong); margin: 6px auto 14px;
-}
-.sheet__title {
-  font-family: var(--font-brand); font-weight: 700; font-size: 17px;
-  letter-spacing: -0.01em; margin: 0 0 4px;
-}
-.sheet__sub { color: var(--ink-faint); font-size: 13px; margin: 0 0 16px; line-height: 1.5; }
-
-/* ---------------------------------------------------------- search */
-.search-wrap { position: relative; margin-bottom: 12px; }
-.search-wrap .input { padding-left: 38px; }
-.search-wrap__icon {
-  position: absolute; left: 13px; top: 50%; transform: translateY(-50%);
-  color: var(--ink-faint); pointer-events: none;
-}
-.search-wrap__icon svg { width: 16px; height: 16px; }
-
-/* Drag-to-reorder affordance on the curated list. */
-.row--draggable { cursor: grab; }
-.row--dragging { opacity: 0.45; }
-.drag-handle { color: var(--ink-faint); flex-shrink: 0; touch-action: none; }
-.drag-handle svg { width: 17px; height: 17px; }
-.pos-pill {
-  font-family: var(--font-mono); font-size: 11px; color: var(--accent);
-  background: var(--accent-soft); border-radius: 6px;
-  padding: 2px 6px; flex-shrink: 0;
-}
+.adm-search { margin-bottom: var(--space-3); }
+.adm-sheet-body { padding: 0 var(--space-4) var(--space-4); overflow-y: auto; }
+.adm-hint { font-size: var(--text-meta); color: var(--ink-faint); line-height: 1.5; margin: var(--space-3) 2px 0; }

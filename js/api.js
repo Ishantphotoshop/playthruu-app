@@ -921,6 +921,41 @@ async function getAppSetting(key, fallbackValue) {
   }
 }
 
+// ------------------------------------------------------------
+// PRESENCE
+// ------------------------------------------------------------
+// Writes are fire-and-forget on purpose. Nothing in the app depends on
+// a heartbeat landing, and a failed one (offline, or the migration not
+// run yet) must never surface as an error to somebody just using the
+// app — so this swallows everything and returns quietly.
+export async function touchPresence(userId) {
+  if (!userId) return;
+  try {
+    await supabase.from('user_presence').upsert(
+      { user_id: userId, last_seen_at: new Date().toISOString() },
+      { onConflict: 'user_id' },
+    );
+  } catch {
+    /* presence is best-effort */
+  }
+}
+
+// Admin-only in practice: the RLS policy on user_presence only returns
+// your own row unless you're an admin.
+export async function getPresenceFor(userIds) {
+  if (!userIds?.length) return {};
+  try {
+    const { data, error } = await supabase
+      .from('user_presence')
+      .select('user_id, last_seen_at')
+      .in('user_id', userIds);
+    if (error) return {};
+    return Object.fromEntries((data || []).map((r) => [r.user_id, r.last_seen_at]));
+  } catch {
+    return {};
+  }
+}
+
 // A banner the admin build can push across the top of everyone's feed.
 // Returns null when there isn't one, which is the overwhelmingly common
 // case — the feed only renders anything when this is non-null.

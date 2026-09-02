@@ -4,15 +4,22 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <title>PlayThruu Admin</title>
+<script>
+  // Same pre-paint theme read as the main app (see index.html at the
+  // repo root). Both pages are the same origin, so the choice made in
+  // the app's settings carries over here for free — the admin build
+  // follows whatever theme PlayThruu itself is set to.
+  try {
+    if (localStorage.getItem('playthruu_theme') === 'light') {
+      document.documentElement.setAttribute('data-theme', 'light');
+    }
+  } catch (e) { /* storage unavailable — dark default, same as the app */ }
+</script>
 <meta name="description" content="Control room for PlayThruu — curate trending, publish news, moderate people.">
-<meta name="theme-color" content="#0a0b0f">
+<meta name="theme-color" content="#12121a">
 <meta name="robots" content="noindex, nofollow">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<!-- Same three faces the main app loads, so the admin build reads as
-     part of the same product rather than a different piece of software:
-     Manrope for UI, Unbounded for the wordmark, IBM Plex Mono for the
-     numbers and metadata this app is mostly made of. -->
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&family=Unbounded:wght@700;800;900&display=swap" rel="stylesheet">
 <link rel="icon" href="../icons/icon-192.png">
 <link rel="apple-touch-icon" href="../icons/icon-192.png">
@@ -20,13 +27,17 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="PlayThruu Admin">
 <link rel="manifest" href="manifest.json">
+<!-- The app's real stylesheet, not a copy of its values: tokens, fonts,
+     buttons, cards, sheets and both themes all come from the same place
+     the app gets them, so this build can't drift away from it. admin.css
+     is only the handful of things that genuinely don't exist there. -->
+<link rel="stylesheet" href="../css/styles.css">
 <link rel="stylesheet" href="admin.css">
 </head>
 <body>
-<div id="admin-root">
-  <div class="boot">
-    <div class="boot__mark"></div>
-    <p class="boot__label">PlayThruu Admin</p>
+<div id="app">
+  <div class="boot-loader">
+    <div class="boot-loader__mark"></div>
   </div>
 </div>
 <script type="module" src="admin.js"></script>
