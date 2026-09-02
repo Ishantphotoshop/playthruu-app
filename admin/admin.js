@@ -18,22 +18,27 @@ import { supabase } from '../js/supabase-client.js';
 import { searchGamesEverywhere, addGame, getPresenceFor } from '../js/api.js';
 import { esc, qs, qsa, toast, timeAgo } from '../js/utils.js';
 import {
-  emptyState, spinner, avatarImg,
+  emptyState, spinner, avatarImg, ratingHistogram, wireRatingHistogram,
   iconBack, iconChevronRight, iconChevronUp, iconChevronDown,
   iconFlame, iconNewspaper, iconUser, iconFlag, iconGamepad,
   iconTrash, iconCheck, iconEye, iconNote, iconMessage, iconDiary,
+  iconList, iconMail,
 } from '../js/components.js';
 
 const PROJECT_REF = 'kpgjuuplpgilupogpezc';
 const SQL_EDITOR_URL = `https://supabase.com/dashboard/project/${PROJECT_REF}/sql/new`;
 
-// Each migration this build needs, with a table to probe for. Listing
-// them means the setup screen can tell WHICH are outstanding and hand
-// over only those — someone who already ran the first one shouldn't be
-// asked to paste it again.
+// Each migration this build needs, with a check for whether it's already
+// applied. Listing them means the setup screen can tell WHICH are
+// outstanding and hand over only those — someone who already ran the
+// first one shouldn't be asked to paste it again. The check is defined
+// per migration because they aren't all detectable the same way: the
+// first two each add a table (probe it exists), the third only adds
+// policies and so drops a sentinel row into app_settings to be found by.
 const MIGRATIONS = [
-  { path: '../migrations/2026-09-02_admin_toolkit.sql', probe: 'app_settings' },
-  { path: '../migrations/2026-09-02_presence_and_moderation.sql', probe: 'user_presence' },
+  { path: '../migrations/2026-09-02_admin_toolkit.sql', check: () => tableExists('app_settings') },
+  { path: '../migrations/2026-09-02_presence_and_moderation.sql', check: () => tableExists('user_presence') },
+  { path: '../migrations/2026-09-02_admin_analytics_access.sql', check: () => settingExists('analytics_ready') },
 ];
 
 // Anyone whose last heartbeat landed inside this window counts as on the
@@ -126,6 +131,55 @@ function openSheet(title, bodyHtml, wire) {
 }
 
 const iconMegaphone = () => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11v2a1 1 0 0 0 1 1h2.5l7 4.5v-14L6.5 9H4a1 1 0 0 0-1 1z"/><path d="M17.5 9.5a3.5 3.5 0 0 1 0 5"/><path d="M6.5 14v4a1.5 1.5 0 0 0 3 0v-2.5"/></svg>`;
+
+// ------------------------------------------------------------ charts
+// Small, dependency-free SVG/HTML charts. Everything is painted through
+// the app's colour tokens so both themes work with no per-chart code.
+
+// Cumulative growth curve — area under a line, stretched to the panel.
+function sparkArea(series) {
+  const W = 300;
+  const H = 66;
+  const pad = 3;
+  const n = series.length;
+  if (n < 2) return '';
+  const max = Math.max(1, ...series.map((s) => s.value));
+  const x = (i) => pad + (i / (n - 1)) * (W - 2 * pad);
+  const y = (v) => H - pad - (v / max) * (H - 2 * pad);
+  const line = series.map((s, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(s.value).toFixed(1)}`).join(' ');
+  const area = `${line} L${x(n - 1).toFixed(1)},${H} L${x(0).toFixed(1)},${H} Z`;
+  const last = series[n - 1];
+  return `<svg viewBox="0 0 ${W} ${H}" class="adm-spark" preserveAspectRatio="none" aria-hidden="true">
+    <path d="${area}" class="adm-spark__area"/>
+    <path d="${line}" class="adm-spark__line"/>
+    <circle cx="${x(n - 1).toFixed(1)}" cy="${y(last.value).toFixed(1)}" r="2.5" class="adm-spark__dot"/>
+  </svg>`;
+}
+
+// Day-by-day activity bars, most recent column highlighted.
+function barSeries(bars) {
+  const max = Math.max(1, ...bars.map((b) => b.value));
+  return `<div class="adm-bars" role="img" aria-label="Recent activity">
+    ${bars.map((b, i) => `
+      <div class="adm-bars__col" title="${esc(b.label)}: ${b.value}">
+        <div class="adm-bars__bar${i === bars.length - 1 ? ' adm-bars__bar--today' : ''}"
+             style="height:${b.value === 0 ? 2 : Math.max(6, Math.round((b.value / max) * 100))}%"></div>
+      </div>`).join('')}
+  </div>`;
+}
+
+// One stacked bar + a legend, for a categorical split.
+function segBar(segments) {
+  const shown = segments.filter((s) => s.value > 0);
+  const total = shown.reduce((a, s) => a + s.value, 0) || 1;
+  return `
+    <div class="adm-segbar">
+      ${shown.map((s) => `<span class="adm-segbar__seg" style="width:${(s.value / total * 100).toFixed(1)}%;background:${s.color}"></span>`).join('')}
+    </div>
+    <div class="adm-legend">
+      ${segments.map((s) => `<span class="adm-legend__item"><span class="adm-legend__dot" style="background:${s.color}"></span>${esc(s.label)} <b>${s.value}</b></span>`).join('')}
+    </div>`;
+}
 
 // ------------------------------------------------------------ chrome
 function header(title, { back = false } = {}) {
@@ -275,35 +329,42 @@ async function signOut() {
 // HOME
 // ============================================================
 const SECTIONS = [
-  { id: 'trending', icon: iconFlame, title: 'Trending now', sub: 'Hand-pick what the feed features' },
-  { id: 'news', icon: iconNewspaper, title: 'News', sub: 'Publish your own posts' },
-  { id: 'announce', icon: iconMegaphone, title: 'Announcement', sub: "Banner across everyone's feed" },
-  { id: 'activity', icon: iconDiary, title: 'Activity', sub: 'Everything happening right now' },
-  { id: 'people', icon: iconUser, title: 'People', sub: "Who's online, suspend, promote" },
-  { id: 'reports', icon: iconFlag, title: 'Reports', sub: 'Moderation queue', badge: () => state.openReports },
-  { id: 'comments', icon: iconMessage, title: 'Comments', sub: 'Read and remove' },
-  { id: 'games', icon: iconGamepad, title: 'Games', sub: 'Hide or remove catalog entries' },
+  { id: 'trending', icon: iconFlame, title: 'Trending', sub: 'Feature games' },
+  { id: 'news', icon: iconNewspaper, title: 'News', sub: 'Publish posts' },
+  { id: 'announce', icon: iconMegaphone, title: 'Announce', sub: 'Feed banner' },
+  { id: 'activity', icon: iconDiary, title: 'Activity', sub: 'Live logs' },
+  { id: 'people', icon: iconUser, title: 'People', sub: "Who's online" },
+  { id: 'reports', icon: iconFlag, title: 'Reports', sub: 'Moderation' },
+  { id: 'comments', icon: iconMessage, title: 'Comments', sub: 'Read, remove' },
+  { id: 'lists', icon: iconList, title: 'Lists', sub: 'User collections' },
+  { id: 'games', icon: iconGamepad, title: 'Games', sub: 'Hide or remove' },
+  { id: 'waitlist', icon: iconMail, title: 'Waitlist', sub: 'Signups' },
 ];
 
 SCREENS.home = function home() {
+  const name = (state.profile?.display_name || state.profile?.username || '').split(' ')[0] || 'there';
   paint(`
     ${header('PlayThruu')}
     <main class="view-body">
+      <div class="adm-hero">
+        <span class="adm-hero__hello">Hey ${esc(name)}</span>
+        <span class="adm-hero__now" id="hero-now"><b>·</b> online now</span>
+      </div>
+
       <h2 class="section-heading">At a glance</h2>
       <div class="stat-card-row" id="stats-1"></div>
       <div class="stat-card-row" id="stats-2" style="margin-top:calc(-1 * var(--space-3))"></div>
+      <div id="analytics"></div>
 
       <h2 class="section-heading">Control</h2>
-      <div class="list-cards" id="nav">
+      <div class="adm-grid" id="nav">
         ${SECTIONS.map((s) => `
-          <button class="list-card adm-tile" data-go="${s.id}">
-            <span class="adm-tile__icon">${s.icon()}</span>
-            <span class="list-card__body">
-              <span class="list-card__name">${esc(s.title)}</span>
-              <span class="list-card__meta">${esc(s.sub)}</span>
+          <button class="adm-gtile" data-go="${s.id}">
+            <span class="adm-gtile__icon">${s.icon()}</span>
+            <span>
+              <span class="adm-gtile__title">${esc(s.title)}</span>
+              <span class="adm-gtile__sub">${esc(s.sub)}</span>
             </span>
-            <span class="adm-badge-slot" data-slot="${s.id}"></span>
-            <span class="list-card__chev">${iconChevronRight()}</span>
           </button>`).join('')}
       </div>
 
@@ -320,51 +381,148 @@ SCREENS.home = function home() {
 
   qs('#signout').addEventListener('click', signOut);
   qsa('[data-go]').forEach((el) => el.addEventListener('click', () => go(el.dataset.go)));
-  loadStats();
+  loadDashboard();
 };
 
-async function loadStats() {
-  const count = async (table, build) => {
-    try {
-      let q = supabase.from(table).select('*', { count: 'exact', head: true });
-      if (build) q = build(q);
-      const { count: n, error } = await q;
-      if (error) throw error;
-      return n;
-    } catch {
-      return null;
-    }
-  };
+// Pulls the raw rows once and computes everything client-side. At this
+// app's scale (tens of players, low hundreds of logs) that's a couple of
+// small queries and a few reduces — far simpler than a wall of COUNT
+// round-trips or server-side aggregates, and it powers the charts too.
+async function loadDashboard() {
+  const now = Date.now();
+  const day = 86400000;
+  const iso = (ms) => new Date(ms).toISOString();
 
-  const since = new Date(Date.now() - 7 * 86400000).toISOString();
-  const [players, logs, games, reviews, online, newLogs, reports] = await Promise.all([
-    count('profiles'),
-    count('logs'),
-    count('games'),
-    count('logs', (q) => q.not('review', 'is', null)),
-    count('user_presence', (q) => q.gte('last_seen_at', new Date(Date.now() - ONLINE_WINDOW_MS).toISOString())),
-    count('logs', (q) => q.gte('created_at', since)),
-    count('reports', (q) => q.neq('status', 'resolved')),
+  const [profilesRes, logsRes, gamesCountRes, presenceRes, reportsRes] = await Promise.all([
+    supabase.from('profiles').select('id, username, display_name, avatar_url, created_at'),
+    supabase.from('logs').select('id, user_id, game_id, status, rating, review, loved, created_at'),
+    supabase.from('games').select('id', { count: 'exact', head: true }),
+    supabase.from('user_presence').select('last_seen_at').gte('last_seen_at', iso(now - ONLINE_WINDOW_MS)),
+    supabase.from('reports').select('id', { count: 'exact', head: true }).neq('status', 'resolved'),
   ]);
 
-  state.openReports = reports || 0;
+  const profiles = profilesRes.data || [];
+  const logs = logsRes.data || [];
+  const gamesCount = gamesCountRes.count ?? null;
+  const online = (presenceRes.data || []).length;
+  state.openReports = reportsRes.count || 0;
 
-  const tile = (value, label, variant) => `
-    <div class="stat-card stat-card--${variant}"><b>${fmtNum(value)}</b><span>${label}</span></div>`;
+  // --- headline counts ---
+  const players = profiles.length;
+  const newPlayers7 = profiles.filter((p) => now - new Date(p.created_at).getTime() < 7 * day).length;
+  const logs7 = logs.filter((l) => now - new Date(l.created_at).getTime() < 7 * day).length;
+  const reviews = logs.filter((l) => l.review).length;
+  const loved = logs.filter((l) => l.loved).length;
 
-  const row1 = qs('#stats-1');
-  const row2 = qs('#stats-2');
-  if (row1) {
-    row1.innerHTML = tile(online, 'Online', 'green') + tile(players, 'Players', 'grey') + tile(logs, 'Logs', 'grey');
+  // --- hero ---
+  const heroNow = qs('#hero-now');
+  if (heroNow) heroNow.innerHTML = `<b>${online}</b> online now`;
+
+  const tile = (value, label, variant) => `<div class="stat-card stat-card--${variant}"><b>${fmtNum(value)}</b><span>${label}</span></div>`;
+  qs('#stats-1').innerHTML = tile(online, 'Online', 'green') + tile(players, 'Players', 'grey') + tile(logs.length, 'Logs', 'grey');
+  qs('#stats-2').innerHTML = tile(newPlayers7, 'New / 7d', 'blue') + tile(reviews, 'Reviews', 'grey') + tile(loved, 'Loved', 'grey');
+
+  // --- reports badge (only known now) ---
+  const reportTile = qs('.adm-gtile[data-go="reports"]');
+  if (reportTile && state.openReports) {
+    reportTile.insertAdjacentHTML('beforeend', `<span class="adm-gtile__count">${state.openReports}</span>`);
   }
-  if (row2) {
-    row2.innerHTML = tile(newLogs, 'Logs / 7d', 'blue') + tile(reviews, 'Reviews', 'grey') + tile(games, 'Games', 'grey');
+
+  // --- signups: cumulative over the last 8 weeks ---
+  const weeks = 8;
+  const signupSeries = [];
+  for (let w = weeks - 1; w >= 0; w--) {
+    const cutoff = now - w * 7 * day;
+    signupSeries.push({ value: profiles.filter((p) => new Date(p.created_at).getTime() <= cutoff).length });
   }
 
-  // The reports badge is only known once the counts land, so its slot is
-  // filled retroactively rather than rendering the whole menu twice.
-  const slot = qs('[data-slot="reports"]');
-  if (slot && state.openReports) slot.innerHTML = `<span class="adm-count">${state.openReports}</span>`;
+  // --- activity: logs per day over the last 14 days ---
+  const days = 14;
+  const startOfToday = new Date(); startOfToday.setHours(0, 0, 0, 0);
+  const activityBars = [];
+  for (let d = days - 1; d >= 0; d--) {
+    const from = startOfToday.getTime() - d * day;
+    const to = from + day;
+    const count = logs.filter((l) => { const t = new Date(l.created_at).getTime(); return t >= from && t < to; }).length;
+    activityBars.push({ value: count, label: new Date(from).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) });
+  }
+
+  // --- status split ---
+  const statusColor = { playing: 'var(--accent-bright)', played: 'var(--coral)', backlog: 'var(--ink-faint)', dropped: 'var(--violet)' };
+  const statusSeg = ['playing', 'played', 'backlog', 'dropped'].map((s) => ({
+    label: s[0].toUpperCase() + s.slice(1),
+    value: logs.filter((l) => l.status === s).length,
+    color: statusColor[s],
+  }));
+
+  // --- rating distribution (reuses the app's own histogram) ---
+  const ratingCounts = {};
+  let ratingTotal = 0;
+  let ratingSum = 0;
+  logs.forEach((l) => {
+    if (!l.rating) return;
+    const key = Number(l.rating).toFixed(1);
+    ratingCounts[key] = (ratingCounts[key] || 0) + 1;
+    ratingTotal += 1;
+    ratingSum += Number(l.rating);
+  });
+  const avgRating = ratingTotal ? ratingSum / ratingTotal : null;
+
+  // --- top games by logs ---
+  const gameCounts = {};
+  logs.forEach((l) => { if (l.game_id) gameCounts[l.game_id] = (gameCounts[l.game_id] || 0) + 1; });
+  const topGameIds = Object.entries(gameCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  let topGames = [];
+  if (topGameIds.length) {
+    const { data: gs } = await supabase.from('games').select('id, title, cover_url').in('id', topGameIds.map((g) => g[0]));
+    const byId = Object.fromEntries((gs || []).map((g) => [g.id, g]));
+    topGames = topGameIds.map(([gid, n]) => ({ game: byId[gid], count: n })).filter((r) => r.game);
+  }
+
+  // --- top players by logs ---
+  const playerCounts = {};
+  logs.forEach((l) => { if (l.user_id) playerCounts[l.user_id] = (playerCounts[l.user_id] || 0) + 1; });
+  const byUser = Object.fromEntries(profiles.map((p) => [p.id, p]));
+  const topPlayers = Object.entries(playerCounts).sort((a, b) => b[1] - a[1]).slice(0, 5)
+    .map(([uid, n]) => ({ profile: byUser[uid], count: n })).filter((r) => r.profile);
+  const topPlayerMax = Math.max(1, ...topPlayers.map((p) => p.count));
+
+  // --- paint the analytics panels ---
+  const panel = (title, meta, body) => `
+    <div class="adm-panel">
+      <div class="adm-panel__head">
+        <span class="adm-panel__title">${esc(title)}</span>
+        ${meta ? `<span class="adm-panel__meta">${meta}</span>` : ''}
+      </div>
+      ${body}
+    </div>`;
+
+  const analytics = qs('#analytics');
+  if (!analytics) return;
+  analytics.innerHTML = `
+    ${panel('Signups', `<b>+${newPlayers7}</b> this week`, sparkArea(signupSeries) || '<p class="adm-hint" style="margin:0">Not enough history yet.</p>')}
+    ${panel('Activity · 14 days', `${logs7} this week`, barSeries(activityBars) + `<div class="adm-axis"><span>${esc(activityBars[0].label)}</span><span>today</span></div>`)}
+    ${panel('Library status', `${logs.length} logs`, logs.length ? segBar(statusSeg) : '<p class="adm-hint" style="margin:0">No logs yet.</p>')}
+    ${panel('Ratings', '', ratingHistogram(ratingCounts, { average: avgRating, total: ratingTotal }))}
+    ${topGames.length ? panel('Top games', '', `<div class="adm-top">${topGames.map((r, i) => `
+      <div class="adm-top__row">
+        <span class="adm-top__rank">${i + 1}</span>
+        ${r.game.cover_url ? `<img class="adm-top__poster" src="${esc(r.game.cover_url)}" alt="" loading="lazy">` : '<span class="adm-top__poster"></span>'}
+        <span class="adm-top__name">${esc(r.game.title)}</span>
+        <span class="adm-top__val">${r.count}</span>
+      </div>`).join('')}</div>`) : ''}
+    ${topPlayers.length ? panel('Most active', '', `<div class="adm-top">${topPlayers.map((r, i) => `
+      <div class="adm-top__row">
+        <span class="adm-top__rank">${i + 1}</span>
+        ${avatarImg(r.profile, 28)}
+        <span class="adm-top__name">${esc(r.profile.display_name || r.profile.username)}</span>
+        <span class="adm-top__bar"><span class="adm-top__bar-fill" style="width:${Math.round(r.count / topPlayerMax * 100)}%"></span></span>
+        <span class="adm-top__val">${r.count}</span>
+      </div>`).join('')}</div>`) : ''}
+  `;
+
+  const hist = qs('.rating-histogram', analytics);
+  if (hist) wireRatingHistogram(hist);
 }
 
 // ============================================================
@@ -1113,6 +1271,115 @@ function openGameEditor(game, query) {
 }
 
 // ============================================================
+// LISTS
+// ============================================================
+SCREENS.lists = function lists() {
+  paint(`
+    ${header('Lists', { back: true })}
+    <main class="view-body">
+      <p class="adm-hint" style="margin-top:0">Every user-made collection. Deleting one removes it for its owner.</p>
+      <div id="list" style="margin-top:var(--space-3)">${spinner()}</div>
+    </main>`);
+  paintLists();
+};
+
+async function paintLists() {
+  const host = qs('#list');
+  if (!host) return;
+  const { data, error } = await supabase
+    .from('lists').select('id, name, is_public, created_at, user_id')
+    .order('created_at', { ascending: false }).limit(80);
+  if (error) { host.innerHTML = emptyState(error.message); return; }
+  if (!data?.length) { host.innerHTML = emptyState('No lists yet.', { icon: iconList() }); return; }
+
+  // Owner names and item counts in two follow-up queries keyed on the
+  // ids just returned, rather than PostgREST embeds that need exact
+  // constraint names.
+  const ownerIds = [...new Set(data.map((l) => l.user_id).filter(Boolean))];
+  const listIds = data.map((l) => l.id);
+  const [ownersRes, itemsRes] = await Promise.all([
+    ownerIds.length ? supabase.from('profiles').select('id, username').in('id', ownerIds) : Promise.resolve({ data: [] }),
+    supabase.from('list_items').select('list_id').in('list_id', listIds),
+  ]);
+  const owners = Object.fromEntries((ownersRes.data || []).map((p) => [p.id, p.username]));
+  const counts = {};
+  (itemsRes.data || []).forEach((it) => { counts[it.list_id] = (counts[it.list_id] || 0) + 1; });
+
+  host.innerHTML = data.map((l) => `
+    <div class="list-card adm-row" data-id="${l.id}">
+      <span class="adm-tile__icon" style="width:38px;height:38px">${iconList()}</span>
+      <span class="adm-row__body">
+        <span class="adm-row__title">${esc(l.name)}</span>
+        <span class="adm-row__meta">@${esc(owners[l.user_id] || 'unknown')} · ${counts[l.id] || 0} games · ${l.is_public ? 'public' : 'private'}</span>
+      </span>
+      <span class="adm-row__actions">
+        <button class="icon-btn icon-btn--small" data-del aria-label="Delete">${iconTrash()}</button>
+      </span>
+    </div>`).join('');
+
+  qsa('[data-del]', host).forEach((btn) => btn.addEventListener('click', async () => {
+    const id = btn.closest('.adm-row').dataset.id;
+    if (!await confirmSheet({ title: 'Delete this list?', sub: 'It disappears for its owner, permanently.', confirmLabel: 'Delete', danger: true })) return;
+    const { error: delErr } = await supabase.from('lists').delete().eq('id', id);
+    if (delErr) return fail(delErr);
+    toast('Deleted', 'success');
+    paintLists();
+  }));
+}
+
+// ============================================================
+// WAITLIST
+// ============================================================
+SCREENS.waitlist = function waitlist() {
+  paint(`
+    ${header('Waitlist', { back: true })}
+    <main class="view-body">
+      <div class="stat-card-row" id="wl-stats"></div>
+      <div class="adm-btn-row" style="margin-top:0">
+        <button class="btn btn--block" id="wl-copy">Copy all emails</button>
+      </div>
+      <div id="list" style="margin-top:var(--space-4)">${spinner()}</div>
+    </main>`);
+  paintWaitlist();
+};
+
+async function paintWaitlist() {
+  const host = qs('#list');
+  if (!host) return;
+  const { data, error } = await supabase
+    .from('waitlist').select('id, email, source, created_at')
+    .order('created_at', { ascending: false }).limit(500);
+  if (error) { host.innerHTML = emptyState(error.message); return; }
+
+  const stats = qs('#wl-stats');
+  const day = 86400000;
+  const week = (data || []).filter((w) => Date.now() - new Date(w.created_at).getTime() < 7 * day).length;
+  const sources = new Set((data || []).map((w) => w.source).filter(Boolean));
+  if (stats) {
+    stats.innerHTML = `
+      <div class="stat-card stat-card--blue"><b>${fmtNum((data || []).length)}</b><span>Total</span></div>
+      <div class="stat-card stat-card--grey"><b>${fmtNum(week)}</b><span>New / 7d</span></div>
+      <div class="stat-card stat-card--grey"><b>${fmtNum(sources.size)}</b><span>Sources</span></div>`;
+  }
+
+  const emails = (data || []).map((w) => w.email).filter(Boolean);
+  qs('#wl-copy')?.addEventListener('click', () => {
+    if (!emails.length) { toast('No emails yet', 'error'); return; }
+    copy(emails.join(', '), `${emails.length} emails copied`);
+  });
+
+  if (!data?.length) { host.innerHTML = emptyState('Nobody on the waitlist yet.', { icon: iconMail() }); return; }
+
+  host.innerHTML = data.map((w) => `
+    <div class="list-card adm-row">
+      <span class="adm-row__body">
+        <span class="adm-row__title">${esc(w.email)}</span>
+        <span class="adm-row__meta">${esc(w.source || 'direct')} · ${esc(timeAgo(w.created_at))} ago</span>
+      </span>
+    </div>`).join('');
+}
+
+// ============================================================
 // BOOT
 // ============================================================
 // A missing table reads as PGRST205 (PostgREST's schema cache) or 42P01
@@ -1122,6 +1389,23 @@ function openGameEditor(game, query) {
 const isMissingTable = (error) =>
   error?.code === 'PGRST205' || error?.code === '42P01' ||
   /does not exist|schema cache/i.test(error?.message || '');
+
+// Applied-migration checks. A table probe treats only a genuine
+// "missing table" error as unapplied — a network blip returns true so a
+// flaky connection doesn't nag about setup that's actually done.
+async function tableExists(table) {
+  const { error } = await supabase.from(table).select('*', { head: true, count: 'exact' }).limit(1);
+  return !(error && isMissingTable(error));
+}
+
+async function settingExists(key) {
+  try {
+    const { data, error } = await supabase.from('app_settings').select('value').eq('key', key).maybeSingle();
+    return !error && !!data;
+  } catch {
+    return false;
+  }
+}
 
 async function boot() {
   root.innerHTML = '<div class="boot-loader"><div class="boot-loader__mark"></div></div>';
@@ -1137,11 +1421,10 @@ async function boot() {
 
   // Every check runs before any is reported, so a first launch hands
   // over one combined block of SQL instead of sending you back and forth.
-  const probes = await Promise.all(MIGRATIONS.map(async (m) => {
-    const { error } = await supabase.from(m.probe).select('*', { head: true, count: 'exact' }).limit(1);
-    return { migration: m, missing: !!(error && isMissingTable(error)) };
-  }));
-  const missing = probes.filter((p) => p.missing).map((p) => p.migration);
+  const probes = await Promise.all(MIGRATIONS.map(async (m) => ({
+    migration: m, applied: await m.check(),
+  })));
+  const missing = probes.filter((p) => !p.applied).map((p) => p.migration);
   const needsAdmin = !profile?.is_admin;
 
   if (missing.length || needsAdmin) {
