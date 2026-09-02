@@ -956,6 +956,48 @@ export async function getPresenceFor(userIds) {
   }
 }
 
+// Hydrates game cards sent in a conversation (kind='game', body=game id)
+// — one query for every game referenced in the open thread.
+export async function getGamesByIds(ids) {
+  const list = [...new Set((ids || []).filter(Boolean))];
+  if (!list.length) return {};
+  try {
+    const { data, error } = await supabase
+      .from('games')
+      .select('id, title, cover_url, background_url, release_year, genre, platform')
+      .in('id', list);
+    if (error) return {};
+    return Object.fromEntries((data || []).map((g) => [g.id, g]));
+  } catch {
+    return {};
+  }
+}
+
+// The most recent public "playing" game for each of the given users, as
+// { userId: { id, title, cover_url } }. Powers the "Playing X" context in
+// the Messenger inbox rows and conversation header — read straight from
+// public logs (no presence table / privacy policy involved). One query
+// for the whole inbox; newest 'playing' log per user wins.
+export async function getPlayingByUsers(userIds) {
+  const ids = [...new Set((userIds || []).filter(Boolean))];
+  if (!ids.length) return {};
+  try {
+    const { data, error } = await supabase
+      .from('logs')
+      .select('user_id, updated_at, games!logs_game_id_fkey(id, title, cover_url)')
+      .in('user_id', ids)
+      .eq('status', 'playing')
+      .eq('is_public', true)
+      .order('updated_at', { ascending: false });
+    if (error) return {};
+    const out = {};
+    (data || []).forEach((r) => { if (!out[r.user_id] && r.games) out[r.user_id] = r.games; });
+    return out;
+  } catch {
+    return {};
+  }
+}
+
 // A banner the admin build can push across the top of everyone's feed.
 // Returns null when there isn't one, which is the overwhelmingly common
 // case — the feed only renders anything when this is non-null.

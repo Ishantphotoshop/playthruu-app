@@ -3,6 +3,7 @@ import { state } from '../state.js';
 import {
   topBar, avatarImg, iconSend, iconDotsMenu, iconGif, iconPlus,
   iconReply, iconInfo, iconCopy, iconTrash, iconClose, iconSearch,
+  iconGamepad, iconChevronRight, iconCamera,
 } from '../components.js';
 import { esc, qs, qsa, toast, timeAgo, formatDate, debounce, enableSwipeToDismiss, recordRecentEmoji, getRecentEmoji } from '../utils.js';
 import { navigate } from '../router.js';
@@ -34,9 +35,8 @@ export async function renderMessageThreadView(root, { conversationId, otherUserI
      <div class="thread-composer" id="thread-composer" hidden>
        <div class="thread-replying" id="thread-replying" hidden></div>
        <form class="thread-composer__row" id="thread-composer-form">
-         <button type="button" class="thread-composer__icon" id="thread-media-btn" aria-label="Upload a photo or video">${iconPlus()}</button>
+         <button type="button" class="thread-composer__icon" id="thread-attach-btn" aria-label="Share a game, photo, or GIF">${iconPlus()}</button>
          <input type="file" id="thread-media-input" accept="image/*,video/*" class="sr-only-file-input">
-         <button type="button" class="thread-composer__icon" id="thread-gif-btn" aria-label="Send a GIF">${iconGif()}</button>
          <input type="text" id="thread-input" placeholder="Message…" autocomplete="off" maxlength="2000">
          <button type="submit" class="thread-composer__send" id="thread-send" aria-label="Send">${iconSend()}</button>
        </form>
@@ -47,6 +47,8 @@ export async function renderMessageThreadView(root, { conversationId, otherUserI
   let convo = null;       // { other, status, requested_by, id } — id is null until a thread actually exists
   let threadId = conversationId || null;
   let messages = [];
+  let gamesById = {};     // hydrated game data for kind='game' messages
+  let otherPlaying = null; // the other person's currently-playing game (public log)
   let reactionsByMessage = {};
   let replyingTo = null;  // a message object, or null
   let unsubscribe = null;
@@ -86,26 +88,27 @@ export async function renderMessageThreadView(root, { conversationId, otherUserI
     return;
   }
 
-  const titleEl = qs('.topbar__title', root);
-  if (titleEl) titleEl.textContent = convo.other.display_name || convo.other.username;
+  // The other person's currently-playing game (from their public log) —
+  // shown in the header as gaming-native "who is this / what are they on"
+  // context. Fire-and-forget: the header re-renders once it lands.
+  api.getPlayingByUsers([convo.other.id]).then((m) => {
+    otherPlaying = m[convo.other.id] || null;
+    renderHeader();
+  }).catch(() => {});
+  renderHeader();
 
   // Rendered once — everything after this patches specific slots inside
   // it rather than re-rendering the shell, since the composer sits
   // outside #thread-body and re-wiring its listeners on every repaint
   // would stack a duplicate handler per message sent.
   body.innerHTML = `
-    <a href="#/profile/${esc(convo.other.username)}" class="thread-peek">
-      ${avatarImg(convo.other, 30)}
-      <span>${esc(convo.other.display_name || convo.other.username)}</span>
-    </a>
     <div id="thread-note-slot"></div>
     <div class="thread-messages" id="thread-messages"></div>`;
   composer.hidden = false;
 
   qs('#thread-composer-form', root).addEventListener('submit', (e) => { e.preventDefault(); onSend(); });
-  qs('#thread-media-btn', root).addEventListener('click', () => qs('#thread-media-input', root).click());
+  qs('#thread-attach-btn', root).addEventListener('click', openShareSheet);
   qs('#thread-media-input', root).addEventListener('change', onPickMedia);
-  qs('#thread-gif-btn', root).addEventListener('click', openGifPicker);
   qs('#thread-replying', root).addEventListener('click', (e) => {
     if (e.target.closest('[data-cancel-reply]')) { replyingTo = null; paintReplyingBar(); }
   });
@@ -122,6 +125,7 @@ export async function renderMessageThreadView(root, { conversationId, otherUserI
     startListening();
   }
   paintMessages();
+  hydrateGames();
   scrollToBottom(false);
 
   // Relative times ("2m", "1h") go stale the longer a thread stays
@@ -140,6 +144,7 @@ export async function renderMessageThreadView(root, { conversationId, otherUserI
         if (messages.some((m) => m.id === msg.id)) return; // our own send, already appended optimistically below
         messages.push(msg);
         paintMessages();
+        if (msg.kind === 'game') hydrateGames();
         scrollToBottom(true);
         if (msg.sender_id !== state.user.id) api.markConversationRead(threadId).catch(() => {});
       },
@@ -175,6 +180,38 @@ export async function renderMessageThreadView(root, { conversationId, otherUserI
 
   // ---- rendering --------------------------------------------------
 
+  // The conversation header lives in the top bar: avatar + name +
+  // currently-playing. Re-rendered when the playing context lands.
+  function renderHeader() {
+    const titleEl = qs('.topbar__title', root);
+    if (!titleEl) return;
+    const name = convo.other.display_name || convo.other.username;
+    const pres = otherPlaying
+      ? `<span class="thread-hd__pres"><span class="thread-hd__dot" style="background:var(--accent-bright)"></span>Playing <b>${esc(otherPlaying.title)}</b></span>`
+      : `<span class="thread-hd__pres">@${esc(convo.other.username)}</span>`;
+    titleEl.innerHTML = `
+      <a href="#/profile/${esc(convo.other.username)}" class="thread-hd${otherPlaying ? ' thread-hd--online' : ''}">
+        ${avatarImg(convo.other, 34)}
+        <span class="thread-hd__meta">
+          <span class="thread-hd__name">${esc(name)}</span>
+          ${pres}
+        </span>
+      </a>`;
+  }
+
+  // Fetch the game data for any kind='game' messages so their cards can
+  // render, then repaint. Cheap and idempotent — only fetches ids not
+  // already hydrated.
+  async function hydrateGames() {
+    const need = messages.filter((m) => m.kind === 'game' && !gamesById[m.body]).map((m) => m.body);
+    if (!need.length) return;
+    try {
+      const fetched = await api.getGamesByIds(need);
+      gamesById = { ...gamesById, ...fetched };
+      paintMessages();
+    } catch { /* cards fall back to a plain link line */ }
+  }
+
   // A short label for whatever a message actually is, used anywhere the
   // full content can't be shown as-is (reply quotes, the "replying to"
   // bar) — the alternative is printing a raw storage/GIPHY URL as text.
@@ -183,6 +220,7 @@ export async function renderMessageThreadView(root, { conversationId, otherUserI
     if (m.kind === 'gif') return 'GIF';
     if (m.kind === 'image') return 'Photo';
     if (m.kind === 'video') return 'Video';
+    if (m.kind === 'game') return gamesById[m.body]?.title ? `🎮 ${gamesById[m.body].title}` : 'Game';
     return m.body;
   }
 
@@ -191,7 +229,31 @@ export async function renderMessageThreadView(root, { conversationId, otherUserI
     if (m.kind === 'image') return `<img class="msg-gif msg-image" src="${esc(m.body)}" alt="" loading="lazy">`;
     if (m.kind === 'video') return `<video class="msg-video" src="${esc(m.body)}" controls playsinline preload="metadata"></video>`;
     if (m.kind === 'sticker') return `<span class="msg-sticker">${esc(m.body)}</span>`; // legacy — no longer sendable, still rendered if one exists
+    if (m.kind === 'game') return gameCardHtml(m);
     return esc(m.body);
+  }
+
+  // The flagship Playthruu message type: a shared game rendered as a rich
+  // card that taps through to the game, instead of a dead link. body holds
+  // the game id; gamesById is hydrated by hydrateGames().
+  function gameCardHtml(m) {
+    const g = gamesById[m.body];
+    if (!g) {
+      // Still loading, or the game was hidden/removed — a calm placeholder
+      // rather than a broken card.
+      return `<span class="msg-gamecard"><span class="msg-gamecard__cover"></span><span class="msg-gamecard__body"><span class="msg-gamecard__title">Shared a game</span><span class="msg-gamecard__meta">Loading…</span></span></span>`;
+    }
+    const meta = [g.release_year, g.genre, g.platform].filter(Boolean).join(' · ');
+    return `
+      <a href="#/game/${esc(g.id)}" class="msg-gamecard">
+        ${g.cover_url ? `<img class="msg-gamecard__cover" src="${esc(g.cover_url)}" alt="">` : '<span class="msg-gamecard__cover"></span>'}
+        <span class="msg-gamecard__body">
+          <span class="msg-gamecard__tag">Game</span>
+          <span class="msg-gamecard__title">${esc(g.title)}</span>
+          ${meta ? `<span class="msg-gamecard__meta">${esc(meta)}</span>` : ''}
+          <span class="msg-gamecard__cta">Open game ${iconChevronRight()}</span>
+        </span>
+      </a>`;
   }
 
   function replyPreviewHtml(m) {
@@ -216,6 +278,26 @@ export async function renderMessageThreadView(root, { conversationId, otherUserI
     </div>`;
   }
 
+  // A day bucket key, and its human label (Today / Yesterday / date).
+  function dayKey(ts) { return new Date(ts).toDateString(); }
+  function dayLabel(ts) {
+    const d = new Date(ts); const now = new Date();
+    if (d.toDateString() === now.toDateString()) return 'Today';
+    const y = new Date(now); y.setDate(now.getDate() - 1);
+    if (d.toDateString() === y.toDateString()) return 'Yesterday';
+    const sameYear = d.getFullYear() === now.getFullYear();
+    return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', ...(sameYear ? {} : { year: 'numeric' }) });
+  }
+  // One timestamp per cluster (its last message), with a Seen marker on
+  // my own clusters. Returns trusted HTML (time string + a static word).
+  function clusterStampHtml(last, mine) {
+    const t = new Date(last.created_at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+    if (!mine) return t;
+    const otherLastRead = convo.user_one_id === state.user.id ? convo.user_two_last_read_at : convo.user_one_last_read_at;
+    const seen = otherLastRead && new Date(otherLastRead) >= new Date(last.created_at);
+    return `${t}${seen ? ' · <b>Seen</b>' : ''}`;
+  }
+
   function paintMessages() {
     const el = qs('#thread-messages', body);
     if (!el) return;
@@ -223,19 +305,40 @@ export async function renderMessageThreadView(root, { conversationId, otherUserI
       el.innerHTML = `<p class="thread-empty">No messages yet — say something.</p>`;
       return;
     }
-    el.innerHTML = messages.map((m, i) => {
+    // Group consecutive same-sender messages (within 5 min, same day) into
+    // one calm cluster with a single timestamp; break the stream by day.
+    let html = '';
+    let lastDay = null;
+    let i = 0;
+    while (i < messages.length) {
+      const m = messages[i];
+      const day = dayKey(m.created_at);
+      if (day !== lastDay) { html += `<div class="msg-daysep">${esc(dayLabel(m.created_at))}</div>`; lastDay = day; }
       const mine = m.sender_id === state.user.id;
-      const next = messages[i + 1];
-      const showTime = !next || next.sender_id !== m.sender_id || (new Date(next.created_at) - new Date(m.created_at)) > 5 * 60 * 1000;
-      const bare = m.kind !== 'text'; // gifs/images/videos/stickers carry their own visual weight — no bubble chrome around them
-      return `
-        <div class="msg-row${mine ? ' msg-row--mine' : ''}" data-mid="${esc(m.id)}">
-          ${replyPreviewHtml(m)}
-          <div class="msg-bubble${mine ? ' msg-bubble--mine' : ''}${bare ? ' msg-bubble--bare' : ''}">${bubbleContent(m)}</div>
-          ${reactionsHtml(m)}
-          ${showTime ? `<span class="msg-time">${timeAgo(m.created_at)}</span>` : ''}
-        </div>`;
-    }).join('');
+      const cluster = [m];
+      let j = i + 1;
+      while (j < messages.length) {
+        const n = messages[j];
+        if (n.sender_id !== m.sender_id || dayKey(n.created_at) !== day) break;
+        if ((new Date(n.created_at) - new Date(messages[j - 1].created_at)) > 5 * 60 * 1000) break;
+        cluster.push(n); j++;
+      }
+      html += `<div class="msg-cluster${mine ? ' msg-cluster--mine' : ''}">`;
+      cluster.forEach((cm, k) => {
+        const isTail = k === cluster.length - 1;
+        const bare = cm.kind !== 'text'; // media/game cards carry their own weight — no bubble chrome
+        html += `
+          <div class="msg-row${isTail ? ' msg-row--tail' : ''}" data-mid="${esc(cm.id)}">
+            ${replyPreviewHtml(cm)}
+            <div class="msg-bubble${bare ? ' msg-bubble--bare' : ''}">${bubbleContent(cm)}</div>
+            ${reactionsHtml(cm)}
+          </div>`;
+      });
+      html += `<span class="msg-stamp">${clusterStampHtml(cluster[cluster.length - 1], mine)}</span>`;
+      html += `</div>`;
+      i = j;
+    }
+    el.innerHTML = html;
 
     qsa('.msg-reaction', el).forEach((btn) => {
       btn.addEventListener('click', async (e) => {
@@ -568,6 +671,93 @@ export async function renderMessageThreadView(root, { conversationId, otherUserI
       catch { results.innerHTML = `<p class="muted">Couldn't search right now.</p>`; }
     }, 400);
     qs('#gif-search', overlay).addEventListener('input', doSearch);
+  }
+
+  // ---- composer "+" → progressive share sheet -------------------------
+  // The default composer is one clean input; everything else lives behind
+  // the "+". "Share a game" is the flagship, the rest is media/GIF.
+
+  function openShareSheet() {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML = `
+      <div class="modal modal--sheet">
+        <header class="msg-actions__grab" aria-hidden="true"></header>
+        <div class="msg-actions">
+          <div class="share-grid">
+            <button type="button" class="share-opt share-opt--game" data-act="game"><span class="share-opt__ic">${iconGamepad()}</span>Share a game</button>
+            <button type="button" class="share-opt" data-act="photo"><span class="share-opt__ic">${iconCamera()}</span>Photo / Video</button>
+            <button type="button" class="share-opt" data-act="gif"><span class="share-opt__ic">${iconGif()}</span>GIF</button>
+          </div>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    const close = () => overlay.remove();
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+    enableSwipeToDismiss(qs('.modal', overlay), close);
+    qs('[data-act="game"]', overlay).addEventListener('click', () => { close(); openGamePicker(); });
+    qs('[data-act="photo"]', overlay).addEventListener('click', () => { close(); qs('#thread-media-input', root).click(); });
+    qs('[data-act="gif"]', overlay).addEventListener('click', () => { close(); openGifPicker(); });
+  }
+
+  function openGamePicker() {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML = `
+      <div class="modal modal--tall">
+        <header class="modal__header"><h2>Share a game</h2><button class="modal__close" data-close aria-label="Close">${iconClose()}</button></header>
+        <div class="modal__body">
+          <label class="field"><span>Search</span><input type="search" id="gp-search" autocomplete="off" placeholder="Search any game…"></label>
+          <div id="gp-results"></div>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    const close = () => overlay.remove();
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+    qs('[data-close]', overlay).addEventListener('click', close);
+    enableSwipeToDismiss(qs('.modal', overlay), close);
+
+    const input = qs('#gp-search', overlay);
+    const results = qs('#gp-results', overlay);
+    input.focus();
+    let token = 0;
+    const run = debounce(async () => {
+      const q = input.value.trim();
+      if (q.length < 2) { results.innerHTML = ''; return; }
+      results.innerHTML = '<div class="spinner"></div>';
+      const mine = ++token;
+      try {
+        const { results: games } = await api.searchGamesEverywhere(q, 14);
+        if (mine !== token) return;
+        if (!games.length) { results.innerHTML = `<p class="muted">Nothing matched that.</p>`; return; }
+        results.innerHTML = games.map((g, i) => `
+          <button type="button" class="gamepick-row" data-i="${i}">
+            ${g.cover_url ? `<img src="${esc(g.cover_url)}" alt="">` : '<span class="gamepick-row__cover"></span>'}
+            <span style="min-width:0">
+              <span class="gamepick-row__title">${esc(g.title)}</span>
+              <span class="gamepick-row__meta">${g.release_year ? esc(g.release_year) : ''}${g._source === 'local' ? ' · in catalog' : ''}</span>
+            </span>
+          </button>`).join('');
+        qsa('.gamepick-row', results).forEach((btn) => btn.addEventListener('click', async () => {
+          const game = games[Number(btn.dataset.i)];
+          btn.disabled = true;
+          try {
+            // A remote hit has no catalog row yet; a game message's body is
+            // a real game id, so the row has to exist before it's sent.
+            const local = (game._source === 'local' && game.id) ? game : await api.addGame(game, state.user.id);
+            gamesById[local.id] = local; // render the card instantly, no round-trip
+            close();
+            await sendOne(local.id, 'game');
+          } catch (err) {
+            btn.disabled = false;
+            toast(err.message || 'Could not share that game.', 'error');
+          }
+        }));
+      } catch {
+        if (mine === token) results.innerHTML = `<p class="muted">Search failed. Try again.</p>`;
+      }
+    }, 300);
+    input.addEventListener('input', run);
   }
 
   // ---- full-screen image viewer ---------------------------------------

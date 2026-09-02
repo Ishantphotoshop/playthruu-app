@@ -3955,26 +3955,51 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
    for the request/accepted rule this UI reflects.
    ============================================================ */
 
-.convo-list { display: flex; flex-direction: column; }
+/* Inbox search — a client-side filter over the loaded conversations. */
+.convo-search {
+  display: flex; align-items: center; gap: 8px;
+  height: 38px; margin: 12px 0 4px; padding: 0 14px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-pill);
+  color: var(--ink-faint);
+}
+.convo-search svg { width: 16px; height: 16px; flex-shrink: 0; }
+.convo-search input { flex: 1; min-width: 0; background: none; border: none; color: var(--ink); font-size: 14px; }
+.convo-search input::placeholder { color: var(--ink-faint); }
+
+.convo-list { display: flex; flex-direction: column; gap: 2px; padding-top: 4px; }
 .convo-row {
   display: flex; align-items: center; gap: 12px;
-  padding: 12px 4px; border-bottom: 1px solid var(--line);
+  padding: 10px 10px; border-radius: var(--radius-m);
   cursor: pointer; transition: background var(--dur-fast) var(--ease);
 }
 .convo-row:active { background: var(--surface-raised); }
+/* Unread gets a faint accent-tinted ground so the whole row (not just a
+   dot) signals "new" at a glance. */
+.convo-row--unread { background: color-mix(in srgb, var(--accent) 5%, transparent); }
+.convo-row__av { position: relative; flex-shrink: 0; }
+.convo-row__presdot {
+  position: absolute; right: 0; bottom: 1px; width: 12px; height: 12px;
+  border-radius: 50%; background: var(--success); border: 2.5px solid var(--bg);
+}
+.convo-row--unread .convo-row__presdot { border-color: color-mix(in srgb, var(--accent) 5%, var(--bg)); }
 .convo-row__body { flex: 1; min-width: 0; }
 .convo-row__top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
-.convo-row__name { font-weight: var(--weight-strong); font-size: 14.5px; }
-.convo-row__time { font-size: 11px; color: var(--ink-faint); flex-shrink: 0; font-family: var(--font-mono); }
+.convo-row__name { font-weight: 700; font-size: 14.5px; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.convo-row__time { font-size: 10.5px; color: var(--ink-faint); flex-shrink: 0; font-family: var(--font-mono); }
+.convo-row__line { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
 .convo-row__preview {
-  font-size: 13px; color: var(--ink-dim); margin-top: 2px;
+  font-size: 13px; color: var(--ink-dim); flex: 1;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-/* Unread reads as weight, not a second colour system on top of the
-   accent already used everywhere else — bold name/preview and an
-   accent-tinted time, the same visual move Mail/Messages apps use. */
+.convo-row__undot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+/* Currently-playing / shared-game context under the preview — the
+   gaming-native touch that a generic inbox row can't show. */
+.convo-row__ctx { display: inline-flex; align-items: center; gap: 5px; margin-top: 4px; font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-faint); }
+.convo-row__ctx img { width: 12px; height: 16px; border-radius: 2px; object-fit: cover; background: var(--surface-high); }
+.convo-row__ctx b { color: var(--ink-dim); font-weight: 500; }
+/* Unread reads as weight + tint, not a competing colour system. */
 .convo-row--unread .convo-row__name { font-weight: 800; }
-.convo-row--unread .convo-row__preview { color: var(--ink); font-weight: 600; }
+.convo-row--unread .convo-row__preview { color: var(--ink); font-weight: 500; }
 .convo-row--unread .convo-row__time { color: var(--accent-bright); font-weight: 700; }
 .convo-row__decline {
   flex-shrink: 0; width: 34px; height: 34px; border-radius: 50%;
@@ -3996,33 +4021,91 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
   font-size: 12.5px; color: var(--ink-dim); background: var(--surface);
   border-radius: var(--radius-s); padding: 10px 12px; margin-bottom: 10px; text-align: center;
 }
+
+/* Conversation header now lives IN the top bar (avatar + name + presence
+   + currently-playing) rather than a separate peek strip below it — the
+   gaming-native, at-a-glance "who is this and are they around" context. */
+.thread-hd { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; color: var(--ink); }
+.thread-hd__meta { min-width: 0; }
+.thread-hd__name { font-weight: 700; font-size: 15px; letter-spacing: -0.01em; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.thread-hd__pres { display: flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--ink-dim); margin-top: 1px; }
+.thread-hd__pres--online { color: var(--success); }
+.thread-hd__pres b { color: var(--accent-bright); font-weight: 600; }
+.thread-hd__dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+.thread-hd .avatar { outline: 2px solid transparent; outline-offset: 1.5px; }
+.thread-hd--online .avatar { outline-color: var(--success); }
+
+/* Composer "+" opens this progressive share/attachment sheet, so the
+   default composer stays a single clean input instead of a row of icons.
+   "Share a game" is the flagship, given the accent-lit hero treatment. */
+.share-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; padding: 4px 0 6px; }
+.share-opt { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 15px 8px; background: var(--surface-raised); border: 1px solid var(--line); border-radius: var(--radius-m); color: var(--ink-dim); font-size: 12px; font-weight: 500; }
+.share-opt:active { transform: scale(0.97); }
+.share-opt__ic { width: 32px; height: 32px; border-radius: var(--radius-s); display: grid; place-items: center; background: var(--surface-high); color: var(--ink); }
+.share-opt__ic svg { width: 18px; height: 18px; }
+.share-opt--game { background: color-mix(in srgb, var(--accent) 12%, var(--surface-raised)); border-color: color-mix(in srgb, var(--accent) 30%, transparent); color: var(--ink); }
+.share-opt--game .share-opt__ic { background: var(--accent); color: var(--bg); }
+
+/* game picker rows (Share a game) */
+.gamepick-row { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 8px 6px; border-radius: var(--radius-s); }
+.gamepick-row:active { background: var(--surface-raised); }
+.gamepick-row img, .gamepick-row .gamepick-row__cover { width: 38px; height: 51px; border-radius: 5px; object-fit: cover; background: var(--surface-high); flex-shrink: 0; }
+.gamepick-row__title { font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gamepick-row__meta { font-family: var(--font-mono); font-size: 11px; color: var(--ink-faint); margin-top: 2px; }
+
 .thread-messages { display: flex; flex-direction: column; padding: 4px 0; }
 .thread-empty { text-align: center; color: var(--ink-faint); font-size: 13px; padding: 48px 0; }
 
-.msg-row {
-  display: flex; flex-direction: column; align-items: flex-start; align-self: flex-start;
-  max-width: 78%; margin-bottom: 8px;
+/* Quiet Canvas — messages are grouped into clusters by sender+time so a
+   run of consecutive messages reads as one calm block with a single
+   timestamp, not a stack of identical floating pills. Date separators
+   break the stream by day. See paintMessages() in message-thread-view.js. */
+.msg-daysep {
+  text-align: center; margin: 16px 0 10px;
+  font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--ink-faint);
 }
-.msg-row--mine { align-items: flex-end; align-self: flex-end; }
+.msg-cluster { display: flex; flex-direction: column; align-items: flex-start; align-self: flex-start; max-width: 82%; }
+.msg-cluster--mine { align-items: flex-end; align-self: flex-end; }
+.msg-cluster + .msg-cluster { margin-top: 9px; }
+/* consecutive bubbles in a cluster sit tight; only the last one grows a
+   tail, so the group reads as connected. */
+.msg-cluster .msg-row { margin-bottom: 2px; }
+.msg-cluster .msg-row--tail { margin-bottom: 0; }
+
+.msg-row {
+  display: flex; flex-direction: column; align-items: flex-start;
+  max-width: 100%;
+}
+.msg-cluster--mine .msg-row { align-items: flex-end; }
 .msg-bubble {
   position: relative; /* anchors .msg-heart-burst */
-  background: var(--surface-raised); color: var(--ink);
-  padding: 9px 13px; border-radius: 16px; border-bottom-left-radius: 4px;
+  background: var(--surface); color: var(--ink);
+  padding: 9px 13px; border-radius: 16px;
   font-size: 14px; line-height: 1.4; word-break: break-word; white-space: pre-wrap;
 }
-/* The app's own accent gradient (same recipe as the wordmark and the
-   primary Log tab) rather than a flat iMessage-blue/WhatsApp-green —
-   this is where "not a copy of the other apps" actually shows up. */
-.msg-row--mine .msg-bubble {
-  background: var(--accent);
-  color: var(--bg); border-bottom-left-radius: 16px; border-bottom-right-radius: 4px;
+.msg-cluster:not(.msg-cluster--mine) .msg-row--tail .msg-bubble { border-bottom-left-radius: 5px; }
+/* Mine: a SUBTLE accent-tinted surface with ink text, not a slab of lime
+   paint. The accent guides ("this is you") without shouting; body text
+   stays readable in both themes. */
+.msg-cluster--mine .msg-bubble {
+  background: color-mix(in srgb, var(--accent) 13%, var(--surface-raised));
+  color: var(--ink);
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
 }
-.msg-time { font-size: 10px; color: var(--ink-faint); margin-top: 3px; padding: 0 4px; font-family: var(--font-mono); }
+.msg-cluster--mine .msg-row--tail .msg-bubble { border-bottom-right-radius: 5px; }
+.msg-stamp {
+  font-family: var(--font-mono); font-size: 9.5px; color: var(--ink-faint);
+  margin-top: 4px; padding: 0 3px;
+}
+.msg-cluster--mine .msg-stamp { align-self: flex-end; }
+.msg-stamp b { color: var(--accent-deep); font-weight: 500; }
 
-/* GIFs/stickers carry their own visual weight — no bubble chrome
-   (background/padding) fighting the image or making a giant emoji look
-   like it's trapped in a speech bubble. */
-.msg-bubble--bare { background: none !important; padding: 0 !important; }
+/* GIFs/images/videos/game cards carry their own visual weight — no bubble
+   chrome around them. */
+/* flex collapses the whitespace text nodes around the media/card child
+   so the bubble hugs it exactly instead of adding phantom line-box height. */
+.msg-bubble--bare { background: none !important; padding: 0 !important; border: none !important; display: flex; }
 .msg-gif { display: block; max-width: 220px; border-radius: 14px; }
 .msg-video { display: block; max-width: 240px; max-height: 320px; border-radius: 14px; background: #000; }
 .msg-sticker { font-size: 52px; line-height: 1; display: block; }
@@ -4035,12 +4118,44 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 .msg-reply-preview b { color: var(--ink-dim); font-weight: 700; }
 .msg-reply-preview span { color: var(--ink-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-.msg-reactions { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+/* Reactions pin to the message rather than floating below it as loose
+   stickers — a small pill that overlaps the bubble's bottom edge. */
+.msg-reactions { display: flex; flex-wrap: wrap; gap: 4px; margin-top: -7px; margin-bottom: 2px; padding: 0 6px; z-index: 1; }
+.msg-cluster--mine .msg-reactions { justify-content: flex-end; }
 .msg-reaction {
-  background: var(--surface); border: 1px solid var(--line); border-radius: 999px;
-  padding: 2px 8px; font-size: 12px; line-height: 1.5;
+  background: var(--surface-high); border: 1px solid var(--line); border-radius: 999px;
+  padding: 1px 7px; font-size: 11.5px; line-height: 1.6;
 }
-.msg-reaction--mine { border-color: var(--accent-bright); background: color-mix(in srgb, var(--accent) 14%, var(--surface)); }
+.msg-reaction--mine { border-color: var(--accent-bright); background: color-mix(in srgb, var(--accent) 16%, var(--surface)); }
+
+/* ---- Playthruu game card message (kind='game') --------------------- */
+/* Horizontal card — cover on the left, info on the right. A plain flex
+   layout with no absolute overlaps, so it can't stretch and stays a
+   compact, premium object in the stream. */
+.msg-gamecard {
+  display: flex; width: 244px; max-width: 100%;
+  background: var(--surface-raised); border: 1px solid var(--line);
+  border-radius: var(--radius-m); overflow: hidden; text-align: left; color: var(--ink);
+  transition: transform var(--dur-fast) var(--ease);
+}
+.msg-gamecard:active { transform: scale(0.985); }
+.msg-gamecard__cover {
+  width: 66px; flex-shrink: 0; align-self: stretch; min-height: 96px;
+  object-fit: cover; display: block;
+  background: var(--surface-high) center / cover no-repeat;
+}
+.msg-gamecard__body { flex: 1; min-width: 0; padding: 11px 13px; display: flex; flex-direction: column; }
+.msg-gamecard__tag {
+  font-family: var(--font-mono); font-size: 8.5px; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--accent-deep); font-weight: 500; margin-bottom: 5px;
+}
+.msg-gamecard__title { font-weight: 700; font-size: 14px; letter-spacing: -0.01em; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.msg-gamecard__meta { font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-faint); margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.msg-gamecard__cta {
+  margin-top: 10px; display: flex; align-items: center; gap: 4px;
+  font-size: 11.5px; color: var(--accent-bright); font-weight: 600;
+}
+.msg-gamecard__cta svg { width: 13px; height: 13px; }
 
 /* Fixed at the very bottom in place of the tab bar (this screen doesn't
    render navBar() at all — see message-thread-view.js). Anchored to the

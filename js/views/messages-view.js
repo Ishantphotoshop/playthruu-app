@@ -1,6 +1,6 @@
 import * as api from '../api.js';
 import { state } from '../state.js';
-import { navBar, spinner, emptyState, avatarImg, iconPlus, iconClose, iconMessage, iconTrash, profileRow } from '../components.js';
+import { navBar, spinner, emptyState, avatarImg, iconPlus, iconClose, iconMessage, iconTrash, iconSearch, profileRow } from '../components.js';
 import { esc, qs, qsa, toast, timeAgo, debounce, enableSwipeToDismiss } from '../utils.js';
 import { navigate } from '../router.js';
 import { wirePullToRefresh } from './feed-view.js';
@@ -21,20 +21,28 @@ export async function renderMessagesView(root) {
   // below still runs unconditionally right after, same as always, so a
   // new message that landed while you were away still shows up promptly.
   let all = getCached(MESSAGES_CACHE_KEY) || [];
+  let playingBy = {};   // { userId: game } — "Playing X" context per row
+  let search = '';
   let unsubscribe = null;
 
   root.innerHTML =
     `<div class="view-body view-body--no-topbar" id="messages-body">
        <button type="button" class="view-body__corner-action" id="compose-btn" aria-label="New message">${iconPlus()}</button>
        <div class="segmented segmented--wide" id="messages-tabs">
-         <button type="button" class="segmented__item segmented__item--active" data-tab="messages">Messages</button>
+         <button type="button" class="segmented__item segmented__item--active" data-tab="messages">Chats</button>
          <button type="button" class="segmented__item" data-tab="requests" id="requests-tab-btn">Requests</button>
        </div>
+       <label class="convo-search">${iconSearch()}<input type="search" id="convo-search-input" placeholder="Search chats" autocomplete="off"></label>
        <div id="messages-list">${all.length ? '' : spinner()}</div>
      </div>` + navBar('/messages');
 
   const body = qs('#messages-body', root);
   wirePullToRefresh(body);
+
+  qs('#convo-search-input', body).addEventListener('input', (e) => {
+    search = e.target.value.trim().toLowerCase();
+    paint();
+  });
 
   if (all.length) paint();
 
@@ -52,6 +60,12 @@ export async function renderMessagesView(root) {
       all = await api.getConversations(state.user.id);
       setCached(MESSAGES_CACHE_KEY, all);
       paint();
+      // "Playing X" context is a nice-to-have layered in after the list is
+      // already up — one query for everyone in the inbox, then repaint.
+      try {
+        playingBy = await api.getPlayingByUsers(all.map((c) => c.other?.id));
+        paint();
+      } catch { /* context is optional */ }
     } catch (err) {
       // A cached inbox is already on screen — leave it up rather than
       // replacing it with an error over a background refresh hiccup.
@@ -67,12 +81,20 @@ export async function renderMessagesView(root) {
     if (reqBtn) reqBtn.textContent = requests.length ? `Requests (${requests.length})` : 'Requests';
 
     const listEl = qs('#messages-list', body);
-    const rows = tab === 'messages' ? messages : requests;
+    let rows = tab === 'messages' ? messages : requests;
+    if (search) {
+      rows = rows.filter((c) => {
+        const p = c.other || {};
+        return (`${p.display_name || ''} ${p.username || ''}`).toLowerCase().includes(search);
+      });
+    }
 
     if (!rows.length) {
-      listEl.innerHTML = tab === 'messages'
-        ? emptyState('No messages yet. Message someone who follows you back to start a conversation right away.', { icon: iconMessage() })
-        : emptyState('No message requests right now.', { icon: iconMessage() });
+      listEl.innerHTML = search
+        ? emptyState(`No chats match "${esc(search)}".`, { icon: iconSearch() })
+        : tab === 'messages'
+          ? emptyState('No messages yet. Message someone who follows you back to start a conversation right away.', { icon: iconMessage() })
+          : emptyState('No message requests right now.', { icon: iconMessage() });
       return;
     }
 
@@ -100,21 +122,31 @@ export async function renderMessagesView(root) {
     const mine = c.last_message_sender_id === state.user.id;
     const iSentThisRequest = c.status === 'pending' && c.requested_by === state.user.id;
     const prefix = mine ? 'You: ' : '';
-    const KIND_LABEL = { gif: 'Sent a GIF', image: 'Sent a photo', video: 'Sent a video' };
+    const KIND_LABEL = { gif: 'Sent a GIF', image: 'Sent a photo', video: 'Sent a video', game: 'Shared a game' };
     const bodyPreview = KIND_LABEL[c.last_message_kind] ? `${prefix}${KIND_LABEL[c.last_message_kind]}`
       : `${prefix}${esc(c.last_message_body || '')}`;
     const preview = iSentThisRequest
       ? 'Request sent — waiting for a reply'
       : c.last_message_body ? bodyPreview : 'Say hi and start the conversation';
+    const playing = playingBy[c.other?.id];
+    const ctx = playing
+      ? `<div class="convo-row__ctx">
+           ${playing.cover_url ? `<img src="${esc(playing.cover_url)}" alt="">` : ''}<b>Playing</b> · ${esc(playing.title)}
+         </div>`
+      : '';
     return `
       <div class="convo-row${c.unread ? ' convo-row--unread' : ''}" data-convo-id="${esc(c.id)}">
-        ${avatarImg(c.other, 46)}
+        <span class="convo-row__av">${avatarImg(c.other, 46)}</span>
         <div class="convo-row__body">
           <div class="convo-row__top">
             <span class="convo-row__name">${esc(c.other.display_name || c.other.username)}</span>
             ${c.last_message_at ? `<span class="convo-row__time">${timeAgo(c.last_message_at)}</span>` : ''}
           </div>
-          <p class="convo-row__preview">${preview}</p>
+          <div class="convo-row__line">
+            <span class="convo-row__preview">${preview}</span>
+            ${c.unread ? '<span class="convo-row__undot"></span>' : ''}
+          </div>
+          ${ctx}
         </div>
         ${currentTab === 'requests' ? `<button type="button" class="convo-row__decline" data-decline-id="${esc(c.id)}" aria-label="Delete request">${iconTrash()}</button>` : ''}
       </div>`;
