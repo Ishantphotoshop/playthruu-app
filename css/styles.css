@@ -259,9 +259,13 @@
 html, body { height: 100%; overflow-x: hidden; }
 body {
   margin: 0;
-  /* Flat, not the website's own radial ambient-glow gradient this used
-     to match — asked to be plain background colour, no gradient. */
-  background: var(--bg);
+  /* The site page BEHIND/AROUND the app column. A fixed warm cream —
+     deliberately NOT a theme token — so that whatever theme the app
+     itself is in (dark by default), the surrounding page stays light
+     and the app panel is clearly set apart from it. On a phone the app
+     fills the screen so this is never seen; on desktop it's the cream
+     margin either side of the centred app column. */
+  background: #ece4d1;
   background-attachment: fixed;
   color: var(--ink);
   font-family: var(--font-body);
@@ -308,7 +312,14 @@ ul { list-style: none; margin: 0; padding: 0; }
   display: flex;
   flex-direction: column;
   position: relative;
-  background: transparent;
+  /* Opaque (its own theme background) rather than transparent, so the
+     app reads as a distinct panel sitting ON the site's cream page
+     rather than blending into it. The ring + soft drop shadow make the
+     panel's edges obvious on desktop, where the app is a centred 560px
+     phone-width column with cream showing either side of it — an at-a-
+     glance "this is the app, that's the page around it" cue. */
+  background: var(--bg);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.10), 0 22px 70px -28px rgba(0, 0, 0, 0.45);
   overflow-x: hidden;
   overflow-y: auto;
   /* #app is a second, independent scroll container underneath
