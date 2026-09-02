@@ -259,9 +259,13 @@
 html, body { height: 100%; overflow-x: hidden; }
 body {
   margin: 0;
-  /* Flat, not the website's own radial ambient-glow gradient this used
-     to match — asked to be plain background colour, no gradient. */
-  background: var(--bg);
+  /* The site page BEHIND/AROUND the app column. A fixed warm cream —
+     deliberately NOT a theme token — so that whatever theme the app
+     itself is in (dark by default), the surrounding page stays light
+     and the app panel is clearly set apart from it. On a phone the app
+     fills the screen so this is never seen; on desktop it's the cream
+     margin either side of the centred app column. */
+  background: #ece4d1;
   background-attachment: fixed;
   color: var(--ink);
   font-family: var(--font-body);
@@ -308,7 +312,14 @@ ul { list-style: none; margin: 0; padding: 0; }
   display: flex;
   flex-direction: column;
   position: relative;
-  background: transparent;
+  /* Opaque (its own theme background) rather than transparent, so the
+     app reads as a distinct panel sitting ON the site's cream page
+     rather than blending into it. The ring + soft drop shadow make the
+     panel's edges obvious on desktop, where the app is a centred 560px
+     phone-width column with cream showing either side of it — an at-a-
+     glance "this is the app, that's the page around it" cue. */
+  background: var(--bg);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.10), 0 22px 70px -28px rgba(0, 0, 0, 0.45);
   overflow-x: hidden;
   overflow-y: auto;
   /* #app is a second, independent scroll container underneath
@@ -1153,20 +1164,18 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    card just ended up showing ~55-70% instead of the intended 40%.
    Confirmed by directly measuring each card's getBoundingClientRect()
    against the row's real clipping edge, not by eyeballing a
-   screenshot. Reverted to the simpler, verified-correct shape: solve
-   for exactly ONE trailing partial card. (100vw - 62px) is the row's
-   horizontal insets (44px: .view-body's 20px each side + .trending-
-   strip's own 2px each side) plus 3 full inter-card gaps at 6px
-   (18px); /3.2 is "3 full cards + 3 full gaps + 20% of a 4th" — a
-   clearly visible (not razor-thin) cut of the 4th poster, which the
-   user said matters more here than the largest possible size. Scales
-   with the actual device width instead of being tuned to one phone.
-   (A tighter gap + bigger card was tried here once, but the "kill the
-   gap, make it bigger" ask was actually about the grid-view "see more"
-   pages below, not this feed strip — reverted back to the original
-   tuning.) */
+   screenshot. Solve for exactly ONE trailing partial card. Now that the
+   strip bleeds full-width (see #feed-body .trending-strip below), the
+   only inset left is the strip's own 20px left padding that lines the
+   first poster up with the heading — the right side runs to the true
+   screen edge. So (100vw - 38px): 20px left padding + 3 inter-card gaps
+   at 6px (18px); /3.2 is "3 full cards + 3 full gaps + a 20% peek of a
+   4th" reaching the real edge. Bigger than the old (100vw - 62px) since
+   the two 20px side gutters and the 2px strip padding are no longer
+   eating into the row. Scales with device width, not tuned to one
+   phone. */
 @media (max-width: 560px) {
-  :root { --feed-card-w: calc((100vw - 62px) / 3.2); }
+  :root { --feed-card-w: calc((100vw - 38px) / 3.2); }
   .trending-strip { gap: 6px; }
 }
 .card-who .avatar { flex-shrink: 0; }
@@ -1782,7 +1791,21 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
    20px top margin was stacking on top of .view-body's own 20px top
    padding, doubling the gap under the Feed/News pill above it. */
 #trending-section .section-heading { margin-top: 0; }
-#feed-body .trending-strip { padding-bottom: var(--space-2); }
+/* The poster rows on the feed bleed out to the true screen edges rather
+   than sitting inside .view-body's 20px side gutter — the negative
+   margins cancel that gutter, and the matching left padding keeps the
+   FIRST poster lined up under the section heading (which stays inset).
+   The gain is on the trailing edge: the partial poster now runs all the
+   way to the screen edge and into what used to be dead black gutter,
+   instead of being clipped 20px short of it. Only the horizontal strips
+   move — headings and the rest of the feed keep the normal gutter. */
+#feed-body .trending-strip {
+  padding-bottom: var(--space-2);
+  margin-left: calc(-1 * var(--space-4));
+  margin-right: calc(-1 * var(--space-4));
+  padding-left: var(--space-4);
+  padding-right: var(--space-4);
+}
 #feed-body .discovery-active { margin-top: 2px; }
 
 /* align-items: center, not baseline — an SVG icon's "baseline" defaults
