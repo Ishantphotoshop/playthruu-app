@@ -27,7 +27,7 @@ export function renderSearchView(root) {
   let tab = 'games';
 
   root.innerHTML = `
-    <div class="view-body view-body--no-topbar">
+    <div class="view-body view-body--no-topbar view-body--search">
       <div class="segmented segmented--wide" id="search-tabs">
         <button class="segmented__item segmented__item--active" data-tab="games">Games</button>
         <button class="segmented__item" data-tab="people">Players</button>
@@ -98,6 +98,9 @@ export function renderSearchView(root) {
     qsa('.recent-search-row__content', results).forEach((btn) => {
       btn.addEventListener('click', () => {
         input.value = btn.dataset.term;
+        // Tapping a past search re-runs it AND bumps it back to the top of
+        // the history (recordRecentSearch de-dupes then unshifts).
+        recordRecentSearch(btn.dataset.term, tab);
         doSearch();
       });
     });
@@ -198,8 +201,10 @@ export function renderSearchView(root) {
       + (searchHasMore ? `<div id="search-sentinel" aria-hidden="true"></div>
            <div class="search-more" id="search-more">${spinner()}</div>` : '');
     wireCombinedGameResults(results, items, {
-      onLocal: (g) => navigate(`/game/${g.id}`),
-      onRemote: importAndOpen,
+      // Opening a result is the clearest signal the search was real, so
+      // that's where the query gets written into history.
+      onLocal: (g) => { recordRecentSearch(input.value.trim(), tab); navigate(`/game/${g.id}`); },
+      onRemote: (g) => { recordRecentSearch(input.value.trim(), tab); importAndOpen(g); },
     });
     observeSearchSentinel();
   }
@@ -246,15 +251,14 @@ export function renderSearchView(root) {
     }
   }
 
-  // Runs on submit (Enter / the keyboard's search key) rather than on
-  // every keystroke — searching-as-you-type meant firing a request per
-  // letter typed, most of which never matter by the time the next one
-  // lands. Typing a full query and hitting Enter is one deliberate
-  // search, not a debounce race.
+  // Runs live as you type (debounced from the input handler below) as
+  // well as on Enter. It does NOT write to the recent-search history —
+  // if it did, every partial keystroke ("g", "go", "god"…) would pile up
+  // there. History is recorded only on a deliberate act: submitting, re-
+  // tapping a past search, or opening a result (see the handlers below).
   async function doSearch() {
     const q = input.value.trim();
     if (!q) { showPrompt(); return; }
-    recordRecentSearch(q, tab);
     const ticket = ++searchTicket;
     // Fresh state per query — otherwise page counters and accumulated
     // results leak from the previous search into the new one.
@@ -294,8 +298,14 @@ export function renderSearchView(root) {
           results.innerHTML = `<div class="profile-list">${people.map(p =>
             profileRow(p, p.id === state.user?.id ? {} : { following: followingSet.has(p.id) })
           ).join('')}</div>`;
+          // Opening a player's profile, or following them, both mean the
+          // player search mattered — record it into history at that point
+          // (not on every keystroke).
+          qsa('.profile-row__link', results).forEach((a) =>
+            a.addEventListener('click', () => recordRecentSearch(input.value.trim(), tab)));
           wireFollowButtons(results, {
             onToggle: async (userId, wasFollowing) => {
+              recordRecentSearch(input.value.trim(), tab);
               if (!state.user) { promptSignIn('Sign in to follow players.'); throw new Error('not signed in'); }
               try {
                 if (wasFollowing) await api.unfollow(state.user.id, userId);
@@ -313,10 +323,26 @@ export function renderSearchView(root) {
     }
   }
 
-  form.addEventListener('submit', (e) => { e.preventDefault(); doSearch(); });
-  // Clearing the box by hand (backspace or the native ⓧ on type=search)
-  // should drop back to the prompt — that's not a new search, just an
-  // empty one, so it skips doSearch entirely rather than firing a
-  // request for an empty query.
-  input.addEventListener('input', () => { if (!input.value.trim()) showPrompt(); });
+  // Enter (or the keyboard's search key) is a deliberate search, so it
+  // records into history and runs immediately.
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    recordRecentSearch(input.value.trim(), tab);
+    doSearch();
+  });
+
+  // Search-as-you-type: run the search a short beat after typing stops,
+  // so results appear live with no need to press Enter. Debounced to one
+  // request per pause rather than one per keystroke, and it does NOT
+  // touch history (only submit / re-tapping a past search / opening a
+  // result do), so partial words never pile up in the recent list.
+  // Clearing the box drops straight back to the prompt.
+  let typeTimer = null;
+  input.addEventListener('input', () => {
+    clearTimeout(typeTimer);
+    const q = input.value.trim();
+    if (!q) { showPrompt(); return; }
+    if (q.length < 2) return; // wait for a real query before hitting the network
+    typeTimer = setTimeout(() => doSearch(), 300);
+  });
 }

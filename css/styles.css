@@ -433,6 +433,10 @@ ul { list-style: none; margin: 0; padding: 0; }
    38px chip) its own clear row above the segmented tabs instead of
    sitting on the same line and overlapping their text. */
 .view-body--no-topbar { padding-top: calc(var(--safe-top) + 54px); }
+/* Search has no corner-action chip (unlike Messages/Profile), so it
+   doesn't need the 54px row reserved for one — the tabs and everything
+   below can sit much higher, closer to the top of the screen. */
+.view-body--search { padding-top: calc(var(--safe-top) + 18px); }
 /* Compose (Messages) / settings (own Profile): with no topbar to hold a
    right-side action, it floats in the corner of the content itself
    instead — same round chip as .icon-btn, positioned in the reserved
@@ -917,7 +921,14 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   border-radius: 999px; padding: 13px 18px; font-size: 15px; color: var(--ink);
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
-.search-input:focus { border-color: var(--accent-bright); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-bright) 18%, transparent); }
+/* A single lime ring on focus — just the border turning lime. The old
+   focus state layered a 3px box-shadow glow OUTSIDE the border, and on
+   top of that the global :focus-visible rule drew its own 2px lime
+   outline around the whole pill, so clicking the box lit up two or three
+   concentric lime rings. Dropping the glow and suppressing the outline
+   here leaves one clean ring. */
+.search-input:focus { border-color: var(--accent-bright); box-shadow: none; }
+.search-input:focus-visible { outline: none; }
 /* One size, everywhere it appears (Search's browse button, Feed's
    "Bored? Try these" chip) — used to be two different circle sizes
    (46px / 34px) with the icon separately reconciled between them,
@@ -1014,7 +1025,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    search-view.js. .recent-search-row__content sits opaque on top of
    .recent-search-row__delete and slides left on drag to reveal exactly
    as much of it as the drag covers. */
-.recent-search-list { display: flex; flex-direction: column; gap: 2px; margin-bottom: var(--space-5); }
+.recent-search-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: var(--space-5); }
 .recent-search-row { position: relative; overflow: hidden; border-radius: var(--radius-s); }
 .recent-search-row__delete {
   position: absolute; inset: 0; left: auto; width: 84px;
@@ -1022,8 +1033,9 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 }
 .recent-search-row__content {
   position: relative; z-index: 1; width: 100%;
-  display: flex; align-items: center; gap: 10px;
-  background: var(--surface); padding: 12px 14px;
+  display: flex; align-items: center; gap: 11px;
+  background: var(--surface); padding: 14px 16px;
+  border: 1px solid var(--line);
   font-size: 14.5px; color: var(--ink); text-align: left;
   touch-action: pan-y;
 }

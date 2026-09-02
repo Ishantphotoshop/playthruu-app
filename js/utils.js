@@ -249,7 +249,11 @@ export function getRecentlyViewed() {
 // searching for players (or vice versa) was confusing, since the two
 // tabs search completely different things.
 const RECENT_SEARCHES_KEY = { games: 'playthruu_recent_searches_games', people: 'playthruu_recent_searches_people' };
-const RECENT_SEARCHES_MAX = 25;
+// Effectively the whole history — a person never types 1000 distinct
+// searches, and each term is a few bytes, so this keeps "show everything
+// I've ever searched" true while still capping localStorage at something
+// sane rather than growing without any bound at all.
+const RECENT_SEARCHES_MAX = 1000;
 
 export function recordRecentSearch(term, tab) {
   const q = term?.trim();

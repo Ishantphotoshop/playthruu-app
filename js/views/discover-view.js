@@ -62,7 +62,7 @@ export function renderDiscoverView(root) {
   // ---- results screen --------------------------------------------------
   function paintResults() {
     const count = activeFilterCount();
-    root.innerHTML = topBar('Discover', { back: true }) + `
+    root.innerHTML = topBar('Filter', { back: true }) + `
       <div class="view-body">
         <div class="discover-toolbar">
           <button type="button" class="discover-filters-btn discover-filters-btn--solo${count ? ' discover-filters-btn--active' : ''}" id="open-filters">
