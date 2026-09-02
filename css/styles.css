@@ -4182,3 +4182,41 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
   background: rgba(20,20,20,0.6); color: #fff; border: none;
 }
 .image-viewer__close svg { width: 17px; height: 17px; }
+
+/* ============================================================
+   FULLY FLAT — no glows or drop shadows anywhere (requested app-wide).
+   One sweep clears every box-shadow and text-shadow; the drop-shadow
+   "glow" filters and the two radial glow backdrops are cleared at their
+   own selectors instead, because a blanket filter:none would also wipe
+   the real blur/brightness filters the app relies on (spoiler blur,
+   button-press feedback, the date-picker icon). Focus stays visible as
+   a flat outline, never a glow.
+   ============================================================ */
+*, *::before, *::after {
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+/* drop-shadow glows on icons and marks */
+.tabbar__item svg,
+.tabbar__item--active svg,
+.discovery-tile__saved svg,
+.auth-screen__mark,
+.quick-act[data-on="1"] .quick-act__icon--pad,
+.quick-act[data-on="1"] .quick-act__icon--heart,
+.quick-act[data-on="1"] .quick-act__icon--save,
+.msg-heart-burst {
+  filter: none !important;
+}
+/* the two radial "glow" backdrops — the boot-screen accent halo and the
+   OAuth modal's sheen overlay */
+.boot-loader::before,
+.modal--providers::after {
+  display: none !important;
+}
+/* focus used to be shown as a glow on these two; keep it visible as a
+   flat outline now that the glow is gone */
+.btn:focus-visible,
+.discovery-tile:focus-visible {
+  outline: 2px solid var(--accent-bright) !important;
+  outline-offset: 2px;
+}
