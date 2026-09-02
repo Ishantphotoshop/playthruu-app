@@ -256,7 +256,23 @@
    which doesn't correspond to any colour in this app's actual
    palette. Set globally instead of chasing it element by element. */
 * { -webkit-tap-highlight-color: transparent; }
-html, body { height: 100%; overflow-x: hidden; }
+/* overflow: hidden on BOTH axes, not just overflow-x. Two reasons, and
+   the second is the load-bearing one:
+   1. The app shell (#app) owns all scrolling — it's the scroll
+      container, with .view-body scrolling inside it — so the document
+      itself never needs to scroll.
+   2. `overflow-x: hidden` alone computes `overflow-y` to `auto` (per
+      spec, when one axis is clipped the other can't stay `visible`), so
+      the document quietly became scrollable and, on any platform with
+      space-taking scrollbars (Windows), a phantom vertical scrollbar
+      appeared. That scrollbar narrowed the body's content box, so the
+      margin-auto-centred app column shifted left of centre while the
+      position:fixed nav bar — which centres on the full viewport —
+      stayed put, leaving the nav visibly off-centre from the app. With
+      the document non-scrollable there's no scrollbar and the two agree.
+   Invisible in a headless browser, which uses zero-width overlay
+   scrollbars — this only ever showed up on a real desktop. */
+html, body { height: 100%; overflow: hidden; }
 body {
   margin: 0;
   /* The site page BEHIND/AROUND the app column. A fixed warm cream —
@@ -301,14 +317,19 @@ ul { list-style: none; margin: 0; padding: 0; }
   max-width: 560px;
   width: 100%;
   margin: 0 auto;
-  min-height: 100vh;
-  min-height: 100dvh;
-  /* On an actual phone, 100dvh is already phone-sized — this does
-     nothing there. On a desktop browser, 100dvh is the whole monitor,
-     which stretched everything (including the login art) to a huge,
-     wrong-feeling size that needed zooming out just to see fully.
-     Capping it keeps the app at a believable phone height everywhere. */
-  max-height: 1000px;
+  /* Exactly the viewport height (not min-height, and NO max-height cap),
+     so #app is the sole scroll container and the document itself never
+     scrolls. This is what keeps the fixed nav bar centred on the app:
+     the old min-height:100dvh + max-height:1000px let #app grow taller
+     than a sub-1000px window, which made the document scroll — and on a
+     desktop with space-taking scrollbars that scrollbar narrowed the
+     page and pushed the margin-auto app column off-centre from the
+     viewport-fixed nav. (The 1000px cap also never actually fired on
+     tall monitors, where min-height:100dvh already overrode it.) With a
+     fixed 100dvh height everything scrolls inside .view-body instead.
+     100vh first as the fallback for browsers without dvh. */
+  height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   position: relative;
