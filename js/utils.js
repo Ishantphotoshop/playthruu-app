@@ -248,49 +248,55 @@ export function getRecentlyViewed() {
 // SEPARATE histories (separate keys) — a game title showing up while
 // searching for players (or vice versa) was confusing, since the two
 // tabs search completely different things.
-const RECENT_SEARCHES_KEY = { games: 'playthruu_recent_searches_games', people: 'playthruu_recent_searches_people' };
+// ONE combined history for both tabs, not two separate lists — a search
+// is stored as { term, tab } so a single recent list can show game and
+// player searches mixed together, newest first, and tapping one knows
+// which tab to jump to. (The old design kept two per-tab lists under two
+// keys; this key is new so it starts clean rather than trying to merge
+// two untimestamped lists.)
+const RECENT_SEARCHES_KEY = 'playthruu_recent_searches_v2';
 // Effectively the whole history — a person never types 1000 distinct
-// searches, and each term is a few bytes, so this keeps "show everything
+// searches, and each entry is a few bytes, so this keeps "show everything
 // I've ever searched" true while still capping localStorage at something
 // sane rather than growing without any bound at all.
 const RECENT_SEARCHES_MAX = 1000;
 
 export function recordRecentSearch(term, tab) {
   const q = term?.trim();
-  const key = RECENT_SEARCHES_KEY[tab];
-  if (!q || !key) return;
+  if (!q || (tab !== 'games' && tab !== 'people')) return;
   try {
-    const list = getRecentSearches(tab).filter((t) => t.toLowerCase() !== q.toLowerCase());
-    list.unshift(q);
-    localStorage.setItem(key, JSON.stringify(list.slice(0, RECENT_SEARCHES_MAX)));
+    // De-dupe on the term+tab pair, so the same word searched in both
+    // tabs keeps one entry each, and re-searching bumps it to the top.
+    const list = getRecentSearches().filter(
+      (e) => !(e.term.toLowerCase() === q.toLowerCase() && e.tab === tab));
+    list.unshift({ term: q, tab });
+    localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(list.slice(0, RECENT_SEARCHES_MAX)));
   } catch { /* storage unavailable — nothing to persist to */ }
 }
 
-export function getRecentSearches(tab) {
-  const key = RECENT_SEARCHES_KEY[tab];
-  if (!key) return [];
+// Returns the whole combined history, newest first, as { term, tab }
+// objects. Tolerant of any malformed entries left in storage.
+export function getRecentSearches() {
   try {
-    const raw = localStorage.getItem(key);
+    const raw = localStorage.getItem(RECENT_SEARCHES_KEY);
     const list = raw ? JSON.parse(raw) : [];
-    return Array.isArray(list) ? list : [];
+    if (!Array.isArray(list)) return [];
+    return list.filter((e) => e && typeof e.term === 'string' && (e.tab === 'games' || e.tab === 'people'));
   } catch {
     return [];
   }
 }
 
 export function removeRecentSearch(term, tab) {
-  const key = RECENT_SEARCHES_KEY[tab];
-  if (!key) return;
   try {
-    const list = getRecentSearches(tab).filter((t) => t.toLowerCase() !== term.toLowerCase());
-    localStorage.setItem(key, JSON.stringify(list));
+    const list = getRecentSearches().filter(
+      (e) => !(e.term.toLowerCase() === term.toLowerCase() && e.tab === tab));
+    localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(list));
   } catch { /* nothing to persist */ }
 }
 
-export function clearRecentSearches(tab) {
-  const key = RECENT_SEARCHES_KEY[tab];
-  if (!key) return;
-  try { localStorage.removeItem(key); } catch { /* nothing to clear */ }
+export function clearRecentSearches() {
+  try { localStorage.removeItem(RECENT_SEARCHES_KEY); } catch { /* nothing to clear */ }
 }
 
 // Same pattern as the recently-viewed games above, for the emoji picker's

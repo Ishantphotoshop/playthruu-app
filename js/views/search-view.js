@@ -1,6 +1,6 @@
 import * as api from '../api.js';
 import { state } from '../state.js';
-import { navBar, combinedGameResultsList, wireCombinedGameResults, profileRow, wireFollowButtons, spinner, skeletonList, emptyState, iconSearch, iconFilter, posterFrame } from '../components.js';
+import { navBar, combinedGameResultsList, wireCombinedGameResults, profileRow, wireFollowButtons, spinner, skeletonList, emptyState, iconSearch, iconFilter, iconUser, posterFrame } from '../components.js';
 import { qs, qsa, esc, toast, promptSignIn, getRecentlyViewed, recordRecentSearch, getRecentSearches, removeRecentSearch, clearRecentSearches } from '../utils.js';
 import { navigate } from '../router.js';
 
@@ -44,24 +44,26 @@ export function renderSearchView(root) {
   const filterBtn = qs('#filter-btn', root);
   const form = qs('#search-form', root);
 
-  // The actual typed terms — Games and Players keep separate histories
-  // (see recordRecentSearch in utils.js), since a game title showing up
-  // while searching for players was just confusing. Separate from
-  // getRecentlyViewed's list of games actually opened.
+  // ONE combined history for both tabs (see recordRecentSearch in
+  // utils.js) — game searches and player searches in the same list,
+  // newest first, each carrying the tab it belongs to. Shown the same on
+  // either tab. A player search is marked with the person icon so it's
+  // clear which tab a row will jump to. Separate from getRecentlyViewed's
+  // list of games actually opened.
   function recentSearchesBlock() {
-    const terms = getRecentSearches(tab);
-    if (!terms.length) return '';
+    const entries = getRecentSearches();
+    if (!entries.length) return '';
     return `
       <div class="search-recent__row">
         <p class="search-recent__heading">Recent searches</p>
         <button type="button" class="link-btn" id="clear-recent-searches">Clear</button>
       </div>
       <div class="recent-search-list">
-        ${terms.map((t) => `
-          <div class="recent-search-row">
-            <button type="button" class="recent-search-row__delete" data-delete-term="${esc(t)}">Delete</button>
-            <button type="button" class="recent-search-row__content" data-term="${esc(t)}">
-              ${iconSearch()}<span>${esc(t)}</span>
+        ${entries.map((e) => `
+          <div class="recent-search-row" data-tab="${esc(e.tab)}">
+            <button type="button" class="recent-search-row__delete" data-delete-term="${esc(e.term)}" data-delete-tab="${esc(e.tab)}">Delete</button>
+            <button type="button" class="recent-search-row__content" data-term="${esc(e.term)}" data-tab="${esc(e.tab)}">
+              ${e.tab === 'people' ? iconUser() : iconSearch()}<span>${esc(e.term)}</span>
             </button>
           </div>`).join('')}
       </div>`;
@@ -97,22 +99,24 @@ export function renderSearchView(root) {
   function wireRecentSearches() {
     qsa('.recent-search-row__content', results).forEach((btn) => {
       btn.addEventListener('click', () => {
+        // Each recent search remembers its tab — jump there first, then
+        // run it (switchTab is a no-op if already on that tab). Re-running
+        // also bumps it back to the top (recordRecentSearch de-dupes).
+        switchTab(btn.dataset.tab);
         input.value = btn.dataset.term;
-        // Tapping a past search re-runs it AND bumps it back to the top of
-        // the history (recordRecentSearch de-dupes then unshifts).
-        recordRecentSearch(btn.dataset.term, tab);
+        recordRecentSearch(btn.dataset.term, btn.dataset.tab);
         doSearch();
       });
     });
     qsa('.recent-search-row__delete', results).forEach((btn) => {
       btn.addEventListener('click', () => {
-        removeRecentSearch(btn.dataset.deleteTerm, tab);
+        removeRecentSearch(btn.dataset.deleteTerm, btn.dataset.deleteTab);
         showPrompt();
       });
     });
     qsa('.recent-search-row', results).forEach(wireSwipeToReveal);
     const clearBtn = qs('#clear-recent-searches', results);
-    if (clearBtn) clearBtn.addEventListener('click', () => { clearRecentSearches(tab); showPrompt(); });
+    if (clearBtn) clearBtn.addEventListener('click', () => { clearRecentSearches(); showPrompt(); });
   }
 
   // Left-swipe-to-delete, the same gesture a phone's call log uses: drag
@@ -164,11 +168,21 @@ export function renderSearchView(root) {
 
   showPrompt();
 
+  // Switch the active tab and sync everything that depends on it — the
+  // segmented highlight, the placeholder, and the (games-only) filter
+  // button. Used both by the tab buttons and by tapping a recent search
+  // that belongs to the other tab.
+  function switchTab(newTab) {
+    if (newTab !== 'games' && newTab !== 'people') return;
+    tab = newTab;
+    qsa('.segmented__item', root).forEach(b => b.classList.toggle('segmented__item--active', b.dataset.tab === tab));
+    input.placeholder = tab === 'games' ? 'Search games…' : 'Search players…';
+    filterBtn.style.display = tab === 'games' ? '' : 'none';
+  }
+
   qsa('.segmented__item', root).forEach(btn => {
     btn.addEventListener('click', () => {
-      tab = btn.dataset.tab;
-      qsa('.segmented__item', root).forEach(b => b.classList.toggle('segmented__item--active', b === btn));
-      input.placeholder = tab === 'games' ? 'Search games…' : 'Search players…';
+      switchTab(btn.dataset.tab);
       // Keep what was typed. Wiping it meant switching Games -> People
       // to check the same term made you retype it every single time.
       if (input.value.trim()) doSearch();
