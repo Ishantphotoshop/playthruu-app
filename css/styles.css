@@ -1025,7 +1025,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    search-view.js. .recent-search-row__content sits opaque on top of
    .recent-search-row__delete and slides left on drag to reveal exactly
    as much of it as the drag covers. */
-.recent-search-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: var(--space-5); }
+.recent-search-list { display: flex; flex-direction: column; gap: 2px; margin-bottom: var(--space-5); }
 .recent-search-row { position: relative; overflow: hidden; border-radius: var(--radius-s); }
 .recent-search-row__delete {
   position: absolute; inset: 0; left: auto; width: 84px;
@@ -1033,9 +1033,8 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 }
 .recent-search-row__content {
   position: relative; z-index: 1; width: 100%;
-  display: flex; align-items: center; gap: 11px;
-  background: var(--surface); padding: 14px 16px;
-  border: 1px solid var(--line);
+  display: flex; align-items: center; gap: 10px;
+  background: var(--surface); padding: 12px 14px;
   font-size: 14.5px; color: var(--ink); text-align: left;
   touch-action: pan-y;
 }
