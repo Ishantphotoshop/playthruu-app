@@ -109,6 +109,15 @@
   --space-2: 8px;
   --space-3: 14px;
   --space-4: 20px;
+  /* The app's content side-gutter — the left/right breathing room on
+     every screen's .view-body, and everything that lines up with it
+     (top bar, home tabs, game hero, the feed's own bleed maths). Kept as
+     its own token, separate from the general --space-4 spacing, so this
+     one edge margin can be tuned without moving every other gap in the
+     app. Chosen at 12px from a side-by-side picker — tighter than the
+     old flat 20px so posters and grids sit closer to the screen edge
+     ("the wall") while text still keeps a little room off the edge. */
+  --view-pad-x: 12px;
   --space-5: 28px;
   --space-6: 40px;
   --space-7: 56px;
@@ -415,7 +424,7 @@ ul { list-style: none; margin: 0; padding: 0; }
      below is shorter and flush, so less reserved space is needed to
      clear it — kept a little more than the bar's own ~67px footprint
      for breathing room, not cut exactly to it. */
-  padding: var(--space-4) var(--space-4) calc(90px + var(--safe-bottom));
+  padding: var(--space-4) var(--view-pad-x) calc(90px + var(--safe-bottom));
   overflow-y: auto;
   /* Same "scroll still works, the track just isn't drawn" treatment
      .trending-strip already used for its own horizontal scroll — a
@@ -438,7 +447,7 @@ ul { list-style: none; margin: 0; padding: 0; }
    instead — same round chip as .icon-btn, positioned in the reserved
    row above (not beside) the segmented tabs so it never overlaps them. */
 .view-body__corner-action {
-  position: absolute; top: calc(var(--safe-top) + 8px); right: var(--space-4);
+  position: absolute; top: calc(var(--safe-top) + 8px); right: var(--view-pad-x);
   width: 38px; height: 38px; display: grid; place-items: center;
   background: var(--surface-raised); border: 1px solid var(--line);
   border-radius: 50%; color: var(--ink); z-index: 5;
@@ -481,7 +490,7 @@ ul { list-style: none; margin: 0; padding: 0; }
 .topbar {
   position: sticky; top: 0; z-index: 20;
   display: flex; align-items: center; gap: var(--space-3);
-  padding: calc(var(--space-3) + var(--safe-top)) var(--space-4) var(--space-3);
+  padding: calc(var(--space-3) + var(--safe-top)) var(--view-pad-x) var(--space-3);
   /* Solid, not glass — glass is kept on the nav bar + login only. */
   background: var(--bg);
   border-bottom: 1px solid var(--line);
@@ -502,7 +511,7 @@ ul { list-style: none; margin: 0; padding: 0; }
    centres the mark+wordmark as a pair and a third flex item would throw
    that off-centre. .topbar--home is already position:sticky, which is
    enough of a positioning context for this to anchor to. */
-.topbar__right--home { position: absolute; right: var(--space-4); top: 50%; transform: translateY(-50%); }
+.topbar__right--home { position: absolute; right: var(--view-pad-x); top: 50%; transform: translateY(-50%); }
 /* Same background as .topbar--home, and for the same reason: matching
    it (rather than leaving it transparent, or hardcoded black) is what
    joins the two into one seamless section with no visible seam between
@@ -514,7 +523,7 @@ ul { list-style: none; margin: 0; padding: 0; }
    glitch/seam right under the pill. A small amount back (10px) moves
    that transition into plain background instead of the pill's edge,
    without meaningfully reopening the gap the last fix closed. */
-.home-tabs { background: var(--bg); padding: 4px var(--space-4) 10px; display: flex; justify-content: center; }
+.home-tabs { background: var(--bg); padding: 4px var(--view-pad-x) 10px; display: flex; justify-content: center; }
 /* The pill itself: same recipe as .segmented (Search's Games/Players
    tabs) — full width of its container rather than sized to its own
    content, each item taking an equal flex:1 share instead of just
@@ -588,7 +597,7 @@ ul { list-style: none; margin: 0; padding: 0; }
    its own position:relative — stays visually pinned exactly like a
    fixed/sticky element would, with none of sticky's flex/flow
    requirements. Sits above .gd-hero (z-index 0) either way. */
-.game-back { position: absolute; z-index: 20; top: calc(var(--space-3) + var(--safe-top)); left: var(--space-4); }
+.game-back { position: absolute; z-index: 20; top: calc(var(--space-3) + var(--safe-top)); left: var(--view-pad-x); }
 
 /* ------------------------------------------------------------ tabbar
    Floats above the content rather than sitting flush at the bottom
@@ -1187,16 +1196,14 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    against the row's real clipping edge, not by eyeballing a
    screenshot. Solve for exactly ONE trailing partial card. Now that the
    strip bleeds full-width (see #feed-body .trending-strip below), the
-   only inset left is the strip's own 20px left padding that lines the
-   first poster up with the heading — the right side runs to the true
-   screen edge. So (100vw - 38px): 20px left padding + 3 inter-card gaps
-   at 6px (18px); /3.2 is "3 full cards + 3 full gaps + a 20% peek of a
-   4th" reaching the real edge. Bigger than the old (100vw - 62px) since
-   the two 20px side gutters and the 2px strip padding are no longer
-   eating into the row. Scales with device width, not tuned to one
-   phone. */
+   only inset left is the strip's own left padding (var(--view-pad-x),
+   12px) that lines the first poster up with the heading — the right side
+   runs to the true screen edge. So (100vw - 30px): 12px left padding +
+   3 inter-card gaps at 6px (18px); /3.2 is "3 full cards + 3 full gaps +
+   a 20% peek of a 4th" reaching the real edge. Scales with device width,
+   not tuned to one phone. */
 @media (max-width: 560px) {
-  :root { --feed-card-w: calc((100vw - 38px) / 3.2); }
+  :root { --feed-card-w: calc((100vw - 30px) / 3.2); }
   .trending-strip { gap: 6px; }
 }
 .card-who .avatar { flex-shrink: 0; }
@@ -1813,19 +1820,19 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
    padding, doubling the gap under the Feed/News pill above it. */
 #trending-section .section-heading { margin-top: 0; }
 /* The poster rows on the feed bleed out to the true screen edges rather
-   than sitting inside .view-body's 20px side gutter — the negative
-   margins cancel that gutter, and the matching left padding keeps the
-   FIRST poster lined up under the section heading (which stays inset).
-   The gain is on the trailing edge: the partial poster now runs all the
-   way to the screen edge and into what used to be dead black gutter,
-   instead of being clipped 20px short of it. Only the horizontal strips
-   move — headings and the rest of the feed keep the normal gutter. */
+   than sitting inside .view-body's side gutter (var(--view-pad-x)) — the
+   negative margins cancel that gutter, and the matching left padding
+   keeps the FIRST poster lined up under the section heading (which stays
+   inset). The gain is on the trailing edge: the partial poster now runs
+   all the way to the screen edge and into what used to be dead gutter,
+   instead of being clipped short of it. Only the horizontal strips move
+   — headings and the rest of the feed keep the normal gutter. */
 #feed-body .trending-strip {
   padding-bottom: var(--space-2);
-  margin-left: calc(-1 * var(--space-4));
-  margin-right: calc(-1 * var(--space-4));
-  padding-left: var(--space-4);
-  padding-right: var(--space-4);
+  margin-left: calc(-1 * var(--view-pad-x));
+  margin-right: calc(-1 * var(--view-pad-x));
+  padding-left: var(--view-pad-x);
+  padding-right: var(--view-pad-x);
 }
 #feed-body .discovery-active { margin-top: 2px; }
 
@@ -2656,7 +2663,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
    the fallback for games without one. */
 .gd-hero {
   position: relative; overflow: hidden;
-  margin: calc(-1 * var(--space-4)) calc(-1 * var(--space-4)) 0;
+  margin: calc(-1 * var(--space-4)) calc(-1 * var(--view-pad-x)) 0;
   /* Was a flat 260px, which only happened to roughly match the image's
      own rendered height (16:9 of the hero's width) at one specific
      viewport width — narrower than that and the image+its fade were
@@ -2671,7 +2678,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
      up slightly into the fade's own tail (already mostly transparent by
      then) for a tighter, Letterboxd-style poster-over-backdrop overlap
      rather than a hard gap. */
-  padding: calc(56.25% - 40px) var(--space-4) var(--space-4);
+  padding: calc(56.25% - 40px) var(--view-pad-x) var(--space-4);
   /* Shared by .gd-hero__bg and .gd-hero__scrim below — see the note
      there for why masking both to transparent, rather than fading the
      scrim to a hand-matched solid colour, is what actually makes the
@@ -4029,7 +4036,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
   position: fixed; left: 50%; transform: translateX(-50%);
   bottom: 0; width: 100%; max-width: 560px;
   display: flex; flex-direction: column;
-  padding: 8px var(--space-4) calc(10px + var(--safe-bottom));
+  padding: 8px var(--view-pad-x) calc(10px + var(--safe-bottom));
   background: var(--surface-high); border-top: 1px solid var(--line);
   z-index: 30;
 }
