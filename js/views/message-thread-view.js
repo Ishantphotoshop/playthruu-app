@@ -3,7 +3,7 @@ import { state } from '../state.js';
 import {
   topBar, avatarImg, iconSend, iconDotsMenu, iconGif, iconPlus,
   iconReply, iconInfo, iconCopy, iconTrash, iconClose, iconSearch,
-  iconGamepad, iconChevronRight, iconCamera,
+  iconGamepad, iconChevronRight, iconCamera, iconList, iconNote, iconStamp,
 } from '../components.js';
 import { esc, qs, qsa, toast, timeAgo, formatDate, debounce, enableSwipeToDismiss, recordRecentEmoji, getRecentEmoji } from '../utils.js';
 import { navigate } from '../router.js';
@@ -49,6 +49,7 @@ export async function renderMessageThreadView(root, { conversationId, otherUserI
   let messages = [];
   let gamesById = {};     // hydrated game data for kind='game' messages
   let otherPlaying = null; // the other person's currently-playing game (public log)
+  let otherLastSeen = null; // their presence timestamp (visible via the conversation policy)
   let reactionsByMessage = {};
   let replyingTo = null;  // a message object, or null
   let unsubscribe = null;
@@ -93,6 +94,10 @@ export async function renderMessageThreadView(root, { conversationId, otherUserI
   // context. Fire-and-forget: the header re-renders once it lands.
   api.getPlayingByUsers([convo.other.id]).then((m) => {
     otherPlaying = m[convo.other.id] || null;
+    renderHeader();
+  }).catch(() => {});
+  api.getPresenceFor([convo.other.id]).then((m) => {
+    otherLastSeen = m[convo.other.id] || null;
     renderHeader();
   }).catch(() => {});
   renderHeader();
@@ -186,11 +191,14 @@ export async function renderMessageThreadView(root, { conversationId, otherUserI
     const titleEl = qs('.topbar__title', root);
     if (!titleEl) return;
     const name = convo.other.display_name || convo.other.username;
-    const pres = otherPlaying
-      ? `<span class="thread-hd__pres"><span class="thread-hd__dot" style="background:var(--accent-bright)"></span>Playing <b>${esc(otherPlaying.title)}</b></span>`
-      : `<span class="thread-hd__pres">@${esc(convo.other.username)}</span>`;
+    const online = otherLastSeen && (Date.now() - new Date(otherLastSeen).getTime()) < 3 * 60 * 1000;
+    let pres;
+    if (otherPlaying) pres = `<span class="thread-hd__pres thread-hd__pres--online"><span class="thread-hd__dot" style="background:var(--accent-bright)"></span>Playing <b>${esc(otherPlaying.title)}</b></span>`;
+    else if (online) pres = `<span class="thread-hd__pres thread-hd__pres--online"><span class="thread-hd__dot"></span>Active now</span>`;
+    else if (otherLastSeen) pres = `<span class="thread-hd__pres">Active ${esc(timeAgo(otherLastSeen))} ago</span>`;
+    else pres = `<span class="thread-hd__pres">@${esc(convo.other.username)}</span>`;
     titleEl.innerHTML = `
-      <a href="#/profile/${esc(convo.other.username)}" class="thread-hd${otherPlaying ? ' thread-hd--online' : ''}">
+      <a href="#/profile/${esc(convo.other.username)}" class="thread-hd${online || otherPlaying ? ' thread-hd--online' : ''}">
         ${avatarImg(convo.other, 34)}
         <span class="thread-hd__meta">
           <span class="thread-hd__name">${esc(name)}</span>
@@ -203,7 +211,10 @@ export async function renderMessageThreadView(root, { conversationId, otherUserI
   // render, then repaint. Cheap and idempotent — only fetches ids not
   // already hydrated.
   async function hydrateGames() {
-    const need = messages.filter((m) => m.kind === 'game' && !gamesById[m.body]).map((m) => m.body);
+    const need = messages
+      .filter((m) => m.kind === 'game' || m.kind === 'review')
+      .map((m) => parseCard(m).g)
+      .filter((g) => g && !gamesById[g]);
     if (!need.length) return;
     try {
       const fetched = await api.getGamesByIds(need);
@@ -220,7 +231,9 @@ export async function renderMessageThreadView(root, { conversationId, otherUserI
     if (m.kind === 'gif') return 'GIF';
     if (m.kind === 'image') return 'Photo';
     if (m.kind === 'video') return 'Video';
-    if (m.kind === 'game') return gamesById[m.body]?.title ? `🎮 ${gamesById[m.body].title}` : 'Game';
+    if (m.kind === 'game') { const g = gamesById[parseCard(m).g]; return g?.title ? `🎮 ${g.title}` : 'Game'; }
+    if (m.kind === 'review') return '📝 Review';
+    if (m.kind === 'list') return `≣ ${parseCard(m).n || 'List'}`;
     return m.body;
   }
 
@@ -230,28 +243,78 @@ export async function renderMessageThreadView(root, { conversationId, otherUserI
     if (m.kind === 'video') return `<video class="msg-video" src="${esc(m.body)}" controls playsinline preload="metadata"></video>`;
     if (m.kind === 'sticker') return `<span class="msg-sticker">${esc(m.body)}</span>`; // legacy — no longer sendable, still rendered if one exists
     if (m.kind === 'game') return gameCardHtml(m);
+    if (m.kind === 'review') return reviewCardHtml(m);
+    if (m.kind === 'list') return listCardHtml(m);
     return esc(m.body);
   }
 
-  // The flagship Playthruu message type: a shared game rendered as a rich
-  // card that taps through to the game, instead of a dead link. body holds
-  // the game id; gamesById is hydrated by hydrateGames().
+  // Playthruu card messages (game / review / list) store JSON in the body.
+  // The very first game cards stored a bare game id, so fall back to that.
+  function parseCard(m) {
+    try { const o = JSON.parse(m.body); if (o && typeof o === 'object') return o; } catch { /* not json */ }
+    return m.kind === 'game' ? { g: m.body } : {};
+  }
+  const senderLabel = (m) => (m.sender_id === state.user.id ? 'You' : (convo.other.display_name || convo.other.username));
+  function starStr(r) { const n = Math.round(Number(r) || 0); return '★★★★★'.slice(0, n) + '☆☆☆☆☆'.slice(0, 5 - n); }
+
+  // The flagship: a shared game as a rich hero card that taps through to
+  // the game, carrying the sender's own rating/status when they have one.
   function gameCardHtml(m) {
-    const g = gamesById[m.body];
-    if (!g) {
-      // Still loading, or the game was hidden/removed — a calm placeholder
-      // rather than a broken card.
-      return `<span class="msg-gamecard"><span class="msg-gamecard__cover"></span><span class="msg-gamecard__body"><span class="msg-gamecard__title">Shared a game</span><span class="msg-gamecard__meta">Loading…</span></span></span>`;
-    }
+    const c = parseCard(m);
+    const g = gamesById[c.g];
+    if (!g) return `<span class="msg-gamecard"><span class="msg-gamecard__cover"></span><span class="msg-gamecard__body"><span class="msg-gamecard__title">Shared a game</span><span class="msg-gamecard__meta">Loading…</span></span></span>`;
     const meta = [g.release_year, g.genre, g.platform].filter(Boolean).join(' · ');
+    const tag = c.s === 'playing' ? 'Playing' : c.s === 'played' ? 'Played' : c.s === 'backlog' ? 'Backlog' : 'Game';
+    const who = senderLabel(m);
+    const rate = c.r
+      ? `<span class="msg-gamecard__rate"><span class="msg-stars">${starStr(c.r)}</span> ${esc(who)} rated it ${c.r}</span>`
+      : (c.s ? `<span class="msg-gamecard__rate">${esc(who)} · ${esc(tag.toLowerCase())}</span>` : '');
     return `
       <a href="#/game/${esc(g.id)}" class="msg-gamecard">
-        ${g.cover_url ? `<img class="msg-gamecard__cover" src="${esc(g.cover_url)}" alt="">` : '<span class="msg-gamecard__cover"></span>'}
+        <span class="msg-gamecard__cover" style="${g.cover_url ? `background-image:url('${esc(g.cover_url)}')` : ''}">
+          <span class="msg-gamecard__tag">${esc(tag)}</span>
+        </span>
         <span class="msg-gamecard__body">
-          <span class="msg-gamecard__tag">Game</span>
           <span class="msg-gamecard__title">${esc(g.title)}</span>
           ${meta ? `<span class="msg-gamecard__meta">${esc(meta)}</span>` : ''}
+          ${rate}
           <span class="msg-gamecard__cta">Open game ${iconChevronRight()}</span>
+        </span>
+      </a>`;
+  }
+
+  // A shared review — the sender's rating + their words, over the game.
+  function reviewCardHtml(m) {
+    const c = parseCard(m);
+    const g = gamesById[c.g];
+    const cover = g?.cover_url || c.cov || '';
+    const title = g?.title || c.ti || 'Game';
+    return `
+      <a href="#/game/${esc(c.g)}" class="msg-reviewcard">
+        <span class="msg-reviewcard__top">
+          <span class="msg-reviewcard__cover" style="${cover ? `background-image:url('${esc(cover)}')` : ''}"></span>
+          <span class="msg-reviewcard__head">
+            <span class="msg-reviewcard__tag">Review · ${esc(senderLabel(m))}</span>
+            <span class="msg-reviewcard__title">${esc(title)}</span>
+            ${c.r ? `<span class="msg-reviewcard__stars">${starStr(c.r)}</span>` : ''}
+          </span>
+        </span>
+        <span class="msg-reviewcard__text">${esc(c.rev || '')}</span>
+      </a>`;
+  }
+
+  // A shared list — a poster collage + name + count.
+  function listCardHtml(m) {
+    const c = parseCard(m);
+    const covers = (c.cov || []).slice(0, 4);
+    const cells = Array.from({ length: 4 }).map((_, i) => `<span style="${covers[i] ? `background-image:url('${esc(covers[i])}')` : ''}"></span>`).join('');
+    return `
+      <a href="#/list/${esc(c.id)}" class="msg-listcard">
+        <span class="msg-listcard__collage">${cells}</span>
+        <span class="msg-listcard__body">
+          <span class="msg-listcard__tag">List · ${esc(senderLabel(m))}</span>
+          <span class="msg-listcard__name">${esc(c.n || 'List')}</span>
+          <span class="msg-listcard__meta">${c.c || 0} game${(c.c || 0) === 1 ? '' : 's'}</span>
         </span>
       </a>`;
   }
@@ -677,6 +740,11 @@ export async function renderMessageThreadView(root, { conversationId, otherUserI
   // The default composer is one clean input; everything else lives behind
   // the "+". "Share a game" is the flagship, the rest is media/GIF.
 
+  // My own logs, fetched once and reused across the game/review/playing
+  // pickers so a shared game can carry my rating/status.
+  let myLogsPromise = null;
+  const myLogs = () => (myLogsPromise ||= api.getLogsForUser(state.user.id).catch(() => []));
+
   function openShareSheet() {
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
@@ -686,8 +754,11 @@ export async function renderMessageThreadView(root, { conversationId, otherUserI
         <div class="msg-actions">
           <div class="share-grid">
             <button type="button" class="share-opt share-opt--game" data-act="game"><span class="share-opt__ic">${iconGamepad()}</span>Share a game</button>
-            <button type="button" class="share-opt" data-act="photo"><span class="share-opt__ic">${iconCamera()}</span>Photo / Video</button>
+            <button type="button" class="share-opt" data-act="review"><span class="share-opt__ic">${iconNote()}</span>Review</button>
+            <button type="button" class="share-opt" data-act="list"><span class="share-opt__ic">${iconList()}</span>List</button>
+            <button type="button" class="share-opt" data-act="photo"><span class="share-opt__ic">${iconCamera()}</span>Photo</button>
             <button type="button" class="share-opt" data-act="gif"><span class="share-opt__ic">${iconGif()}</span>GIF</button>
+            <button type="button" class="share-opt" data-act="playing"><span class="share-opt__ic">${iconStamp()}</span>Playing</button>
           </div>
         </div>
       </div>`;
@@ -695,69 +766,142 @@ export async function renderMessageThreadView(root, { conversationId, otherUserI
     const close = () => overlay.remove();
     overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
     enableSwipeToDismiss(qs('.modal', overlay), close);
-    qs('[data-act="game"]', overlay).addEventListener('click', () => { close(); openGamePicker(); });
-    qs('[data-act="photo"]', overlay).addEventListener('click', () => { close(); qs('#thread-media-input', root).click(); });
-    qs('[data-act="gif"]', overlay).addEventListener('click', () => { close(); openGifPicker(); });
+    const on = (act, fn) => qs(`[data-act="${act}"]`, overlay).addEventListener('click', () => { close(); fn(); });
+    on('game', openGamePicker);
+    on('review', openReviewPicker);
+    on('list', openListPicker);
+    on('photo', () => qs('#thread-media-input', root).click());
+    on('gif', openGifPicker);
+    on('playing', sharePlaying);
   }
 
-  function openGamePicker() {
+  // A reusable picker modal shell: header + a body you fill in.
+  function pickerModal(title, fill) {
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
     overlay.innerHTML = `
       <div class="modal modal--tall">
-        <header class="modal__header"><h2>Share a game</h2><button class="modal__close" data-close aria-label="Close">${iconClose()}</button></header>
-        <div class="modal__body">
-          <label class="field"><span>Search</span><input type="search" id="gp-search" autocomplete="off" placeholder="Search any game…"></label>
-          <div id="gp-results"></div>
-        </div>
+        <header class="modal__header"><h2>${esc(title)}</h2><button class="modal__close" data-close aria-label="Close">${iconClose()}</button></header>
+        <div class="modal__body" id="picker-body"></div>
       </div>`;
     document.body.appendChild(overlay);
     const close = () => overlay.remove();
     overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
     qs('[data-close]', overlay).addEventListener('click', close);
     enableSwipeToDismiss(qs('.modal', overlay), close);
+    fill(qs('#picker-body', overlay), close);
+    return overlay;
+  }
 
-    const input = qs('#gp-search', overlay);
-    const results = qs('#gp-results', overlay);
-    input.focus();
-    let token = 0;
-    const run = debounce(async () => {
-      const q = input.value.trim();
-      if (q.length < 2) { results.innerHTML = ''; return; }
-      results.innerHTML = '<div class="spinner"></div>';
-      const mine = ++token;
-      try {
-        const { results: games } = await api.searchGamesEverywhere(q, 14);
-        if (mine !== token) return;
-        if (!games.length) { results.innerHTML = `<p class="muted">Nothing matched that.</p>`; return; }
-        results.innerHTML = games.map((g, i) => `
-          <button type="button" class="gamepick-row" data-i="${i}">
-            ${g.cover_url ? `<img src="${esc(g.cover_url)}" alt="">` : '<span class="gamepick-row__cover"></span>'}
-            <span style="min-width:0">
-              <span class="gamepick-row__title">${esc(g.title)}</span>
-              <span class="gamepick-row__meta">${g.release_year ? esc(g.release_year) : ''}${g._source === 'local' ? ' · in catalog' : ''}</span>
+  async function sendCard(kind, payload, close) {
+    close?.();
+    try { await sendOne(JSON.stringify(payload), kind); }
+    catch (err) { toast(err.message || 'Could not share that.', 'error'); }
+  }
+
+  function openGamePicker() {
+    pickerModal('Share a game', (body, close) => {
+      body.innerHTML = `<label class="field"><span>Search</span><input type="search" id="gp-search" autocomplete="off" placeholder="Search any game…"></label><div id="gp-results"></div>`;
+      const input = qs('#gp-search', body);
+      const results = qs('#gp-results', body);
+      input.focus();
+      let token = 0;
+      const run = debounce(async () => {
+        const q = input.value.trim();
+        if (q.length < 2) { results.innerHTML = ''; return; }
+        results.innerHTML = '<div class="spinner"></div>';
+        const mine = ++token;
+        try {
+          const { results: games } = await api.searchGamesEverywhere(q, 14);
+          if (mine !== token) return;
+          if (!games.length) { results.innerHTML = `<p class="muted">Nothing matched that.</p>`; return; }
+          results.innerHTML = games.map((g, i) => `
+            <button type="button" class="gamepick-row" data-i="${i}">
+              ${g.cover_url ? `<img src="${esc(g.cover_url)}" alt="">` : '<span class="gamepick-row__cover"></span>'}
+              <span style="min-width:0">
+                <span class="gamepick-row__title">${esc(g.title)}</span>
+                <span class="gamepick-row__meta">${g.release_year ? esc(g.release_year) : ''}${g._source === 'local' ? ' · in catalog' : ''}</span>
+              </span>
+            </button>`).join('');
+          qsa('.gamepick-row', results).forEach((btn) => btn.addEventListener('click', async () => {
+            const game = games[Number(btn.dataset.i)];
+            btn.disabled = true;
+            try {
+              const local = (game._source === 'local' && game.id) ? game : await api.addGame(game, state.user.id);
+              gamesById[local.id] = local; // render the card instantly
+              const log = (await myLogs()).find((l) => l.game_id === local.id);
+              await sendCard('game', { g: local.id, r: log?.rating || null, s: log?.status || null, l: !!log?.loved }, close);
+            } catch (err) {
+              btn.disabled = false;
+              toast(err.message || 'Could not share that game.', 'error');
+            }
+          }));
+        } catch {
+          if (mine === token) results.innerHTML = `<p class="muted">Search failed. Try again.</p>`;
+        }
+      }, 300);
+      input.addEventListener('input', run);
+    });
+  }
+
+  function openReviewPicker() {
+    pickerModal('Share a review', async (body, close) => {
+      body.innerHTML = '<div class="spinner"></div>';
+      const logs = (await myLogs()).filter((l) => l.review && l.games);
+      if (!logs.length) { body.innerHTML = `<p class="muted">You haven't written any reviews yet.</p>`; return; }
+      body.innerHTML = logs.map((l, i) => `
+        <button type="button" class="gamepick-row" data-i="${i}" style="align-items:flex-start">
+          ${l.games.cover_url ? `<img src="${esc(l.games.cover_url)}" alt="">` : '<span class="gamepick-row__cover"></span>'}
+          <span style="min-width:0">
+            <span class="gamepick-row__title">${esc(l.games.title)}</span>
+            <span class="gamepick-row__meta">${l.rating ? starStr(l.rating) : ''}</span>
+            <span class="gamepick-row__meta" style="color:var(--ink-dim);white-space:normal;margin-top:4px">${esc(l.review.slice(0, 90))}${l.review.length > 90 ? '…' : ''}</span>
+          </span>
+        </button>`).join('');
+      qsa('.gamepick-row', body).forEach((btn) => btn.addEventListener('click', () => {
+        const l = logs[Number(btn.dataset.i)];
+        gamesById[l.game_id] = l.games;
+        sendCard('review', { g: l.game_id, r: l.rating || null, rev: l.review.slice(0, 400), ti: l.games.title, cov: l.games.cover_url || null }, close);
+      }));
+    });
+  }
+
+  function openListPicker() {
+    pickerModal('Share a list', async (body, close) => {
+      body.innerHTML = '<div class="spinner"></div>';
+      let lists = [];
+      try { lists = await api.getListsForUser(state.user.id); } catch { /* handled below */ }
+      if (!lists.length) { body.innerHTML = `<p class="muted">You don't have any lists yet.</p>`; return; }
+      const covers = (l) => (l.list_items || []).slice().sort((a, b) => a.position - b.position).map((it) => it.games?.cover_url).filter(Boolean);
+      body.innerHTML = lists.map((l, i) => {
+        const cov = covers(l).slice(0, 4);
+        const cells = Array.from({ length: 4 }).map((_, k) => `<span style="${cov[k] ? `background-image:url('${esc(cov[k])}')` : ''}"></span>`).join('');
+        return `
+          <button type="button" class="listpick-row" data-i="${i}">
+            <span class="listpick-row__collage">${cells}</span>
+            <span style="min-width:0;flex:1">
+              <span class="gamepick-row__title">${esc(l.name)}</span>
+              <span class="gamepick-row__meta">${(l.list_items || []).length} games</span>
             </span>
-          </button>`).join('');
-        qsa('.gamepick-row', results).forEach((btn) => btn.addEventListener('click', async () => {
-          const game = games[Number(btn.dataset.i)];
-          btn.disabled = true;
-          try {
-            // A remote hit has no catalog row yet; a game message's body is
-            // a real game id, so the row has to exist before it's sent.
-            const local = (game._source === 'local' && game.id) ? game : await api.addGame(game, state.user.id);
-            gamesById[local.id] = local; // render the card instantly, no round-trip
-            close();
-            await sendOne(local.id, 'game');
-          } catch (err) {
-            btn.disabled = false;
-            toast(err.message || 'Could not share that game.', 'error');
-          }
-        }));
-      } catch {
-        if (mine === token) results.innerHTML = `<p class="muted">Search failed. Try again.</p>`;
-      }
-    }, 300);
-    input.addEventListener('input', run);
+          </button>`;
+      }).join('');
+      qsa('.listpick-row', body).forEach((btn) => btn.addEventListener('click', () => {
+        const l = lists[Number(btn.dataset.i)];
+        sendCard('list', { id: l.id, n: l.name, c: (l.list_items || []).length, cov: covers(l).slice(0, 4) }, close);
+      }));
+    });
+  }
+
+  async function sharePlaying() {
+    try {
+      const playing = (await api.getPlayingByUsers([state.user.id]))[state.user.id];
+      if (!playing) { toast("You're not marked as playing anything right now.", 'info'); return; }
+      gamesById[playing.id] = playing;
+      const log = (await myLogs()).find((l) => l.game_id === playing.id);
+      await sendCard('game', { g: playing.id, s: 'playing', r: log?.rating || null, l: !!log?.loved });
+    } catch (err) {
+      toast(err.message || 'Could not share that.', 'error');
+    }
   }
 
   // ---- full-screen image viewer ---------------------------------------

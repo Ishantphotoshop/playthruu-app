@@ -22,17 +22,21 @@ export async function renderMessagesView(root) {
   // new message that landed while you were away still shows up promptly.
   let all = getCached(MESSAGES_CACHE_KEY) || [];
   let playingBy = {};   // { userId: game } — "Playing X" context per row
+  let presenceBy = {};  // { userId: lastSeenAt } — online dots
   let search = '';
   let unsubscribe = null;
 
   root.innerHTML =
-    `<div class="view-body view-body--no-topbar" id="messages-body">
-       <button type="button" class="view-body__corner-action" id="compose-btn" aria-label="New message">${iconPlus()}</button>
+    `<div class="view-body view-body--no-topbar view-body--search" id="messages-body">
+       <div class="msg-inbox-head">
+         <h1 class="msg-inbox-title">Messages</h1>
+         <button type="button" class="msg-inbox-new" id="compose-btn" aria-label="New message">${iconPlus()}</button>
+       </div>
+       <label class="convo-search">${iconSearch()}<input type="search" id="convo-search-input" placeholder="Search chats, people, games" autocomplete="off"></label>
        <div class="segmented segmented--wide" id="messages-tabs">
          <button type="button" class="segmented__item segmented__item--active" data-tab="messages">Chats</button>
          <button type="button" class="segmented__item" data-tab="requests" id="requests-tab-btn">Requests</button>
        </div>
-       <label class="convo-search">${iconSearch()}<input type="search" id="convo-search-input" placeholder="Search chats" autocomplete="off"></label>
        <div id="messages-list">${all.length ? '' : spinner()}</div>
      </div>` + navBar('/messages');
 
@@ -60,10 +64,12 @@ export async function renderMessagesView(root) {
       all = await api.getConversations(state.user.id);
       setCached(MESSAGES_CACHE_KEY, all);
       paint();
-      // "Playing X" context is a nice-to-have layered in after the list is
-      // already up — one query for everyone in the inbox, then repaint.
+      // Presence (online dots) + "Playing X" context are layered in after
+      // the list is already up — a query each over the whole inbox.
       try {
-        playingBy = await api.getPlayingByUsers(all.map((c) => c.other?.id));
+        const ids = all.map((c) => c.other?.id);
+        const [pl, pr] = await Promise.all([api.getPlayingByUsers(ids), api.getPresenceFor(ids)]);
+        playingBy = pl; presenceBy = pr;
         paint();
       } catch { /* context is optional */ }
     } catch (err) {
@@ -134,9 +140,11 @@ export async function renderMessagesView(root) {
            ${playing.cover_url ? `<img src="${esc(playing.cover_url)}" alt="">` : ''}<b>Playing</b> · ${esc(playing.title)}
          </div>`
       : '';
+    const last = presenceBy[c.other?.id];
+    const online = last && (Date.now() - new Date(last).getTime()) < 3 * 60 * 1000;
     return `
       <div class="convo-row${c.unread ? ' convo-row--unread' : ''}" data-convo-id="${esc(c.id)}">
-        <span class="convo-row__av">${avatarImg(c.other, 46)}</span>
+        <span class="convo-row__av">${avatarImg(c.other, 46)}${online ? '<span class="convo-row__presdot"></span>' : ''}</span>
         <div class="convo-row__body">
           <div class="convo-row__top">
             <span class="convo-row__name">${esc(c.other.display_name || c.other.username)}</span>

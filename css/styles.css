@@ -3955,6 +3955,14 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
    for the request/accepted rule this UI reflects.
    ============================================================ */
 
+/* Inbox header — the "Messages" wordmark with an inline new-message
+   button, replacing the lone floating corner chip. */
+.msg-inbox-head { display: flex; align-items: center; justify-content: space-between; padding: 2px 2px 0; }
+.msg-inbox-title { font-family: var(--font-brand); font-weight: 800; font-size: 25px; letter-spacing: -0.02em; }
+.msg-inbox-new { width: 34px; height: 34px; border-radius: 50%; background: var(--accent); color: var(--bg); display: grid; place-items: center; flex-shrink: 0; transition: transform var(--dur-fast) var(--ease); }
+.msg-inbox-new:active { transform: scale(0.92); }
+.msg-inbox-new svg { width: 18px; height: 18px; }
+
 /* Inbox search — a client-side filter over the loaded conversations. */
 .convo-search {
   display: flex; align-items: center; gap: 8px;
@@ -4051,7 +4059,11 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 .gamepick-row:active { background: var(--surface-raised); }
 .gamepick-row img, .gamepick-row .gamepick-row__cover { width: 38px; height: 51px; border-radius: 5px; object-fit: cover; background: var(--surface-high); flex-shrink: 0; }
 .gamepick-row__title { font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.gamepick-row__meta { font-family: var(--font-mono); font-size: 11px; color: var(--ink-faint); margin-top: 2px; }
+.gamepick-row__meta { font-family: var(--font-mono); font-size: 11px; color: var(--ink-faint); margin-top: 2px; display: block; }
+.listpick-row { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 8px 6px; border-radius: var(--radius-s); }
+.listpick-row:active { background: var(--surface-raised); }
+.listpick-row__collage { width: 56px; height: 42px; flex-shrink: 0; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 1.5px; border-radius: 5px; overflow: hidden; background: var(--surface); }
+.listpick-row__collage span { background: var(--surface-high) center / cover no-repeat; }
 
 .thread-messages { display: flex; flex-direction: column; padding: 4px 0; }
 .thread-empty { text-align: center; color: var(--ink-faint); font-size: 13px; padding: 48px 0; }
@@ -4105,7 +4117,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
    chrome around them. */
 /* flex collapses the whitespace text nodes around the media/card child
    so the bubble hugs it exactly instead of adding phantom line-box height. */
-.msg-bubble--bare { background: none !important; padding: 0 !important; border: none !important; display: flex; }
+.msg-bubble--bare { background: none !important; padding: 0 !important; border: none !important; display: flex; align-items: flex-start; }
 .msg-gif { display: block; max-width: 220px; border-radius: 14px; }
 .msg-video { display: block; max-width: 240px; max-height: 320px; border-radius: 14px; background: #000; }
 .msg-sticker { font-size: 52px; line-height: 1; display: block; }
@@ -4129,33 +4141,72 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 .msg-reaction--mine { border-color: var(--accent-bright); background: color-mix(in srgb, var(--accent) 16%, var(--surface)); }
 
 /* ---- Playthruu game card message (kind='game') --------------------- */
-/* Horizontal card — cover on the left, info on the right. A plain flex
-   layout with no absolute overlaps, so it can't stretch and stays a
-   compact, premium object in the stream. */
+/* Horizontal card — cover on the left, details on the right. Same proven
+   structure as the review card; a plain flex layout with no absolute
+   overlaps so it stays compact and can't stretch. The tag sits over the
+   cover, the sender's rating under the meta. */
 .msg-gamecard {
-  display: flex; width: 244px; max-width: 100%;
+  position: relative; display: flex; width: 250px; max-width: 100%;
   background: var(--surface-raised); border: 1px solid var(--line);
   border-radius: var(--radius-m); overflow: hidden; text-align: left; color: var(--ink);
   transition: transform var(--dur-fast) var(--ease);
 }
 .msg-gamecard:active { transform: scale(0.985); }
 .msg-gamecard__cover {
-  width: 66px; flex-shrink: 0; align-self: stretch; min-height: 96px;
+  position: relative; width: 70px; flex-shrink: 0; align-self: stretch; min-height: 104px;
   object-fit: cover; display: block;
   background: var(--surface-high) center / cover no-repeat;
 }
-.msg-gamecard__body { flex: 1; min-width: 0; padding: 11px 13px; display: flex; flex-direction: column; }
+.msg-gamecard__hero { display: none; } /* legacy hook, unused in the horizontal card */
 .msg-gamecard__tag {
-  font-family: var(--font-mono); font-size: 8.5px; letter-spacing: 0.12em;
-  text-transform: uppercase; color: var(--accent-deep); font-weight: 500; margin-bottom: 5px;
+  position: absolute; top: 7px; left: 7px; z-index: 2;
+  font-family: var(--font-mono); font-size: 8px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--bg); background: var(--accent); padding: 2px 5px; border-radius: 4px; font-weight: 500;
 }
+.msg-gamecard__body { flex: 1; min-width: 0; display: flex; flex-direction: column; padding: 11px 13px; }
 .msg-gamecard__title { font-weight: 700; font-size: 14px; letter-spacing: -0.01em; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .msg-gamecard__meta { font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-faint); margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.msg-gamecard__rate { display: flex; align-items: center; gap: 6px; margin-top: 7px; font-size: 10.5px; color: var(--ink-dim); overflow: hidden; white-space: nowrap; }
+.msg-gamecard__rate .msg-stars { color: var(--gold); letter-spacing: 1px; font-size: 11px; flex-shrink: 0; }
 .msg-gamecard__cta {
-  margin-top: 10px; display: flex; align-items: center; gap: 4px;
+  margin-top: 9px; padding-top: 8px; border-top: 1px solid var(--line);
+  display: flex; align-items: center; gap: 4px;
   font-size: 11.5px; color: var(--accent-bright); font-weight: 600;
 }
 .msg-gamecard__cta svg { width: 13px; height: 13px; }
+
+/* ---- Review card (kind='review') — a shared Playthruu review -------- */
+.msg-reviewcard {
+  display: flex; flex-direction: column; width: 250px; max-width: 100%;
+  background: var(--surface-raised); border: 1px solid var(--line);
+  border-radius: var(--radius-m); overflow: hidden; text-align: left; color: var(--ink);
+  transition: transform var(--dur-fast) var(--ease);
+}
+.msg-reviewcard:active { transform: scale(0.985); }
+.msg-reviewcard__top { display: flex; gap: 10px; padding: 12px 13px 0; }
+.msg-reviewcard__cover { width: 40px; height: 54px; border-radius: 5px; object-fit: cover; flex-shrink: 0; background: var(--surface-high) center / cover no-repeat; }
+.msg-reviewcard__head { min-width: 0; flex: 1; display: flex; flex-direction: column; }
+.msg-reviewcard__tag { font-family: var(--font-mono); font-size: 8.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent-deep); font-weight: 500; }
+.msg-reviewcard__title { font-weight: 700; font-size: 13.5px; letter-spacing: -0.01em; line-height: 1.2; margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.msg-reviewcard__stars { color: var(--gold); font-size: 12px; letter-spacing: 1px; margin-top: 4px; }
+.msg-reviewcard__text {
+  padding: 9px 13px 12px; font-size: 12.5px; line-height: 1.45; color: var(--ink-dim);
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
+
+/* ---- List card (kind='list') — a shared collection ----------------- */
+.msg-listcard {
+  display: flex; flex-direction: column; width: 250px; max-width: 100%;
+  background: var(--surface-raised); border: 1px solid var(--line);
+  border-radius: var(--radius-m); overflow: hidden; text-align: left; color: var(--ink);
+}
+.msg-listcard:active { transform: scale(0.985); }
+.msg-listcard__collage { display: grid; grid-template-columns: repeat(4, 1fr); height: 66px; gap: 1.5px; background: var(--surface); }
+.msg-listcard__collage span { background: var(--surface-high) center / cover no-repeat; }
+.msg-listcard__body { padding: 10px 13px 12px; display: flex; flex-direction: column; }
+.msg-listcard__tag { font-family: var(--font-mono); font-size: 8.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent-deep); font-weight: 500; }
+.msg-listcard__name { font-weight: 700; font-size: 14px; letter-spacing: -0.01em; margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.msg-listcard__meta { font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-faint); margin-top: 3px; }
 
 /* Fixed at the very bottom in place of the tab bar (this screen doesn't
    render navBar() at all — see message-thread-view.js). Anchored to the
