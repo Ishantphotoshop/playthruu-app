@@ -89,10 +89,6 @@
   /* The wordmark's font (see the <link> in index.html). */
   --font-brand: 'Unbounded', system-ui, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Consolas, monospace;
-  /* Retro pixel-art face for the "Playing / Active" presence lines — a
-     gaming-native accent (see the <link> in index.html). Only weight 400
-     ships; used at small sizes with letter-spacing:0. */
-  --font-pixel: 'Press Start 2P', 'IBM Plex Mono', monospace;
 
   --text-display: 34px;
   --text-title: 24px;
@@ -4006,8 +4002,8 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 .convo-row__undot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
 /* Currently-playing / shared-game context under the preview — the
    gaming-native touch that a generic inbox row can't show. */
-.convo-row__ctx { display: inline-flex; align-items: center; gap: 6px; margin-top: 5px; font-family: var(--font-pixel); font-size: 7.5px; line-height: 1.5; letter-spacing: 0; color: var(--ink-faint); }
-.convo-row__ctx b { color: var(--accent-deep); font-weight: 400; }
+.convo-row__ctx { display: inline-flex; align-items: center; gap: 5px; margin-top: 4px; font-size: 11px; color: var(--ink-faint); }
+.convo-row__ctx b { color: var(--ink-dim); font-weight: 600; }
 /* Unread reads as weight + tint, not a competing colour system. */
 .convo-row--unread .convo-row__name { font-weight: 800; }
 .convo-row--unread .convo-row__preview { color: var(--ink); font-weight: 500; }
@@ -4039,9 +4035,9 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 .thread-hd { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; color: var(--ink); }
 .thread-hd__meta { min-width: 0; }
 .thread-hd__name { font-weight: 700; font-size: 15px; letter-spacing: -0.01em; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.thread-hd__pres { display: flex; align-items: center; gap: 6px; font-family: var(--font-pixel); font-size: 8px; line-height: 1.4; letter-spacing: 0; color: var(--ink-dim); margin-top: 3px; }
+.thread-hd__pres { display: flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--ink-dim); margin-top: 1px; }
 .thread-hd__pres--online { color: var(--success); }
-.thread-hd__pres b { color: var(--accent-bright); font-weight: 400; }
+.thread-hd__pres b { color: var(--accent-bright); font-weight: 600; }
 .thread-hd__dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
 .thread-hd .avatar { outline: 2px solid transparent; outline-offset: 1.5px; }
 .thread-hd--online .avatar { outline-color: var(--success); }
