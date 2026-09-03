@@ -130,8 +130,11 @@ export async function renderMessageThreadView(root, { conversationId, otherUserI
     startListening();
   }
   paintMessages();
-  hydrateGames();
-  scrollToBottom(false);
+  snapToBottomOnOpen();
+  // Game cards (hydrateGames) and images decode AFTER this first paint and
+  // add height below the fold, which is what left the thread landing a bit
+  // short of the newest message on open — re-snap once they settle.
+  hydrateGames().then(snapToBottomOnOpen);
 
   // Relative times ("2m", "1h") go stale the longer a thread stays
   // open — this keeps them honest without anyone needing to leave and
@@ -193,7 +196,7 @@ export async function renderMessageThreadView(root, { conversationId, otherUserI
     const name = convo.other.display_name || convo.other.username;
     const online = otherLastSeen && (Date.now() - new Date(otherLastSeen).getTime()) < 3 * 60 * 1000;
     let pres;
-    if (otherPlaying) pres = `<span class="thread-hd__pres thread-hd__pres--online"><span class="thread-hd__dot" style="background:var(--accent-bright)"></span>Playing <b>${esc(otherPlaying.title)}</b></span>`;
+    if (otherPlaying) pres = `<span class="thread-hd__pres thread-hd__pres--online"><span class="thread-hd__dot" style="background:var(--orange)"></span>Playing <b>${esc(otherPlaying.title)}</b></span>`;
     else if (online) pres = `<span class="thread-hd__pres thread-hd__pres--online"><span class="thread-hd__dot"></span>Active now</span>`;
     else if (otherLastSeen) pres = `<span class="thread-hd__pres">Active ${esc(timeAgo(otherLastSeen))} ago</span>`;
     else pres = `<span class="thread-hd__pres">@${esc(convo.other.username)}</span>`;
@@ -684,6 +687,20 @@ export async function renderMessageThreadView(root, { conversationId, otherUserI
   function scrollToBottom(smooth) {
     requestAnimationFrame(() => {
       body.scrollTo({ top: body.scrollHeight, behavior: smooth ? 'smooth' : 'auto' });
+    });
+  }
+
+  // Reliably land on the newest message when a thread first opens. A single
+  // scroll can fall short because content below the fold (game cards from
+  // hydrateGames, images still decoding) grows the scroll height after the
+  // first paint — so we snap now, next frame, shortly after, and again as
+  // each image finishes loading.
+  function snapToBottomOnOpen() {
+    scrollToBottom(false);
+    requestAnimationFrame(() => scrollToBottom(false));
+    setTimeout(() => scrollToBottom(false), 140);
+    body.querySelectorAll('#thread-messages img').forEach((img) => {
+      if (!img.complete) img.addEventListener('load', () => scrollToBottom(false), { once: true });
     });
   }
 

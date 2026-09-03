@@ -1,6 +1,6 @@
 import * as api from '../api.js';
 import { state } from '../state.js';
-import { navBar, spinner, emptyState, avatarImg, iconPlus, iconClose, iconMessage, iconTrash, iconSearch, profileRow } from '../components.js';
+import { navBar, spinner, emptyState, avatarImg, iconCompose, iconClose, iconMessage, iconTrash, iconSearch, iconDotsMenu, profileRow } from '../components.js';
 import { esc, qs, qsa, toast, timeAgo, debounce, enableSwipeToDismiss } from '../utils.js';
 import { navigate } from '../router.js';
 import { wirePullToRefresh } from './feed-view.js';
@@ -26,11 +26,20 @@ export async function renderMessagesView(root) {
   let search = '';
   let unsubscribe = null;
 
+  // Pinned chats float to the top. Kept per-device in localStorage for now
+  // (a synced-across-devices version will come with the messenger backend
+  // batch — pin/mute/block/etc. living on the server).
+  const PINNED_KEY = 'pinned-convos';
+  let pinned = new Set();
+  try { pinned = new Set(JSON.parse(localStorage.getItem(PINNED_KEY) || '[]')); } catch { /* no store */ }
+  const savePinned = () => { try { localStorage.setItem(PINNED_KEY, JSON.stringify([...pinned])); } catch { /* no store */ } };
+  const PIN_SVG = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M14.6 2.6a1 1 0 0 0-1.5.1l-4.3 5.1-3.7 1.1a1 1 0 0 0-.4 1.7l3 3-4.4 4.4a1 1 0 1 0 1.4 1.4l4.4-4.4 3 3a1 1 0 0 0 1.7-.4l1.1-3.7 5.1-4.3a1 1 0 0 0 .1-1.5z"/></svg>`;
+
   root.innerHTML =
     `<div class="view-body view-body--no-topbar" id="messages-body">
        <div class="msg-inbox-head">
          <h1 class="msg-inbox-title">Messages</h1>
-         <button type="button" class="msg-inbox-new" id="compose-btn" aria-label="New message">${iconPlus()}</button>
+         <button type="button" class="msg-inbox-new" id="compose-btn" aria-label="New message">${iconCompose()}</button>
        </div>
        <div class="segmented segmented--wide" id="messages-tabs">
          <button type="button" class="segmented__item segmented__item--active" data-tab="messages">Chats</button>
@@ -88,6 +97,9 @@ export async function renderMessagesView(root) {
         return (`${p.display_name || ''} ${p.username || ''}`).toLowerCase().includes(search);
       });
     }
+    // Pinned chats float to the top; Array.sort is stable, so everything
+    // else keeps its recency order underneath.
+    if (tab === 'messages') rows = [...rows].sort((a, b) => (pinned.has(b.id) ? 1 : 0) - (pinned.has(a.id) ? 1 : 0));
 
     if (!rows.length) {
       listEl.innerHTML = search
@@ -116,6 +128,57 @@ export async function renderMessagesView(root) {
         }
       });
     });
+    qsa('[data-menu-id]', listEl).forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const c = all.find((x) => x.id === btn.dataset.menuId);
+        if (c) openConvoMenu(c);
+      });
+    });
+  }
+
+  // Per-chat options sheet. Pin (per-device) and Delete work today; the
+  // rest — mute, mark-unread, block, report, nicknames — are the next
+  // batch and need the server-side conversation-prefs/moderation tables.
+  function openConvoMenu(c) {
+    const isPinned = pinned.has(c.id);
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML = `
+      <div class="modal modal--sheet">
+        <header class="msg-actions__grab"></header>
+        <div class="convo-menu">
+          <div class="convo-menu__who">
+            ${avatarImg(c.other, 42)}
+            <div class="convo-menu__who-txt"><b>${esc(c.other.display_name || c.other.username)}</b><span>@${esc(c.other.username)}</span></div>
+          </div>
+          <button type="button" class="convo-menu__item" data-act="pin">${PIN_SVG}<span>${isPinned ? 'Unpin from top' : 'Pin to top'}</span></button>
+          <button type="button" class="convo-menu__item convo-menu__item--danger" data-act="delete">${iconTrash()}<span>Delete chat</span></button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    const close = () => overlay.remove();
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+    enableSwipeToDismiss(qs('.modal', overlay), close);
+
+    qs('[data-act="pin"]', overlay).addEventListener('click', () => {
+      if (pinned.has(c.id)) pinned.delete(c.id); else pinned.add(c.id);
+      savePinned();
+      close();
+      paint();
+    });
+    qs('[data-act="delete"]', overlay).addEventListener('click', async () => {
+      close();
+      if (!confirm(`Delete your chat with ${c.other.display_name || c.other.username}?`)) return;
+      try {
+        await api.deleteConversation(c.id);
+        all = all.filter((x) => x.id !== c.id);
+        pinned.delete(c.id); savePinned();
+        paint();
+      } catch (err) {
+        toast(err.message || 'Could not delete that.', 'error');
+      }
+    });
   }
 
   function convoRow(c, currentTab) {
@@ -134,21 +197,27 @@ export async function renderMessagesView(root) {
       : '';
     const last = presenceBy[c.other?.id];
     const online = last && (Date.now() - new Date(last).getTime()) < 3 * 60 * 1000;
+    const time = c.last_message_at ? `<span class="convo-row__time">${timeAgo(c.last_message_at)}</span>` : '';
+    const pinMark = pinned.has(c.id) ? `<span class="convo-row__pin" aria-label="Pinned">${PIN_SVG}</span>` : '';
+    const rightBtn = currentTab === 'requests'
+      ? `<button type="button" class="convo-row__decline" data-decline-id="${esc(c.id)}" aria-label="Delete request">${iconTrash()}</button>`
+      : `<button type="button" class="convo-row__menu" data-menu-id="${esc(c.id)}" aria-label="Chat options">${iconDotsMenu()}</button>`;
     return `
       <div class="convo-row${c.unread ? ' convo-row--unread' : ''}" data-convo-id="${esc(c.id)}">
         <span class="convo-row__av">${avatarImg(c.other, 46)}${online ? '<span class="convo-row__presdot"></span>' : ''}</span>
         <div class="convo-row__body">
           <div class="convo-row__top">
             <span class="convo-row__name">${esc(c.other.display_name || c.other.username)}</span>
-            ${c.last_message_at ? `<span class="convo-row__time">${timeAgo(c.last_message_at)}</span>` : ''}
+            ${pinMark}
+            ${rightBtn}
           </div>
           <div class="convo-row__line">
             <span class="convo-row__preview">${preview}</span>
+            ${time}
             ${c.unread ? '<span class="convo-row__undot"></span>' : ''}
           </div>
           ${ctx}
         </div>
-        ${currentTab === 'requests' ? `<button type="button" class="convo-row__decline" data-decline-id="${esc(c.id)}" aria-label="Delete request">${iconTrash()}</button>` : ''}
       </div>`;
   }
 

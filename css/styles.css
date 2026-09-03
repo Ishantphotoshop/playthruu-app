@@ -59,6 +59,9 @@
   --accent-deep: #a8cc20;
   --accent-dim: rgba(217, 255, 63, 0.15);
   --gold: #ffc247;
+  /* Warm orange — the Messenger's status accent (Playing / presence /
+     send), used in place of the app's lime there per the design. */
+  --orange: #ff9d45;
   /* The rating-star colour specifically — a bolder olive-yellow than
      --gold's warmer orange, matching a reference the user provided.
      Kept separate from --gold since that token is also used for
@@ -3981,9 +3984,13 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 
 /* Inbox header — the "Messages" wordmark with an inline new-message
    button, replacing the lone floating corner chip. */
+/* The inbox has no top bar, so it doesn't need the full topbar-height gap
+   that .view-body--no-topbar reserves — that left the "Messages" heading
+   floating oddly far down the screen. Pull it up near the top instead. */
+#messages-body.view-body--no-topbar { padding-top: calc(var(--safe-top) + 16px); }
 .msg-inbox-head { display: flex; align-items: center; justify-content: space-between; padding: 2px 2px 0; }
 .msg-inbox-title { font-family: var(--font-brand); font-weight: 800; font-size: 25px; letter-spacing: -0.02em; }
-.msg-inbox-new { width: 34px; height: 34px; border-radius: 50%; background: var(--accent); color: var(--bg); display: grid; place-items: center; flex-shrink: 0; transition: transform var(--dur-fast) var(--ease); }
+.msg-inbox-new { width: 34px; height: 34px; border-radius: 50%; background: var(--orange); color: var(--bg); display: grid; place-items: center; flex-shrink: 0; transition: transform var(--dur-fast) var(--ease); }
 .msg-inbox-new:active { transform: scale(0.92); }
 .msg-inbox-new svg { width: 18px; height: 18px; }
 
@@ -4011,13 +4018,32 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 .convo-row__av { position: relative; flex-shrink: 0; }
 .convo-row__presdot {
   position: absolute; right: 0; bottom: 1px; width: 12px; height: 12px;
-  border-radius: 50%; background: var(--success); border: 2.5px solid var(--bg);
+  border-radius: 50%; background: var(--orange); border: 2.5px solid var(--bg);
 }
 .convo-row--unread .convo-row__presdot { border-color: color-mix(in srgb, var(--accent) 5%, var(--bg)); }
 .convo-row__body { flex: 1; min-width: 0; }
-.convo-row__top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
-.convo-row__name { font-weight: 700; font-size: 14.5px; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.convo-row__top { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.convo-row__name { flex: 1; min-width: 0; font-weight: 700; font-size: 14.5px; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .convo-row__time { font-size: 10.5px; color: var(--ink-faint); flex-shrink: 0; font-family: var(--font-mono); }
+/* Time now sits after the preview on the same line — a middot separates it. */
+.convo-row__line .convo-row__time::before { content: '·'; margin-right: 6px; color: var(--ink-faint); }
+/* The per-row options button (3-dot menu) next to the name. */
+.convo-row__menu { flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; border: none; background: none; color: var(--ink-faint); }
+.convo-row__menu svg { width: 18px; height: 18px; }
+.convo-row__menu:active { background: var(--surface-raised); color: var(--ink); }
+.convo-row__pin { flex-shrink: 0; color: var(--ink-faint); display: inline-flex; }
+.convo-row__pin svg { width: 12px; height: 12px; }
+/* Per-chat options sheet (the 3-dot menu on a row). */
+.convo-menu { display: flex; flex-direction: column; gap: 2px; padding: 2px 2px 6px; }
+.convo-menu__who { display: flex; align-items: center; gap: 11px; padding: 4px 8px 14px; }
+.convo-menu__who-txt { display: flex; flex-direction: column; min-width: 0; }
+.convo-menu__who-txt b { font-size: 15.5px; font-weight: 700; }
+.convo-menu__who-txt span { font-size: 12px; color: var(--ink-dim); font-family: var(--font-mono); }
+.convo-menu__item { display: flex; align-items: center; gap: 13px; width: 100%; padding: 13px 12px; border: none; background: none; border-radius: var(--radius-m); color: var(--ink); font-size: 15px; font-weight: 500; text-align: left; }
+.convo-menu__item svg { width: 20px; height: 20px; color: var(--ink-dim); flex-shrink: 0; }
+.convo-menu__item:active { background: var(--surface-raised); }
+.convo-menu__item--danger { color: var(--coral); }
+.convo-menu__item--danger svg { color: var(--coral); }
 .convo-row__line { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
 .convo-row__preview {
   font-size: 13px; color: var(--ink-dim); flex: 1;
@@ -4026,8 +4052,8 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 .convo-row__undot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
 /* Currently-playing / shared-game context under the preview — the
    gaming-native touch that a generic inbox row can't show. */
-.convo-row__ctx { display: inline-flex; align-items: center; gap: 5px; margin-top: 4px; font-size: 11px; color: var(--ink-faint); }
-.convo-row__ctx b { color: var(--ink-dim); font-weight: 600; }
+.convo-row__ctx { display: inline-flex; align-items: center; gap: 5px; margin-top: 4px; font-family: var(--font-body); font-size: 11.5px; color: var(--ink-faint); }
+.convo-row__ctx b { color: var(--orange); font-weight: 700; }
 /* Unread reads as weight + tint, not a competing colour system. */
 .convo-row--unread .convo-row__name { font-weight: 800; }
 .convo-row--unread .convo-row__preview { color: var(--ink); font-weight: 500; }
@@ -4059,12 +4085,12 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 .thread-hd { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; color: var(--ink); }
 .thread-hd__meta { min-width: 0; }
 .thread-hd__name { font-weight: 700; font-size: 15px; letter-spacing: -0.01em; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.thread-hd__pres { display: flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--ink-dim); margin-top: 1px; }
-.thread-hd__pres--online { color: var(--success); }
-.thread-hd__pres b { color: var(--accent-bright); font-weight: 600; }
+.thread-hd__pres { display: flex; align-items: center; gap: 5px; font-family: var(--font-body); font-size: 12px; color: var(--ink-dim); margin-top: 1px; }
+.thread-hd__pres--online { color: var(--orange); }
+.thread-hd__pres b { color: var(--orange); font-weight: 700; }
 .thread-hd__dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
 .thread-hd .avatar { outline: 2px solid transparent; outline-offset: 1.5px; }
-.thread-hd--online .avatar { outline-color: var(--success); }
+.thread-hd--online .avatar { outline-color: var(--orange); }
 
 /* Composer "+" opens this progressive share/attachment sheet, so the
    default composer stays a single clean input instead of a row of icons.
@@ -4260,7 +4286,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 .thread-composer__send {
   flex-shrink: 0; width: 40px; height: 40px; border-radius: 50%;
   display: grid; place-items: center; border: none;
-  background: var(--accent);
+  background: var(--orange);
   color: var(--bg);
 }
 .thread-composer__send svg { width: 18px; height: 18px; margin-left: 1px; }
