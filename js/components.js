@@ -368,9 +368,9 @@ function cardWho(profile, rating, { playing = false, loved = false, hasReview = 
   if (playing) {
     bits.push(`<span class="card-who__playing"><span class="card-who__playing-dot"></span>Playing</span>`);
   } else {
-    if (rating) bits.push(starRow(rating, { size: 10 }));
-    if (loved) bits.push(`<span class="card-who__icon card-who__icon--loved">${iconHeart()}</span>`);
-    if (hasReview) bits.push(`<span class="card-who__icon card-who__icon--review">${iconMessage()}</span>`);
+    if (rating) bits.push(starRow(rating, { size: 11 }));
+    if (loved) bits.push(`<span class="card-who__icon card-who__icon--loved">${iconHeartSpark()}</span>`);
+    if (hasReview) bits.push(`<span class="card-who__icon card-who__icon--review">${iconReviewLines()}</span>`);
   }
   return `
     <a href="#/profile/${esc(profile.username)}" class="card-who">
@@ -686,6 +686,12 @@ export function iconBack() { return `<svg viewBox="0 0 24 24" fill="none"><path 
 export function iconGamepad() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round"><path d="M6.5 8.5h11a4 4 0 0 1 3.9 3.1l.9 4A2.4 2.4 0 0 1 19 18.4l-2-2.4H7l-2 2.4a2.4 2.4 0 0 1-4.2-2.8l.9-4A4 4 0 0 1 6.5 8.5z"/><path d="M7.5 11.6v2.3M6.35 12.75h2.3"/><circle cx="15.6" cy="12" r="1.05" fill="currentColor" stroke="none"/><circle cx="17.8" cy="14" r="1.05" fill="currentColor" stroke="none"/></svg>`; }
 export function iconBookmark() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round"><path d="M6 3.8h12a1 1 0 0 1 1 1V20.5l-7-4.1-7 4.1V4.8a1 1 0 0 1 1-1z"/></svg>`; }
 export function iconHeart() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round"><path d="M12 20.3 4.3 12.6A4.7 4.7 0 0 1 11 6l1 1 1-1a4.7 4.7 0 0 1 6.7 6.6z"/></svg>`; }
+// The "loved it" mark on activity cards: a filled heart with a small gold
+// spark at its top-right. Two-tone by design — the heart takes
+// currentColor (coral, set via `color`) and the spark is fixed gold — so
+// callers must colour it through `color`, never by force-filling the <svg>
+// (a blanket fill would wipe out the gold spark).
+export function iconHeartSpark() { return `<svg viewBox="0 0 24 24" fill="none"><path d="M11 20.3 3.3 12.6A4.7 4.7 0 0 1 10 6l1 1 1-1a4.7 4.7 0 0 1 6.7 6.6z" fill="currentColor"/><path d="M19.4 2.4c.3 2.2 1 2.9 3.2 3.2-2.2.3-2.9 1-3.2 3.2-.3-2.2-1-2.9-3.2-3.2 2.2-.3 2.9-1 3.2-3.2z" fill="#ffc247"/></svg>`; }
 export function iconClose() { return `<svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>`; }
 export function iconCheck() { return `<svg viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`; }
 export function iconChevronUp() { return `<svg viewBox="0 0 24 24" fill="none"><path d="M5 15l7-7 7 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`; }
@@ -707,6 +713,9 @@ export function iconEye() { return `<svg viewBox="0 0 24 24" fill="none"><path d
 // The Messages nav tab, and the empty-state icon on the inbox itself —
 // a plain speech bubble, same stroke language as the rest of the set.
 export function iconMessage() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v7A2.5 2.5 0 0 1 17.5 16H10l-4.5 4v-4H6.5A2.5 2.5 0 0 1 4 13.5v-7z"/></svg>`; }
+// The "wrote a review" mark on activity cards: four short text lines, like
+// a paragraph of writing. Stroke-only, so it colours via currentColor.
+export function iconReviewLines() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M5 6h14M5 10h14M5 14h10M5 18h12"/></svg>`; }
 export function iconSend() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12 20 4.5 15 19.5l-3.4-6.8L4.5 12z"/><path d="M11.6 12.7 15 19.5"/></svg>`; }
 export function iconTrash() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h14M9.5 7V5a1.5 1.5 0 0 1 1.5-1.5h2A1.5 1.5 0 0 1 14.5 5v2M6.5 7l1 12.5A1.5 1.5 0 0 0 9 21h6a1.5 1.5 0 0 0 1.5-1.5L17.5 7"/><path d="M10 11v6M14 11v6"/></svg>`; }
 export function iconDotsMenu() { return `<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="12" cy="5.5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="18.5" r="1.8"/></svg>`; }

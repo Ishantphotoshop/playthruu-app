@@ -1239,12 +1239,20 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    footer width without clipping — verified by measuring that exact
    combination's real rendered width against the available space, not
    just eyeballed. */
-.card-who__stars { display: flex; align-items: center; gap: 1px; min-height: 10px; line-height: 10px; }
+.card-who__stars { display: flex; align-items: center; gap: 5px; min-height: 13px; line-height: 13px; }
 .card-who__stars .stars { gap: 0; }
-.card-who__icon { width: 9px; height: 9px; flex-shrink: 0; display: flex; }
-.card-who__icon svg { width: 100%; height: 100%; }
+/* Pull the star glyphs together. The star mask carries its own internal
+   whitespace (the points don't reach the edge of the box), so even gap:0
+   still reads as spaced — a small negative margin closes that up so the
+   five stars sit as one tight unit, without the points overlapping. */
+.card-who__stars .star + .star { margin-left: -1.5px; }
+/* Loved + review marks: sized to match the 11px stars and vertically
+   centred so all three read as one aligned row. */
+.card-who__icon { width: 13px; height: 13px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+.card-who__icon svg { width: 100%; height: 100%; display: block; }
+/* --loved colours the heart via `color` (currentColor) — NOT a blanket
+   svg fill, which would also paint over the icon's fixed gold spark. */
 .card-who__icon--loved { color: var(--coral); }
-.card-who__icon--loved svg { fill: var(--coral); }
 .card-who__icon--review { color: var(--ink-dim); }
 /* Currently Playing's footer, in place of a rating that can never
    exist there (the game isn't finished) — a small pulsing dot instead
