@@ -2492,10 +2492,10 @@ export async function deleteConversation(conversationId) {
   if (error) throw error;
 }
 
-// ---- per-chat prefs (pin / mute / nickname) + moderation ----------
-// All backed by 2026-09-03_messenger_prefs_moderation.sql. Prefs and
-// blocks are per-user and follow you across devices; reports are
-// insert-only (admins read them in the admin panel).
+// ---- per-chat prefs (pin / mute / nickname) --------------------------
+// Backed by conversation_prefs in 2026-09-03_messenger_prefs_moderation.sql.
+// (Blocking + reporting already exist above — blockUser / getBlockedIds /
+// reportContent — so the inbox menu reuses those, not new copies.)
 
 // { conversationId: { pinned, muted, nickname } } for the whole inbox.
 export async function getConversationPrefs(userId) {
@@ -2521,31 +2521,6 @@ export async function setConversationPref(userId, conversationId, patch) {
 // The mirror of markConversationRead — bumps this chat back to unread.
 export async function markConversationUnread(conversationId) {
   const { error } = await supabase.rpc('mark_conversation_unread', { p_conversation_id: conversationId });
-  if (error) throw error;
-}
-
-export async function getBlockedIds(userId) {
-  const { data, error } = await supabase
-    .from('user_blocks').select('blocked_id').eq('blocker_id', userId);
-  if (error) throw error;
-  return data.map((r) => r.blocked_id);
-}
-
-export async function blockUser(userId, blockedId) {
-  const { error } = await supabase
-    .from('user_blocks').upsert({ blocker_id: userId, blocked_id: blockedId }, { onConflict: 'blocker_id,blocked_id' });
-  if (error) throw error;
-}
-
-export async function unblockUser(userId, blockedId) {
-  const { error } = await supabase
-    .from('user_blocks').delete().eq('blocker_id', userId).eq('blocked_id', blockedId);
-  if (error) throw error;
-}
-
-export async function reportUser(userId, reportedId, { conversationId = null, reason = null } = {}) {
-  const { error } = await supabase
-    .from('user_reports').insert({ reporter_id: userId, reported_id: reportedId, conversation_id: conversationId, reason });
   if (error) throw error;
 }
 

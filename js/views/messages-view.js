@@ -29,8 +29,8 @@ export async function renderMessagesView(root) {
   // Per-chat prefs (pin / mute / nickname) and blocks — loaded from the
   // server (see api.getConversationPrefs) so they follow you across
   // devices. prefs is keyed by conversation id.
-  let prefs = {};       // { conversationId: { pinned, muted, nickname } }
-  let blockedIds = [];  // people you've blocked — their chats are hidden
+  let prefs = {};              // { conversationId: { pinned, muted, nickname } }
+  let blockedIds = new Set();  // people you've blocked — their chats are hidden
   const prefOf = (id) => prefs[id] || {};
   const nameOf = (c) => prefOf(c.id).nickname || c.other.display_name || c.other.username;
   const PIN_SVG = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M14.6 2.6a1 1 0 0 0-1.5.1l-4.3 5.1-3.7 1.1a1 1 0 0 0-.4 1.7l3 3-4.4 4.4a1 1 0 1 0 1.4 1.4l4.4-4.4 3 3a1 1 0 0 0 1.7-.4l1.1-3.7 5.1-4.3a1 1 0 0 0 .1-1.5z"/></svg>`;
@@ -72,7 +72,7 @@ export async function renderMessagesView(root) {
       const [convos, p, blocked] = await Promise.all([
         api.getConversations(state.user.id),
         api.getConversationPrefs(state.user.id).catch(() => ({})),
-        api.getBlockedIds(state.user.id).catch(() => []),
+        api.getBlockedIds().catch(() => new Set()),
       ]);
       all = convos; prefs = p; blockedIds = blocked;
       setCached(MESSAGES_CACHE_KEY, all);
@@ -102,7 +102,7 @@ export async function renderMessagesView(root) {
     const listEl = qs('#messages-list', body);
     let rows = tab === 'messages' ? messages : requests;
     // Hide chats with people you've blocked.
-    rows = rows.filter((c) => !blockedIds.includes(c.other?.id));
+    rows = rows.filter((c) => !blockedIds.has(c.other?.id));
     if (search) {
       rows = rows.filter((c) => {
         const p = c.other || {};
@@ -204,8 +204,9 @@ export async function renderMessagesView(root) {
       close();
       if (!confirm(`Block ${nm}? Their chat is hidden and they can't reach you.`)) return;
       try {
-        await api.blockUser(uid, c.other.id);
-        blockedIds.push(c.other.id);
+        await api.blockUser(c.other.id);
+        api.invalidateBlockedCache();
+        blockedIds.add(c.other.id);
         paint();
         toast(`Blocked ${nm}`);
       } catch (err) { toast(err.message || 'Could not block.', 'error'); }
@@ -215,7 +216,7 @@ export async function renderMessagesView(root) {
       const reason = prompt(`Report ${nm} — what's wrong? (optional)`, '');
       if (reason === null) return;
       try {
-        await api.reportUser(uid, c.other.id, { conversationId: c.id, reason: reason.trim() || null });
+        await api.reportContent({ targetType: 'user', targetId: c.other.id, reason: reason.trim() || null });
         toast('Report sent — thanks for flagging it.');
       } catch (err) { toast(err.message || 'Could not send report.', 'error'); }
     });
