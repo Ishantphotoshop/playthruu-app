@@ -1207,7 +1207,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    eating into the row. Scales with device width, not tuned to one
    phone. */
 @media (max-width: 560px) {
-  :root { --feed-card-w: calc((100vw - 38px) / 3.2); }
+  :root { --feed-card-w: calc((100vw - 38px) / 3.1); }
   .trending-strip { gap: 6px; }
 }
 .card-who .avatar { flex-shrink: 0; }
@@ -1256,6 +1256,20 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .card-who__icon svg { width: 100%; height: 100%; display: block; }
 .card-who__icon--loved { color: var(--star-fill); }
 .card-who__icon--review { color: var(--star-fill); }
+/* Phone: these feed cards are far narrower than on desktop, so the whole
+   row is sized down to fit. The widest case — 5 stars + loved + review —
+   is ~92px at the desktop sizes, which overflows a ~70px-wide phone card
+   and clips the review mark off the edge; smaller stars/marks and flush
+   spacing bring it under the card width at every phone size. This block
+   sits AFTER the rules above (not in the earlier max-width media query)
+   so it actually overrides them — a media query adds no specificity, so
+   an equal-specificity rule only wins if it comes later in the file. */
+@media (max-width: 560px) {
+  .card-who__stars { gap: 1px; }
+  .card-who__stars .stars { gap: 0; }
+  .card-who__stars .star { width: 10px; height: 10px; }
+  .card-who__icon { width: 9px; height: 9px; }
+}
 /* Currently Playing's footer, in place of a rating that can never
    exist there (the game isn't finished) — a small pulsing dot instead
    of a static one, so this row reads as "happening right now" rather
