@@ -27,12 +27,11 @@ export async function renderMessagesView(root) {
   let unsubscribe = null;
 
   root.innerHTML =
-    `<div class="view-body view-body--no-topbar view-body--search" id="messages-body">
+    `<div class="view-body view-body--no-topbar" id="messages-body">
        <div class="msg-inbox-head">
          <h1 class="msg-inbox-title">Messages</h1>
          <button type="button" class="msg-inbox-new" id="compose-btn" aria-label="New message">${iconPlus()}</button>
        </div>
-       <label class="convo-search">${iconSearch()}<input type="search" id="convo-search-input" placeholder="Search chats, people, games" autocomplete="off"></label>
        <div class="segmented segmented--wide" id="messages-tabs">
          <button type="button" class="segmented__item segmented__item--active" data-tab="messages">Chats</button>
          <button type="button" class="segmented__item" data-tab="requests" id="requests-tab-btn">Requests</button>
@@ -42,11 +41,6 @@ export async function renderMessagesView(root) {
 
   const body = qs('#messages-body', root);
   wirePullToRefresh(body);
-
-  qs('#convo-search-input', body).addEventListener('input', (e) => {
-    search = e.target.value.trim().toLowerCase();
-    paint();
-  });
 
   if (all.length) paint();
 
@@ -136,9 +130,7 @@ export async function renderMessagesView(root) {
       : c.last_message_body ? bodyPreview : 'Say hi and start the conversation';
     const playing = playingBy[c.other?.id];
     const ctx = playing
-      ? `<div class="convo-row__ctx">
-           ${playing.cover_url ? `<img src="${esc(playing.cover_url)}" alt="">` : ''}<b>Playing</b> · ${esc(playing.title)}
-         </div>`
+      ? `<div class="convo-row__ctx"><b>Playing</b> · ${esc(playing.title)}</div>`
       : '';
     const last = presenceBy[c.other?.id];
     const online = last && (Date.now() - new Date(last).getTime()) < 3 * 60 * 1000;
