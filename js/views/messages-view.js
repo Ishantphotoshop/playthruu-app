@@ -26,14 +26,19 @@ export async function renderMessagesView(root) {
   let search = '';
   let unsubscribe = null;
 
-  // Pinned chats float to the top. Kept per-device in localStorage for now
-  // (a synced-across-devices version will come with the messenger backend
-  // batch — pin/mute/block/etc. living on the server).
-  const PINNED_KEY = 'pinned-convos';
-  let pinned = new Set();
-  try { pinned = new Set(JSON.parse(localStorage.getItem(PINNED_KEY) || '[]')); } catch { /* no store */ }
-  const savePinned = () => { try { localStorage.setItem(PINNED_KEY, JSON.stringify([...pinned])); } catch { /* no store */ } };
+  // Per-chat prefs (pin / mute / nickname) and blocks — loaded from the
+  // server (see api.getConversationPrefs) so they follow you across
+  // devices. prefs is keyed by conversation id.
+  let prefs = {};       // { conversationId: { pinned, muted, nickname } }
+  let blockedIds = [];  // people you've blocked — their chats are hidden
+  const prefOf = (id) => prefs[id] || {};
+  const nameOf = (c) => prefOf(c.id).nickname || c.other.display_name || c.other.username;
   const PIN_SVG = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M14.6 2.6a1 1 0 0 0-1.5.1l-4.3 5.1-3.7 1.1a1 1 0 0 0-.4 1.7l3 3-4.4 4.4a1 1 0 1 0 1.4 1.4l4.4-4.4 3 3a1 1 0 0 0 1.7-.4l1.1-3.7 5.1-4.3a1 1 0 0 0 .1-1.5z"/></svg>`;
+  const MUTE_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M16 9l5 6M21 9l-5 6"/></svg>`;
+  const UNREAD_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v7A2.5 2.5 0 0 1 17.5 16H10l-4.5 4v-4H6.5A2.5 2.5 0 0 1 4 13.5z"/><circle cx="18" cy="6" r="3.2" fill="currentColor" stroke="none"/></svg>`;
+  const TAG_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round"><path d="M20.6 13.4 12 22l-8-8 8.6-8.6A2 2 0 0 1 14 4.8L20 5a1 1 0 0 1 1 1l.2 6a2 2 0 0 1-.6 1.4z"/><circle cx="16.5" cy="8.5" r="1.3" fill="currentColor" stroke="none"/></svg>`;
+  const BLOCK_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6 18.4 18.4"/></svg>`;
+  const REPORT_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4M5 4h11l-1.5 4L16 12H5"/></svg>`;
 
   root.innerHTML =
     `<div class="view-body view-body--no-topbar" id="messages-body">
@@ -64,7 +69,12 @@ export async function renderMessagesView(root) {
 
   async function load() {
     try {
-      all = await api.getConversations(state.user.id);
+      const [convos, p, blocked] = await Promise.all([
+        api.getConversations(state.user.id),
+        api.getConversationPrefs(state.user.id).catch(() => ({})),
+        api.getBlockedIds(state.user.id).catch(() => []),
+      ]);
+      all = convos; prefs = p; blockedIds = blocked;
       setCached(MESSAGES_CACHE_KEY, all);
       paint();
       // Presence (online dots) + "Playing X" context are layered in after
@@ -91,15 +101,17 @@ export async function renderMessagesView(root) {
 
     const listEl = qs('#messages-list', body);
     let rows = tab === 'messages' ? messages : requests;
+    // Hide chats with people you've blocked.
+    rows = rows.filter((c) => !blockedIds.includes(c.other?.id));
     if (search) {
       rows = rows.filter((c) => {
         const p = c.other || {};
-        return (`${p.display_name || ''} ${p.username || ''}`).toLowerCase().includes(search);
+        return (`${nameOf(c)} ${p.username || ''}`).toLowerCase().includes(search);
       });
     }
     // Pinned chats float to the top; Array.sort is stable, so everything
     // else keeps its recency order underneath.
-    if (tab === 'messages') rows = [...rows].sort((a, b) => (pinned.has(b.id) ? 1 : 0) - (pinned.has(a.id) ? 1 : 0));
+    if (tab === 'messages') rows = [...rows].sort((a, b) => (prefOf(b.id).pinned ? 1 : 0) - (prefOf(a.id).pinned ? 1 : 0));
 
     if (!rows.length) {
       listEl.innerHTML = search
@@ -137,11 +149,12 @@ export async function renderMessagesView(root) {
     });
   }
 
-  // Per-chat options sheet. Pin (per-device) and Delete work today; the
-  // rest — mute, mark-unread, block, report, nicknames — are the next
-  // batch and need the server-side conversation-prefs/moderation tables.
+  // Per-chat options sheet, all server-backed (pin/mute/nickname in
+  // conversation_prefs, block/report in their own tables).
   function openConvoMenu(c) {
-    const isPinned = pinned.has(c.id);
+    const p = prefOf(c.id);
+    const uid = state.user.id;
+    const nm = c.other.display_name || c.other.username;
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
     overlay.innerHTML = `
@@ -150,9 +163,14 @@ export async function renderMessagesView(root) {
         <div class="convo-menu">
           <div class="convo-menu__who">
             ${avatarImg(c.other, 42)}
-            <div class="convo-menu__who-txt"><b>${esc(c.other.display_name || c.other.username)}</b><span>@${esc(c.other.username)}</span></div>
+            <div class="convo-menu__who-txt"><b>${esc(nameOf(c))}</b><span>@${esc(c.other.username)}</span></div>
           </div>
-          <button type="button" class="convo-menu__item" data-act="pin">${PIN_SVG}<span>${isPinned ? 'Unpin from top' : 'Pin to top'}</span></button>
+          <button type="button" class="convo-menu__item" data-act="pin">${PIN_SVG}<span>${p.pinned ? 'Unpin from top' : 'Pin to top'}</span></button>
+          <button type="button" class="convo-menu__item" data-act="mute">${MUTE_SVG}<span>${p.muted ? 'Unmute' : 'Mute'}</span></button>
+          <button type="button" class="convo-menu__item" data-act="unread">${UNREAD_SVG}<span>Mark as unread</span></button>
+          <button type="button" class="convo-menu__item" data-act="nickname">${TAG_SVG}<span>${p.nickname ? 'Change nickname' : 'Set nickname'}</span></button>
+          <button type="button" class="convo-menu__item convo-menu__item--danger" data-act="block">${BLOCK_SVG}<span>Block</span></button>
+          <button type="button" class="convo-menu__item convo-menu__item--danger" data-act="report">${REPORT_SVG}<span>Report</span></button>
           <button type="button" class="convo-menu__item convo-menu__item--danger" data-act="delete">${iconTrash()}<span>Delete chat</span></button>
         </div>
       </div>`;
@@ -161,19 +179,52 @@ export async function renderMessagesView(root) {
     overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
     enableSwipeToDismiss(qs('.modal', overlay), close);
 
-    qs('[data-act="pin"]', overlay).addEventListener('click', () => {
-      if (pinned.has(c.id)) pinned.delete(c.id); else pinned.add(c.id);
-      savePinned();
+    // Optimistic pref write: patch local state + repaint now, persist after;
+    // resync from the server if it fails.
+    const setPref = async (patch, okMsg) => {
+      prefs[c.id] = { ...prefOf(c.id), ...patch };
+      close(); paint();
+      try { await api.setConversationPref(uid, c.id, patch); if (okMsg) toast(okMsg); }
+      catch (err) { toast(err.message || 'Could not save that.', 'error'); load(); }
+    };
+
+    qs('[data-act="pin"]', overlay).addEventListener('click', () => setPref({ pinned: !p.pinned }));
+    qs('[data-act="mute"]', overlay).addEventListener('click', () => setPref({ muted: !p.muted }, p.muted ? 'Unmuted' : 'Muted'));
+    qs('[data-act="nickname"]', overlay).addEventListener('click', () => {
+      const val = prompt(`Nickname for ${nm}`, p.nickname || '');
+      if (val === null) { close(); return; }
+      setPref({ nickname: val.trim() || null }, 'Nickname saved');
+    });
+    qs('[data-act="unread"]', overlay).addEventListener('click', async () => {
       close();
-      paint();
+      try { await api.markConversationUnread(c.id); await load(); }
+      catch (err) { toast(err.message || 'Could not mark unread.', 'error'); }
+    });
+    qs('[data-act="block"]', overlay).addEventListener('click', async () => {
+      close();
+      if (!confirm(`Block ${nm}? Their chat is hidden and they can't reach you.`)) return;
+      try {
+        await api.blockUser(uid, c.other.id);
+        blockedIds.push(c.other.id);
+        paint();
+        toast(`Blocked ${nm}`);
+      } catch (err) { toast(err.message || 'Could not block.', 'error'); }
+    });
+    qs('[data-act="report"]', overlay).addEventListener('click', async () => {
+      close();
+      const reason = prompt(`Report ${nm} — what's wrong? (optional)`, '');
+      if (reason === null) return;
+      try {
+        await api.reportUser(uid, c.other.id, { conversationId: c.id, reason: reason.trim() || null });
+        toast('Report sent — thanks for flagging it.');
+      } catch (err) { toast(err.message || 'Could not send report.', 'error'); }
     });
     qs('[data-act="delete"]', overlay).addEventListener('click', async () => {
       close();
-      if (!confirm(`Delete your chat with ${c.other.display_name || c.other.username}?`)) return;
+      if (!confirm(`Delete your chat with ${nm}?`)) return;
       try {
         await api.deleteConversation(c.id);
         all = all.filter((x) => x.id !== c.id);
-        pinned.delete(c.id); savePinned();
         paint();
       } catch (err) {
         toast(err.message || 'Could not delete that.', 'error');
@@ -198,7 +249,8 @@ export async function renderMessagesView(root) {
     const last = presenceBy[c.other?.id];
     const online = last && (Date.now() - new Date(last).getTime()) < 3 * 60 * 1000;
     const time = c.last_message_at ? `<span class="convo-row__time">${timeAgo(c.last_message_at)}</span>` : '';
-    const pinMark = pinned.has(c.id) ? `<span class="convo-row__pin" aria-label="Pinned">${PIN_SVG}</span>` : '';
+    const pinMark = prefOf(c.id).pinned ? `<span class="convo-row__pin" aria-label="Pinned">${PIN_SVG}</span>` : '';
+    const muteMark = prefOf(c.id).muted ? `<span class="convo-row__pin convo-row__mute" aria-label="Muted">${MUTE_SVG}</span>` : '';
     const rightBtn = currentTab === 'requests'
       ? `<button type="button" class="convo-row__decline" data-decline-id="${esc(c.id)}" aria-label="Delete request">${iconTrash()}</button>`
       : `<button type="button" class="convo-row__menu" data-menu-id="${esc(c.id)}" aria-label="Chat options">${iconDotsMenu()}</button>`;
@@ -207,8 +259,9 @@ export async function renderMessagesView(root) {
         <span class="convo-row__av">${avatarImg(c.other, 46)}${online ? '<span class="convo-row__presdot"></span>' : ''}</span>
         <div class="convo-row__body">
           <div class="convo-row__top">
-            <span class="convo-row__name">${esc(c.other.display_name || c.other.username)}</span>
+            <span class="convo-row__name">${esc(nameOf(c))}</span>
             ${pinMark}
+            ${muteMark}
             ${rightBtn}
           </div>
           <div class="convo-row__line">

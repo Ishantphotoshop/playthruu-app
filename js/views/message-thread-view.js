@@ -50,6 +50,7 @@ export async function renderMessageThreadView(root, { conversationId, otherUserI
   let gamesById = {};     // hydrated game data for kind='game' messages
   let otherPlaying = null; // the other person's currently-playing game (public log)
   let otherLastSeen = null; // their presence timestamp (visible via the conversation policy)
+  let nickname = null;     // my private nickname for this chat, if I set one
   let reactionsByMessage = {};
   let replyingTo = null;  // a message object, or null
   let unsubscribe = null;
@@ -99,6 +100,11 @@ export async function renderMessageThreadView(root, { conversationId, otherUserI
   api.getPresenceFor([convo.other.id]).then((m) => {
     otherLastSeen = m[convo.other.id] || null;
     renderHeader();
+  }).catch(() => {});
+  // My private nickname for this chat (set from the inbox 3-dot menu).
+  if (threadId) api.getConversationPrefs(state.user.id).then((p) => {
+    nickname = p[threadId]?.nickname || null;
+    if (nickname) renderHeader();
   }).catch(() => {});
   renderHeader();
 
@@ -193,7 +199,7 @@ export async function renderMessageThreadView(root, { conversationId, otherUserI
   function renderHeader() {
     const titleEl = qs('.topbar__title', root);
     if (!titleEl) return;
-    const name = convo.other.display_name || convo.other.username;
+    const name = nickname || convo.other.display_name || convo.other.username;
     const online = otherLastSeen && (Date.now() - new Date(otherLastSeen).getTime()) < 3 * 60 * 1000;
     let pres;
     if (otherPlaying) pres = `<span class="thread-hd__pres thread-hd__pres--online"><span class="thread-hd__dot" style="background:var(--orange)"></span>Playing <b>${esc(otherPlaying.title)}</b></span>`;

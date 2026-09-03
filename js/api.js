@@ -2492,6 +2492,63 @@ export async function deleteConversation(conversationId) {
   if (error) throw error;
 }
 
+// ---- per-chat prefs (pin / mute / nickname) + moderation ----------
+// All backed by 2026-09-03_messenger_prefs_moderation.sql. Prefs and
+// blocks are per-user and follow you across devices; reports are
+// insert-only (admins read them in the admin panel).
+
+// { conversationId: { pinned, muted, nickname } } for the whole inbox.
+export async function getConversationPrefs(userId) {
+  const { data, error } = await supabase
+    .from('conversation_prefs')
+    .select('conversation_id, pinned, muted, nickname')
+    .eq('user_id', userId);
+  if (error) throw error;
+  const out = {};
+  for (const r of data) out[r.conversation_id] = { pinned: r.pinned, muted: r.muted, nickname: r.nickname };
+  return out;
+}
+
+// Upsert a subset of one chat's prefs — patch is any of {pinned, muted, nickname}.
+export async function setConversationPref(userId, conversationId, patch) {
+  const { error } = await supabase
+    .from('conversation_prefs')
+    .upsert({ user_id: userId, conversation_id: conversationId, ...patch, updated_at: new Date().toISOString() },
+      { onConflict: 'user_id,conversation_id' });
+  if (error) throw error;
+}
+
+// The mirror of markConversationRead — bumps this chat back to unread.
+export async function markConversationUnread(conversationId) {
+  const { error } = await supabase.rpc('mark_conversation_unread', { p_conversation_id: conversationId });
+  if (error) throw error;
+}
+
+export async function getBlockedIds(userId) {
+  const { data, error } = await supabase
+    .from('user_blocks').select('blocked_id').eq('blocker_id', userId);
+  if (error) throw error;
+  return data.map((r) => r.blocked_id);
+}
+
+export async function blockUser(userId, blockedId) {
+  const { error } = await supabase
+    .from('user_blocks').upsert({ blocker_id: userId, blocked_id: blockedId }, { onConflict: 'blocker_id,blocked_id' });
+  if (error) throw error;
+}
+
+export async function unblockUser(userId, blockedId) {
+  const { error } = await supabase
+    .from('user_blocks').delete().eq('blocker_id', userId).eq('blocked_id', blockedId);
+  if (error) throw error;
+}
+
+export async function reportUser(userId, reportedId, { conversationId = null, reason = null } = {}) {
+  const { error } = await supabase
+    .from('user_reports').insert({ reporter_id: userId, reported_id: reportedId, conversation_id: conversationId, reason });
+  if (error) throw error;
+}
+
 // ---- reactions ----------------------------------------------------
 // One reaction per person per message (the table's primary key IS this
 // rule — see the migration). Tapping the same emoji you already used
