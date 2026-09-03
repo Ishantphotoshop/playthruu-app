@@ -2501,11 +2501,11 @@ export async function deleteConversation(conversationId) {
 export async function getConversationPrefs(userId) {
   const { data, error } = await supabase
     .from('conversation_prefs')
-    .select('conversation_id, pinned, muted, nickname')
+    .select('conversation_id, pinned, muted, nickname, unread')
     .eq('user_id', userId);
   if (error) throw error;
   const out = {};
-  for (const r of data) out[r.conversation_id] = { pinned: r.pinned, muted: r.muted, nickname: r.nickname };
+  for (const r of data) out[r.conversation_id] = { pinned: r.pinned, muted: r.muted, nickname: r.nickname, unread: r.unread };
   return out;
 }
 

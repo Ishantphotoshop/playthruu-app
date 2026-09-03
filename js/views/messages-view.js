@@ -125,7 +125,15 @@ export async function renderMessagesView(root) {
     listEl.innerHTML = `<div class="convo-list">${rows.map((c) => convoRow(c, tab)).join('')}</div>`;
 
     qsa('[data-convo-id]', listEl).forEach((el) => {
-      el.addEventListener('click', () => navigate(`/messages/${el.dataset.convoId}`));
+      el.addEventListener('click', () => {
+        const id = el.dataset.convoId;
+        // Opening a chat clears a manual "mark as unread".
+        if (prefOf(id).unread) {
+          prefs[id] = { ...prefOf(id), unread: false };
+          api.setConversationPref(state.user.id, id, { unread: false }).catch(() => {});
+        }
+        navigate(`/messages/${id}`);
+      });
     });
     qsa('[data-decline-id]', listEl).forEach((btn) => {
       btn.addEventListener('click', async (e) => {
@@ -195,11 +203,7 @@ export async function renderMessagesView(root) {
       if (val === null) { close(); return; }
       setPref({ nickname: val.trim() || null }, 'Nickname saved');
     });
-    qs('[data-act="unread"]', overlay).addEventListener('click', async () => {
-      close();
-      try { await api.markConversationUnread(c.id); await load(); }
-      catch (err) { toast(err.message || 'Could not mark unread.', 'error'); }
-    });
+    qs('[data-act="unread"]', overlay).addEventListener('click', () => setPref({ unread: true }, 'Marked as unread'));
     qs('[data-act="block"]', overlay).addEventListener('click', async () => {
       close();
       if (!confirm(`Block ${nm}? Their chat is hidden and they can't reach you.`)) return;
@@ -250,20 +254,21 @@ export async function renderMessagesView(root) {
     const last = presenceBy[c.other?.id];
     const online = last && (Date.now() - new Date(last).getTime()) < 3 * 60 * 1000;
     const time = c.last_message_at ? `<span class="convo-row__time">${timeAgo(c.last_message_at)}</span>` : '';
+    // Unread = the server-computed state OR a manual "mark as unread".
+    const unread = c.unread || prefOf(c.id).unread;
     const pinMark = prefOf(c.id).pinned ? `<span class="convo-row__pin" aria-label="Pinned">${PIN_SVG}</span>` : '';
     const muteMark = prefOf(c.id).muted ? `<span class="convo-row__pin convo-row__mute" aria-label="Muted">${MUTE_SVG}</span>` : '';
     const rightBtn = currentTab === 'requests'
       ? `<button type="button" class="convo-row__decline" data-decline-id="${esc(c.id)}" aria-label="Delete request">${iconTrash()}</button>`
       : `<button type="button" class="convo-row__menu" data-menu-id="${esc(c.id)}" aria-label="Chat options">${iconDotsMenu()}</button>`;
     return `
-      <div class="convo-row${c.unread ? ' convo-row--unread' : ''}" data-convo-id="${esc(c.id)}">
-        <span class="convo-row__av">${avatarImg(c.other, 46)}${online ? '<span class="convo-row__presdot"></span>' : ''}</span>
+      <div class="convo-row${unread ? ' convo-row--unread' : ''}" data-convo-id="${esc(c.id)}">
+        <span class="convo-row__av">${avatarImg(c.other, 50)}${online ? '<span class="convo-row__presdot"></span>' : ''}</span>
         <div class="convo-row__body">
           <div class="convo-row__top">
             <span class="convo-row__name">${esc(nameOf(c))}</span>
             ${pinMark}
             ${muteMark}
-            ${rightBtn}
           </div>
           <div class="convo-row__line">
             <span class="convo-row__preview">${preview}</span>
@@ -271,6 +276,7 @@ export async function renderMessagesView(root) {
           </div>
           ${ctx}
         </div>
+        ${rightBtn}
       </div>`;
   }
 
