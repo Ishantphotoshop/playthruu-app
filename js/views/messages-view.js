@@ -267,7 +267,6 @@ export async function renderMessagesView(root) {
           <div class="convo-row__line">
             <span class="convo-row__preview">${preview}</span>
             ${time}
-            ${c.unread ? '<span class="convo-row__undot"></span>' : ''}
           </div>
           ${ctx}
         </div>

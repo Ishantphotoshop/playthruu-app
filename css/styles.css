@@ -59,9 +59,10 @@
   --accent-deep: #a8cc20;
   --accent-dim: rgba(217, 255, 63, 0.15);
   --gold: #ffc247;
-  /* Warm orange — the Messenger's status accent (Playing / presence /
-     send), used in place of the app's lime there per the design. */
-  --orange: #ff9d45;
+  /* Warm orange — the Messenger's status accent (Playing / send), sitting
+     between the app's gold and coral so it reads as part of the palette.
+     Online presence stays green (--success); orange is for status/actions. */
+  --orange: #ff8c3a;
   /* The rating-star colour specifically — a bolder olive-yellow than
      --gold's warmer orange, matching a reference the user provided.
      Kept separate from --gold since that token is also used for
@@ -3990,7 +3991,8 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 #messages-body.view-body--no-topbar { padding-top: calc(var(--safe-top) + 16px); }
 .msg-inbox-head { display: flex; align-items: center; justify-content: space-between; padding: 2px 2px 0; }
 .msg-inbox-title { font-family: var(--font-brand); font-weight: 800; font-size: 25px; letter-spacing: -0.02em; }
-.msg-inbox-new { width: 34px; height: 34px; border-radius: 50%; background: var(--orange); color: var(--bg); display: grid; place-items: center; flex-shrink: 0; transition: transform var(--dur-fast) var(--ease); }
+/* Orange button (theme accent), yellow inner icon. */
+.msg-inbox-new { width: 34px; height: 34px; border-radius: 50%; background: var(--orange); color: #ffe24d; display: grid; place-items: center; flex-shrink: 0; transition: transform var(--dur-fast) var(--ease); }
 .msg-inbox-new:active { transform: scale(0.92); }
 .msg-inbox-new svg { width: 18px; height: 18px; }
 
@@ -4018,18 +4020,16 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 .convo-row__av { position: relative; flex-shrink: 0; }
 .convo-row__presdot {
   position: absolute; right: 0; bottom: 1px; width: 12px; height: 12px;
-  border-radius: 50%; background: var(--orange); border: 2.5px solid var(--bg);
+  border-radius: 50%; background: var(--success); border: 2.5px solid var(--bg);
 }
 .convo-row--unread .convo-row__presdot { border-color: color-mix(in srgb, var(--accent) 5%, var(--bg)); }
 .convo-row__body { flex: 1; min-width: 0; }
 .convo-row__top { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
 .convo-row__name { flex: 1; min-width: 0; font-weight: 700; font-size: 14.5px; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .convo-row__time { font-size: 10.5px; color: var(--ink-faint); flex-shrink: 0; font-family: var(--font-mono); }
-/* Time now sits after the preview on the same line — a middot separates it. */
-.convo-row__line .convo-row__time::before { content: '·'; margin-right: 6px; color: var(--ink-faint); }
 /* The per-row options button (3-dot menu) next to the name. */
-.convo-row__menu { flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; border: none; background: none; color: var(--ink-faint); }
-.convo-row__menu svg { width: 18px; height: 18px; }
+.convo-row__menu { flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; border: none; background: none; color: var(--ink-dim); }
+.convo-row__menu svg { width: 22px; height: 22px; }
 .convo-row__menu:active { background: var(--surface-raised); color: var(--ink); }
 .convo-row__pin { flex-shrink: 0; color: var(--ink-faint); display: inline-flex; }
 .convo-row__pin svg { width: 12px; height: 12px; }
@@ -4045,8 +4045,11 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 .convo-menu__item--danger { color: var(--coral); }
 .convo-menu__item--danger svg { color: var(--coral); }
 .convo-row__line { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
+/* flex:0 1 auto (not flex:1) so the time sits right after the preview text
+   instead of being pushed to the far edge; min-width:0 lets a long preview
+   still truncate. */
 .convo-row__preview {
-  font-size: 13px; color: var(--ink-dim); flex: 1;
+  font-size: 13px; color: var(--ink-dim); flex: 0 1 auto; min-width: 0;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .convo-row__undot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
@@ -4057,7 +4060,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 /* Unread reads as weight + tint, not a competing colour system. */
 .convo-row--unread .convo-row__name { font-weight: 800; }
 .convo-row--unread .convo-row__preview { color: var(--ink); font-weight: 500; }
-.convo-row--unread .convo-row__time { color: var(--accent-bright); font-weight: 700; }
+.convo-row--unread .convo-row__time { color: var(--orange); font-weight: 700; }
 .convo-row__decline {
   flex-shrink: 0; width: 34px; height: 34px; border-radius: 50%;
   display: grid; place-items: center; color: var(--ink-faint);
