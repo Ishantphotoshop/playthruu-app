@@ -1239,17 +1239,20 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    footer width without clipping — verified by measuring that exact
    combination's real rendered width against the available space, not
    just eyeballed. */
-/* The stars, heart and review mark read as one tight group: a small,
-   even gap between the three, and gap:0 inside the star run so every
-   star sits the same distance apart (an earlier negative margin here
-   caused fractional-pixel rounding that made the gaps look uneven). */
-.card-who__stars { display: flex; align-items: center; gap: 1px; min-height: 14px; line-height: 14px; }
-.card-who__stars .stars { gap: 0; }
-/* Loved + review marks: same 12px box as the stars, tight viewBoxes (see
-   components.js) so the glyphs fill it like a star does, and coloured the
-   same star-fill lime — so the whole run reads as one evenly-spaced,
-   one-colour group (matches the reference the design was tuned against). */
-.card-who__icon { width: 12px; height: 12px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+/* The stars, heart and review mark read as one aligned group. --star-fill
+   is redefined here to cream, so the whole run is one colour: the stars
+   read it for their fill and the two icons inherit it below — it's the
+   single lever for the row's colour. A small even gap between the three
+   elements, plus a slight gap inside the star run so the stars sit a touch
+   looser than flush (flex gap, not a per-star margin — that rounded
+   unevenly before). */
+.card-who__stars { display: flex; align-items: center; gap: 3px; min-height: 14px; line-height: 14px; --star-fill: var(--ink); }
+.card-who__stars .stars { gap: 1.5px; }
+/* Loved + review marks: a touch smaller than the 12px stars, tight
+   viewBoxes (see components.js) so the glyphs fill their box like a star
+   does, and coloured off the same --star-fill so the whole row is one
+   colour and reads as one evenly-spaced group. */
+.card-who__icon { width: 10px; height: 10px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
 .card-who__icon svg { width: 100%; height: 100%; display: block; }
 .card-who__icon--loved { color: var(--star-fill); }
 .card-who__icon--review { color: var(--star-fill); }
