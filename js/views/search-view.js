@@ -231,8 +231,18 @@ export function renderSearchView(root) {
   input.addEventListener('focus', () => {
     if (!input.value.trim()) showPrompt();
   });
+  // Deferred, not synchronous: tapping a recent-search row (or a poster
+  // tile) blurs the input BEFORE that row's own click handler runs — a
+  // synchronous revert here would tear the row's button out of the DOM
+  // mid-tap, so the click never fires and nothing happens (this is
+  // exactly the bug that made tapping a recent search look like it did
+  // nothing / "closed the page"). Waiting lets the click complete first;
+  // by then either the search ran (input.value is no longer empty) or a
+  // poster navigated away entirely, so the revert becomes a no-op.
   input.addEventListener('blur', () => {
-    if (!input.value.trim() && showingHistory) showIdle();
+    setTimeout(() => {
+      if (!input.value.trim() && showingHistory) showIdle();
+    }, 200);
   });
 
   // Switch the active tab and sync everything that depends on it — the
