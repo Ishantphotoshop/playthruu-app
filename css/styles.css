@@ -919,10 +919,14 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   background: var(--surface-high); color: var(--ink);
 }
 
-.search-bar-row { display: flex; gap: 8px; margin-bottom: 16px; align-items: center; }
+.search-bar-row { display: flex; gap: 10px; margin-bottom: 16px; align-items: center; }
+/* Fixed height (not padding-derived) so this lines up exactly with
+   .filter-btn beside it — both are 46px, box-sizing:border-box, so the
+   circle and the pill read as one continuous control instead of the
+   filter button looking undersized next to a taller search field. */
 .search-input {
-  flex: 1; width: 100%; background: var(--surface); border: 1.5px solid var(--line);
-  border-radius: 999px; padding: 13px 18px; font-size: 15px; color: var(--ink);
+  flex: 1; width: 100%; height: 46px; background: var(--surface); border: 1.5px solid var(--line);
+  border-radius: 999px; padding: 0 18px; font-size: 15px; color: var(--ink);
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 /* A single lime ring on focus — just the border turning lime. The old
@@ -944,6 +948,10 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   background: var(--surface); border: 1.5px solid var(--line); border-radius: 50%;
   color: var(--ink); transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
 }
+/* Search's filter button sits beside the search bar (not the feed's
+   small "change collection" chip, which stays --sm) — matched to the
+   search input's fixed 46px height so the two read as one control. */
+.filter-btn:not(.filter-btn--sm) { width: 46px; height: 46px; }
 /* Mathematically centred (equal margins on all 4 sides, verified),
    but the funnel's own shape is top-heavy — wide flat top, narrow
    stem below — so true centre reads as sitting a touch high and left.
