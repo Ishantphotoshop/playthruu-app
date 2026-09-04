@@ -32,7 +32,13 @@ export async function renderMessagesView(root) {
   let prefs = {};              // { conversationId: { pinned, muted, nickname } }
   let blockedIds = new Set();  // people you've blocked — their chats are hidden
   const prefOf = (id) => prefs[id] || {};
-  const nameOf = (c) => prefOf(c.id).nickname || c.other.display_name || c.other.username;
+  // A group's name: its title, else the members' names joined; a DM's name:
+  // your nickname for them, else their display name / @handle.
+  const groupName = (c) => c.title || (c.others || []).map((m) => m.display_name || m.username).slice(0, 3).join(', ') || 'Group';
+  const nameOf = (c) => c.isGroup ? groupName(c) : (prefOf(c.id).nickname || c.other?.display_name || c.other?.username || 'Someone');
+  const GROUP_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M2.5 20c0-3.4 2.9-5.6 6.5-5.6s6.5 2.2 6.5 5.6"/><circle cx="17.5" cy="8.7" r="2.3"/><path d="M17.5 14.2c2.9.1 4.8 2.3 4.8 5.1"/></svg>`;
+  const groupAvatarHtml = (size) => `<span class="avatar avatar--group" style="width:${size}px;height:${size}px">${GROUP_ICON}</span>`;
+  const avatarFor = (c, size) => c.isGroup ? groupAvatarHtml(size) : avatarImg(c.other, size);
   const PIN_SVG = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M14.6 2.6a1 1 0 0 0-1.5.1l-4.3 5.1-3.7 1.1a1 1 0 0 0-.4 1.7l3 3-4.4 4.4a1 1 0 1 0 1.4 1.4l4.4-4.4 3 3a1 1 0 0 0 1.7-.4l1.1-3.7 5.1-4.3a1 1 0 0 0 .1-1.5z"/></svg>`;
   const MUTE_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M16 9l5 6M21 9l-5 6"/></svg>`;
   const UNREAD_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v7A2.5 2.5 0 0 1 17.5 16H10l-4.5 4v-4H6.5A2.5 2.5 0 0 1 4 13.5z"/><circle cx="18" cy="6" r="3.2" fill="currentColor" stroke="none"/></svg>`;
@@ -40,6 +46,7 @@ export async function renderMessagesView(root) {
   const BLOCK_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6 18.4 18.4"/></svg>`;
   const RESTRICT_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9.9 4.2A9 9 0 0 1 12 4c6 0 10 8 10 8a17 17 0 0 1-2.2 3.2M6.6 6.6A17 17 0 0 0 2 12s4 8 10 8a9 9 0 0 0 4-.9"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/><path d="M3 3l18 18"/></svg>`;
   const REPORT_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4M5 4h11l-1.5 4L16 12H5"/></svg>`;
+  const LEAVE_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>`;
 
   root.innerHTML =
     `<div class="view-body view-body--no-topbar" id="messages-body">
@@ -104,7 +111,7 @@ export async function renderMessagesView(root) {
     let rows = tab === 'messages' ? messages : requests;
     // Hide chats with people you've blocked, and chats you've restricted
     // (both are managed/undone from Settings).
-    rows = rows.filter((c) => !blockedIds.has(c.other?.id) && !prefOf(c.id).restricted);
+    rows = rows.filter((c) => (c.isGroup || !blockedIds.has(c.other?.id)) && !prefOf(c.id).restricted);
     if (search) {
       rows = rows.filter((c) => {
         const p = c.other || {};
@@ -188,25 +195,31 @@ export async function renderMessagesView(root) {
   function openConvoMenu(c) {
     const p = prefOf(c.id);
     const uid = state.user.id;
-    const nm = c.other.display_name || c.other.username;
+    const nm = nameOf(c);
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
+    const commonItems = `
+          <button type="button" class="convo-menu__item" data-act="pin">${PIN_SVG}<span>${p.pinned ? 'Unpin from top' : 'Pin to top'}</span></button>
+          <button type="button" class="convo-menu__item" data-act="mute">${MUTE_SVG}<span>${p.muted ? 'Unmute' : 'Mute'}</span></button>
+          <button type="button" class="convo-menu__item" data-act="unread">${UNREAD_SVG}<span>Mark as unread</span></button>`;
+    const groupItems = `
+          <button type="button" class="convo-menu__item convo-menu__item--danger" data-act="leave">${LEAVE_SVG}<span>Leave group</span></button>`;
+    const dmItems = `
+          <button type="button" class="convo-menu__item" data-act="nickname">${TAG_SVG}<span>${p.nickname ? 'Change nickname' : 'Set nickname'}</span></button>
+          <button type="button" class="convo-menu__item" data-act="restrict">${RESTRICT_SVG}<span>Restrict</span></button>
+          <button type="button" class="convo-menu__item convo-menu__item--danger" data-act="block">${BLOCK_SVG}<span>Block</span></button>
+          <button type="button" class="convo-menu__item convo-menu__item--danger" data-act="report">${REPORT_SVG}<span>Report</span></button>
+          <button type="button" class="convo-menu__item convo-menu__item--danger" data-act="delete">${iconTrash()}<span>Delete chat</span></button>`;
     overlay.innerHTML = `
       <div class="modal modal--sheet">
         <header class="msg-actions__grab"></header>
         <div class="convo-menu">
           <div class="convo-menu__who">
-            ${avatarImg(c.other, 42)}
-            <div class="convo-menu__who-txt"><b>${esc(nameOf(c))}</b><span>@${esc(c.other.username)}</span></div>
+            ${avatarFor(c, 42)}
+            <div class="convo-menu__who-txt"><b>${esc(nm)}</b><span>${c.isGroup ? esc(`${(c.members || []).length} members`) : '@' + esc(c.other?.username || '')}</span></div>
           </div>
-          <button type="button" class="convo-menu__item" data-act="pin">${PIN_SVG}<span>${p.pinned ? 'Unpin from top' : 'Pin to top'}</span></button>
-          <button type="button" class="convo-menu__item" data-act="mute">${MUTE_SVG}<span>${p.muted ? 'Unmute' : 'Mute'}</span></button>
-          <button type="button" class="convo-menu__item" data-act="unread">${UNREAD_SVG}<span>Mark as unread</span></button>
-          <button type="button" class="convo-menu__item" data-act="nickname">${TAG_SVG}<span>${p.nickname ? 'Change nickname' : 'Set nickname'}</span></button>
-          <button type="button" class="convo-menu__item" data-act="restrict">${RESTRICT_SVG}<span>Restrict</span></button>
-          <button type="button" class="convo-menu__item convo-menu__item--danger" data-act="block">${BLOCK_SVG}<span>Block</span></button>
-          <button type="button" class="convo-menu__item convo-menu__item--danger" data-act="report">${REPORT_SVG}<span>Report</span></button>
-          <button type="button" class="convo-menu__item convo-menu__item--danger" data-act="delete">${iconTrash()}<span>Delete chat</span></button>
+          ${commonItems}
+          ${c.isGroup ? groupItems : dmItems}
         </div>
       </div>`;
     document.body.appendChild(overlay);
@@ -223,16 +236,26 @@ export async function renderMessagesView(root) {
       catch (err) { toast(err.message || 'Could not save that.', 'error'); load(); }
     };
 
-    qs('[data-act="restrict"]', overlay).addEventListener('click', () => setPref({ restricted: true }, 'Restricted — undo in Settings'));
     qs('[data-act="pin"]', overlay).addEventListener('click', () => setPref({ pinned: !p.pinned }));
     qs('[data-act="mute"]', overlay).addEventListener('click', () => setPref({ muted: !p.muted }, p.muted ? 'Unmuted' : 'Muted'));
-    qs('[data-act="nickname"]', overlay).addEventListener('click', () => {
+    qs('[data-act="unread"]', overlay).addEventListener('click', () => setPref({ unread: true }, 'Marked as unread'));
+    qs('[data-act="leave"]', overlay)?.addEventListener('click', async () => {
+      close();
+      if (!(await confirmSheet({ title: `Leave ${nm}?`, message: "You'll stop getting this group's messages.", confirmLabel: 'Leave', danger: true }))) return;
+      try {
+        await api.leaveGroup(c.id, uid);
+        all = all.filter((x) => x.id !== c.id);
+        paint();
+        toast('Left the group');
+      } catch (err) { toast(err.message || 'Could not leave.', 'error'); }
+    });
+    qs('[data-act="restrict"]', overlay)?.addEventListener('click', () => setPref({ restricted: true }, 'Restricted — undo in Settings'));
+    qs('[data-act="nickname"]', overlay)?.addEventListener('click', () => {
       const val = prompt(`Nickname for ${nm}`, p.nickname || '');
       if (val === null) { close(); return; }
       setPref({ nickname: val.trim() || null }, 'Nickname saved');
     });
-    qs('[data-act="unread"]', overlay).addEventListener('click', () => setPref({ unread: true }, 'Marked as unread'));
-    qs('[data-act="block"]', overlay).addEventListener('click', async () => {
+    qs('[data-act="block"]', overlay)?.addEventListener('click', async () => {
       close();
       if (!(await confirmSheet({ title: `Block ${nm}?`, message: "Their chat is hidden and they can't reach you.", confirmLabel: 'Block', danger: true }))) return;
       try {
@@ -243,7 +266,7 @@ export async function renderMessagesView(root) {
         toast(`Blocked ${nm}`);
       } catch (err) { toast(err.message || 'Could not block.', 'error'); }
     });
-    qs('[data-act="report"]', overlay).addEventListener('click', async () => {
+    qs('[data-act="report"]', overlay)?.addEventListener('click', async () => {
       close();
       const reason = prompt(`Report ${nm} — what's wrong? (optional)`, '');
       if (reason === null) return;
@@ -252,7 +275,7 @@ export async function renderMessagesView(root) {
         toast('Report sent — thanks for flagging it.');
       } catch (err) { toast(err.message || 'Could not send report.', 'error'); }
     });
-    qs('[data-act="delete"]', overlay).addEventListener('click', async () => {
+    qs('[data-act="delete"]', overlay)?.addEventListener('click', async () => {
       close();
       if (!(await confirmSheet({ title: `Delete chat with ${nm}?`, message: 'This removes the conversation for you.', confirmLabel: 'Delete', danger: true }))) return;
       try {
@@ -268,18 +291,24 @@ export async function renderMessagesView(root) {
   function convoRow(c, currentTab) {
     const mine = c.last_message_sender_id === state.user.id;
     const iSentThisRequest = c.status === 'pending' && c.requested_by === state.user.id;
-    const prefix = mine ? 'You: ' : '';
+    let prefix = mine ? 'You: ' : '';
+    // In a group, name whoever sent the last message (unless it was you).
+    if (c.isGroup && !mine && c.last_message_sender_id) {
+      const sender = (c.members || []).find((m) => m.id === c.last_message_sender_id);
+      if (sender) prefix = `${(sender.display_name || sender.username).split(' ')[0]}: `;
+    }
     const KIND_LABEL = { gif: 'Sent a GIF', image: 'Sent a photo', video: 'Sent a video', game: 'Shared a game' };
     const bodyPreview = KIND_LABEL[c.last_message_kind] ? `${prefix}${KIND_LABEL[c.last_message_kind]}`
       : `${prefix}${esc(c.last_message_body || '')}`;
     const preview = iSentThisRequest
       ? 'Request sent — waiting for a reply'
-      : c.last_message_body ? bodyPreview : 'Say hi and start the conversation';
-    const playing = playingBy[c.other?.id];
+      : c.last_message_body ? bodyPreview : (c.isGroup ? 'New group — say hi' : 'Say hi and start the conversation');
+    // Presence + "Playing" are per-person, so groups skip them.
+    const playing = c.isGroup ? null : playingBy[c.other?.id];
     const playingChip = playing
       ? `<span class="convo-row__playing"><b>Playing</b> · ${esc(playing.title)}</span>`
-      : '';
-    const last = presenceBy[c.other?.id];
+      : (c.isGroup ? `<span class="convo-row__playing">${esc(`${(c.members || []).length} members`)}</span>` : '');
+    const last = c.isGroup ? null : presenceBy[c.other?.id];
     const online = last && (Date.now() - new Date(last).getTime()) < 3 * 60 * 1000;
     const time = c.last_message_at ? `<span class="convo-row__time">${timeAgo(c.last_message_at)}</span>` : '';
     // Unread = the server-computed state OR a manual "mark as unread".
@@ -291,7 +320,7 @@ export async function renderMessagesView(root) {
       : `<button type="button" class="convo-row__menu" data-menu-id="${esc(c.id)}" aria-label="Chat options">${iconDotsMenu()}</button>`;
     return `
       <div class="convo-row${unread ? ' convo-row--unread' : ''}" data-convo-id="${esc(c.id)}">
-        <span class="convo-row__av">${avatarImg(c.other, 50)}${online ? '<span class="convo-row__presdot"></span>' : ''}</span>
+        <span class="convo-row__av">${avatarFor(c, 50)}${online ? '<span class="convo-row__presdot"></span>' : ''}</span>
         <div class="convo-row__body">
           <div class="convo-row__top">
             <span class="convo-row__name">${esc(nameOf(c))}</span>
@@ -308,15 +337,28 @@ export async function renderMessagesView(root) {
       </div>`;
   }
 
+  // New message OR new group. Direct mode: tap a person to open a DM.
+  // Group mode: tap people to add them (chips), name it, Create group.
   function openComposeModal() {
+    let mode = 'direct';
+    const selected = new Map(); // id -> profile
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
     overlay.innerHTML = `
       <div class="modal modal--tall">
-        <header class="modal__header"><h2>New message</h2><button class="modal__close" data-close aria-label="Close">${iconClose()}</button></header>
+        <header class="modal__header"><h2 id="compose-title">New message</h2><button class="modal__close" data-close aria-label="Close">${iconClose()}</button></header>
         <div class="modal__body">
-          <label class="field"><span>To</span><input type="text" id="compose-search" autocomplete="off" placeholder="Search people…"></label>
+          <div class="segmented compose-mode" id="compose-mode">
+            <button type="button" class="segmented__item segmented__item--active" data-mode="direct">Direct</button>
+            <button type="button" class="segmented__item" data-mode="group">Group</button>
+          </div>
+          <div id="group-setup" hidden>
+            <input type="text" id="group-name" class="compose-name" placeholder="Group name (optional)" maxlength="40" autocomplete="off">
+            <div id="group-chips" class="compose-chips"></div>
+          </div>
+          <label class="field"><span id="compose-label">To</span><input type="text" id="compose-search" autocomplete="off" placeholder="Search people…"></label>
           <div id="compose-results"></div>
+          <button type="button" class="btn btn--accent btn--block" id="create-group" hidden>Create group</button>
         </div>
       </div>`;
     document.body.appendChild(overlay);
@@ -327,29 +369,71 @@ export async function renderMessagesView(root) {
 
     const input = qs('#compose-search', overlay);
     const results = qs('#compose-results', overlay);
+    const groupSetup = qs('#group-setup', overlay);
+    const chipsEl = qs('#group-chips', overlay);
+    const createBtn = qs('#create-group', overlay);
     let found = [];
+
+    const refreshCreateBtn = () => {
+      createBtn.hidden = !(mode === 'group' && selected.size >= 2);
+      createBtn.textContent = `Create group${selected.size ? ` (${selected.size})` : ''}`;
+    };
+    const renderChips = () => {
+      chipsEl.innerHTML = [...selected.values()].map((p) => `<span class="compose-chip" data-chip="${esc(p.id)}">${esc(p.display_name || p.username)}<button type="button" aria-label="Remove">${iconClose()}</button></span>`).join('');
+      qsa('[data-chip]', chipsEl).forEach((chip) => chip.querySelector('button').addEventListener('click', () => { selected.delete(chip.dataset.chip); renderChips(); renderResults(); refreshCreateBtn(); }));
+    };
+    const renderResults = () => {
+      if (!found.length) return;
+      results.innerHTML = `<div class="profile-list">${found.map((p) => profileRow(p)).join('')}</div>`;
+      qsa('.profile-row', results).forEach((row, i) => {
+        const p = found[i];
+        if (mode === 'group' && selected.has(p.id)) row.classList.add('profile-row--selected');
+        row.addEventListener('click', (e) => {
+          e.preventDefault();
+          if (mode === 'direct') { close(); navigate(`/messages/new/${p.id}`); return; }
+          if (selected.has(p.id)) selected.delete(p.id); else selected.set(p.id, p);
+          renderChips(); renderResults(); refreshCreateBtn();
+        });
+      });
+    };
 
     const doSearch = debounce(async () => {
       const q = input.value.trim();
-      if (!q) { results.innerHTML = ''; return; }
+      if (!q) { results.innerHTML = ''; found = []; return; }
       results.innerHTML = spinner();
       try {
         found = (await api.searchUsers(q)).filter((p) => p.id !== state.user.id);
-        results.innerHTML = found.length
-          ? `<div class="profile-list">${found.map((p) => profileRow(p)).join('')}</div>`
-          : `<p class="muted">No one found for "${esc(q)}".</p>`;
-        qsa('.profile-row', results).forEach((row, i) => {
-          row.addEventListener('click', (e) => {
-            e.preventDefault();
-            close();
-            navigate(`/messages/new/${found[i].id}`);
-          });
-        });
+        if (!found.length) { results.innerHTML = `<p class="muted">No one found for "${esc(q)}".</p>`; return; }
+        renderResults();
       } catch (err) {
         results.innerHTML = `<p class="muted">Couldn't search right now: ${esc(err.message)}</p>`;
       }
     }, 350);
     input.addEventListener('input', doSearch);
+
+    qsa('[data-mode]', overlay).forEach((btn) => btn.addEventListener('click', () => {
+      mode = btn.dataset.mode;
+      qsa('[data-mode]', overlay).forEach((b) => b.classList.toggle('segmented__item--active', b === btn));
+      groupSetup.hidden = mode !== 'group';
+      qs('#compose-title', overlay).textContent = mode === 'group' ? 'New group' : 'New message';
+      qs('#compose-label', overlay).textContent = mode === 'group' ? 'Add people' : 'To';
+      refreshCreateBtn();
+      renderResults();
+    }));
+
+    createBtn.addEventListener('click', async () => {
+      if (selected.size < 2) return;
+      createBtn.disabled = true; createBtn.textContent = 'Creating…';
+      try {
+        const id = await api.createGroup(state.user.id, [...selected.keys()], qs('#group-name', overlay).value);
+        close();
+        navigate(`/messages/${id}`);
+      } catch (err) {
+        toast(err.message || 'Could not create the group.', 'error');
+        createBtn.disabled = false; refreshCreateBtn();
+      }
+    });
+
     input.focus();
   }
 

@@ -14,6 +14,7 @@ const MAX_MEDIA_BYTES = 25 * 1024 * 1024; // a soft cap so a huge video doesn't 
 const DOUBLE_TAP_MS = 300;
 const LONG_PRESS_MS = 420;
 const HEART_REACTION = '❤️';
+const GROUP_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M2.5 20c0-3.4 2.9-5.6 6.5-5.6s6.5 2.2 6.5 5.6"/><circle cx="17.5" cy="8.7" r="2.3"/><path d="M17.5 14.2c2.9.1 4.8 2.3 4.8 5.1"/></svg>`;
 
 // One conversation — or, via /messages/new/:userId, the START of one
 // that doesn't exist as a row yet (see api.getConversationBetween vs
@@ -51,6 +52,7 @@ export async function renderMessageThreadView(root, { conversationId, otherUserI
   let otherPlaying = null; // the other person's currently-playing game (public log)
   let otherLastSeen = null; // their presence timestamp (visible via the conversation policy)
   let nickname = null;     // my private nickname for this chat, if I set one
+  let groupMembers = {};   // id -> profile, for a group thread (to label senders)
   let reactionsByMessage = {};
   let replyingTo = null;  // a message object, or null
   let unsubscribe = null;
@@ -90,17 +92,23 @@ export async function renderMessageThreadView(root, { conversationId, otherUserI
     return;
   }
 
+  // For a group, remember the roster so each message can be labelled with
+  // who sent it. Presence/"playing" are per-person, so groups skip them.
+  if (convo.isGroup) for (const mem of (convo.members || [])) groupMembers[mem.id] = mem;
+
   // The other person's currently-playing game (from their public log) —
   // shown in the header as gaming-native "who is this / what are they on"
   // context. Fire-and-forget: the header re-renders once it lands.
-  api.getPlayingByUsers([convo.other.id]).then((m) => {
-    otherPlaying = m[convo.other.id] || null;
-    renderHeader();
-  }).catch(() => {});
-  api.getPresenceFor([convo.other.id]).then((m) => {
-    otherLastSeen = m[convo.other.id] || null;
-    renderHeader();
-  }).catch(() => {});
+  if (!convo.isGroup && convo.other) {
+    api.getPlayingByUsers([convo.other.id]).then((m) => {
+      otherPlaying = m[convo.other.id] || null;
+      renderHeader();
+    }).catch(() => {});
+    api.getPresenceFor([convo.other.id]).then((m) => {
+      otherLastSeen = m[convo.other.id] || null;
+      renderHeader();
+    }).catch(() => {});
+  }
   // My private nickname for this chat (set from the inbox 3-dot menu).
   if (threadId) api.getConversationPrefs(state.user.id).then((p) => {
     nickname = p[threadId]?.nickname || null;
@@ -199,6 +207,20 @@ export async function renderMessageThreadView(root, { conversationId, otherUserI
   function renderHeader() {
     const titleEl = qs('.topbar__title', root);
     if (!titleEl) return;
+    if (convo.isGroup) {
+      const others = (convo.members || []).filter((m) => m.id !== state.user.id);
+      const gname = convo.title || others.map((m) => m.display_name || m.username).slice(0, 3).join(', ') || 'Group';
+      const count = (convo.members || []).length;
+      titleEl.innerHTML = `
+        <span class="thread-hd">
+          <span class="avatar avatar--group" style="width:34px;height:34px">${GROUP_ICON}</span>
+          <span class="thread-hd__meta">
+            <span class="thread-hd__name">${esc(gname)}</span>
+            <span class="thread-hd__pres">${esc(`${count} member${count === 1 ? '' : 's'}`)}</span>
+          </span>
+        </span>`;
+      return;
+    }
     const name = nickname || convo.other.display_name || convo.other.username;
     const online = otherLastSeen && (Date.now() - new Date(otherLastSeen).getTime()) < 3 * 60 * 1000;
     let pres;
@@ -263,7 +285,11 @@ export async function renderMessageThreadView(root, { conversationId, otherUserI
     try { const o = JSON.parse(m.body); if (o && typeof o === 'object') return o; } catch { /* not json */ }
     return m.kind === 'game' ? { g: m.body } : {};
   }
-  const senderLabel = (m) => (m.sender_id === state.user.id ? 'You' : (convo.other.display_name || convo.other.username));
+  const senderLabel = (m) => {
+    if (m.sender_id === state.user.id) return 'You';
+    if (convo.isGroup) { const s = groupMembers[m.sender_id]; return s ? (s.display_name || s.username) : 'Someone'; }
+    return convo.other?.display_name || convo.other?.username || 'Someone';
+  };
   function starStr(r) { const n = Math.round(Number(r) || 0); return '★★★★★'.slice(0, n) + '☆☆☆☆☆'.slice(0, 5 - n); }
 
   // The flagship: a shared game as a rich hero card that taps through to
@@ -332,9 +358,7 @@ export async function renderMessageThreadView(root, { conversationId, otherUserI
     if (!m.reply_to_id) return '';
     const original = messages.find((x) => x.id === m.reply_to_id);
     if (!original) return '';
-    const mine = original.sender_id === state.user.id;
-    const who = mine ? 'You' : (convo.other.display_name || convo.other.username);
-    return `<div class="msg-reply-preview"><b>${esc(who)}</b><span>${esc(mediaSnippet(original))}</span></div>`;
+    return `<div class="msg-reply-preview"><b>${esc(senderLabel(original))}</b><span>${esc(mediaSnippet(original))}</span></div>`;
   }
 
   function reactionsHtml(m) {
@@ -396,6 +420,11 @@ export async function renderMessageThreadView(root, { conversationId, otherUserI
         cluster.push(n); j++;
       }
       html += `<div class="msg-cluster${mine ? ' msg-cluster--mine' : ''}">`;
+      // In a group, label whose messages these are (not for your own).
+      if (convo.isGroup && !mine) {
+        const sender = groupMembers[m.sender_id];
+        html += `<span class="msg-sender">${esc(sender ? (sender.display_name || sender.username) : 'Someone')}</span>`;
+      }
       cluster.forEach((cm, k) => {
         const isTail = k === cluster.length - 1;
         const bare = cm.kind !== 'text'; // media/game cards carry their own weight — no bubble chrome
@@ -605,7 +634,7 @@ export async function renderMessageThreadView(root, { conversationId, otherUserI
     const bar = qs('#thread-replying', root);
     if (!replyingTo) { bar.hidden = true; bar.innerHTML = ''; return; }
     const mine = replyingTo.sender_id === state.user.id;
-    const who = mine ? 'yourself' : (convo.other.display_name || convo.other.username);
+    const who = mine ? 'yourself' : senderLabel(replyingTo);
     bar.hidden = false;
     bar.innerHTML = `
       <div class="thread-replying__info">
@@ -1035,20 +1064,32 @@ export async function renderMessageThreadView(root, { conversationId, otherUserI
   function openThreadMenu() {
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
+    const items = convo.isGroup
+      ? `<button type="button" class="msg-actions__item msg-actions__item--danger" id="menu-leave"><span>Leave group</span></button>`
+      : `<button type="button" class="msg-actions__item" id="menu-profile"><span>View profile</span></button>
+         ${threadId ? `<button type="button" class="msg-actions__item msg-actions__item--danger" id="menu-delete"><span>Delete conversation</span></button>` : ''}`;
     overlay.innerHTML = `
       <div class="modal modal--sheet">
         <header class="msg-actions__grab" aria-hidden="true"></header>
-        <div class="msg-actions__list">
-          <button type="button" class="msg-actions__item" id="menu-profile"><span>View profile</span></button>
-          ${threadId ? `<button type="button" class="msg-actions__item msg-actions__item--danger" id="menu-delete"><span>Delete conversation</span></button>` : ''}
-        </div>
+        <div class="msg-actions__list">${items}</div>
       </div>`;
     document.body.appendChild(overlay);
     const close = () => overlay.remove();
     overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
     enableSwipeToDismiss(qs('.modal', overlay), close);
 
-    qs('#menu-profile', overlay).addEventListener('click', () => { close(); navigate(`/profile/${convo.other.username}`); });
+    qs('#menu-profile', overlay)?.addEventListener('click', () => { close(); navigate(`/profile/${convo.other.username}`); });
+    qs('#menu-leave', overlay)?.addEventListener('click', async () => {
+      close();
+      if (!confirm('Leave this group? You will stop receiving its messages.')) return;
+      try {
+        await api.leaveGroup(threadId, state.user.id);
+        teardown();
+        navigate('/messages');
+      } catch (err) {
+        toast(err.message || 'Could not leave.', 'error');
+      }
+    });
     qs('#menu-delete', overlay)?.addEventListener('click', async () => {
       close();
       if (!confirm('Delete this conversation? This removes it for both of you.')) return;

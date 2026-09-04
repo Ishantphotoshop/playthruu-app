@@ -2368,23 +2368,37 @@ export async function deleteAccount() {
 
 const CONVO_SELECT = `
   id, user_one_id, user_two_id, status, requested_by,
+  is_group, title, created_by,
   last_message_at, last_message_body, last_message_kind, last_message_sender_id,
   user_one_last_read_at, user_two_last_read_at, created_at,
   user_one:profiles!conversations_user_one_id_fkey(id, username, display_name, avatar_url),
-  user_two:profiles!conversations_user_two_id_fkey(id, username, display_name, avatar_url)
+  user_two:profiles!conversations_user_two_id_fkey(id, username, display_name, avatar_url),
+  participants:conversation_participants(user_id, profile:profiles(id, username, display_name, avatar_url))
 `;
 
 // Shapes a raw conversation row (which has both participants) into one
 // with `.other` (whichever of the two isn't me) and `.unread` already
 // worked out, so every view that lists conversations does this exactly
 // the same way instead of repeating the same three-way ternary each time.
-function shapeConversation(row, userId) {
+function shapeConversation(row, userId, groupLastRead) {
+  // A group: members come from conversation_participants; there's no single
+  // "other" person, so `.members`/`.others` carry the roster and `.other`
+  // is just the first non-me member (handy for a fallback avatar). My read
+  // marker is my participant row's last_read_at, passed in from the caller.
+  if (row.is_group) {
+    const members = (row.participants || []).map((p) => p.profile).filter(Boolean);
+    const others = members.filter((m) => m.id !== userId);
+    const unread = !!row.last_message_sender_id
+      && row.last_message_sender_id !== userId
+      && (!groupLastRead || new Date(row.last_message_at) > new Date(groupLastRead));
+    return { ...row, isGroup: true, members, others, other: others[0] || null, unread };
+  }
   const iAmOne = row.user_one_id === userId;
   const myLastRead = iAmOne ? row.user_one_last_read_at : row.user_two_last_read_at;
   const unread = !!row.last_message_sender_id
     && row.last_message_sender_id !== userId
     && (!myLastRead || new Date(row.last_message_at) > new Date(myLastRead));
-  return { ...row, other: iAmOne ? row.user_two : row.user_one, unread };
+  return { ...row, isGroup: false, other: iAmOne ? row.user_two : row.user_one, unread };
 }
 
 // Every conversation the signed-in user is part of, newest activity
@@ -2393,13 +2407,59 @@ function shapeConversation(row, userId) {
 // no messages yet (last_message_at is null) still needs to sort
 // somewhere and "newest first, nulls last" is what nullsFirst:false does.
 export async function getConversations(userId) {
-  const { data, error } = await supabase
+  // DMs are found by the pair columns; groups by my membership row (which
+  // also carries my own read marker). Two queries, merged + de-duped, since
+  // PostgREST can't OR a pair-column match with an id-in-subquery in one go.
+  const { data: parts, error: pErr } = await supabase
+    .from('conversation_participants')
+    .select('conversation_id, last_read_at')
+    .eq('user_id', userId);
+  if (pErr) throw pErr;
+  const groupRead = {};
+  const groupIds = [];
+  for (const p of parts || []) { groupIds.push(p.conversation_id); groupRead[p.conversation_id] = p.last_read_at; }
+
+  const queries = [
+    supabase.from('conversations').select(CONVO_SELECT).or(`user_one_id.eq.${userId},user_two_id.eq.${userId}`),
+  ];
+  if (groupIds.length) queries.push(supabase.from('conversations').select(CONVO_SELECT).in('id', groupIds));
+  const results = await Promise.all(queries);
+  for (const r of results) if (r.error) throw r.error;
+
+  const seen = new Set();
+  const rows = [];
+  for (const r of results) for (const row of r.data || []) {
+    if (!seen.has(row.id)) { seen.add(row.id); rows.push(row); }
+  }
+  rows.sort((a, b) => new Date(b.last_message_at || 0) - new Date(a.last_message_at || 0));
+  return rows.map((row) => shapeConversation(row, userId, groupRead[row.id]));
+}
+
+// Create a group chat: an is_group conversation whose members (creator +
+// the picked people) go into conversation_participants. Returns the id.
+export async function createGroup(creatorId, memberIds, title) {
+  const { data: convo, error } = await supabase
     .from('conversations')
-    .select(CONVO_SELECT)
-    .or(`user_one_id.eq.${userId},user_two_id.eq.${userId}`)
-    .order('last_message_at', { ascending: false, nullsFirst: false });
+    .insert({ is_group: true, title: (title || '').trim() || null, created_by: creatorId, requested_by: creatorId })
+    .select('id')
+    .single();
   if (error) throw error;
-  return data.map((row) => shapeConversation(row, userId));
+  const ids = Array.from(new Set([creatorId, ...memberIds]));
+  const { error: pErr } = await supabase
+    .from('conversation_participants')
+    .insert(ids.map((uid) => ({ conversation_id: convo.id, user_id: uid })));
+  if (pErr) throw pErr;
+  return convo.id;
+}
+
+// Leave a group (just removes your own membership row).
+export async function leaveGroup(conversationId, userId) {
+  const { error } = await supabase
+    .from('conversation_participants')
+    .delete()
+    .eq('conversation_id', conversationId)
+    .eq('user_id', userId);
+  if (error) throw error;
 }
 
 // Looks for an existing thread with this person WITHOUT creating one —
@@ -2694,6 +2754,9 @@ export function subscribeToConversations(userId, onChange) {
     .channel(`conversations:${userId}:${crypto.randomUUID()}`)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'conversations', filter: `user_one_id=eq.${userId}` }, onChange)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'conversations', filter: `user_two_id=eq.${userId}` }, onChange)
+    // Group membership: fires when I'm added to (or removed from) a group,
+    // so a brand-new group shows up in the inbox without a manual refresh.
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'conversation_participants', filter: `user_id=eq.${userId}` }, onChange)
     .subscribe();
   return () => supabase.removeChannel(channel);
 }
