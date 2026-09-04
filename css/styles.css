@@ -4065,6 +4065,14 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 .confirm-sheet__btn--danger { background: var(--coral); color: #fff; }
 .confirm-sheet__btn--go { background: var(--accent); color: var(--bg); }
 .confirm-sheet__btn--cancel { background: var(--surface-high); color: var(--ink); }
+/* Settings → Blocked & restricted list. */
+.mod-sub { font-size: 11.5px; font-weight: 700; color: var(--ink-dim); text-transform: uppercase; letter-spacing: 0.07em; margin: 12px 2px 6px; }
+.mod-sub:first-child { margin-top: 0; }
+.mod-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
+.mod-row__meta { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.mod-row__meta b { font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mod-row__meta span { font-size: 12px; color: var(--ink-dim); font-family: var(--font-mono); }
+.mod-row__btn { flex-shrink: 0; padding: 7px 14px; font-size: 13px; }
 .convo-row__line { display: flex; align-items: center; gap: 6px; margin-top: 1px; }
 /* flex:0 1 auto (not flex:1) so the time sits right after the preview text
    instead of being pushed to the far edge; min-width:0 lets a long preview

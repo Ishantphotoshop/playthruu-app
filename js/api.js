@@ -2501,12 +2501,37 @@ export async function deleteConversation(conversationId) {
 export async function getConversationPrefs(userId) {
   const { data, error } = await supabase
     .from('conversation_prefs')
-    .select('conversation_id, pinned, muted, nickname, unread')
+    .select('conversation_id, pinned, muted, nickname, unread, restricted')
     .eq('user_id', userId);
   if (error) throw error;
   const out = {};
-  for (const r of data) out[r.conversation_id] = { pinned: r.pinned, muted: r.muted, nickname: r.nickname, unread: r.unread };
+  for (const r of data) out[r.conversation_id] = { pinned: r.pinned, muted: r.muted, nickname: r.nickname, unread: r.unread, restricted: r.restricted };
   return out;
+}
+
+// Profiles for a set of ids, in one query — used by the Settings block/
+// restrict lists.
+export async function getProfilesByIds(ids) {
+  if (!ids || !ids.length) return [];
+  const { data, error } = await supabase.from('profiles')
+    .select('id, username, display_name, avatar_url').in('id', ids);
+  if (error) throw error;
+  return data || [];
+}
+
+// The people you've restricted, each with the other participant shaped in —
+// for the Settings "Restricted accounts" list.
+export async function getRestrictedUsers(userId) {
+  const { data: prefRows, error } = await supabase
+    .from('conversation_prefs').select('conversation_id')
+    .eq('user_id', userId).eq('restricted', true);
+  if (error) throw error;
+  const ids = (prefRows || []).map((r) => r.conversation_id);
+  if (!ids.length) return [];
+  const { data: convos, error: cErr } = await supabase
+    .from('conversations').select(CONVO_SELECT).in('id', ids);
+  if (cErr) throw cErr;
+  return (convos || []).map((c) => ({ conversationId: c.id, other: shapeConversation(c, userId).other }));
 }
 
 // Upsert a subset of one chat's prefs — patch is any of {pinned, muted, nickname}.

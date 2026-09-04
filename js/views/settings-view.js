@@ -73,6 +73,11 @@ export function renderSettingsView(root) {
         <p class="set-hint">Controls who's allowed to leave a comment on your reviews.</p>
       </div>
 
+      <p class="set-group__title">Blocked &amp; restricted</p>
+      <div class="set-card set-card--pad">
+        <div id="moderation-list"><div class="spinner"></div></div>
+      </div>
+
       <p class="set-group__title">Appearance</p>
       <div class="set-card set-card--pad">
         <div class="segmented" id="theme-toggle">
@@ -101,6 +106,49 @@ export function renderSettingsView(root) {
     </div>` + navBar('');
 
   const body = qs('#settings-body', root);
+
+  // ---- blocked & restricted accounts ----
+  const modRow = (pr, action, convoId) => `
+    <div class="mod-row">
+      ${avatarImg(pr, 36)}
+      <div class="mod-row__meta"><b>${esc(pr.display_name || pr.username)}</b><span>@${esc(pr.username)}</span></div>
+      <button type="button" class="btn btn--ghost mod-row__btn" data-mod="${action}" data-user="${esc(pr.id)}"${convoId ? ` data-convo="${esc(convoId)}"` : ''}>${action === 'unblock' ? 'Unblock' : 'Unrestrict'}</button>
+    </div>`;
+  async function loadModeration() {
+    const el = qs('#moderation-list', body);
+    try {
+      const [blockedSet, restricted] = await Promise.all([
+        api.getBlockedIds(),
+        api.getRestrictedUsers(state.user.id),
+      ]);
+      const blocked = blockedSet.size ? await api.getProfilesByIds([...blockedSet]) : [];
+      if (!blocked.length && !restricted.length) {
+        el.innerHTML = `<p class="set-hint" style="margin:0">You haven't blocked or restricted anyone.</p>`;
+        return;
+      }
+      el.innerHTML =
+        (blocked.length ? `<p class="mod-sub">Blocked</p>${blocked.map((pr) => modRow(pr, 'unblock')).join('')}` : '') +
+        (restricted.length ? `<p class="mod-sub">Restricted</p>${restricted.map((r) => modRow(r.other, 'unrestrict', r.conversationId)).join('')}` : '');
+      qsa('[data-mod]', el).forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          btn.disabled = true;
+          try {
+            if (btn.dataset.mod === 'unblock') {
+              await api.unblockUser(btn.dataset.user);
+              api.invalidateBlockedCache();
+            } else {
+              await api.setConversationPref(state.user.id, btn.dataset.convo, { restricted: false });
+            }
+            btn.closest('.mod-row').remove();
+            if (!qs('.mod-row', el)) loadModeration();
+          } catch (err) { toast(err.message || 'Could not update that.', 'error'); btn.disabled = false; }
+        });
+      });
+    } catch (err) {
+      el.innerHTML = `<p class="set-hint" style="margin:0">Couldn't load: ${esc(err.message)}</p>`;
+    }
+  }
+  loadModeration();
 
   // ---- appearance (theme) ----
   qsa('#theme-toggle .segmented__item', body).forEach((btn) => {

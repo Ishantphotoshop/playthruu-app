@@ -38,6 +38,7 @@ export async function renderMessagesView(root) {
   const UNREAD_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v7A2.5 2.5 0 0 1 17.5 16H10l-4.5 4v-4H6.5A2.5 2.5 0 0 1 4 13.5z"/><circle cx="18" cy="6" r="3.2" fill="currentColor" stroke="none"/></svg>`;
   const TAG_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round"><path d="M20.6 13.4 12 22l-8-8 8.6-8.6A2 2 0 0 1 14 4.8L20 5a1 1 0 0 1 1 1l.2 6a2 2 0 0 1-.6 1.4z"/><circle cx="16.5" cy="8.5" r="1.3" fill="currentColor" stroke="none"/></svg>`;
   const BLOCK_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6 18.4 18.4"/></svg>`;
+  const RESTRICT_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9.9 4.2A9 9 0 0 1 12 4c6 0 10 8 10 8a17 17 0 0 1-2.2 3.2M6.6 6.6A17 17 0 0 0 2 12s4 8 10 8a9 9 0 0 0 4-.9"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/><path d="M3 3l18 18"/></svg>`;
   const REPORT_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4M5 4h11l-1.5 4L16 12H5"/></svg>`;
 
   root.innerHTML =
@@ -101,8 +102,9 @@ export async function renderMessagesView(root) {
 
     const listEl = qs('#messages-list', body);
     let rows = tab === 'messages' ? messages : requests;
-    // Hide chats with people you've blocked.
-    rows = rows.filter((c) => !blockedIds.has(c.other?.id));
+    // Hide chats with people you've blocked, and chats you've restricted
+    // (both are managed/undone from Settings).
+    rows = rows.filter((c) => !blockedIds.has(c.other?.id) && !prefOf(c.id).restricted);
     if (search) {
       rows = rows.filter((c) => {
         const p = c.other || {};
@@ -201,6 +203,7 @@ export async function renderMessagesView(root) {
           <button type="button" class="convo-menu__item" data-act="mute">${MUTE_SVG}<span>${p.muted ? 'Unmute' : 'Mute'}</span></button>
           <button type="button" class="convo-menu__item" data-act="unread">${UNREAD_SVG}<span>Mark as unread</span></button>
           <button type="button" class="convo-menu__item" data-act="nickname">${TAG_SVG}<span>${p.nickname ? 'Change nickname' : 'Set nickname'}</span></button>
+          <button type="button" class="convo-menu__item" data-act="restrict">${RESTRICT_SVG}<span>Restrict</span></button>
           <button type="button" class="convo-menu__item convo-menu__item--danger" data-act="block">${BLOCK_SVG}<span>Block</span></button>
           <button type="button" class="convo-menu__item convo-menu__item--danger" data-act="report">${REPORT_SVG}<span>Report</span></button>
           <button type="button" class="convo-menu__item convo-menu__item--danger" data-act="delete">${iconTrash()}<span>Delete chat</span></button>
@@ -220,6 +223,7 @@ export async function renderMessagesView(root) {
       catch (err) { toast(err.message || 'Could not save that.', 'error'); load(); }
     };
 
+    qs('[data-act="restrict"]', overlay).addEventListener('click', () => setPref({ restricted: true }, 'Restricted — undo in Settings'));
     qs('[data-act="pin"]', overlay).addEventListener('click', () => setPref({ pinned: !p.pinned }));
     qs('[data-act="mute"]', overlay).addEventListener('click', () => setPref({ muted: !p.muted }, p.muted ? 'Unmuted' : 'Muted'));
     qs('[data-act="nickname"]', overlay).addEventListener('click', () => {
