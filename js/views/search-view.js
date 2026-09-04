@@ -166,7 +166,14 @@ export function renderSearchView(root) {
     content.addEventListener('pointercancel', settle);
   }
 
-  showPrompt();
+  // Nothing shows until the search box is actually focused — landing on
+  // this tab is not the same as expressing intent to search, so the
+  // history/recently-viewed prompt stays out of the way until you tap in.
+  // filterBtn still needs its initial visibility set for the default tab.
+  filterBtn.style.display = tab === 'games' ? '' : 'none';
+  input.addEventListener('focus', () => {
+    if (!input.value.trim()) showPrompt();
+  });
 
   // Switch the active tab and sync everything that depends on it — the
   // segmented highlight, the placeholder, and the (games-only) filter
