@@ -2438,18 +2438,22 @@ export async function getConversations(userId) {
 // Create a group chat: an is_group conversation whose members (creator +
 // the picked people) go into conversation_participants. Returns the id.
 export async function createGroup(creatorId, memberIds, title) {
-  const { data: convo, error } = await supabase
+  // Generate the id on the client and insert WITHOUT a returning `.select()`:
+  // a fresh group has no members yet and no user_one/two, so `INSERT ...
+  // RETURNING` would fail the SELECT policy (Postgres requires the returned
+  // row to be SELECT-able) and surface as an RLS violation. No read-back =
+  // no such problem; the WITH CHECK on the insert itself passes fine.
+  const convoId = crypto.randomUUID();
+  const { error } = await supabase
     .from('conversations')
-    .insert({ is_group: true, title: (title || '').trim() || null, created_by: creatorId, requested_by: creatorId })
-    .select('id')
-    .single();
+    .insert({ id: convoId, is_group: true, title: (title || '').trim() || null, created_by: creatorId, requested_by: creatorId });
   if (error) throw error;
   const ids = Array.from(new Set([creatorId, ...memberIds]));
   const { error: pErr } = await supabase
     .from('conversation_participants')
-    .insert(ids.map((uid) => ({ conversation_id: convo.id, user_id: uid })));
+    .insert(ids.map((uid) => ({ conversation_id: convoId, user_id: uid })));
   if (pErr) throw pErr;
-  return convo.id;
+  return convoId;
 }
 
 // Add people to an existing group. RLS only lets the group's creator do
