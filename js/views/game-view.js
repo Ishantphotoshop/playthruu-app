@@ -79,6 +79,18 @@ function directorChipHtml(director) {
 // portraits, staying in its original spot near the score/trailer line.
 // Links into the full Cast tab (already right below), which has the
 // complete list, characters, and bios — this is just a teaser of it.
+// The game's title: a transparent-background logo PNG when one's been
+// found (see api.getGameLogo), otherwise the plain text heading it
+// always was. The <h1> stays present either way — visually hidden
+// behind the logo image, not removed — so the page keeps one real,
+// accessible heading for screen readers and there's no layout jump
+// when the logo swaps in.
+function gameTitleHtml(title, logoUrl) {
+  return `
+    <h1 class="gd-head__title${logoUrl ? ' gd-head__title--hidden' : ''}">${esc(title)}</h1>
+    ${logoUrl ? `<img class="gd-head__logo" src="${esc(logoUrl)}" alt="${esc(title)}">` : ''}`;
+}
+
 function castPreviewHtml(cast) {
   if (!cast || !cast.length) return '';
   const shown = cast.slice(0, 4);
@@ -164,6 +176,7 @@ export async function renderGameView(root, { id, igdbId }) {
     loadMoreFromStudio();
     recordRecentlyViewed(game);
     loadCastDirector();
+    loadGameLogo();
 
     // Runs after the page has already painted (castDirectorData starts
     // null, which paintTabContent's Cast branch renders as a spinner —
@@ -183,6 +196,22 @@ export async function renderGameView(root, { id, igdbId }) {
       if (castPreviewSlot) castPreviewSlot.innerHTML = castPreviewHtml(castDirectorData.cast);
       wireCastPreviewJump();
       if (activeTab === 'cast') paintTabContent();
+    }
+
+    // The transparent title-logo PNG (see api.getGameLogo) — cached on
+    // the row after its first real SteamGridDB lookup, so this only
+    // actually fetches once per game, ever. Runs after paint, same as
+    // cast/director above, since it's a non-essential swap-in and
+    // shouldn't hold the rest of the page up. `game` (the enriched
+    // object) already carries logo_fetched from the DB row it came
+    // from, so a game with no logo found before doesn't get re-queried
+    // on every future visit.
+    async function loadGameLogo() {
+      if (!id || game.logo_fetched) return;
+      let url = null;
+      try { url = await api.getGameLogo(game); } catch { url = null; }
+      const slot = qs('#game-logo-slot', body);
+      if (slot && url) slot.innerHTML = gameTitleHtml(game.title, url);
     }
 
     // Tapping the cast-avatar stack in the header preview jumps straight
@@ -310,7 +339,7 @@ export async function renderGameView(root, { id, igdbId }) {
             <header class="gd-head">
               ${posterFrame(poster, game.title, 'gd-head__cover', { id: 'game-cover' })}
               <div class="gd-head__main">
-                <h1 class="gd-head__title">${esc(game.title)}</h1>
+                <div id="game-logo-slot">${gameTitleHtml(game.title, game.logo_url)}</div>
                 ${headMeta ? `<p class="gd-kicker">${esc(headMeta)}</p>` : ''}
                 <div id="director-slot">${directorChipHtml(castDirectorData?.director)}</div>
                 <div class="gd-score">

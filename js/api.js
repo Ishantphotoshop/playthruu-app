@@ -8,6 +8,12 @@ import { SUPABASE_URL, SUPABASE_ANON_KEY, RAWG_API_KEY, GIPHY_API_KEY } from './
 // Function holds that secret and proxies whatever query is sent here.
 const IGDB_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/igdb-proxy`;
 
+// A transparent-background title-logo PNG for the game page, sourced
+// from SteamGridDB via its own Edge Function (see
+// supabase/functions/steamgriddb-proxy) — same secret-holding reasoning
+// as IGDB above.
+const STEAMGRIDDB_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/steamgriddb-proxy`;
+
 // Every outbound call in this file goes through here.
 //
 // Without a timeout, a source that is DOWN doesn't fail — it hangs. A
@@ -1555,6 +1561,33 @@ export async function getGameCastAndDirector(game) {
       .then(() => {}, () => {});
   }
   return result;
+}
+
+// A transparent-background title-logo PNG for the game page (shown in
+// place of the plain text title — see gd-head__logo in game-view.js),
+// looked up from SteamGridDB the first time this game's page is opened
+// and cached on the row after that (same shape as credits_fetched
+// above). `game` needs at least { id, title, logo_url, logo_fetched }.
+export async function getGameLogo(game) {
+  if (!game || !game.title) return null;
+  if (game.logo_fetched) return game.logo_url || null;
+  let url = null;
+  try {
+    const res = await fetchWithTimeout(STEAMGRIDDB_FUNCTION_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${SUPABASE_ANON_KEY}` },
+      body: JSON.stringify({ title: game.title }),
+    });
+    if (res.ok) { const data = await res.json(); url = data.logo_url || null; }
+  } catch { /* no logo this time — text title still works fine as a fallback */ }
+  if (game.id) {
+    // Fire-and-forget, same tradeoff as credits/enrichment caching above —
+    // records the attempt (logo_fetched:true) even on a miss, so a game
+    // with no SteamGridDB logo isn't re-queried on every future visit.
+    supabase.from('games').update({ logo_url: url, logo_fetched: true }).eq('id', game.id)
+      .then(() => {}, () => {});
+  }
+  return url;
 }
 
 async function fetchCastAndDirectorLive(title) {
