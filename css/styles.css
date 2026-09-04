@@ -3989,7 +3989,9 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
    that .view-body--no-topbar reserves — that left the "Messages" heading
    floating oddly far down the screen. Pull it up near the top instead. */
 #messages-body.view-body--no-topbar { padding-top: calc(var(--safe-top) + 16px); }
-.msg-inbox-head { display: flex; align-items: center; justify-content: space-between; padding: 2px 2px 0; }
+/* Space between the "Messages" heading and the Chats/Requests tabs so the
+   top doesn't read as one cramped block. */
+.msg-inbox-head { display: flex; align-items: center; justify-content: space-between; padding: 2px 2px 0; margin-bottom: 22px; }
 .msg-inbox-title { font-family: var(--font-brand); font-weight: 800; font-size: 25px; letter-spacing: -0.02em; }
 /* The app's main accent (not orange) with the dark icon, like every other
    primary action button in the app. */
