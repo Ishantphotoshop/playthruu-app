@@ -140,6 +140,33 @@ export async function renderGameView(root, { id, igdbId }) {
     let game = id ? await api.getGame(id) : await api.getIgdbGameDetail(igdbId);
     if (!game) throw new Error("Couldn't find that game.");
 
+    // Kicked off right here — in parallel with the Promise.all below, not
+    // after it — so the logo has the maximum possible head start instead
+    // of only beginning once everything else has already finished and
+    // painted. For a game that's already cached (the common case, once
+    // any single visitor has opened it once) this is just one small
+    // image preload with no network round-trip to look the URL up first,
+    // so it very often finishes before the page's OTHER data even does —
+    // letting the very first paint below show the real logo directly,
+    // with nothing to swap in later at all. `logoReady`/`resolvedLogoUrl`
+    // are read synchronously right before that first paint to decide.
+    let resolvedLogoUrl = null;
+    let logoReady = false;
+    const logoPromise = (async () => {
+      if (!id) return null; // an uncatalogued game (igdbId mode) has nothing to cache against
+      let url = game.logo_fetched ? (game.logo_url || null) : null;
+      if (!game.logo_fetched) {
+        try { url = await api.getGameLogo(game); } catch { url = null; }
+      }
+      if (url) {
+        try { const img = new Image(); img.src = url; await img.decode(); }
+        catch { url = null; } // failed to actually load — treat as no logo
+      }
+      resolvedLogoUrl = url;
+      logoReady = true;
+      return url;
+    })();
+
     // getIgdbGameDetail already fetched everything enrichGameDetails
     // would (and set igdb_enriched: true), so there's nothing left to
     // enrich in igdbId mode; likewise a game with no local id has, by
@@ -176,7 +203,19 @@ export async function renderGameView(root, { id, igdbId }) {
     loadMoreFromStudio();
     recordRecentlyViewed(game);
     loadCastDirector();
-    loadGameLogo();
+    // logoPromise (kicked off way back when `game` first loaded, above)
+    // may well have already resolved by now, in which case the header
+    // just painted with the real logo directly and this is a no-op — it
+    // only actually swaps anything in for the slower case (a game nobody
+    // has ever opened before, still needing the SteamGridDB lookup
+    // itself before any image download can even start).
+    logoPromise.then((url) => {
+      if (!url) return; // genuinely no logo for this game
+      const slot = qs('#game-logo-slot', body);
+      // If the first paint above already had logoReady=true, it already
+      // rendered the <img> directly — this is then just a harmless no-op.
+      if (slot && !qs('.gd-head__logo', slot)) slot.innerHTML = gameTitleHtml(game.title, url);
+    });
 
     // Runs after the page has already painted (castDirectorData starts
     // null, which paintTabContent's Cast branch renders as a spinner —
@@ -198,35 +237,6 @@ export async function renderGameView(root, { id, igdbId }) {
       if (activeTab === 'cast') paintTabContent();
     }
 
-    // The transparent title-logo PNG (see api.getGameLogo) — cached on
-    // the row after its first real SteamGridDB lookup, so this only
-    // actually fetches once per game, ever. Runs after paint, same as
-    // cast/director above, since it's a non-essential swap-in and
-    // shouldn't hold the rest of the page up. `game` (the enriched
-    // object) already carries logo_fetched from the DB row it came
-    // from, so a game with no logo found before doesn't get re-queried
-    // on every future visit.
-    async function loadGameLogo() {
-      if (!id || game.logo_fetched) return;
-      let url = null;
-      try { url = await api.getGameLogo(game); } catch { url = null; }
-      if (!url) return;
-      // Knowing the URL isn't the same as having the PNG on screen — it
-      // still has to download from SteamGridDB's CDN. Swapping the slot
-      // in right away (as this used to) hid the text title before the
-      // image had anything to show, so there was a beat of nothing
-      // visible at all. Preloading it off-DOM first and only swapping
-      // once it's actually decoded makes the text-to-logo change land as
-      // one instant, flash-free step — by the time gameTitleHtml() points
-      // an <img> at this same URL, the browser already has it ready.
-      try {
-        const preload = new Image();
-        preload.src = url;
-        await preload.decode();
-      } catch { return; } // failed to load — leave the text title as-is
-      const slot = qs('#game-logo-slot', body);
-      if (slot) slot.innerHTML = gameTitleHtml(game.title, url);
-    }
 
     // Tapping the cast-avatar stack in the header preview jumps straight
     // to the full Cast tab, which is already right below on the page.
@@ -353,7 +363,7 @@ export async function renderGameView(root, { id, igdbId }) {
             <header class="gd-head">
               ${posterFrame(poster, game.title, 'gd-head__cover', { id: 'game-cover' })}
               <div class="gd-head__main">
-                <div id="game-logo-slot">${gameTitleHtml(game.title, game.logo_url)}</div>
+                <div id="game-logo-slot">${gameTitleHtml(game.title, logoReady ? resolvedLogoUrl : null)}</div>
                 ${headMeta ? `<p class="gd-kicker">${esc(headMeta)}</p>` : ''}
                 <div id="director-slot">${directorChipHtml(castDirectorData?.director)}</div>
                 <div class="gd-score">
