@@ -3,6 +3,9 @@ import { state } from '../state.js';
 import { navBar, combinedGameResultsList, wireCombinedGameResults, profileRow, wireFollowButtons, spinner, skeletonList, emptyState, iconSearch, iconFilter, iconUser, posterFrame } from '../components.js';
 import { qs, qsa, esc, toast, promptSignIn, getRecentlyViewed, recordRecentSearch, getRecentSearches, removeRecentSearch, clearRecentSearches } from '../utils.js';
 import { navigate } from '../router.js';
+import { getCached, setCached } from '../cache.js';
+
+const IDLE_TRENDING_CACHE_KEY = 'search-idle-trending';
 
 async function importAndOpen(g) {
   // Not-yet-catalogued: viewing is free (opens live from IGDB, see
@@ -25,6 +28,12 @@ async function importAndOpen(g) {
 
 export function renderSearchView(root) {
   let tab = 'games';
+  // Bumped by every state change (idle browse / search history / a real
+  // search). renderIdleBrowse's trending fetch is the one async render in
+  // this file that can resolve AFTER the user has already moved on (tapped
+  // in, typed, switched tabs) — without this it can land late and clobber
+  // whatever's on screen by then with stale trending results.
+  let promptTicket = 0;
 
   root.innerHTML = `
     <div class="view-body view-body--no-topbar view-body--search">
@@ -69,32 +78,81 @@ export function renderSearchView(root) {
       </div>`;
   }
 
-  const showPrompt = async () => {
-    filterBtn.style.display = tab === 'games' ? '' : 'none';
-    const recentSearches = recentSearchesBlock();
-    if (tab === 'people') {
-      results.innerHTML = recentSearches || emptyState('Search for players to follow and see what they\'re playing.', { icon: iconSearch() });
-      wireRecentSearches();
-      return;
-    }
-    // A quick trail back to games you've actually looked at recently —
-    // kept on-device (see recordRecentlyViewed in utils.js), so it works
-    // even before signing in. Only shown on the blank prompt, never
-    // mixed into real search results.
-    const recent = getRecentlyViewed();
-    results.innerHTML = recentSearches + (recent.length
+  // ---- two distinct blank-input states -------------------------------
+  // IDLE (landing on the tab, box not focused yet): a poster grid to
+  // browse — games you've recently looked at, or, failing that, what's
+  // trending — with NO search history in it. Tapping the box is what
+  // reveals your search history; just arriving on this screen isn't the
+  // same as expressing intent to search.
+  // FOCUSED (box tapped, still empty): your recent searches — the
+  // history list — with no posters mixed in.
+  // Paints a poster grid (or the empty-state prompt if there's nothing to
+  // browse yet). Pulled out so both the instant cached paint and the
+  // fresh-data repaint below can share it.
+  function paintIdleGames(games, heading) {
+    results.innerHTML = games.length
       ? `
-        <p class="search-recent__heading">Recently viewed</p>
+        <p class="search-recent__heading">${esc(heading)}</p>
         <div class="discovery-grid">
-          ${recent.map((g) => `
+          ${games.map((g) => `
             <a href="#/game/${g.id}" class="discovery-tile" aria-label="${esc(g.title)}">
               ${posterFrame(g.cover_url, g.title, 'discovery-tile__cover')}
             </a>`).join('')}
         </div>`
-      : (recentSearches ? '' : emptyState('Search for a game to log, rate, or review.', { icon: iconSearch() })));
-    wireRecentSearches();
-    return;
+      : emptyState('Search for a game to log, rate, or review.', { icon: iconSearch() });
+  }
+
+  const renderIdleBrowse = async (ticket) => {
+    filterBtn.style.display = tab === 'games' ? '' : 'none';
+    if (tab === 'people') {
+      if (ticket !== promptTicket) return;
+      results.innerHTML = emptyState('Search for players to follow and see what they\'re playing.', { icon: iconSearch() });
+      return;
+    }
+    const viewed = getRecentlyViewed();
+    if (viewed.length) { paintIdleGames(viewed, 'Recently viewed'); return; }
+
+    // Nothing looked at yet (new user/device) — browse what's trending
+    // instead of landing on an empty screen. The live trending fetch is
+    // genuinely slow (an IGDB round-trip, several seconds) — same
+    // paint-from-cache-then-refresh pattern the Feed/Messages tabs use,
+    // so repeat visits this session are instant instead of re-eating that
+    // wait every single time you tap into an empty search box.
+    const cached = getCached(IDLE_TRENDING_CACHE_KEY);
+    if (cached?.length) {
+      paintIdleGames(cached, 'Trending now');
+      try {
+        const fresh = await api.getWorldTrending(12);
+        setCached(IDLE_TRENDING_CACHE_KEY, fresh);
+        if (ticket === promptTicket) paintIdleGames(fresh, 'Trending now');
+      } catch { /* keep the cached paint already on screen */ }
+      return;
+    }
+    // No cache yet this session — a spinner beats a blank screen for
+    // however long that first fetch takes.
+    results.innerHTML = spinner();
+    let fresh = [];
+    try { fresh = await api.getWorldTrending(12); setCached(IDLE_TRENDING_CACHE_KEY, fresh); } catch { fresh = []; }
+    // The fetch above can resolve after the user has already tapped in,
+    // typed, or switched tabs — a stale ticket means don't paint it.
+    if (ticket !== promptTicket) return;
+    paintIdleGames(fresh, 'Trending now');
   };
+
+  const renderSearchHistory = () => {
+    filterBtn.style.display = tab === 'games' ? '' : 'none';
+    const recentSearches = recentSearchesBlock();
+    results.innerHTML = recentSearches
+      || emptyState(tab === 'people' ? 'Search for players to follow and see what they\'re playing.' : 'Search for a game to log, rate, or review.', { icon: iconSearch() });
+    wireRecentSearches();
+  };
+
+  // Whichever of the two blank-input states is currently on screen —
+  // used by delete/clear so they re-render the same view they're acting
+  // on rather than always assuming the history one.
+  let showingHistory = false;
+  const showPrompt = () => { showingHistory = true; promptTicket++; renderSearchHistory(); };
+  const showIdle = () => { showingHistory = false; renderIdleBrowse(++promptTicket); };
 
   function wireRecentSearches() {
     qsa('.recent-search-row__content', results).forEach((btn) => {
@@ -166,13 +224,15 @@ export function renderSearchView(root) {
     content.addEventListener('pointercancel', settle);
   }
 
-  // Nothing shows until the search box is actually focused — landing on
-  // this tab is not the same as expressing intent to search, so the
-  // history/recently-viewed prompt stays out of the way until you tap in.
-  // filterBtn still needs its initial visibility set for the default tab.
-  filterBtn.style.display = tab === 'games' ? '' : 'none';
+  // Landing on the tab shows the poster browse, not your search history —
+  // tapping the box is what surfaces history; blurring back out of an
+  // empty box returns to the poster browse.
+  showIdle();
   input.addEventListener('focus', () => {
     if (!input.value.trim()) showPrompt();
+  });
+  input.addEventListener('blur', () => {
+    if (!input.value.trim() && showingHistory) showIdle();
   });
 
   // Switch the active tab and sync everything that depends on it — the
@@ -280,6 +340,7 @@ export function renderSearchView(root) {
   async function doSearch() {
     const q = input.value.trim();
     if (!q) { showPrompt(); return; }
+    promptTicket++; // invalidate any in-flight idle-browse fetch
     const ticket = ++searchTicket;
     // Fresh state per query — otherwise page counters and accumulated
     // results leak from the previous search into the new one.
