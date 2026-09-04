@@ -3,7 +3,7 @@ import { state } from '../state.js';
 import {
   topBar, avatarImg, iconSend, iconDotsMenu, iconGif, iconPlus,
   iconReply, iconInfo, iconCopy, iconTrash, iconClose, iconSearch,
-  iconGamepad, iconChevronRight, iconCamera, iconList, iconNote, iconStamp,
+  iconGamepad, iconChevronRight, iconCamera, iconList, iconNote, iconStamp, profileRow,
 } from '../components.js';
 import { esc, qs, qsa, toast, timeAgo, formatDate, debounce, enableSwipeToDismiss, recordRecentEmoji, getRecentEmoji } from '../utils.js';
 import { navigate } from '../router.js';
@@ -15,6 +15,13 @@ const DOUBLE_TAP_MS = 300;
 const LONG_PRESS_MS = 420;
 const HEART_REACTION = '❤️';
 const GROUP_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M2.5 20c0-3.4 2.9-5.6 6.5-5.6s6.5 2.2 6.5 5.6"/><circle cx="17.5" cy="8.7" r="2.3"/><path d="M17.5 14.2c2.9.1 4.8 2.3 4.8 5.1"/></svg>`;
+const LEAVE_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>`;
+function groupStackAvatar(members, size) {
+  const two = (members || []).slice(0, 2);
+  if (two.length < 2) return `<span class="avatar avatar--group" style="width:${size}px;height:${size}px">${GROUP_ICON}</span>`;
+  const inner = Math.round(size * 0.64);
+  return `<span class="convo-stack" style="width:${size}px;height:${size}px"><span class="convo-stack__a convo-stack__a--back" style="width:${inner}px;height:${inner}px">${avatarImg(two[1], inner)}</span><span class="convo-stack__a convo-stack__a--front" style="width:${inner}px;height:${inner}px">${avatarImg(two[0], inner)}</span></span>`;
+}
 
 // One conversation — or, via /messages/new/:userId, the START of one
 // that doesn't exist as a row yet (see api.getConversationBetween vs
@@ -212,13 +219,14 @@ export async function renderMessageThreadView(root, { conversationId, otherUserI
       const gname = convo.title || others.map((m) => m.display_name || m.username).slice(0, 3).join(', ') || 'Group';
       const count = (convo.members || []).length;
       titleEl.innerHTML = `
-        <span class="thread-hd">
-          <span class="avatar avatar--group" style="width:34px;height:34px">${GROUP_ICON}</span>
+        <span class="thread-hd thread-hd--tap" id="group-info-btn" role="button" tabindex="0">
+          ${groupStackAvatar(others, 34)}
           <span class="thread-hd__meta">
             <span class="thread-hd__name">${esc(gname)}</span>
-            <span class="thread-hd__pres">${esc(`${count} member${count === 1 ? '' : 's'}`)}</span>
+            <span class="thread-hd__pres">${esc(`${count} member${count === 1 ? '' : 's'}`)} · tap for info</span>
           </span>
         </span>`;
+      qs('#group-info-btn', root)?.addEventListener('click', openGroupInfo);
       return;
     }
     const name = nickname || convo.other.display_name || convo.other.username;
@@ -1057,6 +1065,121 @@ export async function renderMessageThreadView(root, { conversationId, otherUserI
     };
     stage.addEventListener('pointerup', endGesture);
     stage.addEventListener('pointercancel', endGesture);
+  }
+
+  // ---- group info: members, add people, leave ----------------------
+
+  // Re-pull the group after its roster changes so the header, sender
+  // labels and member list all reflect the new membership.
+  async function refreshGroup() {
+    try {
+      convo = await api.getConversation(threadId, state.user.id);
+      groupMembers = {};
+      for (const mem of (convo.members || [])) groupMembers[mem.id] = mem;
+      renderHeader();
+      paintMessages();
+    } catch { /* keep the current view up */ }
+  }
+
+  function openGroupInfo() {
+    const isCreator = convo.created_by === state.user.id;
+    const members = convo.members || [];
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML = `
+      <div class="modal modal--sheet">
+        <header class="msg-actions__grab"></header>
+        <div class="group-info">
+          <div class="group-info__head">
+            ${groupStackAvatar(members.filter((m) => m.id !== state.user.id), 48)}
+            <div><h3 class="group-info__title">${esc(convo.title || 'Group')}</h3><p class="group-info__sub">${esc(`${members.length} member${members.length === 1 ? '' : 's'}`)}</p></div>
+          </div>
+          <div class="group-info__members">
+            ${members.map((m) => `<a href="#/profile/${esc(m.username)}" class="group-info__member">${avatarImg(m, 38)}<span class="group-info__m-meta"><b>${esc(m.display_name || m.username)}${m.id === state.user.id ? ' <span class="group-info__you">you</span>' : ''}</b><span>@${esc(m.username)}</span></span></a>`).join('')}
+          </div>
+          <div class="group-info__actions">
+            ${isCreator ? `<button type="button" class="convo-menu__item" id="gi-add">${iconPlus()}<span>Add people</span></button>` : ''}
+            <button type="button" class="convo-menu__item convo-menu__item--danger" id="gi-leave">${LEAVE_ICON}<span>Leave group</span></button>
+          </div>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    const close = () => overlay.remove();
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+    enableSwipeToDismiss(qs('.modal', overlay), close);
+    qs('#gi-add', overlay)?.addEventListener('click', () => { close(); openAddPeople(); });
+    qs('#gi-leave', overlay).addEventListener('click', async () => {
+      close();
+      if (!confirm('Leave this group? You will stop receiving its messages.')) return;
+      try { await api.leaveGroup(threadId, state.user.id); teardown(); navigate('/messages'); }
+      catch (err) { toast(err.message || 'Could not leave.', 'error'); }
+    });
+  }
+
+  function openAddPeople() {
+    const existing = new Set((convo.members || []).map((m) => m.id));
+    const selected = new Map();
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML = `
+      <div class="modal modal--tall">
+        <header class="modal__header"><h2>Add people</h2><button class="modal__close" data-close aria-label="Close">${iconClose()}</button></header>
+        <div class="modal__body">
+          <div id="add-chips" class="compose-chips"></div>
+          <label class="field"><span>Search</span><input type="text" id="add-search" autocomplete="off" placeholder="Search people…"></label>
+          <div id="add-results"></div>
+          <button type="button" class="btn btn--accent btn--block" id="add-confirm" hidden>Add</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    const close = () => overlay.remove();
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+    qs('[data-close]', overlay).addEventListener('click', close);
+    enableSwipeToDismiss(qs('.modal', overlay), close);
+    const input = qs('#add-search', overlay);
+    const results = qs('#add-results', overlay);
+    const chipsEl = qs('#add-chips', overlay);
+    const confirmBtn = qs('#add-confirm', overlay);
+    let found = [];
+    const refresh = () => { confirmBtn.hidden = selected.size === 0; confirmBtn.textContent = `Add${selected.size ? ` (${selected.size})` : ''}`; };
+    const renderChips = () => {
+      chipsEl.innerHTML = [...selected.values()].map((p) => `<span class="compose-chip" data-chip="${esc(p.id)}">${esc(p.display_name || p.username)}<button type="button" aria-label="Remove">${iconClose()}</button></span>`).join('');
+      qsa('[data-chip]', chipsEl).forEach((chip) => chip.querySelector('button').addEventListener('click', () => { selected.delete(chip.dataset.chip); renderChips(); renderResults(); refresh(); }));
+    };
+    const renderResults = () => {
+      if (!found.length) return;
+      results.innerHTML = `<div class="profile-list">${found.map((p) => profileRow(p)).join('')}</div>`;
+      qsa('.profile-row', results).forEach((row, i) => {
+        const p = found[i];
+        if (selected.has(p.id)) row.classList.add('profile-row--selected');
+        row.addEventListener('click', (e) => {
+          e.preventDefault();
+          if (selected.has(p.id)) selected.delete(p.id); else selected.set(p.id, p);
+          renderChips(); renderResults(); refresh();
+        });
+      });
+    };
+    const doSearch = debounce(async () => {
+      const q = input.value.trim();
+      if (!q) { results.innerHTML = ''; found = []; return; }
+      results.innerHTML = '<div class="spinner"></div>';
+      try {
+        found = (await api.searchUsers(q)).filter((p) => p.id !== state.user.id && !existing.has(p.id));
+        if (!found.length) { results.innerHTML = `<p class="muted">No one new found.</p>`; return; }
+        renderResults();
+      } catch (err) { results.innerHTML = `<p class="muted">${esc(err.message)}</p>`; }
+    }, 350);
+    input.addEventListener('input', doSearch);
+    confirmBtn.addEventListener('click', async () => {
+      confirmBtn.disabled = true;
+      try {
+        await api.addGroupMembers(threadId, [...selected.keys()]);
+        close();
+        toast('Added to the group');
+        await refreshGroup();
+      } catch (err) { toast(err.message || 'Could not add.', 'error'); confirmBtn.disabled = false; }
+    });
+    input.focus();
   }
 
   // ---- "⋯" menu: delete conversation, view profile -----------------

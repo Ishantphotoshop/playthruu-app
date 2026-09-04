@@ -37,8 +37,19 @@ export async function renderMessagesView(root) {
   const groupName = (c) => c.title || (c.others || []).map((m) => m.display_name || m.username).slice(0, 3).join(', ') || 'Group';
   const nameOf = (c) => c.isGroup ? groupName(c) : (prefOf(c.id).nickname || c.other?.display_name || c.other?.username || 'Someone');
   const GROUP_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M2.5 20c0-3.4 2.9-5.6 6.5-5.6s6.5 2.2 6.5 5.6"/><circle cx="17.5" cy="8.7" r="2.3"/><path d="M17.5 14.2c2.9.1 4.8 2.3 4.8 5.1"/></svg>`;
-  const groupAvatarHtml = (size) => `<span class="avatar avatar--group" style="width:${size}px;height:${size}px">${GROUP_ICON}</span>`;
-  const avatarFor = (c, size) => c.isGroup ? groupAvatarHtml(size) : avatarImg(c.other, size);
+  // A group's avatar is the two member faces stacked (Messenger-style), so
+  // you recognise a group by who's in it; falls back to a group glyph if
+  // there aren't two members to show yet.
+  const groupStack = (members, size) => {
+    const two = (members || []).slice(0, 2);
+    if (two.length < 2) return `<span class="avatar avatar--group" style="width:${size}px;height:${size}px">${GROUP_ICON}</span>`;
+    const inner = Math.round(size * 0.64);
+    return `<span class="convo-stack" style="width:${size}px;height:${size}px">
+      <span class="convo-stack__a convo-stack__a--back" style="width:${inner}px;height:${inner}px">${avatarImg(two[1], inner)}</span>
+      <span class="convo-stack__a convo-stack__a--front" style="width:${inner}px;height:${inner}px">${avatarImg(two[0], inner)}</span>
+    </span>`;
+  };
+  const avatarFor = (c, size) => c.isGroup ? groupStack(c.others && c.others.length ? c.others : c.members, size) : avatarImg(c.other, size);
   const PIN_SVG = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M14.6 2.6a1 1 0 0 0-1.5.1l-4.3 5.1-3.7 1.1a1 1 0 0 0-.4 1.7l3 3-4.4 4.4a1 1 0 1 0 1.4 1.4l4.4-4.4 3 3a1 1 0 0 0 1.7-.4l1.1-3.7 5.1-4.3a1 1 0 0 0 .1-1.5z"/></svg>`;
   const MUTE_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M16 9l5 6M21 9l-5 6"/></svg>`;
   const UNREAD_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v7A2.5 2.5 0 0 1 17.5 16H10l-4.5 4v-4H6.5A2.5 2.5 0 0 1 4 13.5z"/><circle cx="18" cy="6" r="3.2" fill="currentColor" stroke="none"/></svg>`;
@@ -432,6 +443,9 @@ export async function renderMessagesView(root) {
         toast(err.message || 'Could not create the group.', 'error');
         createBtn.disabled = false; refreshCreateBtn();
       }
+    });
+    qs('#group-name', overlay).addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && selected.size >= 2) { e.preventDefault(); createBtn.click(); }
     });
 
     input.focus();

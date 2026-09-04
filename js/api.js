@@ -2452,6 +2452,17 @@ export async function createGroup(creatorId, memberIds, title) {
   return convo.id;
 }
 
+// Add people to an existing group. RLS only lets the group's creator do
+// this (or a user add themselves); upsert so re-adding an existing member
+// is a no-op rather than an error.
+export async function addGroupMembers(conversationId, memberIds) {
+  if (!memberIds || !memberIds.length) return;
+  const { error } = await supabase
+    .from('conversation_participants')
+    .upsert(memberIds.map((uid) => ({ conversation_id: conversationId, user_id: uid })), { onConflict: 'conversation_id,user_id' });
+  if (error) throw error;
+}
+
 // Leave a group (just removes your own membership row).
 export async function leaveGroup(conversationId, userId) {
   const { error } = await supabase
