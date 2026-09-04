@@ -210,8 +210,22 @@ export async function renderGameView(root, { id, igdbId }) {
       if (!id || game.logo_fetched) return;
       let url = null;
       try { url = await api.getGameLogo(game); } catch { url = null; }
+      if (!url) return;
+      // Knowing the URL isn't the same as having the PNG on screen — it
+      // still has to download from SteamGridDB's CDN. Swapping the slot
+      // in right away (as this used to) hid the text title before the
+      // image had anything to show, so there was a beat of nothing
+      // visible at all. Preloading it off-DOM first and only swapping
+      // once it's actually decoded makes the text-to-logo change land as
+      // one instant, flash-free step — by the time gameTitleHtml() points
+      // an <img> at this same URL, the browser already has it ready.
+      try {
+        const preload = new Image();
+        preload.src = url;
+        await preload.decode();
+      } catch { return; } // failed to load — leave the text title as-is
       const slot = qs('#game-logo-slot', body);
-      if (slot && url) slot.innerHTML = gameTitleHtml(game.title, url);
+      if (slot) slot.innerHTML = gameTitleHtml(game.title, url);
     }
 
     // Tapping the cast-avatar stack in the header preview jumps straight
