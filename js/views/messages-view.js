@@ -157,8 +157,32 @@ export async function renderMessagesView(root) {
     });
   }
 
+  // An in-app confirmation sheet (styled like the rest of the app) in place
+  // of the browser's native confirm() dialog, which looks out of place and
+  // can be suppressed inside an installed PWA. Resolves true/false.
+  function confirmSheet({ title, message = '', confirmLabel = 'Confirm', danger = false }) {
+    return new Promise((resolve) => {
+      const overlay = document.createElement('div');
+      overlay.className = 'modal-overlay';
+      overlay.innerHTML = `
+        <div class="modal modal--sheet confirm-sheet">
+          <header class="msg-actions__grab"></header>
+          <h3 class="confirm-sheet__title">${esc(title)}</h3>
+          ${message ? `<p class="confirm-sheet__msg">${esc(message)}</p>` : ''}
+          <button type="button" class="confirm-sheet__btn ${danger ? 'confirm-sheet__btn--danger' : 'confirm-sheet__btn--go'}" data-yes>${esc(confirmLabel)}</button>
+          <button type="button" class="confirm-sheet__btn confirm-sheet__btn--cancel" data-no>Cancel</button>
+        </div>`;
+      document.body.appendChild(overlay);
+      const done = (val) => { overlay.remove(); resolve(val); };
+      overlay.addEventListener('click', (e) => { if (e.target === overlay) done(false); });
+      qs('[data-yes]', overlay).addEventListener('click', () => done(true));
+      qs('[data-no]', overlay).addEventListener('click', () => done(false));
+      enableSwipeToDismiss(qs('.modal', overlay), () => done(false));
+    });
+  }
+
   // Per-chat options sheet, all server-backed (pin/mute/nickname in
-  // conversation_prefs, block/report in their own tables).
+  // conversation_prefs, block/report via the existing moderation API).
   function openConvoMenu(c) {
     const p = prefOf(c.id);
     const uid = state.user.id;
@@ -206,7 +230,7 @@ export async function renderMessagesView(root) {
     qs('[data-act="unread"]', overlay).addEventListener('click', () => setPref({ unread: true }, 'Marked as unread'));
     qs('[data-act="block"]', overlay).addEventListener('click', async () => {
       close();
-      if (!confirm(`Block ${nm}? Their chat is hidden and they can't reach you.`)) return;
+      if (!(await confirmSheet({ title: `Block ${nm}?`, message: "Their chat is hidden and they can't reach you.", confirmLabel: 'Block', danger: true }))) return;
       try {
         await api.blockUser(c.other.id);
         api.invalidateBlockedCache();
@@ -226,7 +250,7 @@ export async function renderMessagesView(root) {
     });
     qs('[data-act="delete"]', overlay).addEventListener('click', async () => {
       close();
-      if (!confirm(`Delete your chat with ${nm}?`)) return;
+      if (!(await confirmSheet({ title: `Delete chat with ${nm}?`, message: 'This removes the conversation for you.', confirmLabel: 'Delete', danger: true }))) return;
       try {
         await api.deleteConversation(c.id);
         all = all.filter((x) => x.id !== c.id);
@@ -248,8 +272,8 @@ export async function renderMessagesView(root) {
       ? 'Request sent — waiting for a reply'
       : c.last_message_body ? bodyPreview : 'Say hi and start the conversation';
     const playing = playingBy[c.other?.id];
-    const ctx = playing
-      ? `<div class="convo-row__ctx"><b>Playing</b> · ${esc(playing.title)}</div>`
+    const playingChip = playing
+      ? `<span class="convo-row__playing"><b>Playing</b> · ${esc(playing.title)}</span>`
       : '';
     const last = presenceBy[c.other?.id];
     const online = last && (Date.now() - new Date(last).getTime()) < 3 * 60 * 1000;
@@ -267,6 +291,7 @@ export async function renderMessagesView(root) {
         <div class="convo-row__body">
           <div class="convo-row__top">
             <span class="convo-row__name">${esc(nameOf(c))}</span>
+            ${playingChip}
             ${pinMark}
             ${muteMark}
           </div>
@@ -274,7 +299,6 @@ export async function renderMessagesView(root) {
             <span class="convo-row__preview">${preview}</span>
             ${time}
           </div>
-          ${ctx}
         </div>
         ${rightBtn}
       </div>`;

@@ -3991,8 +3991,9 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 #messages-body.view-body--no-topbar { padding-top: calc(var(--safe-top) + 16px); }
 .msg-inbox-head { display: flex; align-items: center; justify-content: space-between; padding: 2px 2px 0; }
 .msg-inbox-title { font-family: var(--font-brand); font-weight: 800; font-size: 25px; letter-spacing: -0.02em; }
-/* Lighter orange button, yellow inner icon. */
-.msg-inbox-new { width: 34px; height: 34px; border-radius: 50%; background: #ffab5c; color: #ffe9a3; display: grid; place-items: center; flex-shrink: 0; transition: transform var(--dur-fast) var(--ease); }
+/* The app's main accent (not orange) with the dark icon, like every other
+   primary action button in the app. */
+.msg-inbox-new { width: 34px; height: 34px; border-radius: 50%; background: var(--accent); color: var(--bg); display: grid; place-items: center; flex-shrink: 0; transition: transform var(--dur-fast) var(--ease); }
 .msg-inbox-new:active { transform: scale(0.92); }
 .msg-inbox-new svg { width: 18px; height: 18px; }
 
@@ -4018,14 +4019,25 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
    dot) signals "new" at a glance. */
 .convo-row--unread { background: color-mix(in srgb, var(--accent) 5%, transparent); }
 .convo-row__av { position: relative; flex-shrink: 0; }
+/* A white ring just outside the avatar. Drawn as a bordered pseudo-element
+   (not box-shadow) because the app's flat-design reset zeroes every
+   box-shadow with !important. */
+.convo-row__av::before {
+  content: ''; position: absolute; inset: -3px; border-radius: 50%;
+  border: 2px solid #ffffff; pointer-events: none;
+}
 .convo-row__presdot {
   position: absolute; right: 0; bottom: 1px; width: 12px; height: 12px;
-  border-radius: 50%; background: var(--success); border: 2.5px solid var(--bg);
+  border-radius: 50%; background: var(--success); border: 2.5px solid var(--bg); z-index: 1;
 }
 .convo-row--unread .convo-row__presdot { border-color: color-mix(in srgb, var(--accent) 5%, var(--bg)); }
 .convo-row__body { flex: 1; min-width: 0; }
-.convo-row__top { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
-.convo-row__name { flex: 1; min-width: 0; font-weight: 700; font-size: 14.5px; line-height: 1.15; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Username + the "Playing <game>" chip share the top line; both can shrink
+   so the game name sits right after the name and truncates if long. */
+.convo-row__top { display: flex; align-items: center; gap: 6px; }
+.convo-row__name { flex: 0 1 auto; min-width: 2.5em; font-weight: 700; font-size: 14.5px; line-height: 1.15; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.convo-row__playing { flex: 0 1 auto; min-width: 0; font-size: 12px; color: var(--orange); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.convo-row__playing b { font-weight: 700; }
 /* Same size + normal font as the message preview it sits beside. */
 .convo-row__time { font-size: 13px; color: var(--ink-faint); flex-shrink: 0; }
 /* The per-row options button (3-dot menu) next to the name. */
@@ -4045,6 +4057,14 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 .convo-menu__item:active { background: var(--surface-raised); }
 .convo-menu__item--danger { color: var(--coral); }
 .convo-menu__item--danger svg { color: var(--coral); }
+/* In-app confirmation sheet (replaces the native confirm dialog). */
+.confirm-sheet__title { font-size: 17px; font-weight: 700; padding: 6px 6px 2px; }
+.confirm-sheet__msg { font-size: 13.5px; color: var(--ink-dim); padding: 0 6px 12px; line-height: 1.45; }
+.confirm-sheet__btn { display: block; width: 100%; padding: 14px; border: none; border-radius: var(--radius-m); font-size: 15px; font-weight: 600; margin-top: 8px; }
+.confirm-sheet__btn:active { transform: scale(0.985); }
+.confirm-sheet__btn--danger { background: var(--coral); color: #fff; }
+.confirm-sheet__btn--go { background: var(--accent); color: var(--bg); }
+.confirm-sheet__btn--cancel { background: var(--surface-high); color: var(--ink); }
 .convo-row__line { display: flex; align-items: center; gap: 6px; margin-top: 1px; }
 /* flex:0 1 auto (not flex:1) so the time sits right after the preview text
    instead of being pushed to the far edge; min-width:0 lets a long preview
@@ -4272,7 +4292,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
   bottom: 0; width: 100%; max-width: 560px;
   display: flex; flex-direction: column;
   padding: 8px var(--space-4) calc(10px + var(--safe-bottom));
-  background: var(--surface-high); border-top: 1px solid var(--line);
+  background: var(--surface-high);
   z-index: 30;
 }
 .thread-composer__row { display: flex; align-items: center; gap: 6px; }
