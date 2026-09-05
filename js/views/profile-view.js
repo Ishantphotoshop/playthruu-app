@@ -322,8 +322,10 @@ function wireFollowBtn(followBtn, profile) {
 }
 
 // Full-screen profile photo: a centred panel that spans the full width
-// of the screen, with the same gesture set as the game-poster viewer —
-// double-tap to zoom, pinch to zoom, and drag to pan once zoomed in.
+// of the screen. Deliberately gesture-free — a profile picture is a
+// single small square with nothing in it to inspect up close, so the
+// zoom/pan handling this used to carry only got in the way of the one
+// thing people actually do here, which is look at it and dismiss it.
 function openAvatarLightbox(profile) {
   if (!profile.avatar_url) return;
   const overlay = document.createElement('div');
@@ -332,101 +334,16 @@ function openAvatarLightbox(profile) {
     <button class="avatar-viewer__close" aria-label="Close">${iconClose()}</button>
     <div class="avatar-viewer__stage">
       <img src="${esc(profile.avatar_url)}" alt="${esc(profile.username)}" class="avatar-viewer__img" draggable="false">
-    </div>
-    <p class="avatar-viewer__hint">Pinch or double-tap to zoom</p>`;
+    </div>`;
   document.body.appendChild(overlay);
   document.body.style.overflow = 'hidden';
 
-  const img = qs('.avatar-viewer__img', overlay);
-  const MIN = 1, MAX = 4;
-  let scale = 1, tx = 0, ty = 0;
-
-  const apply = () => {
-    img.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
-    img.style.cursor = scale > 1 ? 'grab' : 'zoom-in';
-  };
-
-  // Keeps the image from being dragged off-screen: the further it's
-  // zoomed, the more slack there is to pan within.
-  const clamp = () => {
-    const r = img.getBoundingClientRect();
-    const maxX = Math.max(0, (r.width - overlay.clientWidth) / 2);
-    const maxY = Math.max(0, (r.height - overlay.clientHeight) / 2);
-    tx = Math.min(maxX, Math.max(-maxX, tx));
-    ty = Math.min(maxY, Math.max(-maxY, ty));
-  };
-
   const close = () => { overlay.remove(); document.body.style.overflow = ''; };
   qs('.avatar-viewer__close', overlay).addEventListener('click', close);
-  overlay.addEventListener('click', (e) => {
-    // Only the backdrop dismisses — never the photo itself.
-    if (e.target === overlay || e.target.classList.contains('avatar-viewer__stage')) close();
+  overlay.addEventListener('click', close);
+  document.addEventListener('keydown', function esc(e) {
+    if (e.key === 'Escape') { close(); document.removeEventListener('keydown', esc); }
   });
-
-  let lastTap = 0;
-  img.addEventListener('click', (e) => {
-    e.stopPropagation();
-    const now = Date.now();
-    if (now - lastTap < 300) {
-      scale = scale > 1 ? 1 : 2.4;
-      if (scale === 1) { tx = 0; ty = 0; } else { clamp(); }
-      apply();
-    }
-    lastTap = now;
-  });
-
-  // --- pointer gestures -------------------------------------------
-  // Tracked by pointerId so a second finger landing mid-drag switches
-  // cleanly from panning to pinching without the image jumping.
-  const points = new Map();
-  let startDist = 0, startScale = 1, startTx = 0, startTy = 0, startMid = null;
-
-  const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
-  const mid = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
-
-  overlay.addEventListener('pointerdown', (e) => {
-    points.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    overlay.setPointerCapture(e.pointerId);
-    const pts = [...points.values()];
-    if (pts.length === 2) {
-      startDist = dist(pts[0], pts[1]);
-      startMid = mid(pts[0], pts[1]);
-    }
-    startScale = scale; startTx = tx; startTy = ty;
-  });
-
-  overlay.addEventListener('pointermove', (e) => {
-    if (!points.has(e.pointerId)) return;
-    const prev = points.get(e.pointerId);
-    points.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    const pts = [...points.values()];
-
-    if (pts.length >= 2 && startDist > 0) {
-      e.preventDefault();
-      const next = dist(pts[0], pts[1]) / startDist;
-      scale = Math.min(MAX, Math.max(MIN, startScale * next));
-      const m = mid(pts[0], pts[1]);
-      if (startMid) { tx = startTx + (m.x - startMid.x); ty = startTy + (m.y - startMid.y); }
-      if (scale === 1) { tx = 0; ty = 0; } else clamp();
-      apply();
-    } else if (pts.length === 1 && scale > 1) {
-      e.preventDefault();
-      tx += e.clientX - prev.x;
-      ty += e.clientY - prev.y;
-      clamp();
-      apply();
-    }
-  });
-
-  const release = (e) => {
-    points.delete(e.pointerId);
-    if (points.size < 2) startDist = 0;
-    if (scale <= 1) { tx = 0; ty = 0; apply(); }
-  };
-  overlay.addEventListener('pointerup', release);
-  overlay.addEventListener('pointercancel', release);
-
-  apply();
 }
 
 function openQrModal(shareUrl, profile) {

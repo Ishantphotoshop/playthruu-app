@@ -673,8 +673,14 @@ function iconStack() { return `<svg viewBox="0 0 24 24" fill="none"><rect x="4" 
 
 
 // Full-screen artwork viewer. Single tap on the cover opens it; inside,
-// double-tap (or double-click) toggles a 2.2x zoom centred on where you
-// tapped, and tapping the backdrop or the close button dismisses it.
+// double-tap steps through two zoom levels before returning to fit
+// (2x for "read the cover", 3.5x for fine detail), pinch zooms freely to
+// the same ceiling, and either way the image can be dragged around once
+// it's bigger than the screen. Tapping the backdrop or the close button
+// dismisses it.
+const POSTER_ZOOM_STEPS = [1, 2, 3.5];
+const POSTER_ZOOM_MAX = 3.5;
+
 function openPosterViewer(src, title) {
   if (!src) return;
   // `src` and `title` come from the shared `games` table, which ANY
@@ -688,53 +694,127 @@ function openPosterViewer(src, title) {
   overlay.className = 'poster-viewer';
   overlay.innerHTML = `
     <button class="poster-viewer__close" aria-label="Close">&times;</button>
-    <img class="poster-viewer__img" src="${esc(src)}" alt="${esc(title || '')}">
-    <p class="poster-viewer__hint">Double-tap to zoom</p>`;
+    <img class="poster-viewer__img" src="${esc(src)}" alt="${esc(title || '')}" draggable="false">`;
   document.body.appendChild(overlay);
   document.body.style.overflow = 'hidden';
 
   const img = overlay.querySelector('.poster-viewer__img');
-  let zoomed = false;
+  let scale = 1, tx = 0, ty = 0;
+
+  const apply = () => {
+    img.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
+    overlay.classList.toggle('is-zoomed', scale > 1);
+  };
+
+  // Panning is only ever allowed as far as there is off-screen image to
+  // bring into view, so a zoomed poster can't be flung into empty space.
+  // Measured off the untransformed box (getBoundingClientRect would
+  // report the already-scaled size and compound on every move).
+  const clamp = () => {
+    const maxX = Math.max(0, (img.offsetWidth * scale - overlay.clientWidth) / 2);
+    const maxY = Math.max(0, (img.offsetHeight * scale - overlay.clientHeight) / 2);
+    tx = Math.min(maxX, Math.max(-maxX, tx));
+    ty = Math.min(maxY, Math.max(-maxY, ty));
+  };
 
   function close() {
     overlay.remove();
     document.body.style.overflow = '';
   }
 
-  function toggleZoom(clientX, clientY) {
-    zoomed = !zoomed;
-    if (zoomed) {
-      // Anchor the zoom on the tapped point rather than the centre, so
-      // double-tapping a detail actually brings that detail closer.
-      const r = img.getBoundingClientRect();
-      const ox = ((clientX - r.left) / r.width) * 100;
-      const oy = ((clientY - r.top) / r.height) * 100;
-      img.style.transformOrigin = `${ox}% ${oy}%`;
-      img.style.transform = 'scale(2.2)';
-      overlay.classList.add('is-zoomed');
-    } else {
-      img.style.transform = '';
-      overlay.classList.remove('is-zoomed');
-    }
+  // Each double-tap advances one step and wraps back to fit, so the
+  // gesture is "tap again for closer" rather than a single on/off zoom.
+  // The tapped point is kept under the finger across the step, which is
+  // what makes zooming in on a corner actually land on that corner.
+  function stepZoom(clientX, clientY) {
+    const i = POSTER_ZOOM_STEPS.findIndex((s) => Math.abs(s - scale) < 0.01);
+    const next = POSTER_ZOOM_STEPS[(i + 1) % POSTER_ZOOM_STEPS.length];
+    if (next === 1) { scale = 1; tx = 0; ty = 0; apply(); return; }
+    const r = img.getBoundingClientRect();
+    const cx = clientX - (r.left + r.width / 2);
+    const cy = clientY - (r.top + r.height / 2);
+    const ratio = next / scale;
+    tx = tx - cx * (ratio - 1);
+    ty = ty - cy * (ratio - 1);
+    scale = next;
+    clamp();
+    apply();
   }
 
-  // Manual double-tap detection: touch devices don't fire dblclick
-  // reliably, so tap timing is tracked directly.
-  let lastTap = 0;
-  img.addEventListener('click', (e) => {
+  // --- pointer gestures: drag to pan, two fingers to pinch ----------
+  // Keyed by pointerId so a second finger arriving mid-drag switches to
+  // a pinch without the image jumping.
+  const points = new Map();
+  let startDist = 0, startScale = 1, startTx = 0, startTy = 0, startMid = null;
+  let moved = false, downAt = 0;
+  const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+  const mid = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+
+  img.addEventListener('pointerdown', (e) => {
     e.stopPropagation();
-    const now = Date.now();
-    if (now - lastTap < 300) {
-      toggleZoom(e.clientX, e.clientY);
-      lastTap = 0;
-    } else {
-      lastTap = now;
+    points.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    img.setPointerCapture(e.pointerId);
+    const pts = [...points.values()];
+    if (pts.length === 2) { startDist = dist(pts[0], pts[1]); startMid = mid(pts[0], pts[1]); }
+    startScale = scale; startTx = tx; startTy = ty;
+    moved = false; downAt = Date.now();
+  });
+
+  img.addEventListener('pointermove', (e) => {
+    if (!points.has(e.pointerId)) return;
+    const prev = points.get(e.pointerId);
+    points.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const pts = [...points.values()];
+
+    if (pts.length >= 2 && startDist > 0) {
+      e.preventDefault();
+      scale = Math.min(POSTER_ZOOM_MAX, Math.max(1, startScale * (dist(pts[0], pts[1]) / startDist)));
+      const m = mid(pts[0], pts[1]);
+      if (startMid) { tx = startTx + (m.x - startMid.x); ty = startTy + (m.y - startMid.y); }
+      if (scale === 1) { tx = 0; ty = 0; } else clamp();
+      moved = true;
+      apply();
+    } else if (pts.length === 1 && scale > 1) {
+      e.preventDefault();
+      tx += e.clientX - prev.x;
+      ty += e.clientY - prev.y;
+      if (Math.abs(e.clientX - prev.x) + Math.abs(e.clientY - prev.y) > 1) moved = true;
+      clamp();
+      apply();
     }
   });
 
-  overlay.addEventListener('click', () => { if (!zoomed) close(); });
+  // A tap is a pointer that went down and up in one place, quickly —
+  // distinguished here from the end of a drag or pinch, which must not
+  // count as the second half of a double-tap.
+  let lastTap = 0;
+  const release = (e) => {
+    points.delete(e.pointerId);
+    if (points.size < 2) startDist = 0;
+    if (scale <= 1) { scale = 1; tx = 0; ty = 0; apply(); }
+    if (moved || Date.now() - downAt > 400 || points.size) return;
+    const now = Date.now();
+    if (now - lastTap < 300) { stepZoom(e.clientX, e.clientY); lastTap = 0; }
+    else lastTap = now;
+  };
+  img.addEventListener('pointerup', release);
+  img.addEventListener('pointercancel', (e) => { points.delete(e.pointerId); startDist = 0; });
+
+  // Desktop has no pinch — the wheel does the same job.
+  overlay.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const before = scale;
+    scale = Math.min(POSTER_ZOOM_MAX, Math.max(1, scale * (e.deltaY < 0 ? 1.15 : 1 / 1.15)));
+    if (scale === 1) { tx = 0; ty = 0; } else if (before !== scale) clamp();
+    apply();
+  }, { passive: false });
+
+  img.addEventListener('click', (e) => e.stopPropagation());
+  overlay.addEventListener('click', () => { if (scale === 1) close(); });
   overlay.querySelector('.poster-viewer__close').addEventListener('click', (e) => { e.stopPropagation(); close(); });
   document.addEventListener('keydown', function esc(e) {
     if (e.key === 'Escape') { close(); document.removeEventListener('keydown', esc); }
   });
+
+  apply();
 }

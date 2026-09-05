@@ -27,7 +27,7 @@ import { renderStudioView } from './views/studio-view.js';
 import { renderSettingsView } from './views/settings-view.js';
 import { openLogModal } from './views/log-modal.js';
 import { toast, qs } from './utils.js';
-import { clearViewCache } from './cache.js';
+import { clearViewCache, setCached, getCached, CACHE_KEYS } from './cache.js';
 import { iconClose, iconLock } from './components.js';
 
 const appEl = document.getElementById('app');
@@ -73,6 +73,12 @@ async function refreshMessageBadge() {
   try {
     const convos = await api.getConversations(state.user.id);
     unreadMessageCount = convos.filter((c) => c.unread || (c.status === 'pending' && c.requested_by !== state.user.id)).length;
+    // This exact list is what the Messages tab paints from, and it's
+    // already in hand here for the badge — handing it to the view cache
+    // means opening Messages for the first time paints instantly off it
+    // instead of showing a spinner while refetching what we just had.
+    // Costs nothing: no extra request, just not throwing the result away.
+    setCached(CACHE_KEYS.messages, convos);
   } catch {
     // Transient failure — keep showing the last known count rather than
     // flickering the badge off over a single dropped request.
@@ -288,6 +294,28 @@ async function loadSession(user) {
   refreshMessageBadge();
   unsubscribeConversations?.();
   unsubscribeConversations = api.subscribeToConversations(user.id, refreshMessageBadge);
+  warmOtherTabs();
+}
+
+// The tab you land on paints from its own fetch, but every OTHER tab used
+// to only start fetching at the moment you tapped it — which is exactly
+// when its spinner was visible and in the way. These fill the same view
+// caches those tabs read from before you get there, so the first open
+// paints immediately instead of loading in front of you.
+//
+// Deliberately idle-scheduled and after the landing view is already up:
+// this is spare-capacity work and must never compete with the fetches
+// for the screen someone is actually looking at. Failures are ignored
+// outright — a warm that doesn't land just means that tab loads the way
+// it always used to.
+function warmOtherTabs() {
+  const idle = window.requestIdleCallback || ((fn) => setTimeout(fn, 800));
+  idle(() => {
+    if (getCached(CACHE_KEYS.searchTrending)) return;
+    api.getWorldTrending(12)
+      .then((games) => setCached(CACHE_KEYS.searchTrending, games))
+      .catch(() => {});
+  });
 }
 
 // Records that this account is currently using the app, so the admin

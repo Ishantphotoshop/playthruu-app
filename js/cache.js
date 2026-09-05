@@ -18,6 +18,14 @@
 // nothing stale to accidentally show a different signed-in user later.
 const store = new Map();
 
+// Shared so a view and the background warm-up in app.js can't drift onto
+// two different spellings of the same key — a warm that writes 'messages'
+// while the view reads 'messages-list' silently does nothing at all.
+export const CACHE_KEYS = {
+  messages: 'messages',
+  searchTrending: 'search-idle-trending',
+};
+
 export function getCached(key) {
   return store.get(key) ?? null;
 }

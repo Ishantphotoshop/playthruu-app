@@ -4,9 +4,9 @@ import { navBar, spinner, emptyState, avatarImg, iconCompose, iconClose, iconMes
 import { esc, qs, qsa, toast, timeAgo, debounce, enableSwipeToDismiss } from '../utils.js';
 import { navigate } from '../router.js';
 import { wirePullToRefresh } from './feed-view.js';
-import { getCached, setCached } from '../cache.js';
+import { getCached, setCached, CACHE_KEYS } from '../cache.js';
 
-const MESSAGES_CACHE_KEY = 'messages';
+const MESSAGES_CACHE_KEY = CACHE_KEYS.messages;
 
 // The inbox: two tabs sharing one fetch (see api.getConversations) —
 // "Messages" is every thread that's either accepted, or one you started

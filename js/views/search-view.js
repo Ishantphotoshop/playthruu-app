@@ -3,9 +3,9 @@ import { state } from '../state.js';
 import { navBar, combinedGameResultsList, wireCombinedGameResults, profileRow, wireFollowButtons, spinner, skeletonList, emptyState, iconSearch, iconFilter, iconUser, posterFrame } from '../components.js';
 import { qs, qsa, esc, toast, promptSignIn, getRecentlyViewed, recordRecentSearch, getRecentSearches, removeRecentSearch, clearRecentSearches } from '../utils.js';
 import { navigate } from '../router.js';
-import { getCached, setCached } from '../cache.js';
+import { getCached, setCached, CACHE_KEYS } from '../cache.js';
 
-const IDLE_TRENDING_CACHE_KEY = 'search-idle-trending';
+const IDLE_TRENDING_CACHE_KEY = CACHE_KEYS.searchTrending;
 
 async function importAndOpen(g) {
   // Not-yet-catalogued: viewing is free (opens live from IGDB, see

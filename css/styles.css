@@ -2039,25 +2039,29 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
   animation: fade-in var(--dur) var(--ease);
   overflow: hidden;
 }
+/* Spans the full width of the screen with square corners, so the artwork
+   meets both edges instead of floating in the middle of the backdrop as a
+   rounded card. height:auto keeps its own aspect ratio, and max-height
+   stops a very tall cover from running past the top and bottom. */
 .poster-viewer__img {
-  max-width: 94vw; max-height: 86vh; object-fit: contain;
-  border-radius: var(--radius-m); box-shadow: var(--shadow-modal);
-  transition: transform var(--dur-slow) var(--ease);
+  width: 100vw; max-width: 100vw; max-height: 100vh;
+  height: auto; object-fit: contain;
+  border-radius: 0;
   cursor: zoom-in; user-select: none; -webkit-user-drag: none;
+  /* Only animate the double-tap steps. During a pinch or drag the
+     transform is driven frame by frame from pointermove, and a
+     transition there lags the image behind the finger. */
+  transition: transform var(--dur-slow) var(--ease);
+  touch-action: none;
 }
-.poster-viewer.is-zoomed .poster-viewer__img { cursor: zoom-out; }
+.poster-viewer.is-zoomed .poster-viewer__img { cursor: grab; transition: none; }
+.poster-viewer.is-zoomed .poster-viewer__img:active { cursor: grabbing; }
 .poster-viewer__close {
   position: absolute; top: calc(var(--space-4) + var(--safe-top)); right: var(--space-4);
   width: 42px; height: 42px; border-radius: 50%; z-index: 2;
   background: var(--surface-high); border: 1px solid var(--line);
   color: var(--ink); font-size: 26px; line-height: 1; display: grid; place-items: center;
 }
-.poster-viewer__hint {
-  position: absolute; bottom: calc(var(--space-5) + var(--safe-bottom)); left: 0; right: 0;
-  text-align: center; color: var(--ink-faint); font-size: var(--text-meta);
-  transition: opacity var(--dur) var(--ease); pointer-events: none;
-}
-.poster-viewer.is-zoomed .poster-viewer__hint { opacity: 0; }
 .game-detail__synopsis { font-size: 13.5px; line-height: 1.6; color: var(--ink-dim); margin-bottom: 8px; }
 .game-detail__avg { display: flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-weight: 700; font-size: 16px; color: var(--gold); margin-top: 10px; }
 
@@ -2523,17 +2527,14 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 #feed-body { opacity: 1; transition: opacity var(--dur) var(--ease); }
 
 /* ---- full-screen profile photo viewer -------------------------------
-   Spans the full width of the screen and sits centred vertically, with
-   pinch/double-tap zoom and drag-to-pan handled in openAvatarLightbox().
-   `touch-action: none` is required: without it the browser claims the
-   pinch and drag gestures for page zoom/scroll before the handlers ever
-   see them. */
+   Spans the full width of the screen and sits centred vertically. Purely
+   a viewer — the zoom/pan gestures it used to carry are gone, so it no
+   longer needs to claim touch-action from the browser either. */
 .avatar-viewer {
   position: fixed; inset: 0; z-index: 120;
   display: flex; align-items: center; justify-content: center;
   background: rgba(6,6,10,0.95);
   animation: fade-in var(--dur-fast) var(--ease);
-  touch-action: none;
   overflow: hidden;
 }
 .avatar-viewer__stage {
@@ -2542,14 +2543,8 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 .avatar-viewer__img {
   width: 100%; max-height: 82vh; object-fit: contain;
   border-radius: var(--radius-m);
-  transform-origin: center center;
-  transition: transform 0.18s var(--ease);
   user-select: none; -webkit-user-select: none; -webkit-user-drag: none;
-  touch-action: none;
 }
-/* No transition while a gesture is in flight — the image must track the
-   fingers exactly, and easing makes it feel like it's lagging behind. */
-.avatar-viewer__img:active { transition: none; }
 .avatar-viewer__close {
   position: absolute; top: calc(14px + var(--safe-top)); right: 14px; z-index: 2;
   width: 38px; height: 38px; display: grid; place-items: center;
@@ -2557,12 +2552,6 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
   background: rgba(255,255,255,0.14);
 }
 .avatar-viewer__close svg { width: 17px; height: 17px; }
-.avatar-viewer__hint {
-  position: absolute; bottom: calc(22px + var(--safe-bottom)); left: 0; right: 0;
-  text-align: center; font-size: var(--text-meta); color: rgba(255,255,255,0.5);
-  pointer-events: none;
-}
-
 /* ---- avatar crop/align step, shown before a new photo ever uploads --
    A source photo can be any aspect ratio; this is what turns it into
    the square every avatar on the app assumes, with the same
