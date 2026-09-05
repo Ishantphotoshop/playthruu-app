@@ -1,7 +1,7 @@
 import * as api from '../api.js';
 import { state } from '../state.js';
 import { topBar, navBar, spinner, emptyState, iconUser, posterFrame } from '../components.js';
-import { esc, qs, toast, starRow } from '../utils.js';
+import { esc, qs, toast, starRow, igdbSized } from '../utils.js';
 import { navigate } from '../router.js';
 
 // RAWG-sourced director profile — real photo, real bio, real filmography
@@ -32,7 +32,7 @@ export async function renderDirectorView(root, { slug }) {
     body.innerHTML = `
       <div class="gd-hero">
         ${featured?.cover_url ? `
-          <div class="gd-hero__bg" style="background-image:url('${esc(featured.cover_url)}')"></div>
+          <div class="gd-hero__bg" style="background-image:url('${esc(igdbSized(featured.cover_url, 'cover_big'))}')"></div>
           <div class="gd-hero__scrim"></div>` : ''}
         <div class="director-hero__content">
           ${person.photo

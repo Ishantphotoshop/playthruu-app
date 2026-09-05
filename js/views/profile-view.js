@@ -5,7 +5,7 @@ import {
   emptyState, iconStamp, iconSettings, iconShare, iconQr, iconClose, iconSearch, iconPlus, listCard, iconFlame, iconMessage,
   combinedGameResults, wireCombinedGameResults, openReportSheet, iconFlag, iconBlock,
 } from '../components.js';
-import { esc, formatDate, statusStamp, starRow, qs, qsa, toast, debounce, pulseLogTab } from '../utils.js';
+import { esc, formatDate, statusStamp, starRow, qs, qsa, toast, debounce, pulseLogTab, igdbSized } from '../utils.js';
 import { refreshCurrentView, navigate } from '../router.js';
 import { wirePullToRefresh } from './feed-view.js';
 import { openNewListForm } from './lists-view.js';
@@ -170,7 +170,7 @@ export async function renderProfileView(root, { username }) {
         <div class="diary-list">
           ${diary.map((l) => `
             <a href="#/game/${l.games.id}" class="diary-row">
-              <img src="${esc(l.games.cover_url || '')}" alt="" class="diary-row__cover" onerror="this.style.visibility='hidden'">
+              <img src="${esc(igdbSized(l.games.cover_url, 'cover_small') || '')}" alt="" class="diary-row__cover" loading="lazy" decoding="async" onerror="this.style.visibility='hidden'">
               <div class="diary-row__main">
                 <div class="diary-row__title">${esc(l.games.title)}</div>
                 <div class="diary-row__meta">${l.played_date ? formatDate(l.played_date) : ''} ${l.rating ? starRow(l.rating, { size: 13 }) : ''}</div>

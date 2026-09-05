@@ -5,7 +5,7 @@ import {
   iconReply, iconInfo, iconCopy, iconTrash, iconClose, iconSearch,
   iconGamepad, iconChevronRight, iconCamera, iconList, iconNote, iconStamp, profileRow,
 } from '../components.js';
-import { esc, qs, qsa, toast, timeAgo, formatDate, debounce, enableSwipeToDismiss, recordRecentEmoji, getRecentEmoji } from '../utils.js';
+import { esc, qs, qsa, toast, timeAgo, formatDate, debounce, enableSwipeToDismiss, recordRecentEmoji, getRecentEmoji, igdbSized } from '../utils.js';
 import { navigate } from '../router.js';
 import { TOP_EMOJI, EMOJI_LIST, searchEmoji } from '../emoji-data.js';
 
@@ -314,7 +314,7 @@ export async function renderMessageThreadView(root, { conversationId, otherUserI
       : (c.s ? `<span class="msg-gamecard__rate">${esc(who)} · ${esc(tag.toLowerCase())}</span>` : '');
     return `
       <a href="#/game/${esc(g.id)}" class="msg-gamecard">
-        <span class="msg-gamecard__cover" style="${g.cover_url ? `background-image:url('${esc(g.cover_url)}')` : ''}">
+        <span class="msg-gamecard__cover" style="${g.cover_url ? `background-image:url('${esc(igdbSized(g.cover_url, 'cover_small'))}')` : ''}">
           <span class="msg-gamecard__tag">${esc(tag)}</span>
         </span>
         <span class="msg-gamecard__body">
@@ -877,7 +877,7 @@ export async function renderMessageThreadView(root, { conversationId, otherUserI
           if (!games.length) { results.innerHTML = `<p class="muted">Nothing matched that.</p>`; return; }
           results.innerHTML = games.map((g, i) => `
             <button type="button" class="gamepick-row" data-i="${i}">
-              ${g.cover_url ? `<img src="${esc(g.cover_url)}" alt="">` : '<span class="gamepick-row__cover"></span>'}
+              ${g.cover_url ? `<img src="${esc(igdbSized(g.cover_url, 'cover_small'))}" alt="" loading="lazy" decoding="async">` : '<span class="gamepick-row__cover"></span>'}
               <span style="min-width:0">
                 <span class="gamepick-row__title">${esc(g.title)}</span>
                 <span class="gamepick-row__meta">${g.release_year ? esc(g.release_year) : ''}${g._source === 'local' ? ' · in catalog' : ''}</span>
@@ -911,7 +911,7 @@ export async function renderMessageThreadView(root, { conversationId, otherUserI
       if (!logs.length) { body.innerHTML = `<p class="muted">You haven't written any reviews yet.</p>`; return; }
       body.innerHTML = logs.map((l, i) => `
         <button type="button" class="gamepick-row" data-i="${i}" style="align-items:flex-start">
-          ${l.games.cover_url ? `<img src="${esc(l.games.cover_url)}" alt="">` : '<span class="gamepick-row__cover"></span>'}
+          ${l.games.cover_url ? `<img src="${esc(igdbSized(l.games.cover_url, 'cover_small'))}" alt="" loading="lazy" decoding="async">` : '<span class="gamepick-row__cover"></span>'}
           <span style="min-width:0">
             <span class="gamepick-row__title">${esc(l.games.title)}</span>
             <span class="gamepick-row__meta">${l.rating ? starStr(l.rating) : ''}</span>

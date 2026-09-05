@@ -1,4 +1,4 @@
-import { esc, starRow, statusStamp, formatDate, timeAgo, placeholderCover, initials, qs, qsa, toast, enableSwipeToDismiss, tapFeedback } from './utils.js';
+import { esc, starRow, statusStamp, formatDate, timeAgo, placeholderCover, igdbSized, initials, qs, qsa, toast, enableSwipeToDismiss, tapFeedback } from './utils.js';
 import { getTheme } from './theme.js';
 import { state } from './state.js';
 
@@ -7,13 +7,23 @@ import { state } from './state.js';
 // sizing/radius class (e.g. "game-card__cover") that already exists on
 // each card type. Pass `tag` to control the wrapping element — 'a' for
 // a clickable link (give `href` too), 'span' for a non-interactive cover.
-export function posterFrame(coverUrl, title, extraClass = '', { tag = 'span', href = '', id = '' } = {}) {
+// Covers are stored at IGDB's largest size so the one place that shows a
+// poster big — the game page's own hero, which passes `full` — has the
+// pixels for it. Everywhere else is a card in a grid or a row, a few
+// hundred pixels wide at most, so the src is stepped down to cover_big
+// (264x374): visually identical at those sizes, a fraction of the bytes.
+// The blur layer goes smaller still — it's rendered blurred, so detail in
+// it is thrown away by definition, and it would otherwise silently double
+// every poster's download.
+export function posterFrame(coverUrl, title, extraClass = '', { tag = 'span', href = '', id = '', full = false } = {}) {
   const src = coverUrl || placeholderCover(title);
+  const sharp = coverUrl ? igdbSized(coverUrl, full ? '1080p' : 'cover_big') : src;
+  const blur = coverUrl ? igdbSized(coverUrl, 'cover_small') : src;
   const fallback = placeholderCover(title);
   const attrs = tag === 'a' ? `href="${esc(href)}"` : '';
   return `<${tag} ${attrs} ${id ? `id="${esc(id)}"` : ''} class="poster-frame ${extraClass}">
-    <img class="poster-frame__blur" src="${esc(src)}" alt="" aria-hidden="true" loading="lazy">
-    <img class="poster-frame__img" src="${esc(src)}" alt="${esc(title)} cover" loading="lazy" onerror="this.src='${fallback}';this.previousElementSibling.src='${fallback}';">
+    <img class="poster-frame__blur" src="${esc(blur)}" alt="" aria-hidden="true" loading="lazy">
+    <img class="poster-frame__img" src="${esc(sharp)}" alt="${esc(title)} cover" loading="lazy" decoding="async" onerror="this.src='${fallback}';this.previousElementSibling.src='${fallback}';">
   </${tag}>`;
 }
 

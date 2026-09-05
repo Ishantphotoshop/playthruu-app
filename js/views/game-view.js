@@ -368,7 +368,7 @@ export async function renderGameView(root, { id, igdbId }) {
               <div class="gd-hero__bg" style="background-image:url('${esc(game.background_url)}')"></div>
               <div class="gd-hero__scrim"></div>` : ''}
             <header class="gd-head">
-              ${posterFrame(poster, game.title, 'gd-head__cover', { id: 'game-cover' })}
+              ${posterFrame(poster, game.title, 'gd-head__cover', { id: 'game-cover', full: true })}
               <div class="gd-head__main">
                 <div id="game-logo-slot">${gameTitleHtml(game.title, logoReady ? resolvedLogoUrl : null)}</div>
                 ${headMeta ? `<p class="gd-kicker">${esc(headMeta)}</p>` : ''}

@@ -106,6 +106,19 @@ export function placeholderCover(title) {
   )}`;
 }
 
+// IGDB serves every image at a set of fixed sizes, chosen by the
+// `/t_<size>/` segment of the URL — so the same cover can be asked for
+// at 1080p or at thumbnail size just by rewriting that one segment. We
+// store the biggest version on the row (see igdbImageUrl in api.js) and
+// step it back down here per context: a poster in a 100px-wide grid
+// tile doesn't need a 1080p download, and the blurred backdrop layer
+// behind it needs even less than that. Non-IGDB covers (RAWG) have no
+// such size templating and are returned untouched.
+export function igdbSized(url, size) {
+  if (!url || !url.includes('images.igdb.com')) return url;
+  return url.replace(/\/t_[a-z0-9_]+\//i, `/t_${size}/`);
+}
+
 // Lets a bottom-sheet modal be dragged down and flung away with a
 // finger, instead of only closing via the X. Pass the `.modal` element
 // and its existing close function.

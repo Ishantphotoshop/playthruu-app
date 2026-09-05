@@ -1,7 +1,7 @@
 import * as api from '../api.js';
 import { state } from '../state.js';
 import { topBar, navBar, avatarImg, combinedGameResults, wireCombinedGameResults, iconCamera, iconDrag, iconClose, iconPlus } from '../components.js';
-import { esc, toast, qs, qsa, debounce, placeholderCover, enableSwipeToDismiss } from '../utils.js';
+import { esc, toast, qs, qsa, debounce, placeholderCover, igdbSized, enableSwipeToDismiss } from '../utils.js';
 import { changePassword, changeEmail, signOut } from '../auth.js';
 import { getTheme, setTheme } from '../theme.js';
 import { openAvatarCropModal } from './avatar-crop.js';
@@ -256,7 +256,7 @@ export function renderSettingsView(root) {
       rows.push(g ? `
         <div class="favorite-row" data-index="${i}">
           <span class="favorite-row__handle" data-drag-handle>${iconDrag()}</span>
-          <img class="favorite-row__cover" src="${esc(g.cover_url || placeholderCover(g.title))}" alt="">
+          <img class="favorite-row__cover" src="${esc(igdbSized(g.cover_url, 'cover_small') || placeholderCover(g.title))}" alt="" loading="lazy" decoding="async">
           <span class="favorite-row__title">${esc(g.title)}</span>
           <button type="button" class="favorite-row__remove" data-remove-index="${i}" aria-label="Remove">${iconClose()}</button>
         </div>` : `

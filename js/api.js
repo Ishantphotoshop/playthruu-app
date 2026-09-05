@@ -222,7 +222,7 @@ function mapIgdbGame(g) {
   return {
     igdb_id: g.id,
     title: g.name,
-    cover_url: igdbImageUrl(g.cover?.image_id, 'cover_big'),
+    cover_url: igdbImageUrl(g.cover?.image_id, '1080p'),
     background_url: pickBackgroundUrl(g),
     release_year: g.first_release_date ? new Date(g.first_release_date * 1000).getFullYear() : null,
     release_date: g.first_release_date ? new Date(g.first_release_date * 1000).toISOString().slice(0, 10) : null,
@@ -1278,7 +1278,7 @@ export async function enrichGameDetails(game) {
         const bg = pickBackgroundUrl(detail);
         if (bg) updates.background_url = bg;
       }
-      if (!game.cover_url && detail.cover?.image_id) updates.cover_url = igdbImageUrl(detail.cover.image_id, 'cover_big');
+      if (!game.cover_url && detail.cover?.image_id) updates.cover_url = igdbImageUrl(detail.cover.image_id, '1080p');
     }
     if (!updates.description) {
       updates.description = await getWikipediaSummary(game.title);
@@ -1348,7 +1348,7 @@ export async function getStudioProfile(companyId) {
       bio: company.description ? company.description.replace(/\s+/g, ' ').trim() : null,
       foundedYear: company.start_date ? new Date(company.start_date * 1000).getFullYear() : null,
       games: (games || []).map((g) => ({
-        igdb_id: g.id, title: g.name, cover_url: igdbImageUrl(g.cover?.image_id, 'cover_big'),
+        igdb_id: g.id, title: g.name, cover_url: igdbImageUrl(g.cover?.image_id, '1080p'),
         year: g.first_release_date ? new Date(g.first_release_date * 1000).getFullYear() : null,
         rating: g.total_rating || null,
       })),
