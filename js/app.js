@@ -7,11 +7,11 @@ import { route, setNotFound, startRouter, navigate, refreshCurrentView } from '.
 import { renderLandingView, seedPinnedGames } from './views/landing-view.js';
 import { renderFeedView } from './views/feed-view.js';
 import { renderSearchView } from './views/search-view.js';
-import { renderDiscoverView } from './views/discover-view.js';
+import { renderDiscoverView, warmDiscover } from './views/discover-view.js';
 import { renderListDetailView } from './views/lists-view.js';
 import { renderMessagesView } from './views/messages-view.js';
 import { renderMessageThreadView } from './views/message-thread-view.js';
-import { renderProfileView } from './views/profile-view.js';
+import { renderProfileView, warmOwnProfile } from './views/profile-view.js';
 import { renderConnectionsView } from './views/connections-view.js';
 import { renderActivityView } from './views/activity-view.js';
 import { renderTrendingView } from './views/trending-view.js';
@@ -311,10 +311,13 @@ async function loadSession(user) {
 function warmOtherTabs() {
   const idle = window.requestIdleCallback || ((fn) => setTimeout(fn, 800));
   idle(() => {
-    if (getCached(CACHE_KEYS.searchTrending)) return;
-    api.getWorldTrending(12)
-      .then((games) => setCached(CACHE_KEYS.searchTrending, games))
-      .catch(() => {});
+    if (!getCached(CACHE_KEYS.searchTrending)) {
+      api.getWorldTrending(12)
+        .then((games) => setCached(CACHE_KEYS.searchTrending, games))
+        .catch(() => {});
+    }
+    warmDiscover();
+    warmOwnProfile(state.profile);
   });
 }
 

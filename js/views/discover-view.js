@@ -39,11 +39,40 @@ function chipRow(fieldId, options, activeValue) {
   </div>`;
 }
 
+// Discover always opens on these — the filters object below is rebuilt
+// fresh on every render, so the first request this page makes is the same
+// one every time. That makes it worth having in hand before the page is
+// even opened; see warmDiscover.
+const DISCOVER_DEFAULTS = {
+  genre: '', platform: '', dateFrom: '', dateTo: '', sort: 'popular',
+  minRating: '', multiplayer: '', developer: '', publisher: '',
+};
+
+// One-shot, short-lived, and only ever consumed by the very first
+// (unfiltered, page 1) request — the moment anyone touches a filter or
+// pages further, it's irrelevant and ignored. Same reasoning as
+// profile-view's bundle warm.
+const DISCOVER_WARM_TTL = 60_000;
+let discoverWarm = null; // { at, promise }
+
+export function warmDiscover() {
+  const promise = api.browseGames({ ...DISCOVER_DEFAULTS, page: 1 });
+  promise.catch(() => {});
+  discoverWarm = { at: Date.now(), promise };
+}
+
+function takeWarmedDiscover(filters, page) {
+  if (!discoverWarm || page !== 1) return null;
+  if (Date.now() - discoverWarm.at > DISCOVER_WARM_TTL) { discoverWarm = null; return null; }
+  const untouched = Object.keys(DISCOVER_DEFAULTS).every((k) => filters[k] === DISCOVER_DEFAULTS[k]);
+  if (!untouched) return null;
+  const { promise } = discoverWarm;
+  discoverWarm = null;
+  return promise;
+}
+
 export function renderDiscoverView(root) {
-  const filters = {
-    genre: '', platform: '', dateFrom: '', dateTo: '', sort: 'popular',
-    minRating: '', multiplayer: '', developer: '', publisher: '',
-  };
+  const filters = { ...DISCOVER_DEFAULTS };
   let page = 1;
   let loading = false;
 
@@ -84,9 +113,12 @@ export function renderDiscoverView(root) {
   async function runSearch(reset = true) {
     if (loading) return;
     loading = true;
-    if (reset) { page = 1; resultsEl().innerHTML = spinner(); moreEl().innerHTML = ''; }
+    const warmed = takeWarmedDiscover(filters, page);
+    // Nothing to wait for when the warm already has it — showing a
+    // spinner just to replace it a tick later is the flash this avoids.
+    if (reset && !warmed) { page = 1; resultsEl().innerHTML = spinner(); moreEl().innerHTML = ''; }
     try {
-      const { games, hasMore } = await api.browseGames({ ...filters, page });
+      const { games, hasMore } = await (warmed || api.browseGames({ ...filters, page }));
       if (!resultsEl()) return; // navigated away (to the filters screen or elsewhere) before this landed
       if (reset) resultsEl().innerHTML = '';
       if (reset && !games.length) {

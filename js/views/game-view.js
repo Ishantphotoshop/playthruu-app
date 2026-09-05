@@ -674,12 +674,18 @@ function iconStack() { return `<svg viewBox="0 0 24 24" fill="none"><rect x="4" 
 
 // Full-screen artwork viewer. Single tap on the cover opens it; inside,
 // double-tap steps through two zoom levels before returning to fit
-// (2x for "read the cover", 3.5x for fine detail), pinch zooms freely to
-// the same ceiling, and either way the image can be dragged around once
-// it's bigger than the screen. Tapping the backdrop or the close button
-// dismisses it.
+// (2x for "read the cover", 3.5x for fine detail), and the image can be
+// dragged around once it's bigger than the screen. Pinch goes past the
+// double-tap ceiling on purpose — the steps are the quick way in, and
+// pinch is there for when someone wants to keep going past the last one.
+// At fit, dragging down carries the poster with the finger and lets go
+// of it; the close button, the backdrop and Escape all dismiss too.
 const POSTER_ZOOM_STEPS = [1, 2, 3.5];
-const POSTER_ZOOM_MAX = 3.5;
+const POSTER_PINCH_MAX = 6;
+// How far down the poster has to be pulled (or how fast it has to be
+// flicked) before letting go dismisses instead of springing back.
+const POSTER_DISMISS_PX = 110;
+const POSTER_DISMISS_VELOCITY = 0.5;
 
 function openPosterViewer(src, title) {
   if (!src) return;
@@ -700,10 +706,28 @@ function openPosterViewer(src, title) {
 
   const img = overlay.querySelector('.poster-viewer__img');
   let scale = 1, tx = 0, ty = 0;
+  // Only set while a swipe-to-dismiss is in progress, so the drag can
+  // fade the backdrop without disturbing the pan offsets above.
+  let dismissY = 0;
 
-  const apply = () => {
-    img.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
+  // `animate` is passed for changes that should glide (a zoom step, a
+  // spring-back) and left off for anything driven frame-by-frame from a
+  // finger, where a transition would visibly lag behind the gesture.
+  const apply = (animate = false) => {
+    img.classList.toggle('is-animating', animate);
+    img.style.transform = `translate(${tx}px, ${ty + dismissY}px) scale(${scale})`;
     overlay.classList.toggle('is-zoomed', scale > 1);
+    if (dismissY) {
+      // Fades the backdrop out as the poster is pulled away, so the
+      // dismissal reads as one continuous movement rather than the
+      // image sliding over a wall that only disappears at the end.
+      const p = Math.min(1, Math.abs(dismissY) / (POSTER_DISMISS_PX * 2.5));
+      overlay.style.background = `rgba(4,6,12,${0.94 * (1 - p * 0.75)})`;
+      img.style.opacity = String(1 - p * 0.35);
+    } else {
+      overlay.style.background = '';
+      img.style.opacity = '';
+    }
   };
 
   // Panning is only ever allowed as far as there is off-screen image to
@@ -722,14 +746,28 @@ function openPosterViewer(src, title) {
     document.body.style.overflow = '';
   }
 
+  // Slides the poster the rest of the way off-screen and only then tears
+  // the overlay down, so a dismissal finishes the motion the finger
+  // started instead of the image vanishing mid-flight.
+  function closeBySwipe(direction) {
+    dismissY = direction * (window.innerHeight || 800);
+    apply(true);
+    overlay.style.background = 'rgba(4,6,12,0)';
+    img.addEventListener('transitionend', close, { once: true });
+    setTimeout(close, 400); // in case the transition never fires
+  }
+
   // Each double-tap advances one step and wraps back to fit, so the
   // gesture is "tap again for closer" rather than a single on/off zoom.
   // The tapped point is kept under the finger across the step, which is
   // what makes zooming in on a corner actually land on that corner.
+  // A pinch can leave scale between two steps (or past the last one) —
+  // the next step up from wherever it landed is the first one bigger
+  // than it, so the tap after a pinch still moves in a sensible
+  // direction instead of needing an exact match to find its place.
   function stepZoom(clientX, clientY) {
-    const i = POSTER_ZOOM_STEPS.findIndex((s) => Math.abs(s - scale) < 0.01);
-    const next = POSTER_ZOOM_STEPS[(i + 1) % POSTER_ZOOM_STEPS.length];
-    if (next === 1) { scale = 1; tx = 0; ty = 0; apply(); return; }
+    const next = POSTER_ZOOM_STEPS.find((s) => s > scale + 0.01) ?? 1;
+    if (next === 1) { scale = 1; tx = 0; ty = 0; apply(true); return; }
     const r = img.getBoundingClientRect();
     const cx = clientX - (r.left + r.width / 2);
     const cy = clientY - (r.top + r.height / 2);
@@ -738,7 +776,7 @@ function openPosterViewer(src, title) {
     ty = ty - cy * (ratio - 1);
     scale = next;
     clamp();
-    apply();
+    apply(true);
   }
 
   // --- pointer gestures: drag to pan, two fingers to pinch ----------
@@ -746,7 +784,7 @@ function openPosterViewer(src, title) {
   // a pinch without the image jumping.
   const points = new Map();
   let startDist = 0, startScale = 1, startTx = 0, startTy = 0, startMid = null;
-  let moved = false, downAt = 0;
+  let moved = false, downAt = 0, startY = 0, lastY = 0, lastMoveAt = 0, velocity = 0;
   const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
   const mid = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
 
@@ -758,6 +796,7 @@ function openPosterViewer(src, title) {
     if (pts.length === 2) { startDist = dist(pts[0], pts[1]); startMid = mid(pts[0], pts[1]); }
     startScale = scale; startTx = tx; startTy = ty;
     moved = false; downAt = Date.now();
+    startY = lastY = e.clientY; lastMoveAt = Date.now(); velocity = 0;
   });
 
   img.addEventListener('pointermove', (e) => {
@@ -768,10 +807,13 @@ function openPosterViewer(src, title) {
 
     if (pts.length >= 2 && startDist > 0) {
       e.preventDefault();
-      scale = Math.min(POSTER_ZOOM_MAX, Math.max(1, startScale * (dist(pts[0], pts[1]) / startDist)));
+      // Pinch deliberately reaches past the last double-tap step, so
+      // there's somewhere to go once the steps run out.
+      scale = Math.min(POSTER_PINCH_MAX, Math.max(1, startScale * (dist(pts[0], pts[1]) / startDist)));
       const m = mid(pts[0], pts[1]);
       if (startMid) { tx = startTx + (m.x - startMid.x); ty = startTy + (m.y - startMid.y); }
       if (scale === 1) { tx = 0; ty = 0; } else clamp();
+      dismissY = 0;
       moved = true;
       apply();
     } else if (pts.length === 1 && scale > 1) {
@@ -780,6 +822,18 @@ function openPosterViewer(src, title) {
       ty += e.clientY - prev.y;
       if (Math.abs(e.clientX - prev.x) + Math.abs(e.clientY - prev.y) > 1) moved = true;
       clamp();
+      apply();
+    } else if (pts.length === 1) {
+      // Not zoomed: a vertical drag is a dismissal, and the poster comes
+      // with the finger. Sideways movement is ignored rather than fought
+      // over, so a slightly diagonal swipe still reads as a swipe.
+      e.preventDefault();
+      const now = Date.now();
+      const dt = now - lastMoveAt;
+      if (dt > 0) velocity = (e.clientY - lastY) / dt;
+      lastY = e.clientY; lastMoveAt = now;
+      dismissY = e.clientY - startY;
+      if (Math.abs(dismissY) > 2) moved = true;
       apply();
     }
   });
@@ -791,6 +845,18 @@ function openPosterViewer(src, title) {
   const release = (e) => {
     points.delete(e.pointerId);
     if (points.size < 2) startDist = 0;
+
+    // Finished a swipe: past the distance threshold, or flicked hard
+    // enough that the intent is obvious even on a short pull.
+    if (dismissY !== 0 && !points.size) {
+      const far = Math.abs(dismissY) > POSTER_DISMISS_PX;
+      const fast = velocity > POSTER_DISMISS_VELOCITY && dismissY > 0;
+      if (far || fast) { closeBySwipe(dismissY > 0 ? 1 : -1); return; }
+      dismissY = 0;
+      apply(true); // sprang back
+      return;
+    }
+
     if (scale <= 1) { scale = 1; tx = 0; ty = 0; apply(); }
     if (moved || Date.now() - downAt > 400 || points.size) return;
     const now = Date.now();
@@ -798,13 +864,17 @@ function openPosterViewer(src, title) {
     else lastTap = now;
   };
   img.addEventListener('pointerup', release);
-  img.addEventListener('pointercancel', (e) => { points.delete(e.pointerId); startDist = 0; });
+  img.addEventListener('pointercancel', (e) => {
+    points.delete(e.pointerId); startDist = 0;
+    if (dismissY) { dismissY = 0; apply(true); }
+  });
 
-  // Desktop has no pinch — the wheel does the same job.
+  // Desktop has no pinch — the wheel does the same job, to the same
+  // ceiling the pinch reaches.
   overlay.addEventListener('wheel', (e) => {
     e.preventDefault();
     const before = scale;
-    scale = Math.min(POSTER_ZOOM_MAX, Math.max(1, scale * (e.deltaY < 0 ? 1.15 : 1 / 1.15)));
+    scale = Math.min(POSTER_PINCH_MAX, Math.max(1, scale * (e.deltaY < 0 ? 1.15 : 1 / 1.15)));
     if (scale === 1) { tx = 0; ty = 0; } else if (before !== scale) clamp();
     apply();
   }, { passive: false });

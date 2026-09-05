@@ -11,6 +11,46 @@ import { wirePullToRefresh } from './feed-view.js';
 import { openNewListForm } from './lists-view.js';
 import { getCached, setCached } from '../cache.js';
 
+// The seven requests a profile page needs, kept as one in-flight promise
+// so the background warm-up on sign-in (see warmOwnProfile) and the view
+// itself can share a single round of them: whichever asks first starts
+// the work, the other one joins it instead of firing a duplicate set.
+// Short-lived on purpose — this is here to bridge "warmed a moment ago,
+// opened just now", not to serve a stale profile later in the session.
+// The view still repaints from whatever it resolves to, exactly as
+// before, so nothing here changes what ends up on screen.
+const PROFILE_BUNDLE_TTL = 60_000;
+let profileBundleCache = null; // { id, at, promise }
+
+function profileBundle(profile) {
+  const fresh = profileBundleCache
+    && profileBundleCache.id === profile.id
+    && Date.now() - profileBundleCache.at < PROFILE_BUNDLE_TTL;
+  if (fresh) {
+    const { promise } = profileBundleCache;
+    profileBundleCache = null; // one-shot: the next visit gets live data
+    return promise;
+  }
+  return Promise.all([
+    api.getUserStats(profile.id),
+    api.getFollowCounts(profile.id),
+    api.getLogsForUser(profile.id, { limit: 200 }),
+    api.getFavorites(profile.id),
+    api.getRatingBreakdown(profile.id),
+    api.getListsForUser(profile.id),
+    state.user ? api.isFollowing(state.user.id, profile.id) : Promise.resolve(false),
+  ]);
+}
+
+// Called from app.js once a session is up, so tapping through to your own
+// profile for the first time doesn't start seven requests from cold.
+export function warmOwnProfile(profile) {
+  if (!profile?.id) return;
+  const promise = profileBundle(profile);
+  promise.catch(() => {}); // a failed warm must not surface as unhandled
+  profileBundleCache = { id: profile.id, at: Date.now(), promise };
+}
+
 export async function renderProfileView(root, { username }) {
   const isOwn = state.profile && username === state.profile.username;
   const cacheKey = `profile:${username}`;
@@ -44,15 +84,7 @@ export async function renderProfileView(root, { username }) {
 
   try {
     const profile = isOwn ? state.profile : await api.getProfileByUsername(username);
-    const [stats, counts, logs, favorites, breakdown, lists, following] = await Promise.all([
-      api.getUserStats(profile.id),
-      api.getFollowCounts(profile.id),
-      api.getLogsForUser(profile.id, { limit: 200 }),
-      api.getFavorites(profile.id),
-      api.getRatingBreakdown(profile.id),
-      api.getListsForUser(profile.id),
-      state.user ? api.isFollowing(state.user.id, profile.id) : Promise.resolve(false),
-    ]);
+    const [stats, counts, logs, favorites, breakdown, lists, following] = await profileBundle(profile);
 
     const diary = logs.filter((l) => l.status === 'played' || l.status === 'dropped');
     const backlog = logs.filter((l) => l.status === 'backlog');

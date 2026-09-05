@@ -2048,14 +2048,27 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
   height: auto; object-fit: contain;
   border-radius: 0;
   cursor: zoom-in; user-select: none; -webkit-user-drag: none;
-  /* Only animate the double-tap steps. During a pinch or drag the
-     transform is driven frame by frame from pointermove, and a
-     transition there lags the image behind the finger. */
-  transition: transform var(--dur-slow) var(--ease);
   touch-action: none;
+  /* No transition by default: a pinch, a pan and a swipe are all driven
+     frame by frame from pointermove, and easing there makes the image
+     lag behind the finger. It's switched on per-change instead, via
+     .is-animating from apply(animate) — the double-tap zoom steps, the
+     spring-back from an unfinished swipe, and the slide-away on
+     dismissal, which are the changes that should glide. */
+  transition: none;
 }
-.poster-viewer.is-zoomed .poster-viewer__img { cursor: grab; transition: none; }
+.poster-viewer__img.is-animating {
+  transition: transform 0.28s cubic-bezier(0.22, 0.61, 0.36, 1), opacity 0.28s linear;
+}
+.poster-viewer.is-zoomed .poster-viewer__img { cursor: grab; }
 .poster-viewer.is-zoomed .poster-viewer__img:active { cursor: grabbing; }
+/* The backdrop is faded inline during a swipe (see apply()), so it must
+   not carry a transition of its own that would fight those writes. */
+.poster-viewer { transition: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .poster-viewer__img.is-animating { transition: none; }
+}
 .poster-viewer__close {
   position: absolute; top: calc(var(--space-4) + var(--safe-top)); right: var(--space-4);
   width: 42px; height: 42px; border-radius: 50%; z-index: 2;
