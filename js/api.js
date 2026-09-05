@@ -1564,17 +1564,21 @@ export async function getGameCastAndDirector(game) {
 }
 
 // A transparent-background title-logo PNG (shown in place of the plain
-// text title — see gd-head__logo in game-view.js) AND a high-resolution
-// portrait cover, both from SteamGridDB, both off the one combined
-// lookup steamgriddb-proxy already does per game — looked up the first
-// time this game's page is opened and cached on the row after that
-// (same shape as credits_fetched above). `game` needs at least
-// { id, title, logo_url, grid_url, logo_fetched }. The grid, when found,
-// is treated as an upgrade to the game's own cover_url — SteamGridDB's
-// covers are community-curated specifically for library display and are
-// routinely higher-resolution than IGDB's own capped cover art — so
-// every OTHER place this game's cover shows up (search, trending,
-// lists, feed) benefits from it too, not just its own page.
+// text title — see gd-head__logo in game-view.js) from SteamGridDB,
+// looked up the first time this game's page is opened and cached on the
+// row after that (same shape as credits_fetched above). `game` needs at
+// least { id, title, logo_url, logo_fetched }.
+//
+// SteamGridDB's "grids" (the other asset this same lookup can return)
+// used to also overwrite the game's own cover_url as a quality upgrade —
+// reverted: SteamGridDB grids are predominantly fan-made/alternate cover
+// art (verified against real API responses — most carry notes like
+// "removed watermark, added logo", explicit fan-edit attribution), not
+// official box art, and that's not an acceptable substitute for a game's
+// real cover. grid_url is still fetched and stored (harmless, may be
+// useful later) but is no longer read anywhere as a cover_url source —
+// IGDB/RAWG remain the only sources for the actual poster everywhere in
+// the app.
 export async function getGameArt(game) {
   if (!game || !game.title) return { logo_url: null, grid_url: null };
   if (game.logo_fetched) return { logo_url: game.logo_url || null, grid_url: game.grid_url || null };
@@ -1591,11 +1595,9 @@ export async function getGameArt(game) {
     // Fire-and-forget, same tradeoff as credits/enrichment caching above —
     // records the attempt (logo_fetched:true) even on a miss, so a game
     // with no SteamGridDB art isn't re-queried on every future visit.
-    // cover_url only gets overwritten when a grid was actually found —
-    // never wiped back to null on a miss.
-    const updates = { logo_url, grid_url, logo_fetched: true };
-    if (grid_url) updates.cover_url = grid_url;
-    supabase.from('games').update(updates).eq('id', game.id).then(() => {}, () => {});
+    // cover_url is deliberately NOT touched here — see the note above.
+    supabase.from('games').update({ logo_url, grid_url, logo_fetched: true }).eq('id', game.id)
+      .then(() => {}, () => {});
   }
   return { logo_url, grid_url };
 }
