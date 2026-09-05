@@ -17,6 +17,7 @@
 import { supabase } from '../js/supabase-client.js';
 import { searchGamesEverywhere, addGame, getPresenceFor } from '../js/api.js';
 import { esc, qs, qsa, toast, timeAgo } from '../js/utils.js';
+import { getTheme, applyTheme } from '../js/theme.js';
 import {
   emptyState, spinner, avatarImg, ratingHistogram, wireRatingHistogram,
   iconBack, iconChevronRight, iconChevronUp, iconChevronDown,
@@ -24,6 +25,11 @@ import {
   iconTrash, iconCheck, iconEye, iconNote, iconMessage, iconDiary,
   iconList, iconMail,
 } from '../js/components.js';
+import { stockChart, wireStockChart } from './chart.js';
+import {
+  countUp, skeletonRows, skeletonPanel, undoable, downloadCsv, openPalette,
+  bulkSelect, checkbox, typeToConfirm, timeTitle, wireConnectionBanner,
+} from './ui.js';
 
 const PROJECT_REF = 'kpgjuuplpgilupogpezc';
 const SQL_EDITOR_URL = `https://supabase.com/dashboard/project/${PROJECT_REF}/sql/new`;
@@ -131,37 +137,25 @@ function openSheet(title, bodyHtml, wire) {
 }
 
 const iconMegaphone = () => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11v2a1 1 0 0 0 1 1h2.5l7 4.5v-14L6.5 9H4a1 1 0 0 0-1 1z"/><path d="M17.5 9.5a3.5 3.5 0 0 1 0 5"/><path d="M6.5 14v4a1.5 1.5 0 0 0 3 0v-2.5"/></svg>`;
+const iconGrip = () => `<svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg>`;
+const iconCopyStack = () => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="4" y="4" width="12" height="16" rx="1.5"/><path d="M8 1.5h12v16" opacity="0.55"/></svg>`;
 
 // ------------------------------------------------------------ charts
 // Small, dependency-free SVG/HTML charts. Everything is painted through
 // the app's colour tokens so both themes work with no per-chart code.
 
-// Cumulative growth curve — area under a line, stretched to the panel.
-function sparkArea(series) {
-  const W = 300;
-  const H = 66;
-  const pad = 3;
-  const n = series.length;
-  if (n < 2) return '';
-  const max = Math.max(1, ...series.map((s) => s.value));
-  const x = (i) => pad + (i / (n - 1)) * (W - 2 * pad);
-  const y = (v) => H - pad - (v / max) * (H - 2 * pad);
-  const line = series.map((s, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(s.value).toFixed(1)}`).join(' ');
-  const area = `${line} L${x(n - 1).toFixed(1)},${H} L${x(0).toFixed(1)},${H} Z`;
-  const last = series[n - 1];
-  return `<svg viewBox="0 0 ${W} ${H}" class="adm-spark" preserveAspectRatio="none" aria-hidden="true">
-    <path d="${area}" class="adm-spark__area"/>
-    <path d="${line}" class="adm-spark__line"/>
-    <circle cx="${x(n - 1).toFixed(1)}" cy="${y(last.value).toFixed(1)}" r="2.5" class="adm-spark__dot"/>
-  </svg>`;
-}
+// The cumulative growth curve that used to live here is now the
+// scrubbable chart in chart.js — same idea, but it answers "what was it
+// on the 12th?" instead of only showing the shape.
 
-// Day-by-day activity bars, most recent column highlighted.
+// Day-by-day activity bars, most recent column highlighted. The label
+// and value ride on the element so wireBars() can read them back out
+// without needing the original array.
 function barSeries(bars) {
   const max = Math.max(1, ...bars.map((b) => b.value));
   return `<div class="adm-bars" role="img" aria-label="Recent activity">
     ${bars.map((b, i) => `
-      <div class="adm-bars__col" title="${esc(b.label)}: ${b.value}">
+      <div class="adm-bars__col" data-label="${esc(b.label)}" data-value="${b.value}" title="${esc(b.label)}: ${b.value}">
         <div class="adm-bars__bar${i === bars.length - 1 ? ' adm-bars__bar--today' : ''}"
              style="height:${b.value === 0 ? 2 : Math.max(6, Math.round((b.value / max) * 100))}%"></div>
       </div>`).join('')}
@@ -211,9 +205,56 @@ function go(screen) {
 const SCREENS = {};
 
 function render(screen) {
+  // The dashboard's own refresh loop must not keep running (and keep
+  // hitting the database) once you've moved off it.
+  if (state.screen === 'home' && screen !== 'home') clearInterval(dashboardTimer);
   state.screen = screen;
   (SCREENS[screen] || SCREENS.home)();
 }
+
+// ------------------------------------------------------------ palette
+// Everything reachable from the tiles, plus the actions worth having
+// without navigating first.
+function paletteCommands() {
+  const cmds = SECTIONS.map((s) => ({
+    title: s.title,
+    hint: s.sub,
+    icon: s.icon(),
+    badge: s.id === 'reports' && state.openReports ? String(state.openReports) : '',
+    run: () => go(s.id),
+  }));
+  cmds.unshift({ title: 'Dashboard', hint: 'Stats and charts', icon: iconFlame(), run: () => go('home') });
+  cmds.push(
+    { title: 'Write a news post', hint: 'Publish to the News tab', icon: iconNewspaper(), run: () => { go('news'); setTimeout(() => openNewsEditor(null), 60); } },
+    { title: 'Feature a game', hint: 'Add to Trending', icon: iconFlame(), run: () => { go('trending'); setTimeout(openGamePicker, 60); } },
+    { title: 'Switch theme', hint: 'Light or dark', icon: iconTheme(), run: toggleTheme },
+    { title: 'Sign out', hint: 'End this session', icon: iconUser(), run: signOut },
+  );
+  return cmds;
+}
+
+function showPalette() { openPalette(paletteCommands()); }
+
+// Ctrl/Cmd-K anywhere, plus single-key jumps that stay out of the way
+// while anything is being typed into.
+document.addEventListener('keydown', (e) => {
+  if (!state.user || !state.profile?.is_admin) return;
+  const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName || '')
+    || document.activeElement?.isContentEditable;
+
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+    e.preventDefault();
+    showPalette();
+    return;
+  }
+  if (typing || e.metaKey || e.ctrlKey || e.altKey) return;
+
+  if (e.key === '/') { e.preventDefault(); showPalette(); return; }
+  if (e.key === 'Escape' && state.screen !== 'home') { go('home'); return; }
+  // Number keys jump straight to a section, in the order the tiles read.
+  const n = Number(e.key);
+  if (n >= 1 && n <= SECTIONS.length) { go(SECTIONS[n - 1].id); }
+});
 
 window.addEventListener('hashchange', () => {
   const screen = location.hash.replace(/^#\/?/, '') || 'home';
@@ -341,6 +382,18 @@ const SECTIONS = [
   { id: 'waitlist', icon: iconMail, title: 'Waitlist', sub: 'Signups' },
 ];
 
+// Which series the big chart is showing. Kept at module scope so
+// switching metric survives the dashboard's own background refresh.
+let chartMetric = 'players';
+let chartHandle = null;
+let dashboardTimer = null;
+
+const METRICS = [
+  { id: 'players', label: 'Players', title: 'Total players' },
+  { id: 'logs', label: 'Logs', title: 'Total logs' },
+  { id: 'reviews', label: 'Reviews', title: 'Total reviews' },
+];
+
 SCREENS.home = function home() {
   const name = (state.profile?.display_name || state.profile?.username || '').split(' ')[0] || 'there';
   paint(`
@@ -350,6 +403,17 @@ SCREENS.home = function home() {
         <span class="adm-hero__hello">Hey ${esc(name)}</span>
         <span class="adm-hero__now" id="hero-now"><b>·</b> online now</span>
       </div>
+
+      <div class="adm-quickbar">
+        <button class="adm-quick" id="open-palette">
+          <span class="adm-quick__key">${navigator.platform?.includes('Mac') ? '⌘' : 'Ctrl'} K</span>
+          Search or jump to…
+        </button>
+        <button class="icon-btn icon-btn--small" id="theme-toggle" aria-label="Switch theme">${iconTheme()}</button>
+        <button class="icon-btn icon-btn--small" id="refresh-now" aria-label="Refresh">${iconRefresh()}</button>
+      </div>
+
+      <div class="adm-panel adm-panel--chart" id="chart-panel">${skeletonPanel()}</div>
 
       <h2 class="section-heading">At a glance</h2>
       <div class="stat-card-row" id="stats-1"></div>
@@ -376,19 +440,44 @@ SCREENS.home = function home() {
         </span>
         <button class="btn btn--pill" id="signout">Sign out</button>
       </div>
-      <p class="adm-hint">Changes here are live immediately — this is the production database, not a copy.</p>
+      <p class="adm-hint">Changes here are live immediately — this is the production database, not a copy.
+        <span id="last-sync"></span></p>
     </main>`);
 
   qs('#signout').addEventListener('click', signOut);
   qsa('[data-go]').forEach((el) => el.addEventListener('click', () => go(el.dataset.go)));
+  qs('#open-palette').addEventListener('click', showPalette);
+  qs('#theme-toggle').addEventListener('click', toggleTheme);
+  qs('#refresh-now').addEventListener('click', (e) => {
+    e.currentTarget.classList.add('is-spinning');
+    loadDashboard().finally(() => e.currentTarget.classList.remove('is-spinning'));
+  });
+
   loadDashboard();
+
+  // The dashboard is the screen most likely to be left open on a second
+  // monitor, so it keeps itself current rather than going stale until
+  // someone reloads. Cleared whenever another screen takes over.
+  clearInterval(dashboardTimer);
+  dashboardTimer = setInterval(() => {
+    if (state.screen === 'home' && document.visibilityState === 'visible') loadDashboard({ quiet: true });
+  }, 60000);
 };
+
+function iconTheme() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4"/></svg>`; }
+function iconRefresh() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 4v4.5h-4.5"/></svg>`; }
+
+function toggleTheme() {
+  const next = getTheme() === 'light' ? 'dark' : 'light';
+  applyTheme(next);
+  toast(next === 'light' ? 'Light' : 'Dark', 'success');
+}
 
 // Pulls the raw rows once and computes everything client-side. At this
 // app's scale (tens of players, low hundreds of logs) that's a couple of
 // small queries and a few reduces — far simpler than a wall of COUNT
 // round-trips or server-side aggregates, and it powers the charts too.
-async function loadDashboard() {
+async function loadDashboard({ quiet = false } = {}) {
   const now = Date.now();
   const day = 86400000;
   const iso = (ms) => new Date(ms).toISOString();
@@ -418,9 +507,56 @@ async function loadDashboard() {
   const heroNow = qs('#hero-now');
   if (heroNow) heroNow.innerHTML = `<b>${online}</b> online now`;
 
-  const tile = (value, label, variant) => `<div class="stat-card stat-card--${variant}"><b>${fmtNum(value)}</b><span>${label}</span></div>`;
-  qs('#stats-1').innerHTML = tile(online, 'Online', 'green') + tile(players, 'Players', 'grey') + tile(logs.length, 'Logs', 'grey');
-  qs('#stats-2').innerHTML = tile(newPlayers7, 'New / 7d', 'blue') + tile(reviews, 'Reviews', 'grey') + tile(loved, 'Loved', 'grey');
+  // Each tile carries how it moved over the last 7 days against the 7
+  // before that, so a number is never just a number with no sense of
+  // whether it's climbing. Tapping one switches the big chart to it.
+  const priorWeek = (pred) => {
+    const inLast = logs.filter((l) => now - new Date(l.created_at).getTime() < 7 * day).filter(pred).length;
+    const inPrev = logs.filter((l) => {
+      const age = now - new Date(l.created_at).getTime();
+      return age >= 7 * day && age < 14 * day;
+    }).filter(pred).length;
+    return inPrev === 0 ? (inLast ? 100 : 0) : Math.round(((inLast - inPrev) / inPrev) * 100);
+  };
+
+  const trendTag = (pct) => {
+    if (!pct) return '';
+    const up = pct > 0;
+    return `<i class="stat-card__trend${up ? ' stat-card__trend--up' : ' stat-card__trend--down'}">${up ? '▲' : '▼'}${Math.abs(pct)}%</i>`;
+  };
+
+  const tile = (value, label, variant, { metric = '', trend = '' } = {}) => `
+    <div class="stat-card stat-card--${variant}${metric ? ' stat-card--tappable' : ''}"${metric ? ` data-metric="${metric}" role="button" tabindex="0"` : ''}>
+      <b data-count="${value === null || value === undefined ? '' : value}">—</b>
+      <span>${label}${trend}</span>
+    </div>`;
+
+  qs('#stats-1').innerHTML =
+    tile(online, 'Online', 'green')
+    + tile(players, 'Players', 'grey', { metric: 'players', trend: '' })
+    + tile(logs.length, 'Logs', 'grey', { metric: 'logs', trend: trendTag(priorWeek(() => true)) });
+  qs('#stats-2').innerHTML =
+    tile(newPlayers7, 'New / 7d', 'blue')
+    + tile(reviews, 'Reviews', 'grey', { metric: 'reviews', trend: trendTag(priorWeek((l) => !!l.review)) })
+    + tile(loved, 'Loved', 'grey', { trend: trendTag(priorWeek((l) => !!l.loved)) });
+
+  qsa('[data-count]').forEach((el) => {
+    const raw = el.dataset.count;
+    if (raw === '') { el.textContent = '—'; return; }
+    if (quiet) { el.textContent = fmtNum(Number(raw)); return; } // no replay on a background refresh
+    countUp(el, Number(raw), { format: fmtNum });
+  });
+
+  const pickMetric = (metric) => {
+    chartMetric = metric;
+    paintChart();
+  };
+  qsa('[data-metric]').forEach((el) => {
+    el.addEventListener('click', () => pickMetric(el.dataset.metric));
+    el.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pickMetric(el.dataset.metric); }
+    });
+  });
 
   // --- reports badge (only known now) ---
   const reportTile = qs('.adm-gtile[data-go="reports"]');
@@ -428,13 +564,60 @@ async function loadDashboard() {
     reportTile.insertAdjacentHTML('beforeend', `<span class="adm-gtile__count">${state.openReports}</span>`);
   }
 
-  // --- signups: cumulative over the last 8 weeks ---
-  const weeks = 8;
-  const signupSeries = [];
-  for (let w = weeks - 1; w >= 0; w--) {
-    const cutoff = now - w * 7 * day;
-    signupSeries.push({ value: profiles.filter((p) => new Date(p.created_at).getTime() <= cutoff).length });
+  // --- daily cumulative series, one point per day since the very first
+  // row, for the scrubbable chart. Built once for each metric so the
+  // range buttons and the metric switcher are both instant: they slice
+  // and re-read these arrays rather than going back to the database. ---
+  const startOfDay = (ms) => { const d = new Date(ms); d.setHours(0, 0, 0, 0); return d.getTime(); };
+
+  function cumulativeDaily(rows, at = (r) => r.created_at) {
+    const times = rows.map((r) => new Date(at(r)).getTime()).filter((t) => !Number.isNaN(t)).sort((a, b) => a - b);
+    if (!times.length) return [];
+    const first = startOfDay(times[0]);
+    const last = startOfDay(now);
+    // Long-lived projects would make a per-day walk from day one silly;
+    // capping the window keeps this bounded while still covering "ALL"
+    // for anything of this app's age.
+    const from = Math.max(first, last - 730 * day);
+    const out = [];
+    let i = 0;
+    let running = times.filter((t) => t < from).length;
+    for (let d = from; d <= last; d += day) {
+      const end = d + day;
+      while (i < times.length && times[i] < end) { if (times[i] >= from) running += 1; i += 1; }
+      out.push({ t: d, value: running });
+    }
+    return out;
   }
+
+  const seriesByMetric = {
+    players: cumulativeDaily(profiles),
+    logs: cumulativeDaily(logs),
+    reviews: cumulativeDaily(logs.filter((l) => l.review)),
+  };
+
+  function paintChart() {
+    const host = qs('#chart-panel');
+    if (!host) return;
+    const metric = METRICS.find((m) => m.id === chartMetric) || METRICS[0];
+    const keepRange = chartHandle?.range;
+    host.innerHTML = `
+      <div class="adm-metric-tabs" role="tablist">
+        ${METRICS.map((m) => `<button class="adm-metric-tab${m.id === metric.id ? ' adm-metric-tab--on' : ''}"
+            role="tab" aria-selected="${m.id === metric.id}" data-metric-tab="${m.id}">${esc(m.label)}</button>`).join('')}
+      </div>
+      ${stockChart('main', { title: metric.title, series: seriesByMetric[metric.id] })}`;
+    chartHandle = wireStockChart(qs('.sc', host), {
+      series: seriesByMetric[metric.id],
+      format: (v) => fmtNum(v),
+      defaultRange: keepRange || '1m',
+    });
+    qsa('[data-metric-tab]', host).forEach((btn) => btn.addEventListener('click', () => {
+      chartMetric = btn.dataset.metricTab;
+      paintChart();
+    }));
+  }
+  paintChart();
 
   // --- activity: logs per day over the last 14 days ---
   const days = 14;
@@ -500,7 +683,6 @@ async function loadDashboard() {
   const analytics = qs('#analytics');
   if (!analytics) return;
   analytics.innerHTML = `
-    ${panel('Signups', `<b>+${newPlayers7}</b> this week`, sparkArea(signupSeries) || '<p class="adm-hint" style="margin:0">Not enough history yet.</p>')}
     ${panel('Activity · 14 days', `${logs7} this week`, barSeries(activityBars) + `<div class="adm-axis"><span>${esc(activityBars[0].label)}</span><span>today</span></div>`)}
     ${panel('Library status', `${logs.length} logs`, logs.length ? segBar(statusSeg) : '<p class="adm-hint" style="margin:0">No logs yet.</p>')}
     ${panel('Ratings', '', ratingHistogram(ratingCounts, { average: avgRating, total: ratingTotal }))}
@@ -523,6 +705,37 @@ async function loadDashboard() {
 
   const hist = qs('.rating-histogram', analytics);
   if (hist) wireRatingHistogram(hist);
+
+  // The daily bars carry real numbers, so they answer "which day was
+  // that spike?" on tap rather than only on a desktop hover title.
+  wireBars(analytics);
+
+  const sync = qs('#last-sync');
+  if (sync) sync.textContent = ` Last read ${new Date().toLocaleTimeString()}.`;
+}
+
+// Makes barSeries() columns tappable: the value and its date surface in
+// a small readout above the bars instead of a native tooltip nobody sees
+// on a phone.
+function wireBars(scope) {
+  qsa('.adm-bars', scope).forEach((bars) => {
+    const readout = document.createElement('div');
+    readout.className = 'adm-bars__readout';
+    readout.innerHTML = '<span></span>';
+    bars.parentElement.insertBefore(readout, bars);
+
+    const cols = qsa('.adm-bars__col', bars);
+    const show = (col) => {
+      cols.forEach((c) => c.classList.toggle('adm-bars__col--on', c === col));
+      readout.firstElementChild.textContent = col ? `${col.dataset.label} · ${col.dataset.value}` : '';
+      readout.classList.toggle('adm-bars__readout--on', !!col);
+    };
+    cols.forEach((col) => {
+      col.addEventListener('pointerenter', () => show(col));
+      col.addEventListener('click', () => show(col));
+    });
+    bars.addEventListener('pointerleave', () => show(null));
+  });
 }
 
 // ============================================================
@@ -607,7 +820,8 @@ async function paintCurated() {
   }
 
   host.innerHTML = data.map((r, i) => `
-    <div class="list-card adm-row" data-id="${r.id}">
+    <div class="list-card adm-row" data-id="${r.id}" draggable="true">
+      <span class="adm-drag" aria-hidden="true">${iconGrip()}</span>
       <span class="adm-pos">${i + 1}</span>
       ${r.games?.cover_url
         ? `<img class="adm-thumb" src="${esc(r.games.cover_url)}" alt="" loading="lazy">`
@@ -623,18 +837,55 @@ async function paintCurated() {
       </span>
     </div>`).join('');
 
-  qsa('[data-move]', host).forEach((btn) => btn.addEventListener('click', async () => {
-    const idx = data.findIndex((r) => r.id === btn.closest('.adm-row').dataset.id);
-    const swapWith = btn.dataset.move === 'up' ? idx - 1 : idx + 1;
-    if (swapWith < 0 || swapWith >= data.length) return;
-    const reordered = [...data];
-    [reordered[idx], reordered[swapWith]] = [reordered[swapWith], reordered[idx]];
+  // Writes the whole list's positions in one go. Order is derived from
+  // the DOM so drag and the arrow buttons share one code path.
+  const persistOrder = async () => {
+    const ids = qsa('.adm-row', host).map((el) => el.dataset.id);
+    qsa('.adm-pos', host).forEach((el, i) => { el.textContent = i + 1; });
     try {
-      await Promise.all(reordered.map((r, i) =>
-        supabase.from('curated_trending').update({ position: i }).eq('id', r.id)));
-      paintCurated();
+      await Promise.all(ids.map((id, i) =>
+        supabase.from('curated_trending').update({ position: i }).eq('id', id)));
+      toast('Order saved', 'success');
     } catch (err) { fail(err); }
+  };
+
+  qsa('[data-move]', host).forEach((btn) => btn.addEventListener('click', async () => {
+    const row = btn.closest('.adm-row');
+    if (btn.dataset.move === 'up') row.previousElementSibling?.before(row);
+    else row.nextElementSibling?.after(row);
+    await persistOrder();
+    paintCurated();
   }));
+
+  // The arrows still work (and are the accessible path); dragging is the
+  // faster one when a pick has to move more than a place or two.
+  let dragged = null;
+  qsa('.adm-row', host).forEach((row) => {
+    row.addEventListener('dragstart', (e) => {
+      dragged = row;
+      row.classList.add('adm-row--dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', row.dataset.id);
+    });
+    row.addEventListener('dragend', () => {
+      row.classList.remove('adm-row--dragging');
+      qsa('.adm-row', host).forEach((r) => r.classList.remove('adm-row--dragover'));
+      dragged = null;
+      persistOrder();
+    });
+    row.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      if (!dragged || dragged === row) return;
+      row.classList.add('adm-row--dragover');
+      // Insert before or after depending on which half is hovered, so a
+      // row can be dropped at either end of its neighbour.
+      const box = row.getBoundingClientRect();
+      const after = e.clientY > box.top + box.height / 2;
+      if (after) row.after(dragged); else row.before(dragged);
+    });
+    row.addEventListener('dragleave', () => row.classList.remove('adm-row--dragover'));
+    row.addEventListener('drop', (e) => e.preventDefault());
+  });
 
   qsa('[data-remove]', host).forEach((btn) => btn.addEventListener('click', async () => {
     const id = btn.closest('.adm-row').dataset.id;
@@ -742,11 +993,13 @@ async function paintNews() {
       ${p.image_url ? `<img class="adm-thumb adm-thumb--wide" src="${esc(p.image_url)}" alt="" loading="lazy">` : '<span class="adm-thumb adm-thumb--wide"></span>'}
       <span class="adm-row__body">
         <span class="adm-row__title">${esc(p.title)}</span>
-        <span class="adm-row__meta">
+        <span class="adm-row__meta"${timeTitle(p.published_at)}>
           ${p.is_published ? '' : 'DRAFT · '}${p.pinned ? 'PINNED · ' : ''}${esc(p.source)} · ${esc(timeAgo(p.published_at))} ago
         </span>
       </span>
       <span class="adm-row__actions">
+        <button class="icon-btn icon-btn--small" data-toggle aria-label="${p.is_published ? 'Unpublish' : 'Publish'}">${iconEye()}</button>
+        <button class="icon-btn icon-btn--small" data-dupe aria-label="Duplicate">${iconCopyStack()}</button>
         <button class="icon-btn icon-btn--small" data-edit aria-label="Edit">${iconNote()}</button>
         <button class="icon-btn icon-btn--small" data-del aria-label="Delete">${iconTrash()}</button>
       </span>
@@ -754,6 +1007,30 @@ async function paintNews() {
 
   qsa('[data-edit]', host).forEach((btn) => btn.addEventListener('click', () => {
     openNewsEditor(data.find((p) => p.id === btn.closest('.adm-row').dataset.id));
+  }));
+
+  // Publish/unpublish without opening the editor — the single most
+  // common thing to want to change about a post that already exists.
+  qsa('[data-toggle]', host).forEach((btn) => btn.addEventListener('click', async () => {
+    const post = data.find((p) => p.id === btn.closest('.adm-row').dataset.id);
+    const { error: e } = await supabase.from('custom_news').update({ is_published: !post.is_published }).eq('id', post.id);
+    if (e) return fail(e);
+    toast(post.is_published ? 'Moved to drafts' : 'Published', 'success');
+    paintNews();
+  }));
+
+  // Copies a post as an unpublished draft, for the recurring formats
+  // that only change a line or two between editions.
+  qsa('[data-dupe]', host).forEach((btn) => btn.addEventListener('click', async () => {
+    const post = data.find((p) => p.id === btn.closest('.adm-row').dataset.id);
+    const { error: e } = await supabase.from('custom_news').insert({
+      title: `${post.title} (copy)`, summary: post.summary, image_url: post.image_url,
+      source: post.source, link: post.link, is_published: false, pinned: post.pinned,
+      created_by: state.user.id,
+    });
+    if (e) return fail(e);
+    toast('Duplicated as a draft', 'success');
+    paintNews();
   }));
 
   qsa('[data-del]', host).forEach((btn) => btn.addEventListener('click', async () => {
@@ -789,6 +1066,7 @@ function openNewsEditor(post) {
       </span>
       <button class="adm-switch" id="n-pinned" role="switch" aria-checked="${post ? !!post.pinned : true}"></button>
     </div>
+    <p class="adm-count-line" id="n-status"></p>
     <div class="adm-btn-row">
       <button class="btn" data-act="cancel">Cancel</button>
       <button class="btn btn--accent" id="n-save">${editing ? 'Save' : 'Publish'}</button>
@@ -796,6 +1074,38 @@ function openNewsEditor(post) {
     qsa('.adm-switch', sheet).forEach((sw) => sw.addEventListener('click', () => {
       sw.setAttribute('aria-checked', sw.getAttribute('aria-checked') === 'true' ? 'false' : 'true');
     }));
+
+    // A new post is kept in localStorage as it's typed, so closing the
+    // sheet by accident (or the WebView being killed in the background)
+    // doesn't lose the draft. Only for new posts: an edit already has a
+    // saved copy in the database to fall back to.
+    const DRAFT_KEY = 'playthruu_admin_news_draft';
+    const fields = ['n-title', 'n-summary', 'n-image', 'n-source', 'n-link'];
+    const status = qs('#n-status', sheet);
+
+    if (!editing) {
+      try {
+        const saved = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null');
+        if (saved && Object.values(saved).some(Boolean)) {
+          fields.forEach((f) => { if (saved[f]) qs(`#${f}`, sheet).value = saved[f]; });
+          status.textContent = 'Restored an unsaved draft.';
+        }
+      } catch { /* nothing usable stored */ }
+
+      let saveTimer;
+      const stash = () => {
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(() => {
+          const snap = {};
+          fields.forEach((f) => { snap[f] = qs(`#${f}`, sheet).value; });
+          try { localStorage.setItem(DRAFT_KEY, JSON.stringify(snap)); } catch { /* storage full or blocked */ }
+          status.textContent = `Draft saved ${new Date().toLocaleTimeString()}`;
+        }, 600);
+      };
+      fields.forEach((f) => qs(`#${f}`, sheet).addEventListener('input', stash));
+    }
+    sheet.dataset.draftKey = DRAFT_KEY;
+
     qs('[data-act="cancel"]', sheet).addEventListener('click', close);
 
     qs('#n-save', sheet).addEventListener('click', async () => {
@@ -817,6 +1127,9 @@ function openNewsEditor(post) {
           ? await supabase.from('custom_news').update(payload).eq('id', post.id)
           : await supabase.from('custom_news').insert({ ...payload, created_by: state.user.id });
         if (error) throw error;
+        // The draft has become a real row; keeping it would re-restore
+        // itself into the next empty editor.
+        if (!editing) { try { localStorage.removeItem(sheet.dataset.draftKey); } catch { /* nothing to clear */ } }
         close();
         toast(editing ? 'Saved' : 'Published', 'success');
         paintNews();
@@ -903,25 +1216,44 @@ async function paintAnnouncements() {
 // ============================================================
 // ACTIVITY
 // ============================================================
+let activityFilter = 'all';
+
 SCREENS.activity = function activity() {
   paint(`
     ${header('Activity', { back: true })}
     <main class="view-body">
       <p class="adm-hint" style="margin-top:0">The most recent public logs across the whole app.</p>
-      <div id="list" style="margin-top:var(--space-3)">${spinner()}</div>
+      <div class="adm-chips" id="a-filters" style="margin-top:var(--space-3)">
+        <button class="adm-chip" data-filter="all">All</button>
+        <button class="adm-chip" data-filter="playing">Playing</button>
+        <button class="adm-chip" data-filter="played">Played</button>
+        <button class="adm-chip" data-filter="reviews">With reviews</button>
+        <button class="adm-chip" data-filter="loved">Loved</button>
+      </div>
+      <div id="list" style="margin-top:var(--space-3)">${skeletonRows(6)}</div>
     </main>`);
+  const sync = () => qsa('#a-filters [data-filter]').forEach((b) => b.classList.toggle('adm-chip--on', b.dataset.filter === activityFilter));
+  sync();
+  qsa('#a-filters [data-filter]').forEach((b) => b.addEventListener('click', () => {
+    activityFilter = b.dataset.filter; sync(); paintActivity();
+  }));
   paintActivity();
 };
 
 async function paintActivity() {
   const host = qs('#list');
   if (!host) return;
-  const { data, error } = await supabase
+  let sel = supabase
     .from('logs')
     .select('id, status, rating, review, loved, created_at, games!logs_game_id_fkey(title, cover_url), profiles!logs_user_id_fkey(username, display_name, avatar_url)')
     .eq('is_public', true)
     .order('created_at', { ascending: false })
-    .limit(40);
+    .limit(60);
+  if (activityFilter === 'playing' || activityFilter === 'played') sel = sel.eq('status', activityFilter);
+  if (activityFilter === 'reviews') sel = sel.not('review', 'is', null);
+  if (activityFilter === 'loved') sel = sel.eq('loved', true);
+
+  const { data, error } = await sel;
 
   if (error) { host.innerHTML = emptyState(error.message); return; }
   if (!data?.length) { host.innerHTML = emptyState('Nothing logged yet.', { icon: iconDiary() }); return; }
@@ -950,83 +1282,168 @@ async function paintActivity() {
 // ============================================================
 // PEOPLE
 // ============================================================
+const peopleView = { query: '', sort: 'seen', filter: 'all' };
+
 SCREENS.people = function people() {
   paint(`
     ${header('People', { back: true })}
     <main class="view-body">
       <div class="segmented segmented--wide" id="sort">
-        <button class="segmented__item segmented__item--active" data-sort="seen">Last seen</button>
+        <button class="segmented__item" data-sort="seen">Last seen</button>
         <button class="segmented__item" data-sort="new">Newest</button>
+        <button class="segmented__item" data-sort="name">A–Z</button>
       </div>
       <label class="field adm-search"><span>Search</span>
-        <input type="search" id="u-q" placeholder="Username or name…" autocomplete="off">
+        <input type="search" id="u-q" placeholder="Username or name…" autocomplete="off" value="${esc(peopleView.query)}">
       </label>
-      <div id="list">${spinner()}</div>
+      <div class="adm-chips" id="u-filters">
+        <button class="adm-chip" data-filter="all">Everyone</button>
+        <button class="adm-chip" data-filter="online">Online</button>
+        <button class="adm-chip" data-filter="admin">Admins</button>
+        <button class="adm-chip" data-filter="suspended">Suspended</button>
+      </div>
+      <div class="adm-toolbar">
+        <button class="btn btn--pill" id="u-export">Export CSV</button>
+      </div>
+      <p class="adm-count-line" id="u-count"></p>
+      <div id="list">${skeletonRows(6)}</div>
     </main>`);
 
-  let sort = 'seen';
+  const sync = () => {
+    qsa('[data-sort]').forEach((b) => b.classList.toggle('segmented__item--active', b.dataset.sort === peopleView.sort));
+    qsa('#u-filters [data-filter]').forEach((b) => b.classList.toggle('adm-chip--on', b.dataset.filter === peopleView.filter));
+  };
+  sync();
+
   let timer;
   qs('#u-q').addEventListener('input', (e) => {
     clearTimeout(timer);
-    timer = setTimeout(() => paintPeople(e.target.value.trim(), sort), 260);
+    timer = setTimeout(() => { peopleView.query = e.target.value.trim(); paintPeople(); }, 260);
   });
   qsa('[data-sort]').forEach((btn) => btn.addEventListener('click', () => {
-    sort = btn.dataset.sort;
-    qsa('[data-sort]').forEach((b) => b.classList.toggle('segmented__item--active', b === btn));
-    paintPeople(qs('#u-q').value.trim(), sort);
+    peopleView.sort = btn.dataset.sort; sync(); paintPeople();
   }));
+  qsa('#u-filters [data-filter]').forEach((btn) => btn.addEventListener('click', () => {
+    peopleView.filter = btn.dataset.filter; sync(); paintPeople();
+  }));
+  qs('#u-export').addEventListener('click', exportPeople);
 
-  paintPeople('', sort);
+  paintPeople();
 };
 
-async function paintPeople(query, sort) {
+let lastPeople = { rows: [], seen: {} };
+
+async function exportPeople() {
+  downloadCsv(`playthruu-people-${new Date().toISOString().slice(0, 10)}.csv`,
+    lastPeople.rows.map((p) => ({
+      id: p.id, username: p.username, display_name: p.display_name ?? '',
+      admin: p.is_admin ? 'yes' : 'no', suspended: p.is_suspended ? 'yes' : 'no',
+      joined: p.created_at, last_seen: lastPeople.seen[p.id] ?? '',
+    })));
+}
+
+async function paintPeople() {
   const host = qs('#list');
   if (!host) return;
+  const { query, sort, filter } = peopleView;
+
   let q = supabase.from('profiles')
     .select('id, username, display_name, avatar_url, is_admin, is_suspended, created_at')
     .order('created_at', { ascending: false })
-    .limit(80);
+    .limit(200);
   if (query) q = q.or(`username.ilike.%${query}%,display_name.ilike.%${query}%`);
+  if (filter === 'admin') q = q.eq('is_admin', true);
+  if (filter === 'suspended') q = q.eq('is_suspended', true);
 
   const { data, error } = await q;
   if (error) { host.innerHTML = emptyState(error.message); return; }
-  if (!data?.length) { host.innerHTML = emptyState('Nobody matched that.', { icon: iconUser() }); return; }
 
   // Presence comes from a second query keyed on the ids just returned,
   // rather than a PostgREST embed — the embed needs the exact foreign
   // key constraint name, and this doesn't care what it's called.
-  const seen = await getPresenceFor(data.map((p) => p.id));
+  const seen = await getPresenceFor((data || []).map((p) => p.id));
 
-  const rows = [...data];
+  let rows = [...(data || [])];
+  if (filter === 'online') rows = rows.filter((p) => presenceOf(seen[p.id]).online);
+
   if (sort === 'seen') {
     // Never-seen accounts sort last rather than first, which is what
     // treating a missing timestamp as 0 would otherwise do.
     rows.sort((a, b) => new Date(seen[b.id] || 0) - new Date(seen[a.id] || 0));
+  } else if (sort === 'name') {
+    rows.sort((a, b) => (a.display_name || a.username || '').localeCompare(b.display_name || b.username || ''));
   }
 
+  lastPeople = { rows, seen };
+  const countEl = qs('#u-count');
+  if (countEl) {
+    const onlineNow = rows.filter((p) => presenceOf(seen[p.id]).online).length;
+    countEl.textContent = `${fmtNum(rows.length)} shown · ${onlineNow} online`;
+  }
+
+  if (!rows.length) { host.innerHTML = emptyState('Nobody matched that.', { icon: iconUser() }); return; }
+
   host.innerHTML = rows.map((p) => `
-    <div class="list-card adm-row" data-id="${p.id}">
+    <div class="list-card adm-row" data-id="${p.id}" data-bulk-row>
+      ${checkbox()}
       ${avatarImg(p, 40)}
       <span class="adm-row__body">
         <span class="adm-row__title">${esc(p.display_name || p.username)}${p.is_admin ? ' · ADMIN' : ''}${p.is_suspended ? ' · SUSPENDED' : ''}</span>
-        <span class="adm-row__meta">@${esc(p.username)}</span>
-        <span class="adm-row__meta">${presenceHtml(seen[p.id])}</span>
+        <span class="adm-row__meta">@${esc(p.username)} · joined ${esc(timeAgo(p.created_at))} ago</span>
+        <span class="adm-row__meta"${timeTitle(seen[p.id])}>${presenceHtml(seen[p.id])}</span>
       </span>
       <span class="adm-row__actions">
         <button class="icon-btn icon-btn--small" data-manage aria-label="Manage">${iconChevronRight()}</button>
       </span>
     </div>`).join('');
 
+  bulkSelect(host, {
+    idOf: (row) => row.dataset.id,
+    label: 'people',
+    actions: [
+      {
+        label: 'Suspend', danger: true,
+        run: async (ids) => {
+          const safe = ids.filter((id) => id !== state.user.id);
+          if (!safe.length) { toast("You can't suspend your own account", 'error'); return; }
+          if (!await confirmSheet({ title: `Suspend ${safe.length} accounts?`, sub: 'They stop being able to post anywhere in the app.', confirmLabel: 'Suspend', danger: true })) return;
+          const { error: e } = await supabase.from('profiles').update({ is_suspended: true }).in('id', safe);
+          if (e) return fail(e);
+          toast(`${safe.length} suspended`, 'success');
+          paintPeople();
+        },
+      },
+      {
+        label: 'Unsuspend',
+        run: async (ids) => {
+          const { error: e } = await supabase.from('profiles').update({ is_suspended: false }).in('id', ids);
+          if (e) return fail(e);
+          toast(`${ids.length} restored`, 'success');
+          paintPeople();
+        },
+      },
+    ],
+  });
+
   qsa('[data-manage]', host).forEach((btn) => btn.addEventListener('click', () => {
     const id = btn.closest('.adm-row').dataset.id;
-    openUserSheet(rows.find((p) => p.id === id), seen[id], query, sort);
+    openUserSheet(rows.find((p) => p.id === id), seen[id]);
   }));
 }
 
-function openUserSheet(user, lastSeenAt, query, sort) {
+function openUserSheet(user, lastSeenAt) {
   const isSelf = user.id === state.user.id;
   openSheet(user.display_name || user.username, `
     <p class="modal__hint">@${esc(user.username)} · ${presenceHtml(lastSeenAt)} · joined ${esc(timeAgo(user.created_at))} ago</p>
+    <div class="stat-card-row" id="u-stats">
+      <div class="stat-card stat-card--grey"><b>—</b><span>Logs</span></div>
+      <div class="stat-card stat-card--grey"><b>—</b><span>Reviews</span></div>
+      <div class="stat-card stat-card--grey"><b>—</b><span>Lists</span></div>
+    </div>
+    <div class="adm-btn-row" style="margin-top:0">
+      <button class="btn btn--pill" id="u-view">Open profile</button>
+      <button class="btn btn--pill" id="u-copy">Copy id</button>
+    </div>
     <div class="adm-switch-row">
       <span class="adm-switch-row__text">
         <span class="adm-switch-row__title">Suspended</span>
@@ -1044,6 +1461,27 @@ function openUserSheet(user, lastSeenAt, query, sort) {
     ${isSelf ? `<p class="adm-hint">You can't suspend or demote your own account here — that's the one lock stopping you getting shut out of your own admin app.</p>` : ''}
     <div class="adm-btn-row"><button class="btn btn--block" data-act="close">Done</button></div>`, (sheet, close) => {
     qs('[data-act="close"]', sheet).addEventListener('click', close);
+    qs('#u-copy', sheet).addEventListener('click', () => copy(user.id, 'User id copied'));
+    qs('#u-view', sheet).addEventListener('click', () => {
+      window.open(`../#/profile/${encodeURIComponent(user.username)}`, '_blank', 'noopener');
+    });
+
+    // Three head counts, so a decision about an account can be made with
+    // some sense of what it has actually done rather than from a name.
+    (async () => {
+      const [logs, reviews, lists] = await Promise.all([
+        supabase.from('logs').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
+        supabase.from('logs').select('id', { count: 'exact', head: true }).eq('user_id', user.id).not('review', 'is', null),
+        supabase.from('lists').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
+      ]);
+      const host = qs('#u-stats', sheet);
+      if (!host) return; // sheet closed while these were in flight
+      const cells = qsa('b', host);
+      [logs.count, reviews.count, lists.count].forEach((n, i) => {
+        if (cells[i]) countUp(cells[i], n ?? 0, { format: fmtNum });
+      });
+    })();
+
     if (isSelf) return;
 
     const flip = async (el, column) => {
@@ -1056,7 +1494,7 @@ function openUserSheet(user, lastSeenAt, query, sort) {
       }
       user[column] = next;
       toast('Saved', 'success');
-      paintPeople(query, sort);
+      paintPeople();
     };
 
     qs('#u-susp', sheet).addEventListener('click', (e) => flip(e.currentTarget, 'is_suspended'));
@@ -1067,17 +1505,45 @@ function openUserSheet(user, lastSeenAt, query, sort) {
 // ============================================================
 // REPORTS
 // ============================================================
+let reportsFilter = 'open';
+
 SCREENS.reports = function reports() {
-  paint(`${header('Reports', { back: true })}<main class="view-body"><div id="list">${spinner()}</div></main>`);
+  paint(`
+    ${header('Reports', { back: true })}
+    <main class="view-body">
+      <div class="adm-chips" id="r-filters">
+        <button class="adm-chip" data-filter="open">Open</button>
+        <button class="adm-chip" data-filter="resolved">Resolved</button>
+        <button class="adm-chip" data-filter="all">All</button>
+      </div>
+      <p class="adm-count-line" id="r-count"></p>
+      <div id="list">${skeletonRows(5, { thumb: false })}</div>
+    </main>`);
+  const sync = () => qsa('#r-filters [data-filter]').forEach((b) => b.classList.toggle('adm-chip--on', b.dataset.filter === reportsFilter));
+  sync();
+  qsa('#r-filters [data-filter]').forEach((b) => b.addEventListener('click', () => {
+    reportsFilter = b.dataset.filter; sync(); paintReports();
+  }));
   paintReports();
 };
 
 async function paintReports() {
   const host = qs('#list');
   if (!host) return;
-  const { data, error } = await supabase.from('reports').select('*').order('created_at', { ascending: false }).limit(80);
+  let q = supabase.from('reports').select('*').order('created_at', { ascending: false }).limit(120);
+  if (reportsFilter === 'open') q = q.neq('status', 'resolved');
+  if (reportsFilter === 'resolved') q = q.eq('status', 'resolved');
+
+  const { data, error } = await q;
   if (error) { host.innerHTML = emptyState(error.message); return; }
-  if (!data?.length) { host.innerHTML = emptyState('Nothing reported. Quiet night.', { icon: iconFlag() }); return; }
+
+  const countEl = qs('#r-count');
+  if (countEl) countEl.textContent = `${fmtNum((data || []).length)} ${reportsFilter === 'all' ? 'total' : reportsFilter}`;
+
+  if (!data?.length) {
+    host.innerHTML = emptyState(reportsFilter === 'open' ? 'Nothing open. Quiet night.' : 'Nothing here.', { icon: iconFlag() });
+    return;
+  }
 
   const reporterIds = [...new Set(data.map((r) => r.reporter_id).filter(Boolean))];
   let names = {};
@@ -1087,47 +1553,81 @@ async function paintReports() {
   }
 
   host.innerHTML = data.map((r) => `
-    <div class="list-card adm-row" data-id="${r.id}">
+    <div class="list-card adm-row" data-id="${r.id}" data-bulk-row>
+      ${r.status === 'resolved' ? '' : checkbox()}
       <span class="adm-row__body">
         <span class="adm-row__title adm-row__title--wrap">${esc(r.reason || 'No reason given')}</span>
-        <span class="adm-row__meta">${r.status === 'resolved' ? 'RESOLVED' : 'OPEN'} · ${esc(r.target_type || 'item')} · @${esc(names[r.reporter_id] || 'unknown')} · ${esc(timeAgo(r.created_at))} ago</span>
+        <span class="adm-row__meta"${timeTitle(r.created_at)}>${r.status === 'resolved' ? 'RESOLVED' : 'OPEN'} · ${esc(r.target_type || 'item')} · @${esc(names[r.reporter_id] || 'unknown')} · ${esc(timeAgo(r.created_at))} ago</span>
       </span>
-      ${r.status === 'resolved' ? '' : `
+      ${r.status === 'resolved' ? `
+        <span class="adm-row__actions">
+          <button class="icon-btn icon-btn--small" data-reopen aria-label="Reopen">${iconEye()}</button>
+        </span>` : `
         <span class="adm-row__actions">
           <button class="icon-btn icon-btn--small" data-resolve aria-label="Resolve">${iconCheck()}</button>
         </span>`}
     </div>`).join('');
 
-  qsa('[data-resolve]', host).forEach((btn) => btn.addEventListener('click', async () => {
-    const id = btn.closest('.adm-row').dataset.id;
-    const { error: upErr } = await supabase.from('reports').update({ status: 'resolved' }).eq('id', id);
+  bulkSelect(host, {
+    idOf: (row) => row.dataset.id,
+    label: 'reports',
+    actions: [{
+      label: 'Resolve all',
+      run: async (ids) => {
+        const { error: e } = await supabase.from('reports').update({ status: 'resolved' }).in('id', ids);
+        if (e) return fail(e);
+        toast(`${ids.length} resolved`, 'success');
+        paintReports();
+      },
+    }],
+  });
+
+  const setStatus = async (id, status) => {
+    const { error: upErr } = await supabase.from('reports').update({ status }).eq('id', id);
     if (upErr) return fail(upErr);
-    toast('Resolved', 'success');
+    toast(status === 'resolved' ? 'Resolved' : 'Reopened', 'success');
     paintReports();
-  }));
+  };
+  qsa('[data-resolve]', host).forEach((btn) => btn.addEventListener('click', () => setStatus(btn.closest('.adm-row').dataset.id, 'resolved')));
+  qsa('[data-reopen]', host).forEach((btn) => btn.addEventListener('click', () => setStatus(btn.closest('.adm-row').dataset.id, 'open')));
 }
 
 // ============================================================
 // COMMENTS
 // ============================================================
+let commentsQuery = '';
+
 SCREENS.comments = function comments() {
   paint(`
     ${header('Comments', { back: true })}
     <main class="view-body">
       <p class="adm-hint" style="margin-top:0">The most recent comments across the app. Deleting one is permanent.</p>
-      <div id="list" style="margin-top:var(--space-3)">${spinner()}</div>
+      <label class="field adm-search"><span>Search</span>
+        <input type="search" id="c-q" placeholder="Find a phrase…" autocomplete="off" value="${esc(commentsQuery)}">
+      </label>
+      <p class="adm-count-line" id="c-count"></p>
+      <div id="list" style="margin-top:var(--space-3)">${skeletonRows(6, { thumb: false })}</div>
     </main>`);
+  let timer;
+  qs('#c-q').addEventListener('input', (e) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => { commentsQuery = e.target.value.trim(); paintComments(); }, 260);
+  });
   paintComments();
 };
 
 async function paintComments() {
   const host = qs('#list');
   if (!host) return;
-  const { data, error } = await supabase
+  let sel = supabase
     .from('comments').select('id, body, created_at, user_id, log_id')
-    .order('created_at', { ascending: false }).limit(60);
+    .order('created_at', { ascending: false }).limit(120);
+  if (commentsQuery) sel = sel.ilike('body', `%${commentsQuery}%`);
+  const { data, error } = await sel;
 
   if (error) { host.innerHTML = emptyState(error.message); return; }
+  const countEl = qs('#c-count');
+  if (countEl) countEl.textContent = `${fmtNum((data || []).length)} shown`;
   if (!data?.length) { host.innerHTML = emptyState('No comments yet.', { icon: iconMessage() }); return; }
 
   const authorIds = [...new Set(data.map((c) => c.user_id).filter(Boolean))];
@@ -1140,11 +1640,12 @@ async function paintComments() {
   host.innerHTML = data.map((c) => {
     const who = authors[c.user_id];
     return `
-      <div class="list-card adm-row" data-id="${c.id}">
+      <div class="list-card adm-row" data-id="${c.id}" data-bulk-row>
+        ${checkbox()}
         ${avatarImg(who || {}, 36)}
         <span class="adm-row__body">
           <span class="adm-row__title adm-row__title--wrap">${esc(c.body)}</span>
-          <span class="adm-row__meta">@${esc(who?.username || 'unknown')} · ${esc(timeAgo(c.created_at))} ago</span>
+          <span class="adm-row__meta"${timeTitle(c.created_at)}>@${esc(who?.username || 'unknown')} · ${esc(timeAgo(c.created_at))} ago</span>
         </span>
         <span class="adm-row__actions">
           <button class="icon-btn icon-btn--small" data-del aria-label="Delete">${iconTrash()}</button>
@@ -1152,56 +1653,150 @@ async function paintComments() {
       </div>`;
   }).join('');
 
+  bulkSelect(host, {
+    idOf: (row) => row.dataset.id,
+    label: 'comments',
+    actions: [{
+      label: 'Delete', danger: true,
+      run: async (ids) => {
+        if (!await confirmSheet({ title: `Delete ${ids.length} comments?`, sub: 'They disappear for everyone, permanently.', confirmLabel: 'Delete', danger: true })) return;
+        const { error: e } = await supabase.from('comments').delete().in('id', ids);
+        if (e) return fail(e);
+        toast(`${ids.length} deleted`, 'success');
+        paintComments();
+      },
+    }],
+  });
+
   qsa('[data-del]', host).forEach((btn) => btn.addEventListener('click', async () => {
-    const id = btn.closest('.adm-row').dataset.id;
+    const row = btn.closest('.adm-row');
+    const id = row.dataset.id;
     if (!await confirmSheet({ title: 'Delete this comment?', sub: 'It disappears for everyone, permanently.', confirmLabel: 'Delete', danger: true })) return;
-    const { error: delErr } = await supabase.from('comments').delete().eq('id', id);
-    if (delErr) return fail(delErr);
-    toast('Deleted', 'success');
-    paintComments();
+    row.style.display = 'none';
+    undoable({
+      message: 'Comment deleted',
+      onCommit: async () => {
+        const { error: delErr } = await supabase.from('comments').delete().eq('id', id);
+        if (delErr) throw delErr;
+        paintComments();
+      },
+      onUndo: () => { row.style.display = ''; },
+    });
   }));
 }
 
 // ============================================================
 // GAMES
 // ============================================================
+const gamesView = { query: '', filter: 'all', sort: 'new', page: 0 };
+const GAMES_PAGE = 50;
+
 SCREENS.games = function games() {
   paint(`
     ${header('Games', { back: true })}
     <main class="view-body">
       <label class="field adm-search"><span>Search the catalog</span>
-        <input type="search" id="g-q" placeholder="Title…" autocomplete="off">
+        <input type="search" id="g-q" placeholder="Title…" autocomplete="off" value="${esc(gamesView.query)}">
       </label>
-      <div id="list">${spinner()}</div>
+      <div class="adm-chips" id="g-filters">
+        <button class="adm-chip" data-filter="all">All</button>
+        <button class="adm-chip" data-filter="visible">Visible</button>
+        <button class="adm-chip" data-filter="hidden">Hidden</button>
+        <button class="adm-chip" data-filter="nocover">No cover</button>
+      </div>
+      <div class="adm-chips" id="g-sorts">
+        <button class="adm-chip" data-sort="new">Newest</button>
+        <button class="adm-chip" data-sort="title">A–Z</button>
+        <button class="adm-chip" data-sort="year">By year</button>
+      </div>
+      <div class="adm-toolbar">
+        <button class="btn btn--pill" id="g-export">Export CSV</button>
+      </div>
+      <p class="adm-count-line" id="g-count"></p>
+      <div id="list">${skeletonRows(6)}</div>
+      <div id="g-more"></div>
       <p class="adm-hint">Hiding keeps the row (and everyone's logs of it) but pulls the game out of search and trending. Deleting removes it for good.</p>
     </main>`);
+
+  const syncChips = () => {
+    qsa('#g-filters [data-filter]').forEach((b) => b.classList.toggle('adm-chip--on', b.dataset.filter === gamesView.filter));
+    qsa('#g-sorts [data-sort]').forEach((b) => b.classList.toggle('adm-chip--on', b.dataset.sort === gamesView.sort));
+  };
+  syncChips();
 
   let timer;
   qs('#g-q').addEventListener('input', (e) => {
     clearTimeout(timer);
-    timer = setTimeout(() => paintGames(e.target.value.trim()), 260);
+    timer = setTimeout(() => { gamesView.query = e.target.value.trim(); gamesView.page = 0; paintGames(); }, 260);
   });
-  paintGames('');
+  qsa('#g-filters [data-filter]').forEach((b) => b.addEventListener('click', () => {
+    gamesView.filter = b.dataset.filter; gamesView.page = 0; syncChips(); paintGames();
+  }));
+  qsa('#g-sorts [data-sort]').forEach((b) => b.addEventListener('click', () => {
+    gamesView.sort = b.dataset.sort; gamesView.page = 0; syncChips(); paintGames();
+  }));
+  qs('#g-export').addEventListener('click', exportGames);
+
+  paintGames();
 };
 
-async function paintGames(query) {
+function gamesQuery({ head = false } = {}) {
+  let q = supabase.from('games').select(
+    head ? 'id' : 'id, title, cover_url, release_year, is_hidden, created_at, igdb_id, rawg_id',
+    head ? { count: 'exact', head: true } : undefined,
+  );
+  if (gamesView.query) q = q.ilike('title', `%${gamesView.query}%`);
+  if (gamesView.filter === 'visible') q = q.or('is_hidden.is.null,is_hidden.eq.false');
+  if (gamesView.filter === 'hidden') q = q.eq('is_hidden', true);
+  if (gamesView.filter === 'nocover') q = q.is('cover_url', null);
+  if (head) return q;
+  if (gamesView.sort === 'title') q = q.order('title', { ascending: true });
+  else if (gamesView.sort === 'year') q = q.order('release_year', { ascending: false, nullsFirst: false });
+  else q = q.order('created_at', { ascending: false });
+  return q;
+}
+
+async function exportGames() {
+  const { data, error } = await gamesQuery().limit(2000);
+  if (error) return fail(error);
+  downloadCsv(`playthruu-games-${new Date().toISOString().slice(0, 10)}.csv`,
+    (data || []).map((g) => ({
+      id: g.id, title: g.title, year: g.release_year ?? '',
+      hidden: g.is_hidden ? 'yes' : 'no', igdb_id: g.igdb_id ?? '',
+      rawg_id: g.rawg_id ?? '', cover_url: g.cover_url ?? '', added: g.created_at,
+    })));
+}
+
+// `append` keeps what's on screen and adds the next page under it, which
+// is what the Load more button wants; a fresh filter repaints instead.
+async function paintGames({ append = false } = {}) {
   const host = qs('#list');
   if (!host) return;
-  let q = supabase.from('games')
-    .select('id, title, cover_url, release_year, is_hidden')
-    .order('created_at', { ascending: false }).limit(50);
-  if (query) q = q.ilike('title', `%${query}%`);
+  if (!append) host.innerHTML = skeletonRows(6);
 
-  const { data, error } = await q;
+  const from = gamesView.page * GAMES_PAGE;
+  const [{ data, error }, countRes] = await Promise.all([
+    gamesQuery().range(from, from + GAMES_PAGE - 1),
+    append ? Promise.resolve(null) : gamesQuery({ head: true }),
+  ]);
   if (error) { host.innerHTML = emptyState(error.message); return; }
-  if (!data?.length) { host.innerHTML = emptyState('No games matched.', { icon: iconGamepad() }); return; }
 
-  host.innerHTML = data.map((g) => `
-    <div class="list-card adm-row" data-id="${g.id}">
+  const countEl = qs('#g-count');
+  if (countEl && countRes) countEl.textContent = `${fmtNum(countRes.count ?? 0)} games`;
+
+  if (!append && !data?.length) {
+    host.innerHTML = emptyState('No games matched.', { icon: iconGamepad() });
+    qs('#g-more').innerHTML = '';
+    return;
+  }
+
+  const rowsHtml = data.map((g) => `
+    <div class="list-card adm-row" data-id="${g.id}" data-bulk-row>
+      ${checkbox()}
       ${g.cover_url ? `<img class="adm-thumb" src="${esc(g.cover_url)}" alt="" loading="lazy">` : '<span class="adm-thumb"></span>'}
       <span class="adm-row__body">
         <span class="adm-row__title">${esc(g.title)}${g.is_hidden ? ' · HIDDEN' : ''}</span>
-        <span class="adm-row__meta">${g.release_year ? esc(g.release_year) : ''}</span>
+        <span class="adm-row__meta"${timeTitle(g.created_at)}>${g.release_year ? esc(g.release_year) : 'no year'}${g.cover_url ? '' : ' · no cover'}</span>
       </span>
       <span class="adm-row__actions">
         <button class="icon-btn icon-btn--small" data-edit aria-label="Edit">${iconNote()}</button>
@@ -1210,46 +1805,155 @@ async function paintGames(query) {
       </span>
     </div>`).join('');
 
-  qsa('[data-edit]', host).forEach((btn) => btn.addEventListener('click', () => {
-    openGameEditor(data.find((g) => g.id === btn.closest('.adm-row').dataset.id), query);
+  if (append) host.insertAdjacentHTML('beforeend', rowsHtml);
+  else host.innerHTML = rowsHtml;
+
+  qs('#g-more').innerHTML = data.length === GAMES_PAGE
+    ? `<button class="btn btn--block" id="g-load">Load more</button>` : '';
+  qs('#g-load')?.addEventListener('click', () => { gamesView.page += 1; paintGames({ append: true }); });
+
+  wireGameRows(host);
+}
+
+// Re-wired after every paint (including an append), so newly added rows
+// get their handlers too.
+function wireGameRows(host) {
+  const all = qsa('.adm-row', host);
+  const byId = (id) => all.find((r) => r.dataset.id === id);
+
+  bulkSelect(host, {
+    idOf: (row) => row.dataset.id,
+    label: 'games',
+    actions: [
+      {
+        label: 'Hide',
+        run: async (ids) => {
+          const { error } = await supabase.from('games').update({ is_hidden: true }).in('id', ids);
+          if (error) return fail(error);
+          toast(`${ids.length} hidden`, 'success');
+          paintGames();
+        },
+      },
+      {
+        label: 'Unhide',
+        run: async (ids) => {
+          const { error } = await supabase.from('games').update({ is_hidden: false }).in('id', ids);
+          if (error) return fail(error);
+          toast(`${ids.length} visible again`, 'success');
+          paintGames();
+        },
+      },
+      {
+        label: 'Delete', danger: true,
+        run: async (ids) => {
+          if (!await typeToConfirm({
+            title: `Delete ${ids.length} games?`,
+            sub: 'Every log, review and list entry pointing at them goes too. There is no undo for this one.',
+            word: 'delete', confirmLabel: `Delete ${ids.length}`,
+          })) return;
+          const { error } = await supabase.from('games').delete().in('id', ids);
+          if (error) return fail(error);
+          toast(`${ids.length} deleted`, 'success');
+          paintGames();
+        },
+      },
+    ],
+  });
+
+  qsa('[data-edit]', host).forEach((btn) => btn.addEventListener('click', async () => {
+    const id = btn.closest('.adm-row').dataset.id;
+    const { data: game } = await supabase.from('games').select('*').eq('id', id).maybeSingle();
+    if (game) openGameEditor(game);
   }));
 
   qsa('[data-hide]', host).forEach((btn) => btn.addEventListener('click', async () => {
-    const id = btn.closest('.adm-row').dataset.id;
-    const current = data.find((g) => g.id === id);
-    const { error: upErr } = await supabase.from('games').update({ is_hidden: !current.is_hidden }).eq('id', id);
-    if (upErr) return fail(upErr);
-    toast(current.is_hidden ? 'Visible again' : 'Hidden', 'success');
-    paintGames(query);
+    const row = btn.closest('.adm-row');
+    const id = row.dataset.id;
+    const nowHidden = !row.querySelector('.adm-row__title').textContent.includes('· HIDDEN');
+    const { error } = await supabase.from('games').update({ is_hidden: nowHidden }).eq('id', id);
+    if (error) return fail(error);
+    toast(nowHidden ? 'Hidden' : 'Visible again', 'success');
+    paintGames();
   }));
 
   qsa('[data-del]', host).forEach((btn) => btn.addEventListener('click', async () => {
-    const id = btn.closest('.adm-row').dataset.id;
-    const game = data.find((g) => g.id === id);
+    const row = btn.closest('.adm-row');
+    const id = row.dataset.id;
+    const title = row.querySelector('.adm-row__title').textContent.replace(' · HIDDEN', '');
     if (!await confirmSheet({
-      title: `Delete ${game.title}?`,
+      title: `Delete ${title}?`,
       sub: "Every log, review and list entry pointing at this game goes with it. Hiding is usually what you want instead.",
       confirmLabel: 'Delete for good', danger: true,
     })) return;
-    const { error: delErr } = await supabase.from('games').delete().eq('id', id);
-    if (delErr) return fail(delErr);
-    toast('Deleted', 'success');
-    paintGames(query);
+    // Vanishes immediately and only actually deletes once the undo
+    // window closes, so a misfire costs nothing.
+    row.style.display = 'none';
+    undoable({
+      message: `Deleted ${title}`,
+      onCommit: async () => {
+        const { error } = await supabase.from('games').delete().eq('id', id);
+        if (error) throw error;
+        paintGames();
+      },
+      onUndo: () => { const r = byId(id); if (r) r.style.display = ''; },
+    });
   }));
 }
 
 // IGDB's metadata is wrong often enough to be worth a fix-up screen —
 // a mis-scraped year or a missing cover otherwise sticks forever.
-function openGameEditor(game, query) {
+function openGameEditor(game) {
   openSheet('Edit game', `
     <p class="modal__hint">Corrects what the catalog stores. Everyone's logs of this game keep pointing at it.</p>
+    <div class="adm-editor-preview">
+      <img class="adm-thumb adm-thumb--big" id="g-preview" src="${esc(game.cover_url || '')}" alt=""
+           onerror="this.classList.add('is-broken')">
+      <span class="adm-editor-preview__meta">
+        <span class="adm-row__sub">IGDB ${game.igdb_id ?? '—'} · RAWG ${game.rawg_id ?? '—'}</span>
+        <span class="adm-row__sub" id="g-dim">—</span>
+      </span>
+    </div>
     <label class="field"><span>Title</span><input id="g-title" value="${esc(game.title || '')}"></label>
     <label class="field"><span>Cover URL</span><input id="g-cover" value="${esc(game.cover_url || '')}" placeholder="https://…"></label>
+    <div class="adm-btn-row" style="margin-top:0">
+      <button class="btn btn--pill" id="g-hires">Upgrade to 1080p</button>
+      <button class="btn btn--pill" id="g-copy-id">Copy id</button>
+    </div>
     <label class="field"><span>Release year</span><input id="g-year" type="number" inputmode="numeric" value="${esc(game.release_year || '')}" placeholder="2024"></label>
     <div class="adm-btn-row">
       <button class="btn" data-act="cancel">Cancel</button>
       <button class="btn btn--accent" id="g-save">Save</button>
     </div>`, (sheet, close) => {
+    const cover = qs('#g-cover', sheet);
+    const preview = qs('#g-preview', sheet);
+    const dim = qs('#g-dim', sheet);
+
+    // Reports the real pixel size of whatever URL is in the box, which is
+    // the fastest way to spot a cover that's technically present but far
+    // too small to sit on a game page.
+    const measure = () => {
+      preview.classList.remove('is-broken');
+      preview.src = cover.value.trim();
+      dim.textContent = 'measuring…';
+      const probe = new Image();
+      probe.onload = () => { dim.textContent = `${probe.naturalWidth}×${probe.naturalHeight}px`; };
+      probe.onerror = () => { dim.textContent = 'could not load'; };
+      probe.src = cover.value.trim();
+    };
+    if (cover.value.trim()) measure();
+    cover.addEventListener('change', measure);
+
+    // IGDB serves the same image at several sizes off one URL; this is
+    // the same swap the main app does when it stores a cover.
+    qs('#g-hires', sheet).addEventListener('click', () => {
+      const url = cover.value.trim();
+      if (!url.includes('images.igdb.com')) { toast('Only IGDB covers have size variants', 'error'); return; }
+      cover.value = url.replace(/\/t_[a-z0-9_]+\//i, '/t_1080p/');
+      measure();
+      toast('Switched to 1080p', 'success');
+    });
+    qs('#g-copy-id', sheet).addEventListener('click', () => copy(game.id, 'Game id copied'));
+
     qs('[data-act="cancel"]', sheet).addEventListener('click', close);
     qs('#g-save', sheet).addEventListener('click', async () => {
       const title = qs('#g-title', sheet).value.trim();
@@ -1259,13 +1963,13 @@ function openGameEditor(game, query) {
       btn.disabled = true;
       const { error } = await supabase.from('games').update({
         title,
-        cover_url: qs('#g-cover', sheet).value.trim() || null,
+        cover_url: cover.value.trim() || null,
         release_year: yearRaw ? Number(yearRaw) : null,
       }).eq('id', game.id);
       if (error) { btn.disabled = false; return fail(error); }
       close();
       toast('Saved', 'success');
-      paintGames(query);
+      paintGames();
     });
   });
 }
@@ -1273,23 +1977,38 @@ function openGameEditor(game, query) {
 // ============================================================
 // LISTS
 // ============================================================
+let listsQuery = '';
+
 SCREENS.lists = function lists() {
   paint(`
     ${header('Lists', { back: true })}
     <main class="view-body">
       <p class="adm-hint" style="margin-top:0">Every user-made collection. Deleting one removes it for its owner.</p>
-      <div id="list" style="margin-top:var(--space-3)">${spinner()}</div>
+      <label class="field adm-search" style="margin-top:var(--space-3)"><span>Search</span>
+        <input type="search" id="l-q" placeholder="List name…" autocomplete="off" value="${esc(listsQuery)}">
+      </label>
+      <p class="adm-count-line" id="l-count"></p>
+      <div id="list">${skeletonRows(6, { thumb: false })}</div>
     </main>`);
+  let timer;
+  qs('#l-q').addEventListener('input', (e) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => { listsQuery = e.target.value.trim(); paintLists(); }, 260);
+  });
   paintLists();
 };
 
 async function paintLists() {
   const host = qs('#list');
   if (!host) return;
-  const { data, error } = await supabase
+  let sel = supabase
     .from('lists').select('id, name, is_public, created_at, user_id')
-    .order('created_at', { ascending: false }).limit(80);
+    .order('created_at', { ascending: false }).limit(120);
+  if (listsQuery) sel = sel.ilike('name', `%${listsQuery}%`);
+  const { data, error } = await sel;
   if (error) { host.innerHTML = emptyState(error.message); return; }
+  const countEl = qs('#l-count');
+  if (countEl) countEl.textContent = `${fmtNum((data || []).length)} lists`;
   if (!data?.length) { host.innerHTML = emptyState('No lists yet.', { icon: iconList() }); return; }
 
   // Owner names and item counts in two follow-up queries keyed on the
@@ -1336,9 +2055,10 @@ SCREENS.waitlist = function waitlist() {
     <main class="view-body">
       <div class="stat-card-row" id="wl-stats"></div>
       <div class="adm-btn-row" style="margin-top:0">
-        <button class="btn btn--block" id="wl-copy">Copy all emails</button>
+        <button class="btn" id="wl-copy">Copy all emails</button>
+        <button class="btn" id="wl-export">Export CSV</button>
       </div>
-      <div id="list" style="margin-top:var(--space-4)">${spinner()}</div>
+      <div id="list" style="margin-top:var(--space-4)">${skeletonRows(6, { thumb: false })}</div>
     </main>`);
   paintWaitlist();
 };
@@ -1366,6 +2086,10 @@ async function paintWaitlist() {
   qs('#wl-copy')?.addEventListener('click', () => {
     if (!emails.length) { toast('No emails yet', 'error'); return; }
     copy(emails.join(', '), `${emails.length} emails copied`);
+  });
+  qs('#wl-export')?.addEventListener('click', () => {
+    downloadCsv(`playthruu-waitlist-${new Date().toISOString().slice(0, 10)}.csv`,
+      (data || []).map((w) => ({ email: w.email, source: w.source ?? 'direct', signed_up: w.created_at })));
   });
 
   if (!data?.length) { host.innerHTML = emptyState('Nobody on the waitlist yet.', { icon: iconMail() }); return; }
@@ -1432,7 +2156,13 @@ async function boot() {
     return;
   }
 
+  // Only worth mounting once an admin session is actually up — the login
+  // and setup screens don't write anything an outage could lose.
+  if (!bannerMounted) { wireConnectionBanner(); bannerMounted = true; }
+
   render(location.hash.replace(/^#\/?/, '') || 'home');
 }
+
+let bannerMounted = false;
 
 boot();

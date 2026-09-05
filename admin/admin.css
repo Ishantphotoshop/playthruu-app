@@ -228,12 +228,110 @@ a.btn { text-decoration: none; }
 .adm-panel__meta { font-size: var(--text-meta); color: var(--ink-faint); font-family: var(--font-mono); }
 .adm-panel__meta b { color: var(--success); font-weight: 500; }
 
-/* Growth curve — area + line, painted with the accent. preserveAspect
-   none lets it stretch to whatever width the panel is. */
-.adm-spark { width: 100%; height: 66px; display: block; overflow: visible; }
-.adm-spark__area { fill: var(--accent-dim); }
-.adm-spark__line { fill: none; stroke: var(--accent-bright); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
-.adm-spark__dot { fill: var(--accent-bright); }
+/* ============================================================
+   THE SCRUBBABLE CHART
+   ============================================================
+   Modelled on the Stocks app: the headline value is not a caption on the
+   chart, it IS the readout — it shows the latest point at rest and
+   whatever you're touching while you scrub, so the number and the
+   graphic are never telling you two different things. */
+.sc { display: block; }
+.sc__head {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: var(--space-3); margin-bottom: var(--space-3); min-height: 52px;
+}
+.sc__headline { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.sc__title {
+  font-family: var(--font-mono); font-size: var(--text-label); font-weight: 500;
+  letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-dim);
+}
+/* Tabular figures matter more here than anywhere: the number changes on
+   every pixel of a scrub, and proportional digits make it jitter. */
+.sc__value {
+  font-size: 30px; font-weight: 700; letter-spacing: -0.03em; line-height: 1.1;
+  font-variant-numeric: tabular-nums; color: var(--ink);
+}
+.sc__delta {
+  font-family: var(--font-mono); font-size: var(--text-meta);
+  font-variant-numeric: tabular-nums; color: var(--ink-faint);
+}
+.sc__delta--up { color: var(--success); }
+.sc__delta--down { color: var(--danger); }
+.sc__when {
+  font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-faint);
+  text-align: right; padding-top: 3px; flex-shrink: 0;
+}
+
+.sc__plot { position: relative; }
+.sc__svg { width: 100%; height: 132px; display: block; overflow: visible; }
+.sc__grad-top { stop-color: var(--accent); stop-opacity: 0.26; }
+.sc__grad-bottom { stop-color: var(--accent); stop-opacity: 0; }
+.sc__line {
+  fill: none; stroke: var(--accent-bright); stroke-width: 2;
+  stroke-linejoin: round; stroke-linecap: round;
+  /* The path is scaled non-uniformly by preserveAspectRatio="none", so
+     without this the stroke would be thicker vertically than across. */
+  vector-effect: non-scaling-stroke;
+}
+/* Draws itself on when the range changes. The path carries
+   pathLength="1" (set in the markup), which normalises the dash units so
+   one keyframe works whatever the real path length is. */
+.sc__line--draw { animation: sc-draw 0.5s var(--ease) both; }
+@keyframes sc-draw {
+  from { stroke-dasharray: 1 1; stroke-dashoffset: 1; }
+  to { stroke-dasharray: 1 0; stroke-dashoffset: 0; }
+}
+.sc__cross {
+  stroke: var(--ink-faint); stroke-width: 1; vector-effect: non-scaling-stroke;
+  opacity: 0; transition: opacity 0.12s ease; stroke-dasharray: 3 3;
+}
+.sc__dot {
+  fill: var(--accent-bright); stroke: var(--bg); stroke-width: 2;
+  opacity: 0; transition: opacity 0.12s ease;
+  vector-effect: non-scaling-stroke;
+}
+/* The transparent layer that actually receives the gesture. It sits over
+   the whole plot so there's no need to hit the 2px line itself, and
+   touch-action:none stops the browser treating a horizontal drag as a
+   scroll before the handler sees it. */
+.sc__scrim {
+  position: absolute; inset: 0; touch-action: none; cursor: crosshair;
+  border-radius: var(--radius-s);
+}
+.sc__scrim:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sc--scrubbing .sc__line { stroke-width: 2.4; }
+
+.sc__axis {
+  display: flex; justify-content: space-between; margin-top: 4px;
+  font-family: var(--font-mono); font-size: 10px; color: var(--ink-faint);
+}
+
+/* Range pills, iOS-style: the selected one is a filled capsule, the rest
+   are bare text. */
+.sc__ranges {
+  display: flex; gap: 2px; margin-top: var(--space-3);
+  background: var(--surface-high); padding: 3px; border-radius: var(--radius-pill);
+}
+.sc__range {
+  flex: 1; padding: 6px 0; border-radius: var(--radius-pill);
+  font-family: var(--font-mono); font-size: 11.5px; font-weight: 500;
+  color: var(--ink-dim); background: transparent; border: none;
+  transition: background 0.18s var(--ease), color 0.18s var(--ease);
+}
+.sc__range[aria-selected="true"] { background: var(--accent); color: #0a0b0f; }
+.sc__empty { font-size: var(--text-meta); color: var(--ink-faint); text-align: center; margin: var(--space-4) 0 0; }
+
+.adm-panel--chart { padding-bottom: var(--space-3); }
+
+/* Metric switcher above the chart. */
+.adm-metric-tabs { display: flex; gap: var(--space-2); margin-bottom: var(--space-3); }
+.adm-metric-tab {
+  padding: 5px 12px; border-radius: var(--radius-pill);
+  font-size: 12.5px; font-weight: 500;
+  background: transparent; border: 1px solid var(--line); color: var(--ink-dim);
+  transition: all 0.18s var(--ease);
+}
+.adm-metric-tab--on { background: color-mix(in srgb, var(--accent) 16%, transparent); border-color: var(--accent); color: var(--accent-bright); }
 
 /* Day-by-day bars for recent activity. */
 .adm-bars { display: flex; align-items: flex-end; gap: 3px; height: 62px; }
@@ -265,3 +363,246 @@ a.btn { text-decoration: none; }
 .adm-top__val { font-family: var(--font-mono); font-size: 13px; color: var(--accent-bright); flex-shrink: 0; }
 .adm-top__bar { flex: 1; height: 6px; border-radius: var(--radius-pill); background: var(--surface-high); overflow: hidden; }
 .adm-top__bar-fill { height: 100%; background: color-mix(in srgb, var(--accent) 55%, transparent); border-radius: var(--radius-pill); }
+
+/* ============================================================
+   QUICK BAR — palette entry + the two controls worth one tap
+   ============================================================ */
+.adm-quickbar { display: flex; gap: var(--space-2); align-items: center; margin-bottom: var(--space-4); }
+.adm-quick {
+  flex: 1; display: flex; align-items: center; gap: 9px;
+  padding: 9px var(--space-3); border-radius: var(--radius-m);
+  background: var(--surface); border: 1px solid var(--line);
+  color: var(--ink-faint); font-size: 13px; text-align: left;
+  transition: border-color 0.18s var(--ease), background 0.18s var(--ease);
+}
+.adm-quick:hover { border-color: var(--line-strong); background: var(--surface-raised); }
+.adm-quick__key {
+  font-family: var(--font-mono); font-size: 10px; color: var(--ink-dim);
+  background: var(--surface-high); border-radius: 5px; padding: 3px 6px; flex-shrink: 0;
+}
+/* The refresh glyph spins only while a refresh is actually in flight. */
+.icon-btn.is-spinning svg { animation: adm-spin 0.7s linear infinite; }
+@keyframes adm-spin { to { transform: rotate(360deg); } }
+
+/* ============================================================
+   STAT CARDS — trend tags and tap-to-chart
+   ============================================================ */
+.stat-card--tappable { cursor: pointer; transition: transform 0.12s ease, border-color 0.18s ease; }
+.stat-card--tappable:active { transform: scale(0.97); }
+.stat-card--tappable:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.stat-card b { font-variant-numeric: tabular-nums; }
+.stat-card__trend {
+  font-style: normal; font-family: var(--font-mono); font-size: 9.5px;
+  margin-left: 5px; letter-spacing: -0.02em;
+}
+.stat-card__trend--up { color: var(--success); }
+.stat-card__trend--down { color: var(--danger); }
+
+/* ============================================================
+   BAR READOUT — the value for the column under the pointer
+   ============================================================ */
+.adm-bars__readout {
+  height: 16px; margin-bottom: 2px;
+  font-family: var(--font-mono); font-size: 11px; color: var(--accent-bright);
+  opacity: 0; transition: opacity 0.15s var(--ease);
+}
+.adm-bars__readout--on { opacity: 1; }
+.adm-bars__col { cursor: pointer; }
+.adm-bars__col--on .adm-bars__bar { background: var(--accent-bright); }
+
+/* ============================================================
+   SKELETONS
+   ============================================================ */
+.adm-skel { display: flex; flex-direction: column; gap: var(--space-2); }
+.adm-skel__row {
+  display: flex; align-items: center; gap: 11px; padding: var(--space-3);
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-m);
+}
+.adm-skel__thumb { width: 42px; aspect-ratio: var(--ratio-card); border-radius: var(--radius-s); flex-shrink: 0; }
+.adm-skel__lines { flex: 1; display: flex; flex-direction: column; gap: 7px; }
+.adm-skel__line { height: 10px; border-radius: 4px; }
+.adm-skel__line--short { width: 45%; }
+.adm-skel__block { height: 210px; border-radius: var(--radius-m); }
+/* One shimmer definition, shared by every placeholder shape. */
+.adm-skel__thumb, .adm-skel__line, .adm-skel__block {
+  background: linear-gradient(90deg, var(--surface-high) 25%, var(--surface-raised) 37%, var(--surface-high) 63%);
+  background-size: 400% 100%;
+  animation: adm-shimmer 1.4s ease-in-out infinite;
+}
+@keyframes adm-shimmer { from { background-position: 100% 0; } to { background-position: 0 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .adm-skel__thumb, .adm-skel__line, .adm-skel__block { animation: none; }
+}
+
+/* ============================================================
+   UNDO BAR
+   ============================================================ */
+.adm-undo {
+  position: fixed; left: 50%; bottom: calc(18px + var(--safe-bottom));
+  transform: translate(-50%, 140%); z-index: 300;
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: 11px var(--space-3) 11px var(--space-4);
+  background: var(--surface-high); border: 1px solid var(--line-strong);
+  border-radius: var(--radius-pill); box-shadow: var(--shadow-modal);
+  max-width: min(420px, calc(100vw - 32px));
+  transition: transform 0.28s cubic-bezier(0.22, 0.61, 0.36, 1), opacity 0.28s ease;
+  opacity: 0;
+}
+.adm-undo--in { transform: translate(-50%, 0); opacity: 1; }
+.adm-undo__text {
+  font-size: 13.5px; color: var(--ink); min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.adm-undo__btn {
+  flex-shrink: 0; background: transparent; border: none;
+  color: var(--accent-bright); font-weight: 700; font-size: 13.5px;
+  padding: 2px 4px; border-radius: 6px;
+}
+/* A ring that winds down for exactly as long as undo stays available. */
+.adm-undo__timer {
+  width: 15px; height: 15px; border-radius: 50%; flex-shrink: 0;
+  border: 2px solid var(--line-strong); border-top-color: var(--accent);
+  animation: adm-spin 6s linear;
+}
+
+/* ============================================================
+   COMMAND PALETTE
+   ============================================================ */
+.adm-palette {
+  position: fixed; inset: 0; z-index: 400;
+  background: rgba(4, 6, 12, 0.6); backdrop-filter: blur(6px);
+  display: flex; align-items: flex-start; justify-content: center;
+  padding: max(12vh, 60px) var(--space-4) var(--space-4);
+  animation: fade-in var(--dur-fast) var(--ease);
+}
+.adm-palette__box {
+  width: min(520px, 100%); max-height: 70vh; display: flex; flex-direction: column;
+  background: var(--surface-raised); border: 1px solid var(--line-strong);
+  border-radius: 18px; box-shadow: var(--shadow-modal); overflow: hidden;
+  animation: adm-pop 0.18s var(--ease);
+}
+@keyframes adm-pop {
+  from { transform: translateY(-8px) scale(0.98); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+.adm-palette__input {
+  width: 100%; padding: 15px var(--space-4); font-size: 15.5px;
+  background: transparent; border: none; border-bottom: 1px solid var(--line);
+  color: var(--ink); outline: none;
+}
+.adm-palette__input::placeholder { color: var(--ink-faint); }
+.adm-palette__list { overflow-y: auto; padding: 6px; flex: 1; }
+.adm-palette__item {
+  width: 100%; display: flex; align-items: center; gap: 11px; text-align: left;
+  padding: 9px 10px; border-radius: var(--radius-s); background: transparent; border: none;
+}
+.adm-palette__item--active { background: color-mix(in srgb, var(--accent) 13%, transparent); }
+.adm-palette__icon {
+  width: 28px; height: 28px; display: grid; place-items: center;
+  border-radius: 7px; background: var(--surface-high); color: var(--accent-bright); flex-shrink: 0;
+}
+.adm-palette__icon svg { width: 15px; height: 15px; }
+.adm-palette__label { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.adm-palette__title { font-size: 14px; font-weight: 500; color: var(--ink); }
+.adm-palette__hint { font-size: var(--text-label); color: var(--ink-faint); }
+.adm-palette__badge {
+  font-family: var(--font-mono); font-size: 10.5px; background: var(--danger);
+  color: #fff; border-radius: var(--radius-pill); padding: 2px 7px; flex-shrink: 0;
+}
+.adm-palette__none { text-align: center; color: var(--ink-faint); font-size: 13px; padding: var(--space-5) 0; margin: 0; }
+.adm-palette__foot {
+  display: flex; gap: var(--space-4); padding: 9px var(--space-4);
+  border-top: 1px solid var(--line); font-size: 10.5px; color: var(--ink-faint);
+}
+.adm-palette__foot kbd {
+  font-family: var(--font-mono); background: var(--surface-high);
+  border-radius: 4px; padding: 1px 5px; margin-right: 3px; font-size: 10px;
+}
+
+/* ============================================================
+   BULK SELECTION
+   ============================================================ */
+.adm-bulk {
+  position: sticky; top: 0; z-index: 5;
+  display: none; align-items: center; justify-content: space-between; gap: var(--space-3);
+  padding: 9px var(--space-3); margin-bottom: var(--space-2);
+  background: var(--surface-high); border: 1px solid var(--accent);
+  border-radius: var(--radius-m);
+}
+.adm-bulk--in { display: flex; animation: adm-pop 0.16s var(--ease); }
+.adm-bulk__count { font-family: var(--font-mono); font-size: 12px; color: var(--accent-bright); flex-shrink: 0; }
+.adm-bulk__actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.adm-check {
+  width: 22px; height: 22px; border-radius: 6px; flex-shrink: 0;
+  border: 1.5px solid var(--line-strong); background: transparent;
+  display: grid; place-items: center; transition: all 0.15s var(--ease);
+}
+.adm-check::after {
+  content: ""; width: 10px; height: 6px; margin-top: -2px;
+  border-left: 2px solid #0a0b0f; border-bottom: 2px solid #0a0b0f;
+  transform: rotate(-45deg) scale(0); transform-origin: center;
+  transition: transform 0.15s var(--ease);
+}
+.adm-check[aria-checked="true"] { background: var(--accent); border-color: var(--accent); }
+.adm-check[aria-checked="true"]::after { transform: rotate(-45deg) scale(1); }
+.adm-row--picked { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 7%, var(--surface)); }
+
+/* ============================================================
+   FILTER CHIPS
+   ============================================================ */
+.adm-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: var(--space-3); }
+.adm-chip {
+  padding: 5px 11px; border-radius: var(--radius-pill);
+  font-size: 12px; font-weight: 500;
+  background: transparent; border: 1px solid var(--line); color: var(--ink-dim);
+  transition: all 0.16s var(--ease);
+}
+.adm-chip--on { background: color-mix(in srgb, var(--accent) 16%, transparent); border-color: var(--accent); color: var(--accent-bright); }
+.adm-chip__n { font-family: var(--font-mono); font-size: 10px; opacity: 0.75; margin-left: 4px; }
+
+/* ============================================================
+   OFFLINE BANNER
+   ============================================================ */
+.adm-offline {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 500;
+  padding: 7px var(--space-4); text-align: center;
+  background: var(--danger); color: #fff; font-size: 12px; font-weight: 500;
+  transform: translateY(-100%); transition: transform 0.24s var(--ease);
+}
+.adm-offline--in { transform: none; }
+
+/* ============================================================
+   MISC
+   ============================================================ */
+.adm-confirm-word { font-family: var(--font-mono); color: var(--danger); }
+.adm-row__sub { font-size: var(--text-label); color: var(--ink-faint); }
+.adm-toolbar { display: flex; gap: var(--space-2); align-items: center; margin-bottom: var(--space-3); }
+.adm-count-line {
+  font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-faint);
+  margin: 0 2px var(--space-2);
+}
+
+/* Cover preview inside the game editor, with its measured pixel size —
+   a cover can be present and still be far too small for a game page. */
+.adm-editor-preview {
+  display: flex; gap: var(--space-3); align-items: center;
+  padding: var(--space-3); margin-bottom: var(--space-3);
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-m);
+}
+.adm-thumb--big { width: 58px; }
+.adm-thumb.is-broken { visibility: hidden; }
+.adm-editor-preview__meta { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+
+/* Reordering the Trending list by dragging rather than stepping a row up
+   one position at a time. */
+.adm-row--dragging { opacity: 0.45; }
+.adm-row--dragover { border-color: var(--accent); }
+.adm-drag {
+  cursor: grab; touch-action: none; color: var(--ink-faint);
+  display: grid; place-items: center; width: 26px; flex-shrink: 0;
+}
+.adm-drag:active { cursor: grabbing; }
+
+/* The gate screens sit inside the same fixed-height #app as everything
+   else, so a tall setup screen has to scroll on its own. */
+.adm-gate { overflow-y: auto; }
