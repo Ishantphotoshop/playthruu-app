@@ -1,0 +1,21 @@
+-- ============================================================
+-- GAMES TABLE — cache a high-quality SteamGridDB cover (grid) per game.
+-- Run once in the Supabase SQL Editor. Safe to run more than once.
+-- ============================================================
+--
+-- Companion to 2026-09-04_game_logo_cache.sql. The steamgriddb-proxy
+-- Edge Function now returns both a logo AND a grid (a high-resolution
+-- portrait cover) in the one SteamGridDB lookup it already does per
+-- game — grid_url is where the second of those two results is cached.
+-- `logo_fetched` (added in the migration above) already means "we've
+-- done the one combined SteamGridDB lookup for this game", so it
+-- covers this too — no second fetched-flag needed.
+--
+-- When a grid is found, api.getGameArt() also overwrites the game's
+-- own cover_url with it (see game-view.js) — SteamGridDB's covers are
+-- community-curated specifically for library display and are routinely
+-- higher resolution than IGDB's own "cover_big" art, so it's treated as
+-- an upgrade wherever this game's cover shows up anywhere else in the
+-- app (search, trending, lists, feed), not just on its own page.
+
+alter table public.games add column if not exists grid_url text;

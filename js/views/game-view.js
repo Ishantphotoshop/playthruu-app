@@ -141,30 +141,40 @@ export async function renderGameView(root, { id, igdbId }) {
     if (!game) throw new Error("Couldn't find that game.");
 
     // Kicked off right here — in parallel with the Promise.all below, not
-    // after it — so the logo has the maximum possible head start instead
-    // of only beginning once everything else has already finished and
+    // after it — so this has the maximum possible head start instead of
+    // only beginning once everything else has already finished and
     // painted. For a game that's already cached (the common case, once
-    // any single visitor has opened it once) this is just one small
-    // image preload with no network round-trip to look the URL up first,
-    // so it very often finishes before the page's OTHER data even does —
-    // letting the very first paint below show the real logo directly,
-    // with nothing to swap in later at all. `logoReady`/`resolvedLogoUrl`
+    // any single visitor has opened it once) this is just one or two
+    // small image preloads with no network round-trip to look the URLs
+    // up first, so it very often finishes before the page's OTHER data
+    // even does — letting the very first paint below show the real logo
+    // AND the upgraded cover directly, with nothing to swap in later at
+    // all. `logoReady`/`resolvedLogoUrl` and `gridReady`/`resolvedGridUrl`
     // are read synchronously right before that first paint to decide.
-    let resolvedLogoUrl = null;
-    let logoReady = false;
-    const logoPromise = (async () => {
-      if (!id) return null; // an uncatalogued game (igdbId mode) has nothing to cache against
-      let url = game.logo_fetched ? (game.logo_url || null) : null;
+    let resolvedLogoUrl = null, resolvedGridUrl = null;
+    let logoReady = false, gridReady = false;
+    // Preloads one image and resolves once it's actually decoded and
+    // ready to paint (or null if the URL is empty or fails to load) —
+    // shared by the logo and the grid/cover below, same reasoning either
+    // way: knowing a URL isn't the same as having pixels on screen, and
+    // swapping the DOM in before that just trades one blank gap for
+    // another.
+    async function preload(url) {
+      if (!url) return null;
+      try { const img = new Image(); img.src = url; await img.decode(); return url; }
+      catch { return null; }
+    }
+    const artPromise = (async () => {
+      if (!id) return { logo_url: null, grid_url: null }; // an uncatalogued game (igdbId mode) has nothing to cache against
+      let logo_url = game.logo_fetched ? (game.logo_url || null) : null;
+      let grid_url = game.logo_fetched ? (game.grid_url || null) : null;
       if (!game.logo_fetched) {
-        try { url = await api.getGameLogo(game); } catch { url = null; }
+        try { ({ logo_url, grid_url } = await api.getGameArt(game)); } catch { logo_url = null; grid_url = null; }
       }
-      if (url) {
-        try { const img = new Image(); img.src = url; await img.decode(); }
-        catch { url = null; } // failed to actually load — treat as no logo
-      }
-      resolvedLogoUrl = url;
+      [resolvedLogoUrl, resolvedGridUrl] = await Promise.all([preload(logo_url), preload(grid_url)]);
       logoReady = true;
-      return url;
+      gridReady = true;
+      return { logo_url: resolvedLogoUrl, grid_url: resolvedGridUrl };
     })();
 
     // getIgdbGameDetail already fetched everything enrichGameDetails
@@ -203,18 +213,31 @@ export async function renderGameView(root, { id, igdbId }) {
     loadMoreFromStudio();
     recordRecentlyViewed(game);
     loadCastDirector();
-    // logoPromise (kicked off way back when `game` first loaded, above)
+    // artPromise (kicked off way back when `game` first loaded, above)
     // may well have already resolved by now, in which case the header
-    // just painted with the real logo directly and this is a no-op — it
-    // only actually swaps anything in for the slower case (a game nobody
-    // has ever opened before, still needing the SteamGridDB lookup
-    // itself before any image download can even start).
-    logoPromise.then((url) => {
-      if (!url) return; // genuinely no logo for this game
-      const slot = qs('#game-logo-slot', body);
-      // If the first paint above already had logoReady=true, it already
-      // rendered the <img> directly — this is then just a harmless no-op.
-      if (slot && !qs('.gd-head__logo', slot)) slot.innerHTML = gameTitleHtml(game.title, url);
+    // just painted with the real logo and/or upgraded cover directly and
+    // this is a no-op — it only actually swaps anything in for the
+    // slower case (a game nobody has ever opened before, still needing
+    // the SteamGridDB lookup itself before any image download can even
+    // start).
+    artPromise.then(({ logo_url, grid_url }) => {
+      if (logo_url) {
+        const slot = qs('#game-logo-slot', body);
+        // If the first paint above already had logoReady=true, it
+        // already rendered the <img> directly — this is then a no-op.
+        if (slot && !qs('.gd-head__logo', slot)) slot.innerHTML = gameTitleHtml(game.title, logo_url);
+      }
+      if (grid_url) {
+        // Same idea: if the first paint already used the grid as `poster`
+        // (game.cover_url was already updated before paintGame ran),
+        // these point the same <img>s at the same URL already — a no-op.
+        // Both the sharp cover AND its blurred backdrop need updating, or
+        // a sharp new cover would sit over the OLD image's blur.
+        const coverImg = qs('#game-cover .poster-frame__img', body);
+        const blurImg = qs('#game-cover .poster-frame__blur', body);
+        if (coverImg && coverImg.src !== grid_url) coverImg.src = grid_url;
+        if (blurImg && blurImg.src !== grid_url) blurImg.src = grid_url;
+      }
     });
 
     // Runs after the page has already painted (castDirectorData starts
@@ -325,7 +348,10 @@ export async function renderGameView(root, { id, igdbId }) {
       const topReviews = [...reviewedLogs]
         .sort((a, b) => (likes[b.id]?.count || 0) - (likes[a.id]?.count || 0))
         .slice(0, 5);
-      const poster = game.cover_url;
+      // Prefer the SteamGridDB grid the moment it's ready — often already
+      // true by first paint for a game anyone's opened before (see
+      // artPromise above) — over the game's stored cover_url.
+      const poster = gridReady && resolvedGridUrl ? resolvedGridUrl : game.cover_url;
 
       // --- derived stats for the strip -----------------------------
       // Ten bars, one per half-star step, matching how ratings are

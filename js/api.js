@@ -1563,31 +1563,41 @@ export async function getGameCastAndDirector(game) {
   return result;
 }
 
-// A transparent-background title-logo PNG for the game page (shown in
-// place of the plain text title — see gd-head__logo in game-view.js),
-// looked up from SteamGridDB the first time this game's page is opened
-// and cached on the row after that (same shape as credits_fetched
-// above). `game` needs at least { id, title, logo_url, logo_fetched }.
-export async function getGameLogo(game) {
-  if (!game || !game.title) return null;
-  if (game.logo_fetched) return game.logo_url || null;
-  let url = null;
+// A transparent-background title-logo PNG (shown in place of the plain
+// text title — see gd-head__logo in game-view.js) AND a high-resolution
+// portrait cover, both from SteamGridDB, both off the one combined
+// lookup steamgriddb-proxy already does per game — looked up the first
+// time this game's page is opened and cached on the row after that
+// (same shape as credits_fetched above). `game` needs at least
+// { id, title, logo_url, grid_url, logo_fetched }. The grid, when found,
+// is treated as an upgrade to the game's own cover_url — SteamGridDB's
+// covers are community-curated specifically for library display and are
+// routinely higher-resolution than IGDB's own capped cover art — so
+// every OTHER place this game's cover shows up (search, trending,
+// lists, feed) benefits from it too, not just its own page.
+export async function getGameArt(game) {
+  if (!game || !game.title) return { logo_url: null, grid_url: null };
+  if (game.logo_fetched) return { logo_url: game.logo_url || null, grid_url: game.grid_url || null };
+  let logo_url = null, grid_url = null;
   try {
     const res = await fetchWithTimeout(STEAMGRIDDB_FUNCTION_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${SUPABASE_ANON_KEY}` },
       body: JSON.stringify({ title: game.title }),
     });
-    if (res.ok) { const data = await res.json(); url = data.logo_url || null; }
-  } catch { /* no logo this time — text title still works fine as a fallback */ }
+    if (res.ok) { const data = await res.json(); logo_url = data.logo_url || null; grid_url = data.grid_url || null; }
+  } catch { /* no art this time — existing text title / cover still work fine as a fallback */ }
   if (game.id) {
     // Fire-and-forget, same tradeoff as credits/enrichment caching above —
     // records the attempt (logo_fetched:true) even on a miss, so a game
-    // with no SteamGridDB logo isn't re-queried on every future visit.
-    supabase.from('games').update({ logo_url: url, logo_fetched: true }).eq('id', game.id)
-      .then(() => {}, () => {});
+    // with no SteamGridDB art isn't re-queried on every future visit.
+    // cover_url only gets overwritten when a grid was actually found —
+    // never wiped back to null on a miss.
+    const updates = { logo_url, grid_url, logo_fetched: true };
+    if (grid_url) updates.cover_url = grid_url;
+    supabase.from('games').update(updates).eq('id', game.id).then(() => {}, () => {});
   }
-  return url;
+  return { logo_url, grid_url };
 }
 
 async function fetchCastAndDirectorLive(title) {

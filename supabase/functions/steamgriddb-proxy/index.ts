@@ -1,12 +1,14 @@
 // STEAMGRIDDB PROXY — server-side stand-in for the SteamGridDB API.
 //
-// Why this exists: fetching a transparent-background title-logo PNG for
-// a game's page needs an API key that must never ship in client-side JS
-// (same reasoning as igdb-proxy's Twitch secret). This function holds
-// that key as a Supabase secret, searches SteamGridDB for the game by
-// name, and returns the single best "Logo" asset it finds (a
-// transparent PNG game-title graphic) — or null if SteamGridDB has
-// nothing for that title.
+// Why this exists: fetching game art (a transparent-background title
+// logo, and a high-resolution portrait cover) needs an API key that
+// must never ship in client-side JS (same reasoning as igdb-proxy's
+// Twitch secret). This function holds that key as a Supabase secret,
+// searches SteamGridDB for the game by name ONCE, then fetches both
+// asset types off that one match — a "Logo" (transparent PNG title
+// art) and the highest-resolution portrait "Grid" (a library-style
+// cover, often noticeably higher-res than IGDB's own cover art) — or
+// null for either/both if SteamGridDB has nothing for that title.
 //
 // One-time setup:
 //   1. Create a free account at https://www.steamgriddb.com, then
@@ -16,7 +18,7 @@
 //   3. supabase secrets set STEAMGRIDDB_API_KEY=xxxx
 //
 // The app calls this with: POST { title: "Hollow Knight" }
-// and gets back: { logo_url: "https://..." } or { logo_url: null }.
+// and gets back: { logo_url: "https://..."|null, grid_url: "https://..."|null }.
 
 const API_KEY = Deno.env.get("STEAMGRIDDB_API_KEY");
 const BASE = "https://www.steamgriddb.com/api/v2";
@@ -29,6 +31,23 @@ const CORS_HEADERS = {
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
+}
+
+type GridAsset = { url?: string; width?: number; height?: number; style?: string; type?: string };
+
+// The highest-resolution genuinely PORTRAIT cover in the results — the
+// grids endpoint also serves landscape 460x215-style banners (a
+// different Steam UI element entirely), so height>width is a real
+// correctness filter here, not just a preference. "Highest quality
+// possible" is interpreted literally: no dimensions filter is sent to
+// SteamGridDB at all, so whatever the largest community upload is (often
+// well beyond IGDB's own capped cover_big size) wins, static images only
+// (an animated grid is a poor fit for a still poster).
+function pickBestGrid(list: GridAsset[]): string | null {
+  const portraits = list.filter((g) => g.url && g.type !== "animated" && (g.height ?? 0) > (g.width ?? 0));
+  if (!portraits.length) return null;
+  portraits.sort((a, b) => (b.width! * b.height!) - (a.width! * a.height!));
+  return portraits[0].url ?? null;
 }
 
 Deno.serve(async (req: Request) => {
@@ -48,22 +67,28 @@ Deno.serve(async (req: Request) => {
   }
 
   const auth = { Authorization: `Bearer ${API_KEY}` };
+  const empty = { logo_url: null, grid_url: null };
 
   try {
-    // 1) Find SteamGridDB's own game id for this title.
+    // 1) Find SteamGridDB's own game id for this title — one lookup,
+    // shared by both asset fetches below.
     const searchRes = await fetch(`${BASE}/search/autocomplete/${encodeURIComponent(title)}`, { headers: auth });
-    if (!searchRes.ok) return json({ logo_url: null }); // no match, not an error — most obscure/indie titles just won't be in SGDB
+    if (!searchRes.ok) return json(empty); // no match, not an error — most obscure/indie titles just won't be in SGDB
     const searchData = await searchRes.json();
     const gameId = searchData?.data?.[0]?.id;
-    if (!gameId) return json({ logo_url: null });
+    if (!gameId) return json(empty);
 
-    // 2) Fetch its logos — transparent-background title art, as opposed
-    // to grids/heroes/icons which are full rectangular images.
-    const logoRes = await fetch(`${BASE}/logos/game/${gameId}?limit=1`, { headers: auth });
-    if (!logoRes.ok) return json({ logo_url: null });
-    const logoData = await logoRes.json();
-    const url = logoData?.data?.[0]?.url || null;
-    return json({ logo_url: url });
+    // 2) Logos and grids side by side — independent asset types, no
+    // reason to wait on one before starting the other.
+    const [logoRes, gridRes] = await Promise.all([
+      fetch(`${BASE}/logos/game/${gameId}?limit=1`, { headers: auth }),
+      fetch(`${BASE}/grids/game/${gameId}`, { headers: auth }),
+    ]);
+
+    const logo_url = logoRes.ok ? ((await logoRes.json())?.data?.[0]?.url || null) : null;
+    const grid_url = gridRes.ok ? pickBestGrid(((await gridRes.json())?.data || [])) : null;
+
+    return json({ logo_url, grid_url });
   } catch (err) {
     return json({ error: err instanceof Error ? err.message : "SteamGridDB proxy error" }, 502);
   }
