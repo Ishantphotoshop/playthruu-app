@@ -93,6 +93,11 @@
   /* The wordmark's font (see the <link> in index.html). */
   --font-brand: 'Unbounded', system-ui, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Consolas, monospace;
+  /* The editorial serif on the game page — the director credit, the
+     Ratings heading and its average, and the Log/Rate/Review bar. Its
+     job is to make those read as a printed record rather than as UI
+     chrome, which is the whole character of that screen's design. */
+  --font-serif: 'Lora', Georgia, 'Times New Roman', serif;
 
   --text-display: 34px;
   --text-title: 24px;
@@ -2858,62 +2863,86 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
    elsewhere in the app use `contain` to avoid trimming box art. */
 .gd-head__cover .poster-frame__img { object-fit: cover; }
 .gd-head__cover .poster-frame__blur { display: none; }
-.gd-head__main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 7px; align-items: flex-start; }
+/* The right-hand column is CENTRED, per the reference — the title
+   logo, the credit line under it and the Trailer pill all share one
+   centre line rather than ragging off the poster's edge. */
+.gd-head__main {
+  flex: 1; min-width: 0;
+  display: flex; flex-direction: column; align-items: center; gap: 9px;
+  text-align: center;
+}
 .gd-head__title {
-  font-family: var(--font-display); font-size: 30px; line-height: 1.02;
-  font-weight: 700; letter-spacing: -0.02em;
+  font-family: var(--font-display); font-size: 26px; line-height: 1.05;
+  font-weight: 800; letter-spacing: -0.02em;
 }
-/* The release year on its own line under the studio, rather than tacked
-   onto a single uppercase metadata string — it's a distinct fact and
-   reads as one at this size. */
-.gd-head__year {
-  font-size: 13px; color: var(--ink-dim); font-weight: 500;
-  font-variant-numeric: tabular-nums;
+
+/* "2020 · Directed By" over the name it belongs to. The serif is the
+   whole point of this credit: it's the one place on the screen that
+   should read like a printed title card rather than app chrome. */
+.gd-credit__line {
+  display: block;
+  font-family: var(--font-serif); font-size: 14px; font-weight: 400;
+  color: var(--ink-dim); line-height: 1.3;
 }
-/* Outlined pill. The header sits on artwork, so a filled button here
-   would compete with the poster; an outline reads as secondary while
-   staying legible on any backdrop. */
+.gd-credit__name {
+  display: block; margin-top: 2px;
+  font-family: var(--font-serif); font-size: 19px; font-weight: 700;
+  /* A warm cream rather than plain white — it lifts the one name on the
+     screen that's a person off the rest of the metadata. */
+  color: #efe7c8; line-height: 1.2; letter-spacing: 0.01em;
+}
+a.gd-credit__name { text-decoration: none; }
+
+/* Solid white pill with the play mark AFTER the word, per the
+   reference — the one deliberately loud control in the header, which is
+   what makes it read as "watch this" rather than another metadata row. */
 .gd-trailer {
-  display: inline-flex; align-items: center; gap: 9px;
-  margin-top: 3px; padding: 8px 18px 8px 15px;
-  border: 1.5px solid var(--line-strong); border-radius: var(--radius-pill);
-  background: transparent; color: var(--ink);
-  font-size: 14.5px; font-weight: 700;
-  transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+  display: inline-flex; align-items: center; gap: 8px;
+  margin-top: 4px; padding: 7px 14px;
+  border: none; border-radius: var(--radius-pill);
+  background: #fff; color: #0a0b0f;
+  font-family: var(--font-serif);
+  font-size: 14px; font-weight: 700; letter-spacing: 0.01em;
+  transition: transform var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
 }
-.gd-trailer:hover { background: var(--surface); border-color: var(--ink-dim); }
-/* Over artwork the pill needs its own ground to stay legible against
-   whatever the picture happens to be; on a plain page it must not, or
-   in light theme it would be a dark slab with dark text on it. */
-.gd-hero:has(.gd-hero__bg) .gd-trailer {
-  border-color: var(--gd-rule-strong);
-  background: rgba(10,14,22,0.35);
-}
-.gd-hero:has(.gd-hero__bg) .gd-trailer:hover { background: rgba(10,14,22,0.6); }
-.gd-trailer:active { transform: scale(0.97); }
+.gd-trailer:hover { background: #e8e8e8; }
+.gd-trailer:active { transform: scale(0.96); }
 /* A CSS triangle rather than an SVG — it's three lines and it can't
    fail to load. */
 .gd-trailer__play {
   width: 0; height: 0; flex-shrink: 0;
-  border-left: 9px solid currentColor;
-  border-top: 5.5px solid transparent; border-bottom: 5.5px solid transparent;
+  border-left: 8px solid currentColor;
+  border-top: 5px solid transparent; border-bottom: 5px solid transparent;
 }
-/* The studio disc: a letter standing in for a logo we don't have. */
-.gd-studio-disc {
-  display: grid; place-items: center; border-radius: 50%;
+
+/* The full-bleed hairline that separates every band on this page. The
+   negative margin cancels .view-body's own padding so it runs edge to
+   edge, the way the reference draws it. */
+.gd-rule {
+  height: 1px; flex-shrink: 0;
+  margin: 0 calc(-1 * var(--space-4));
+  background: var(--gd-rule);
+}
+
+/* A titled band — "Played by", "Where to play", "Social". */
+.gd-block { display: flex; flex-direction: column; gap: var(--space-3); }
+.gd-block__head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2); }
+.gd-block__title {
+  font-size: 19px; font-weight: 800; letter-spacing: -0.01em;
+  color: var(--ink); margin: 0;
+}
+
+/* Rows of faces under those headings. Big enough to actually recognise
+   someone, which is the entire job of this block. */
+.gd-faces { display: flex; flex-wrap: wrap; gap: 10px; }
+.gd-face { display: block; flex-shrink: 0; }
+.gd-face .avatar { display: block; }
+.gd-face--more {
+  width: 44px; height: 44px; border-radius: 50%;
+  display: grid; place-items: center;
   background: var(--surface-high); color: var(--ink-dim);
-  font-size: 10px; font-weight: 700; letter-spacing: 0;
+  font-size: 12px; font-weight: 700;
 }
-.gd-credit-chip--studio { color: var(--ink); font-size: 14px; }
-/* Director + voice-cast preview, under the poster/title block. Collapses
-   to nothing (no stray gap) on a game with neither. */
-.gd-credits {
-  position: relative; z-index: 1;
-  display: flex; flex-wrap: wrap; align-items: center;
-  gap: var(--space-2) var(--space-4);
-  margin-top: var(--space-3);
-}
-.gd-credits:empty, .gd-credits > div:empty { margin: 0; }
 /* Kept in the DOM (a real, accessible heading) but visually hidden once
    the transparent logo PNG below has loaded and taken its place — the
    standard clip-to-1px pattern, not display:none, so screen readers and
@@ -2943,9 +2972,15 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
    first screen. The button is only unhidden when the text genuinely
    overflows — see the measurement in game-view.js. */
 .gd-synopsis-wrap { position: relative; }
-.gd-synopsis { font-size: var(--text-body); line-height: 1.6; color: var(--ink-dim); margin: 0; }
+/* White and heavy, per the reference — the synopsis is the first real
+   copy on the page and it's meant to be read, not skimmed past as
+   secondary metadata the way a dimmed grey paragraph reads. */
+.gd-synopsis {
+  font-size: 15.5px; line-height: 1.55; font-weight: 700;
+  color: var(--ink); margin: 0; letter-spacing: -0.01em;
+}
 .gd-synopsis.is-clamped {
-  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4;
   overflow: hidden;
 }
 /* Sits on the last clamped line. The long fade in front of it is what
@@ -2971,20 +3006,22 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 .gd-dist { display: flex; flex-direction: column; gap: var(--space-2); }
 .gd-dist__head { display: flex; align-items: baseline; justify-content: space-between; }
 .gd-dist__title {
-  font-family: var(--font-display); font-size: 19px; font-weight: 700;
-  letter-spacing: -0.01em; color: var(--ink); margin: 0 0 var(--space-2);
+  font-family: var(--font-serif); font-size: 27px; font-weight: 500;
+  letter-spacing: 0; color: var(--ink); margin: 0;
 }
+/* Chart and average sit side by side: the distribution takes the room
+   it needs and the average is pinned to its right, reading as the
+   summary of the bars beside it rather than a separate stat. */
+.gd-dist__plot { display: flex; align-items: flex-end; gap: var(--space-3); }
+.gd-dist__plot .gd-dist__bars { flex: 1; min-width: 0; }
 /* Tall enough for the shape of the distribution to actually be legible —
    at the old 42px every bar but the mode collapsed into the baseline and
    the chart said nothing. The top padding is headroom for the percentage
    badge, which sits above the tallest bar. */
 .gd-dist__bars {
-  display: flex; align-items: flex-end; gap: 5px;
-  height: 118px; padding-top: 26px;
-  /* Clears the average block opposite the heading — the badge that
-     rides the tallest bar lives in that top padding and was landing
-     right under the rating count. */
-  margin-top: var(--space-2);
+  display: flex; align-items: flex-end; gap: 4px;
+  height: 124px; padding-top: 26px; /* headroom for the percentage badge */
+  margin-top: var(--space-3);
 }
 /* Each bar is a real <button>, so it is focusable and clickable on its
    own. The button fills the full column height rather than only the
@@ -2998,18 +3035,18 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
   border-radius: 4px 4px 0 0;
   -webkit-tap-highlight-color: transparent;
 }
-/* Neutral by default with only the mode (or whatever is being touched)
-   picked out in the accent — colouring every bar made the chart one
-   solid block of lime with no shape to read. */
+/* Every bar is drawn in the accent, as the reference has it — the
+   shape of the distribution is what carries the meaning here, so the
+   whole curve is one colour and the peak/selected bar is picked out by
+   brightness rather than by being the only coloured one. */
 .gd-dist__bar {
-  width: 100%; min-height: 4px; border-radius: 4px 4px 0 0;
-  background: var(--surface-high);
+  width: 100%; min-height: 4px; border-radius: 3px 3px 0 0;
+  background: var(--accent-deep);
   transition: background var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
   pointer-events: none; /* clicks belong to the button, not the bar */
 }
-.gd-dist__col--peak .gd-dist__bar,
-.gd-dist__col--active .gd-dist__bar { background: var(--accent); }
-.gd-dist__col:hover .gd-dist__bar { background: var(--accent-bright); }
+.gd-dist__col--peak .gd-dist__bar { background: var(--accent); }
+.gd-dist__col:hover .gd-dist__bar,
 .gd-dist__col--active .gd-dist__bar { background: var(--accent-bright); }
 .gd-dist__col:focus-visible {
   outline: 2px solid var(--accent-bright); outline-offset: 2px;
@@ -3028,12 +3065,30 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
   opacity: 0; transition: opacity var(--dur-fast) var(--ease);
 }
 .gd-dist__col--showbadge .gd-dist__badge { opacity: 1; }
-.gd-dist__axis { display: flex; justify-content: space-between; align-items: center; }
+.gd-dist__axis {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-top: var(--space-2);
+}
 .gd-dist__end {
   display: inline-flex; align-items: center; gap: 4px;
-  font-size: 12px; color: var(--ink-dim); font-variant-numeric: tabular-nums;
+  font-size: 11.5px; color: var(--ink-faint); font-variant-numeric: tabular-nums;
 }
-.gd-dist__end svg { width: 13px; height: 13px; }
+/* The single star at the low end of the axis — it marks which end is
+   which without spelling out "0.5 stars", which the bars already say. */
+.gd-dist__end svg { width: 14px; height: 14px; color: var(--star-fill); }
+
+/* The average, pinned to the right of the chart: the big serif figure
+   over its own star row, which is the summary the bars can't state. */
+.gd-avg {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  flex-shrink: 0; padding-bottom: 2px;
+}
+.gd-avg__num {
+  font-family: var(--font-serif); font-size: 34px; font-weight: 700;
+  line-height: 1; letter-spacing: -0.01em; color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.gd-avg__stars .stars { --star-size: 11px; }
 
 /* Active rating filter above the review list. */
 .gd-filter {
@@ -3051,30 +3106,61 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
    surface for the game, which is what it is. Icon over label, and the
    leading action carries the accent so the primary thing to do is still
    obvious without a filled slab. */
-/* Four cells: the log action, Rate, Review, and the overflow. The last
-   is narrower than the rest — it's a fallback, not a peer of the three
-   real actions. */
+/* A single white slab reading "Log / Rate / Review" with the overflow
+   on the end — the one inverted element on the page, which is exactly
+   what makes the primary action unmissable without a coloured button
+   fighting the artwork above it. Serif, like the credit line, so the
+   two read as the same voice. */
 .gd-bar {
-  display: grid; grid-template-columns: 1fr 1fr 1fr 0.78fr;
-  background: var(--surface-raised); border: 1px solid var(--line);
-  border-radius: var(--radius-m); overflow: hidden;
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: 6px var(--space-3) 6px 8px;
+  background: #fff; border-radius: var(--radius-pill);
+  color: #0a0b0f;
 }
-.gd-bar__btn {
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 5px; padding: var(--space-3) 6px;
-  background: none; border: none; color: var(--ink-dim);
-  font-size: 12.5px; font-weight: 600; line-height: 1.2; text-align: center;
+/* The person-shaped disc that opens the row, per the reference — it's
+   what marks the whole bar as "you", not the game. */
+.gd-bar__mark {
+  width: 32px; height: 32px; flex-shrink: 0;
+  display: grid; place-items: center; border-radius: 50%;
+  background: #0a0b0f; color: #fff;
+}
+.gd-bar__mark svg { width: 19px; height: 19px; }
+.gd-bar__act {
+  flex: 1; min-width: 0; padding: 8px 0;
+  background: none; border: none; color: #0a0b0f;
+  font-family: var(--font-serif); font-size: 17px; font-weight: 500;
+  letter-spacing: 0.01em; white-space: nowrap;
   -webkit-tap-highlight-color: transparent;
-  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+  transition: opacity var(--dur-fast) var(--ease);
 }
-.gd-bar__btn + .gd-bar__btn { border-left: 1px solid var(--line); }
-.gd-bar__btn:hover { background: var(--surface-high); color: var(--ink); }
-.gd-bar__btn:active { background: var(--surface-high); }
-.gd-bar__btn:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: -2px; }
-.gd-bar__btn--accent { color: var(--accent-bright); }
-.gd-bar__btn--accent:hover { color: var(--accent-bright); }
-.gd-bar__icon { display: block; width: 21px; height: 21px; }
-.gd-bar__icon svg { width: 100%; height: 100%; display: block; }
+.gd-bar__act:hover { opacity: 0.6; }
+.gd-bar__act:active { opacity: 0.45; }
+.gd-bar__act:focus-visible { outline: 2px solid #0a0b0f; outline-offset: 2px; border-radius: 4px; }
+.gd-bar__slash {
+  flex-shrink: 0; color: rgba(10,11,15,0.32);
+  font-family: var(--font-serif); font-size: 19px; font-weight: 400;
+}
+.gd-bar__more {
+  flex-shrink: 0; width: 30px; height: 30px; padding: 0;
+  display: grid; place-items: center;
+  background: none; border: none; color: #0a0b0f;
+  transition: opacity var(--dur-fast) var(--ease);
+}
+.gd-bar__more:hover { opacity: 0.6; }
+.gd-bar__more svg { width: 20px; height: 20px; }
+/* The bar's whole job is to be the one inverted thing on the page. On a
+   cream light-theme background a white slab isn't inverted, it's
+   invisible — so it flips to dark-on-light there instead. */
+:root[data-theme="light"] .gd-bar { background: #2b1d0e; color: #fffdf8; }
+:root[data-theme="light"] .gd-bar__mark { background: #fffdf8; color: #2b1d0e; }
+:root[data-theme="light"] .gd-bar__act,
+:root[data-theme="light"] .gd-bar__more { color: #fffdf8; }
+:root[data-theme="light"] .gd-bar__slash { color: rgba(255,253,248,0.4); }
+:root[data-theme="light"] .gd-bar__act:focus-visible { outline-color: #fffdf8; }
+/* Same reasoning for the Trailer pill, which sits on artwork in one
+   theme and on the page's own ground in the other. */
+:root[data-theme="light"] .gd-trailer { background: #2b1d0e; color: #fffdf8; }
+:root[data-theme="light"] .gd-trailer:hover { background: #43301b; }
 
 /* The overflow sheet behind the row's third cell. */
 .gd-more { padding: 0 var(--space-4) var(--space-4); }
@@ -3149,59 +3235,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
   color: var(--ink-dim); font-weight: 600;
 }
 
-/* The average, sitting opposite the "Ratings" heading — the one figure
-   the distribution underneath can't state outright. */
-.gd-avg { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; flex-shrink: 0; }
-.gd-avg__num {
-  font-size: 30px; font-weight: 700; line-height: 1; letter-spacing: -0.03em;
-  color: var(--ink); font-variant-numeric: tabular-nums;
-}
-.gd-avg__num i {
-  font-style: normal; font-size: 12px; font-family: var(--font-mono);
-  color: var(--ink-faint); margin-left: 2px;
-}
-.gd-avg__count {
-  font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase;
-  color: var(--ink-faint); font-weight: 600;
-}
 
-/* ---- who's playing it -----------------------------------------------
-   Played by / Playing / Want to play. Each row is a label, an
-   overlapping avatar stack and a count — the same stack recipe as the
-   voice-cast teaser in the header, so the two read as one idea used
-   twice rather than two different treatments of "some people". */
-.gd-crowd {
-  display: flex; flex-direction: column;
-  border-top: 1px solid var(--gd-rule);
-}
-.gd-crowd__row {
-  display: flex; align-items: center; gap: var(--space-3);
-  padding: var(--space-3) 0;
-}
-.gd-crowd__row + .gd-crowd__row { border-top: 1px solid var(--gd-rule); }
-.gd-crowd__label {
-  flex: 1; min-width: 0;
-  font-size: 13.5px; font-weight: 600; color: var(--ink-dim);
-}
-.gd-crowd__stack { display: flex; align-items: center; flex-shrink: 0; }
-/* The ring is the page background, so overlapping avatars read as
-   separate discs rather than one merged blob. */
-.gd-crowd__avatar {
-  display: block; margin-left: -8px; border-radius: 50%;
-  box-shadow: 0 0 0 2px var(--bg);
-}
-.gd-crowd__avatar:first-child { margin-left: 0; }
-.gd-crowd__avatar .avatar { display: block; }
-.gd-crowd__more {
-  display: grid; place-items: center; width: 24px; height: 24px;
-  background: var(--surface-high);
-  font-size: 10px; font-weight: 700; color: var(--ink-dim);
-}
-.gd-crowd__count {
-  flex-shrink: 0; min-width: 34px; text-align: right;
-  font-size: 14px; font-weight: 700; color: var(--ink);
-  font-variant-numeric: tabular-nums;
-}
 
 /* ---- news banner ---------------------------------------------------- */
 .gd-news-banner {
@@ -3235,14 +3269,18 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
    PlayStation/Xbox/Switch/PC/mobile each get a small recognisable mark
    (see platformIcon() in game-view.js), which reads faster than text and
    fits the console-dashboard language the rest of this screen uses. */
+/* Icon-only squares, per the sketch — the platform marks are
+   recognisable on their own and the names were the longest thing in a
+   row that's really just "which boxes does this run on". The name stays
+   as the title/tooltip rather than being dropped entirely. */
 .gd-platforms { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .gd-platform {
-  display: flex; align-items: center; gap: 6px;
-  padding: 6px 11px 6px 8px; border-radius: var(--radius-pill);
-  background: var(--surface-raised); border: 1px solid var(--gd-rule);
-  font-size: 11.5px; font-weight: 600; color: var(--ink-dim);
+  width: 48px; height: 48px; flex-shrink: 0;
+  display: grid; place-items: center; border-radius: var(--radius-s);
+  background: var(--surface); border: 1px solid var(--line);
+  color: var(--ink);
 }
-.gd-platform__icon { width: 15px; height: 15px; flex-shrink: 0; color: var(--ink-dim); display: grid; place-items: center; }
+.gd-platform__icon { width: 24px; height: 24px; display: grid; place-items: center; }
 .gd-platform__icon svg { width: 100%; height: 100%; }
 .gd-row {
   display: flex; align-items: baseline; justify-content: space-between;
@@ -3253,18 +3291,44 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 /* ---- 6. cast / details tabs ---- */
 /* Two plain labels with an underline on the active one — no filled
    segmented control, no pill background. */
-.gd-tabs {
-  display: flex; gap: var(--space-5);
-  border-bottom: 1px solid var(--gd-rule);
-}
+/* Capsules, per the sketch, rather than the underlined tabs this used
+   to be — they sit in the run of the page here, not as a header rule
+   dividing it, so an outline reads better than an underline. */
+.gd-tabs { display: flex; gap: var(--space-2); flex-wrap: wrap; }
 .gd-tab {
-  background: none; border: none; padding: 0 0 var(--space-2);
-  font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase;
-  font-weight: 600; color: var(--ink-faint);
-  border-bottom: 1px solid transparent; margin-bottom: -1px;
+  background: transparent; border: 1px solid var(--line);
+  border-radius: var(--radius-pill); padding: 8px 18px;
+  font-size: 13px; letter-spacing: 0; text-transform: none;
+  font-weight: 600; color: var(--ink-dim);
+  transition: all var(--dur-fast) var(--ease);
+}
+.gd-tab:hover { border-color: var(--line-strong); color: var(--ink); }
+.gd-tab--active { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+.gd-tab--active:hover { color: var(--bg); }
+
+/* The chevron on each cast/crew row — the sketch draws one on every
+   line, and they do all lead somewhere (a person's page). */
+.crew-row__go {
+  margin-left: auto; flex-shrink: 0; width: 17px; height: 17px;
+  color: var(--ink-faint); display: grid; place-items: center;
+}
+.crew-row__go svg { width: 100%; height: 100%; }
+
+/* An author-set `display` beats the UA stylesheet's own [hidden] rule
+   whatever the specificity, so .crew-row's display:flex was keeping the
+   held-back rows on screen and the Show more button had nothing left to
+   reveal. This is the override that actually hides them. */
+.crew-row[hidden] { display: none; }
+
+/* "Show more" under a capped list. */
+.gd-showmore {
+  display: flex; align-items: center; justify-content: center;
+  width: 100%; height: 44px; margin-top: var(--space-2);
+  background: none; border: none;
+  font-size: 13px; font-weight: 700; color: var(--ink-dim);
   transition: color var(--dur-fast) var(--ease);
 }
-.gd-tab--active { color: var(--accent-bright); border-bottom-color: var(--accent); }
+.gd-showmore:hover { color: var(--ink); }
 
 /* ---- 7. reviews ---- */
 /* Bordered, self-contained cards — reviewCardHtml() in game-view.js,
@@ -3357,29 +3421,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
    Director sits standalone right under the title (replaces where genre
    tags used to be); the cast avatar stack stays near the score/trailer
    line — two separate teasers, not one combined strip, so cast reads as
-   cast and the director isn't folded into it. Tapping the avatar stack
-   jumps straight to the full Cast tab below for the complete list,
-   characters, and bios. */
-.gd-credit-chip {
-  display: flex; align-items: center; gap: 7px; margin-top: 2px;
-  font-size: 12.5px; font-weight: 600; color: var(--ink-dim);
-}
-.gd-credit-chip__photo { width: 22px; height: 22px; font-size: 10px; }
-.gd-cast-preview {
-  display: flex; align-items: center;
-  background: none; border: none; padding: 0; cursor: pointer;
-}
-.gd-cast-preview__photo {
-  width: 24px; height: 24px; font-size: 10px;
-  margin-left: -8px; box-shadow: 0 0 0 2px var(--bg);
-}
-.gd-cast-preview__photo:first-child { margin-left: 0; }
-.gd-cast-preview__more {
-  display: grid; place-items: center;
-  width: 24px; height: 24px; margin-left: -8px; border-radius: 50%;
-  background: var(--surface-high); box-shadow: 0 0 0 2px var(--bg);
-  font-size: 10px; font-weight: 700; color: var(--ink-dim);
-}
+   cast and the director isn't folded into it. */
 
 /* ---- hours-to-beat ruler --------------------------------------------
    A horizontal scroll track with snap points, read against a fixed
@@ -4865,3 +4907,17 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
   outline: 2px solid var(--accent-bright) !important;
   outline-offset: 2px;
 }
+
+
+/* ---- pill tabs (Popular / Friends) ---------------------------------
+   The sketch draws these as two labelled pills rather than the app's
+   usual sliding .segmented — same job, but they sit inside a titled
+   block here rather than being the whole screen's navigation. */
+.gd-pilltabs { display: flex; gap: var(--space-2); }
+.gd-pilltab {
+  padding: 7px 16px; border-radius: var(--radius-pill);
+  background: transparent; border: 1px solid var(--line);
+  color: var(--ink-dim); font-size: 13px; font-weight: 600;
+  transition: all var(--dur-fast) var(--ease);
+}
+.gd-pilltab--on { background: var(--accent); border-color: var(--accent); color: var(--bg); }

@@ -62,55 +62,55 @@ function facePic(p, cls) {
 // under the title, so it's the first credited detail anyone sees.
 // Deliberately separate from the cast preview below: cast is cast,
 // director is its own line, not folded into the same strip.
-// The studio line under the title: a letter disc and the developer's
-// name, the same chip shape the director credit below it uses so the two
-// read as one family rather than two unrelated treatments.
-function studioChipHtml(developer) {
-  if (!developer) return '';
-  return `
-    <span class="gd-credit-chip gd-credit-chip--studio">
-      <span class="gd-credit-chip__photo gd-studio-disc">${esc(developer.trim().charAt(0).toUpperCase())}</span>
-      <span>${esc(developer)}</span>
-    </span>`;
+// The credit under the title — "2020 · Directed By / Neil Druckmann",
+// the year and the attribution line above the name it belongs to. The
+// director is the headline credit when there is one; a game with none
+// credits its studio instead rather than leaving the line half-empty,
+// and a game with neither falls back to the bare year.
+//
+// Rendered into #director-slot, so it repaints on its own once the
+// director lookup lands (see loadCastDirector) — which is why the year
+// and developer, both known immediately, are passed in here rather than
+// printed separately: otherwise the line would visibly reflow from
+// "2020 · Naughty Dog" to "2020 · Directed By / …" mid-read.
+function headCreditHtml(year, director, developer) {
+  if (director) {
+    // RAWG's own profile (real photo, real bio, real filmography) beats
+    // Wikidata's whenever RAWG recognizes this director — see director-
+    // view.js. Only falls back to the Wikidata person page when RAWG has
+    // no match for them at all.
+    const href = director.rawgSlug ? `#/director/${director.rawgSlug}` : director.qid ? `#/person/${director.qid}` : '';
+    return `
+      <span class="gd-credit__line">${year ? `${esc(year)} &middot; ` : ''}Directed By</span>
+      <a class="gd-credit__name"${href ? ` href="${href}"` : ''}>${esc(director.name)}</a>`;
+  }
+  if (developer) {
+    return `
+      <span class="gd-credit__line">${year ? `${esc(year)} &middot; ` : ''}Developed By</span>
+      <span class="gd-credit__name">${esc(developer)}</span>`;
+  }
+  return year ? `<span class="gd-credit__line">${esc(year)}</span>` : '';
 }
 
-function directorChipHtml(director) {
-  if (!director) return '';
-  // RAWG's own profile (real photo, real bio, real filmography) beats
-  // Wikidata's whenever RAWG recognizes this director — see director-
-  // view.js. Only falls back to the Wikidata person page when RAWG has
-  // no match for them at all.
-  const href = director.rawgSlug ? `#/director/${director.rawgSlug}` : director.qid ? `#/person/${director.qid}` : '';
-  return `
-    <a class="gd-credit-chip" ${href ? `href="${href}"` : ''}>
-      ${facePic(director, 'gd-credit-chip__photo')}
-      <span>Dir. ${esc(director.name)}</span>
-    </a>`;
-}
-
-// The voice cast preview — an overlapping stack of the first few
-// portraits, staying in its original spot near the score/trailer line.
-// Links into the full Cast tab (already right below), which has the
-// complete list, characters, and bios — this is just a teaser of it.
 // The game's title: a transparent-background logo PNG when one's been
-// found (see api.getGameLogo), otherwise the plain text heading it
-// always was. The <h1> stays present either way — visually hidden
-// behind the logo image, not removed — so the page keeps one real,
-// accessible heading for screen readers and there's no layout jump
-// when the logo swaps in.
+// found (see api.getGameArt), otherwise the plain text heading it always
+// was. The <h1> stays present either way — visually hidden behind the
+// logo image, not removed — so the page keeps one real, accessible
+// heading for screen readers and there's no layout jump when the logo
+// swaps in.
 function gameTitleHtml(title, logoUrl) {
   return `
     <h1 class="gd-head__title${logoUrl ? ' gd-head__title--hidden' : ''}">${esc(title)}</h1>
     ${logoUrl ? `<img class="gd-head__logo" src="${esc(logoUrl)}" alt="${esc(title)}">` : ''}`;
 }
 
-// One row of "who's doing this" social proof — Played by / Playing /
-// Want to play — each an overlapping avatar stack plus a count, in the
-// same visual language castPreviewHtml already uses for the voice cast
-// teaser. `entries` is the raw logs list for one status; deduped by
-// user here since a replay can leave more than one log per person and
-// this is meant to count PEOPLE, not rows.
-function crowdRowHtml(label, entries) {
+// One "who's doing this" block — Played by / Playing / Want to play —
+// a heading with a row of faces under it, each its own section divided
+// by a rule, the way the reference lays them out. `entries` is the raw
+// logs list for one status; deduped by user here since a replay can
+// leave more than one log per person and this is meant to count PEOPLE,
+// not rows.
+function crowdSectionHtml(label, entries) {
   const seen = new Set();
   const people = [];
   for (const l of entries) {
@@ -119,17 +119,20 @@ function crowdRowHtml(label, entries) {
     people.push(l.profiles);
   }
   if (!people.length) return '';
-  const shown = people.slice(0, 5);
+  const shown = people.slice(0, 6);
   const extra = people.length - shown.length;
   return `
-    <div class="gd-crowd__row">
-      <span class="gd-crowd__label">${esc(label)}</span>
-      <span class="gd-crowd__stack">
-        ${shown.map((p) => `<span class="gd-crowd__avatar">${avatarImg(p, 24)}</span>`).join('')}
-        ${extra > 0 ? `<span class="gd-crowd__avatar gd-crowd__more">+${extra}</span>` : ''}
-      </span>
-      <span class="gd-crowd__count">${compactNumber(people.length)}</span>
-    </div>`;
+    <section class="gd-block">
+      <h2 class="gd-block__title">${esc(label)}</h2>
+      <div class="gd-faces">
+        ${shown.map((p) => `
+          <a class="gd-face" href="#/profile/${esc(p.username)}" title="${esc(p.display_name || p.username)}">
+            ${avatarImg(p, 44)}
+          </a>`).join('')}
+        ${extra > 0 ? `<span class="gd-face gd-face--more">+${compactNumber(extra)}</span>` : ''}
+      </div>
+    </section>
+    <div class="gd-rule"></div>`;
 }
 
 // The game page's own review card — bordered, self-contained, no game
@@ -169,15 +172,40 @@ function reviewCardHtml(log, { likeInfo, commentCount, ownLog }) {
     </article>`;
 }
 
-function castPreviewHtml(cast) {
-  if (!cast || !cast.length) return '';
-  const shown = cast.slice(0, 4);
-  const extra = cast.length - shown.length;
+// Cast and Crew are the same list with a different second line, so
+// they're one renderer. Capped at CREDITS_SHOWN with a "Show more"
+// underneath, per the sketch — a well-documented game can credit thirty
+// voice actors, and burying the Reviews section under all of them isn't
+// what anyone came for.
+const CREDITS_SHOWN = 5;
+
+function creditListHtml(people, roleOf) {
+  const row = (p, hidden) => `
+    <a href="#/person/${p.qid}" class="crew-row"${hidden ? ' data-extra hidden' : ''}>
+      ${facePic(p, '')}
+      <div class="crew-row__info">
+        <div class="crew-row__name">${esc(p.name)}</div>
+        <div class="crew-row__role">${esc(roleOf(p) || '')}</div>
+      </div>
+      <span class="crew-row__go">${iconChevronSmall()}</span>
+    </a>`;
+  const extra = people.length - CREDITS_SHOWN;
   return `
-    <button type="button" class="gd-cast-preview" id="cast-preview-jump" aria-label="Jump to voice cast">
-      ${shown.map((p) => facePic(p, 'gd-cast-preview__photo')).join('')}
-      ${extra > 0 ? `<span class="gd-cast-preview__more">+${extra}</span>` : ''}
-    </button>`;
+    <div class="crew-list">
+      ${people.map((p, i) => row(p, i >= CREDITS_SHOWN)).join('')}
+    </div>
+    ${extra > 0 ? `<button type="button" class="gd-showmore" data-showmore>Show more (${extra})</button>` : ''}`;
+}
+
+// Reveals the rows held back above. One-way: having expanded a list,
+// collapsing it again just hides something you asked to see.
+function wireShowMore(scope) {
+  const btn = qs('[data-showmore]', scope);
+  if (!btn) return;
+  btn.addEventListener('click', () => {
+    qsa('[data-extra]', scope).forEach((el) => el.removeAttribute('hidden'));
+    btn.remove();
+  });
 }
 
 // `igdbId` is the "view without a database row" path — reached when
@@ -339,28 +367,20 @@ export async function renderGameView(root, { id, igdbId }) {
       } catch {
         castDirectorData = { director: null, cast: [], crew: [] };
       }
+      // The header's credit line is a director credit once one is known,
+      // and the studio until then — so it repaints here with the year and
+      // developer it was first given, not just the director.
       const directorSlot = qs('#director-slot', body);
-      if (directorSlot) directorSlot.innerHTML = directorChipHtml(castDirectorData.director);
-      const castPreviewSlot = qs('#cast-preview-slot', body);
-      if (castPreviewSlot) castPreviewSlot.innerHTML = castPreviewHtml(castDirectorData.cast);
-      wireCastPreviewJump();
+      if (directorSlot) {
+        directorSlot.innerHTML = headCreditHtml(
+          game.release_year || (game.release_date ? new Date(game.release_date).getFullYear() : null),
+          castDirectorData.director,
+          game.developer,
+        );
+      }
       // Both tabs resolve from this same castDirectorData fetch — whichever
       // one is open needs repainting once the real result lands, not just Cast.
       if (activeTab === 'cast' || activeTab === 'crew') paintTabContent();
-    }
-
-
-    // Tapping the cast-avatar stack in the header preview jumps straight
-    // to the full Cast tab, which is already right below on the page.
-    function wireCastPreviewJump() {
-      const jump = qs('#cast-preview-jump', body);
-      if (!jump) return;
-      jump.addEventListener('click', () => {
-        activeTab = 'cast';
-        qsa('.gd-tab', body).forEach((t) => t.classList.toggle('gd-tab--active', t.dataset.tab === 'cast'));
-        paintTabContent();
-        qs('#game-tabs', body)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      });
     }
 
     // Shared by "More from [Studio]" and "Similar games" below — both are
@@ -467,9 +487,9 @@ export async function renderGameView(root, { id, igdbId }) {
       // the action bar. Built from `logs`, already fetched, so this is
       // free: no extra query.
       const crowdHtml = [
-        crowdRowHtml('Played by', logs.filter((l) => l.status === 'played')),
-        crowdRowHtml('Playing', logs.filter((l) => l.status === 'playing')),
-        crowdRowHtml('Want to play', logs.filter((l) => l.status === 'backlog')),
+        crowdSectionHtml('Played by', logs.filter((l) => l.status === 'played')),
+        crowdSectionHtml('Playing', logs.filter((l) => l.status === 'playing')),
+        crowdSectionHtml('Want to play', logs.filter((l) => l.status === 'backlog')),
       ].join('');
 
       // --- derived stats for the strip -----------------------------
@@ -508,23 +528,13 @@ export async function renderGameView(root, { id, igdbId }) {
               ${posterFrame(poster, game.title, 'gd-head__cover', { id: 'game-cover', full: true })}
               <div class="gd-head__main">
                 <div id="game-logo-slot">${gameTitleHtml(game.title, logoReady ? resolvedLogoUrl : null)}</div>
-                ${studioChipHtml(game.developer)}
-                ${year ? `<span class="gd-head__year">${esc(year)}</span>` : ''}
+                <div id="director-slot">${headCreditHtml(year, castDirectorData?.director, game.developer)}</div>
                 ${game.trailer_url ? `
                   <button type="button" class="gd-trailer" id="play-trailer">
-                    <span class="gd-trailer__play"></span>Trailer
+                    Trailer<span class="gd-trailer__play"></span>
                   </button>` : ''}
               </div>
             </header>
-            <!-- Below the header rather than inside its right-hand
-                 column: the poster is shorter than the title block, and
-                 running these underneath both fills that pocket instead
-                 of stretching the text column past the poster and
-                 leaving a hole beside it. -->
-            <div class="gd-credits">
-              <div id="director-slot">${directorChipHtml(castDirectorData?.director)}</div>
-              <div id="cast-preview-slot">${castPreviewHtml(castDirectorData?.cast)}</div>
-            </div>
           </div>
 
           ${game.description ? `
@@ -533,86 +543,88 @@ export async function renderGameView(root, { id, igdbId }) {
               <button type="button" class="gd-seemore" id="see-more" hidden>See more</button>
             </div>` : ''}
 
+          <div class="gd-rule"></div>
+
           ${rated.length ? `
             <section class="gd-dist" id="rating-chart-slot">
               <div class="gd-dist__head">
                 <h2 class="gd-dist__title">Ratings</h2>
+              </div>
+              <div class="gd-dist__plot">
+                <div class="gd-dist__bars">
+                  ${halfSteps.map((star, i) => {
+                    const count = stepCounts[i];
+                    const pct = rated.length ? Math.round((count / rated.length) * 100) : 0;
+                    const label = `${count} log${count === 1 ? '' : 's'} rated ${star} star${star === 1 ? '' : 's'}`;
+                    // The mode carries the badge at rest; hovering or
+                    // tapping any other bar moves it there instead.
+                    const isPeak = count === stepMax && count > 0;
+                    return `
+                    <button type="button" class="gd-dist__col${isPeak ? ' gd-dist__col--peak' : ''}"
+                            data-rating="${star}" data-pct="${pct}" data-count="${count}"
+                            aria-label="${label}" title="${label}">
+                      <span class="gd-dist__badge">${pct}%</span>
+                      <span class="gd-dist__bar" style="height:${Math.max(4, Math.round((count / stepMax) * 100))}%"></span>
+                    </button>`;
+                  }).join('')}
+                </div>
                 ${avg ? `
                   <div class="gd-avg">
-                    <span class="gd-avg__num">${avg.toFixed(1)}<i>/5</i></span>
-                    <span class="gd-avg__count">${rated.length} rating${rated.length === 1 ? '' : 's'}</span>
+                    <span class="gd-avg__num">${avg.toFixed(1)}</span>
+                    <span class="gd-avg__stars">${starRow(avg, { size: 13 })}</span>
                   </div>` : ''}
               </div>
-              <div class="gd-dist__bars">
-                ${halfSteps.map((star, i) => {
-                  const count = stepCounts[i];
-                  const pct = rated.length ? Math.round((count / rated.length) * 100) : 0;
-                  const label = `${count} log${count === 1 ? '' : 's'} rated ${star} star${star === 1 ? '' : 's'}`;
-                  // The mode carries the badge at rest; hovering or
-                  // tapping any other bar moves it there instead.
-                  const isPeak = count === stepMax && count > 0;
-                  return `
-                  <button type="button" class="gd-dist__col${isPeak ? ' gd-dist__col--peak' : ''}"
-                          data-rating="${star}" data-pct="${pct}" data-count="${count}"
-                          aria-label="${label}" title="${label}">
-                    <span class="gd-dist__badge">${pct}%</span>
-                    <span class="gd-dist__bar" style="height:${Math.max(4, Math.round((count / stepMax) * 100))}%"></span>
-                  </button>`;
-                }).join('')}
-              </div>
               <div class="gd-dist__axis">
-                <span class="gd-dist__end">${iconStarSmall()}0.5</span>
-                <span class="gd-dist__end">${iconStarSmall()}5</span>
+                <span class="gd-dist__end">${iconStarSmall()}</span>
+                <span class="gd-dist__end">${rated.length} rating${rated.length === 1 ? '' : 's'}</span>
               </div>
             </section>`
             : `<p class="gd-empty">No ratings yet — be the first.</p>`}
 
-          <!-- Four cells, per the sketch: the log action, then the two
-               things you'd most often come here to do to a game you've
-               already logged, then the overflow. Rate and Review both
-               open the log sheet — they're two ways into the same form,
-               which is how people actually think about it. -->
+          <div class="gd-rule"></div>
+
+          <!-- One bar, per the sketch: a single white slab reading
+               "Log / Rate / Review" with the overflow on the end. Rate
+               and Review both open the log sheet — they're two ways into
+               the same form, which is how people think about it. -->
           <div class="gd-bar">
+            <span class="gd-bar__mark">${iconUser()}</span>
             ${ownLog
-              ? `<button type="button" class="gd-bar__btn gd-bar__btn--accent" id="log-again">
-                   <span class="gd-bar__icon">${iconLogAgain()}</span>Log again
-                 </button>`
-              : `<button type="button" class="gd-bar__btn gd-bar__btn--accent" id="log-this-game">
-                   <span class="gd-bar__icon">${iconLogAgain()}</span>Log it
-                 </button>`}
-            <button type="button" class="gd-bar__btn" id="rate-game">
-              <span class="gd-bar__icon">${iconStarLine()}</span>Rate
-            </button>
-            <button type="button" class="gd-bar__btn" id="review-game">
-              <span class="gd-bar__icon">${iconPencil()}</span>${ownLog ? 'Edit' : 'Review'}
-            </button>
-            <button type="button" class="gd-bar__btn" id="game-more">
-              <span class="gd-bar__icon">${iconDots()}</span>More
-            </button>
+              ? `<button type="button" class="gd-bar__act" id="log-again">Log</button>`
+              : `<button type="button" class="gd-bar__act" id="log-this-game">Log</button>`}
+            <span class="gd-bar__slash">/</span>
+            <button type="button" class="gd-bar__act" id="rate-game">Rate</button>
+            <span class="gd-bar__slash">/</span>
+            <button type="button" class="gd-bar__act" id="review-game">${ownLog ? 'Edit' : 'Review'}</button>
+            <button type="button" class="gd-bar__more" id="game-more" aria-label="More actions">${iconDots()}</button>
           </div>
 
-          ${crowdHtml ? `<section class="gd-crowd">${crowdHtml}</section>` : ''}
+          <div class="gd-rule"></div>
+
+          ${crowdHtml}
 
           ${platforms.length ? `
-            <section class="gd-section">
-              <span class="gd-kicker">Playable on</span>
+            <section class="gd-block">
+              <h2 class="gd-block__title">Where to play</h2>
               <div class="gd-platforms">
                 ${platforms.map((p) => `
                   <span class="gd-platform" title="${esc(p)}">
                     <span class="gd-platform__icon">${platformIcon(p)}</span>
-                    <span>${esc(p)}</span>
                   </span>`).join('')}
               </div>
-            </section>` : ''}
+            </section>
+            <div class="gd-rule"></div>` : ''}
 
-          <section class="gd-section">
-            <span class="gd-kicker">Social</span>
+          <section class="gd-block">
+            <h2 class="gd-block__title">Social</h2>
             <div class="gd-social">
-              ${socialCard(logs.length, logs.length === 1 ? 'Log' : 'Logs')}
+              ${socialCard(logs.length, logs.length === 1 ? 'Play' : 'Plays')}
               ${socialCard(reviewedLogs.length, reviewedLogs.length === 1 ? 'Review' : 'Reviews')}
               ${socialCard(compactNumber(listsCount), listsCount === 1 ? 'List' : 'Lists')}
             </div>
           </section>
+
+          <div class="gd-rule"></div>
 
           <!-- Points at the app's own News tab, not an external URL —
                that's the real destination this maps to; there's no
@@ -626,6 +638,8 @@ export async function renderGameView(root, { id, igdbId }) {
             ${iconChevronSmall()}
           </a>
 
+          <div class="gd-rule"></div>
+
           <div class="gd-tabs" id="game-tabs">
             <button class="gd-tab gd-tab--active" data-tab="cast">Cast</button>
             <button class="gd-tab" data-tab="crew">Crew</button>
@@ -633,17 +647,23 @@ export async function renderGameView(root, { id, igdbId }) {
           </div>
           <div id="game-tab-content"></div>
 
-          <div class="gd-row gd-row--reviews">
-            <span class="gd-kicker">Reviews</span>
-            ${reviewedLogs.length ? `<a href="#/game/${id}/reviews" class="gd-link">All ${reviewedLogs.length}</a>` : ''}
-          </div>
-          ${friendsReviews.length ? `
-            <div class="segmented segmented--wide" id="review-tabs">
-              <button type="button" class="segmented__item segmented__item--active" data-review-tab="popular">Popular</button>
-              <button type="button" class="segmented__item" data-review-tab="friends">Friends</button>
-            </div>` : ''}
-          <div id="review-filter-slot"></div>
-          <div class="log-list gd-reviews" id="game-reviews"></div>
+          <div class="gd-rule"></div>
+
+          <section class="gd-block">
+            <div class="gd-block__head">
+              <h2 class="gd-block__title">Reviews</h2>
+              ${reviewedLogs.length ? `<a href="#/game/${id}/reviews" class="gd-link">All ${reviewedLogs.length}</a>` : ''}
+            </div>
+            ${friendsReviews.length ? `
+              <div class="gd-pilltabs" id="review-tabs">
+                <button type="button" class="gd-pilltab gd-pilltab--on" data-review-tab="popular">Popular</button>
+                <button type="button" class="gd-pilltab" data-review-tab="friends">Friends</button>
+              </div>` : ''}
+            <div id="review-filter-slot"></div>
+            <div class="gd-reviews" id="game-reviews"></div>
+          </section>
+
+          <div class="gd-rule"></div>
 
           <div id="more-from-slot"></div>
           <div id="similar-games-slot"></div>
@@ -833,7 +853,6 @@ export async function renderGameView(root, { id, igdbId }) {
           paintTabContent();
         });
       });
-      wireCastPreviewJump();
       paintTabContent();
     }
 
@@ -854,15 +873,9 @@ export async function renderGameView(root, { id, igdbId }) {
         // in the header above) — repeating it here just duplicated it.
         // This tab is voice cast only now.
         slot.innerHTML = cast.length
-          ? `<div class="crew-list">${cast.map((p) => `
-                <a href="#/person/${p.qid}" class="crew-row">
-                  ${facePic(p, '')}
-                  <div class="crew-row__info">
-                    <div class="crew-row__name">${esc(p.name)}</div>
-                    <div class="crew-row__role">${p.characters.length ? esc(p.characters.join(', ')) : 'Voice actor'}</div>
-                  </div>
-                </a>`).join('')}</div>`
+          ? creditListHtml(cast, (p) => (p.characters.length ? p.characters.join(', ') : 'Voice actor'))
           : `<p class="gd-empty">No cast listed for this game on Wikidata yet — coverage there is community-maintained.</p>`;
+        wireShowMore(slot);
         return;
       }
       if (activeTab === 'crew') {
@@ -874,15 +887,9 @@ export async function renderGameView(root, { id, igdbId }) {
         // at all, not filtered out here.
         const crew = castDirectorData.crew || [];
         slot.innerHTML = crew.length
-          ? `<div class="crew-list">${crew.map((p) => `
-                <a href="#/person/${p.qid}" class="crew-row">
-                  ${facePic(p, '')}
-                  <div class="crew-row__info">
-                    <div class="crew-row__name">${esc(p.name)}</div>
-                    <div class="crew-row__role">${esc(p.role)}</div>
-                  </div>
-                </a>`).join('')}</div>`
+          ? creditListHtml(crew, (p) => p.role)
           : `<p class="gd-empty">No crew listed for this game on Wikidata yet — coverage there is community-maintained.</p>`;
+        wireShowMore(slot);
         return;
       }
       if (activeTab === 'details') {
