@@ -596,7 +596,36 @@ ul { list-style: none; margin: 0; padding: 0; }
    its own position:relative — stays visually pinned exactly like a
    fixed/sticky element would, with none of sticky's flex/flow
    requirements. Sits above .gd-hero (z-index 0) either way. */
-.game-back { position: absolute; z-index: 20; top: calc(var(--space-3) + var(--safe-top)); left: var(--space-4); }
+/* On a game page this is a bare chevron over the artwork rather than the
+   circular chip the rest of the app uses — the header's whole job is to
+   show the art, and a filled disc floating on top of it is the one thing
+   competing with that. The drop shadow is what keeps it legible over a
+   bright backdrop now that there's no plate behind it. */
+.game-back {
+  position: absolute; z-index: 20;
+  top: calc(var(--space-3) + var(--safe-top)); left: var(--space-3);
+  width: 44px; height: 44px;
+  background: none; border: none; border-radius: 0;
+  color: var(--ink);
+}
+/* Pinned white with a shadow ONLY when there's artwork under it. Without
+   this guard the chevron stayed white on a game with no backdrop, which
+   in light theme is white on cream — invisible. */
+#app:has(.gd-hero__bg) .game-back {
+  color: #fff;
+  filter: drop-shadow(0 1px 6px rgba(0,0,0,0.6));
+}
+.game-back:active { transform: scale(0.9); background: none; }
+.game-back svg { width: 26px; height: 26px; stroke-width: 2.4; }
+/* Restored once the artwork has scrolled past — see syncBack() in
+   game-view.js for why this is scroll-dependent rather than always on. */
+.game-back--plated {
+  background: var(--glass-strong);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  border-radius: 50%;
+  filter: none;
+  transition: background var(--dur) var(--ease);
+}
 
 /* ------------------------------------------------------------ tabbar
    Floats above the content rather than sitting flush at the bottom
@@ -2705,7 +2734,6 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
   color: var(--accent-bright); font-size: 10.5px; letter-spacing: 0.1em;
   text-transform: uppercase; font-weight: 600; background: none; border: none; padding: 0;
 }
-.gd-link--trailer { letter-spacing: 0.06em; }
 
 /* ---- 1. header ---- */
 /* A real screenshot as ambience behind the title, same idea as the
@@ -2732,7 +2760,21 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
      up slightly into the fade's own tail (already mostly transparent by
      then) for a tighter, Letterboxd-style poster-over-backdrop overlap
      rather than a hard gap. */
-  padding: calc(56.25% - 40px) var(--space-4) var(--space-4);
+  /* +10px, not -40px: the poster now starts just BELOW the artwork's own
+     bottom edge instead of being pulled up 40px into it. The overlap
+     read as the poster covering the picture rather than sitting under
+     it, and the reference this was matched against has the two meeting,
+     not overlapping. 56.25% is the art's own height (aspect-ratio 16/9
+     of this box's width), so this tracks it at any viewport width. */
+  /* No bottom padding: the credits row below the header carries its own
+     top margin, and .gd's own 28px gap is what separates this block from
+     the synopsis. Padding here as well stacked the two into a hole. */
+  /* Default: only enough headroom to clear the floating back button. The
+     tall padding is for clearing the artwork and moves to the :has()
+     rule below, since a game with no backdrop has nothing to clear —
+     applied unconditionally it opened ~200px of dead space above the
+     poster on every game without a picture. */
+  padding: calc(52px + var(--safe-top)) var(--space-4) 0;
   /* Shared by .gd-hero__bg and .gd-hero__scrim below — see the note
      there for why masking both to transparent, rather than fading the
      scrim to a hand-matched solid colour, is what actually makes the
@@ -2771,13 +2813,19 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
   mask-image: var(--hero-fade); -webkit-mask-image: var(--hero-fade);
   /* Just the top-region darkening curve now — the mask above handles
      the actual disappearance, so this never needs to reach an opaque
-     "matches the page" colour on its own. */
+     "matches the page" colour on its own.
+     Deliberately light through the top two thirds: the art is the point
+     of this header, and the previous curve (0.68 by the midpoint, 0.96
+     at the bottom) was dimming it so far that a vivid backdrop read as
+     a near-black rectangle. The darkening now stays out of the way
+     until the last third, where the title and poster actually sit and
+     genuinely need the contrast. */
   background: linear-gradient(180deg,
-    rgba(10,14,22,0.12) 0%,
-    rgba(10,14,22,0.3) 30%,
-    rgba(10,14,22,0.68) 55%,
-    rgba(10,14,22,0.92) 75%,
-    rgba(10,14,22,0.96) 100%);
+    rgba(10,14,22,0) 0%,
+    rgba(10,14,22,0.06) 42%,
+    rgba(10,14,22,0.28) 66%,
+    rgba(10,14,22,0.62) 84%,
+    rgba(10,14,22,0.86) 100%);
 }
 /* The title/kicker/score sitting on this hero read var(--ink), which in
    light theme is dark brown — invisible on a scrim that's always dark
@@ -2791,23 +2839,81 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
   --ink: #f1f0e9;
   --ink-dim: #8a9086;
   --ink-faint: #5c6158;
+  /* +10px, not the old -40px: the poster starts just BELOW the artwork's
+     bottom edge rather than being pulled up into it. The overlap read as
+     the poster covering the picture instead of sitting under it. 56.25%
+     is the art's own height (aspect-ratio 16/9 of this box's width), so
+     this tracks the image at any viewport width by construction. */
+  padding-top: calc(56.25% + 10px);
 }
 
 .gd-head { position: relative; z-index: 1; display: flex; gap: var(--space-4); align-items: flex-start; }
 .gd-head__cover {
-  width: 116px; flex-shrink: 0; aspect-ratio: 3/4;
-  border-radius: 6px; overflow: hidden; background: var(--surface);
+  width: 96px; flex-shrink: 0; aspect-ratio: 3/4;
+  border-radius: 8px; overflow: hidden; background: var(--surface);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.45);
 }
 /* This one frame fills rather than fits: the header art is a fixed
    crop by design, so `cover` is correct here even though posters
    elsewhere in the app use `contain` to avoid trimming box art. */
 .gd-head__cover .poster-frame__img { object-fit: cover; }
 .gd-head__cover .poster-frame__blur { display: none; }
-.gd-head__main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.gd-head__main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 7px; align-items: flex-start; }
 .gd-head__title {
   font-family: var(--font-display); font-size: 30px; line-height: 1.02;
   font-weight: 700; letter-spacing: -0.02em;
 }
+/* The release year on its own line under the studio, rather than tacked
+   onto a single uppercase metadata string — it's a distinct fact and
+   reads as one at this size. */
+.gd-head__year {
+  font-size: 13px; color: var(--ink-dim); font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+/* Outlined pill. The header sits on artwork, so a filled button here
+   would compete with the poster; an outline reads as secondary while
+   staying legible on any backdrop. */
+.gd-trailer {
+  display: inline-flex; align-items: center; gap: 9px;
+  margin-top: 3px; padding: 8px 18px 8px 15px;
+  border: 1.5px solid var(--line-strong); border-radius: var(--radius-pill);
+  background: transparent; color: var(--ink);
+  font-size: 14.5px; font-weight: 700;
+  transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+.gd-trailer:hover { background: var(--surface); border-color: var(--ink-dim); }
+/* Over artwork the pill needs its own ground to stay legible against
+   whatever the picture happens to be; on a plain page it must not, or
+   in light theme it would be a dark slab with dark text on it. */
+.gd-hero:has(.gd-hero__bg) .gd-trailer {
+  border-color: var(--gd-rule-strong);
+  background: rgba(10,14,22,0.35);
+}
+.gd-hero:has(.gd-hero__bg) .gd-trailer:hover { background: rgba(10,14,22,0.6); }
+.gd-trailer:active { transform: scale(0.97); }
+/* A CSS triangle rather than an SVG — it's three lines and it can't
+   fail to load. */
+.gd-trailer__play {
+  width: 0; height: 0; flex-shrink: 0;
+  border-left: 9px solid currentColor;
+  border-top: 5.5px solid transparent; border-bottom: 5.5px solid transparent;
+}
+/* The studio disc: a letter standing in for a logo we don't have. */
+.gd-studio-disc {
+  display: grid; place-items: center; border-radius: 50%;
+  background: var(--surface-high); color: var(--ink-dim);
+  font-size: 10px; font-weight: 700; letter-spacing: 0;
+}
+.gd-credit-chip--studio { color: var(--ink); font-size: 14px; }
+/* Director + voice-cast preview, under the poster/title block. Collapses
+   to nothing (no stray gap) on a game with neither. */
+.gd-credits {
+  position: relative; z-index: 1;
+  display: flex; flex-wrap: wrap; align-items: center;
+  gap: var(--space-2) var(--space-4);
+  margin-top: var(--space-3);
+}
+.gd-credits:empty, .gd-credits > div:empty { margin: 0; }
 /* Kept in the DOM (a real, accessible heading) but visually hidden once
    the transparent logo PNG below has loaded and taken its place — the
    standard clip-to-1px pattern, not display:none, so screen readers and
@@ -2831,49 +2937,99 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
   color: var(--ink-dim); border: 1px solid var(--gd-rule);
   border-radius: 4px; padding: 3px 7px; font-weight: 600;
 }
-.gd-score { display: flex; align-items: baseline; gap: var(--space-3); flex-wrap: wrap; }
-.gd-score__num {
-  font-size: 32px; font-weight: 700; line-height: 1; color: var(--ink);
-  font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1;
-  letter-spacing: -0.02em;
-}
 
-.gd-synopsis { font-size: var(--text-body); line-height: 1.6; color: var(--ink-dim); }
+/* Three lines by default with the toggle floated into the last one, so
+   a long description can't push the ratings and the action row off the
+   first screen. The button is only unhidden when the text genuinely
+   overflows — see the measurement in game-view.js. */
+.gd-synopsis-wrap { position: relative; }
+.gd-synopsis { font-size: var(--text-body); line-height: 1.6; color: var(--ink-dim); margin: 0; }
+.gd-synopsis.is-clamped {
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+/* Sits on the last clamped line. The long fade in front of it is what
+   stops the sentence colliding with the label — a hard edge there read
+   as the two overlapping rather than the text running out. */
+.gd-seemore {
+  position: absolute; right: 0; bottom: 0;
+  padding: 0 0 0 48px;
+  background: linear-gradient(90deg, transparent 0, var(--bg) 44px, var(--bg) 100%);
+  border: none; color: var(--accent-bright);
+  font-size: var(--text-body); font-weight: 700;
+}
+/* Expanded, the label sits under the text rather than over its last
+   line — there's no line left to overlap. */
+.gd-synopsis:not(.is-clamped) + .gd-seemore {
+  position: static; display: block; margin-top: var(--space-2);
+  padding: 0; background: none; text-align: left;
+}
 
 /* ---- 2. rating distribution ---- */
 /* Bars sit ON the baseline rule rather than inside a panel, which is
    what lets the chart read as part of the page. */
 .gd-dist { display: flex; flex-direction: column; gap: var(--space-2); }
+.gd-dist__head { display: flex; align-items: baseline; justify-content: space-between; }
+.gd-dist__title {
+  font-family: var(--font-display); font-size: 19px; font-weight: 700;
+  letter-spacing: -0.01em; color: var(--ink); margin: 0 0 var(--space-2);
+}
+/* Tall enough for the shape of the distribution to actually be legible —
+   at the old 42px every bar but the mode collapsed into the baseline and
+   the chart said nothing. The top padding is headroom for the percentage
+   badge, which sits above the tallest bar. */
 .gd-dist__bars {
-  display: flex; align-items: flex-end; gap: 4px;
-  height: 42px;
-  border-bottom: 1px solid var(--gd-rule);
+  display: flex; align-items: flex-end; gap: 5px;
+  height: 118px; padding-top: 26px;
 }
 /* Each bar is a real <button>, so it is focusable and clickable on its
    own. The button fills the full column height rather than only the
    drawn bar — a 2px stub for an unrated value would otherwise be an
    almost impossible tap target. */
 .gd-dist__col {
+  position: relative;
   flex: 1; height: 100%; min-width: 0; padding: 0;
   display: flex; align-items: flex-end;
   background: none; border: none; cursor: pointer;
-  border-radius: 2px 2px 0 0;
+  border-radius: 4px 4px 0 0;
   -webkit-tap-highlight-color: transparent;
 }
+/* Neutral by default with only the mode (or whatever is being touched)
+   picked out in the accent — colouring every bar made the chart one
+   solid block of lime with no shape to read. */
 .gd-dist__bar {
-  width: 100%; min-height: 2px; border-radius: 2px 2px 0 0;
-  background: var(--accent);
-  opacity: 0.55;
-  transition: opacity var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
+  width: 100%; min-height: 4px; border-radius: 4px 4px 0 0;
+  background: var(--surface-high);
+  transition: background var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
   pointer-events: none; /* clicks belong to the button, not the bar */
 }
-.gd-dist__col:hover .gd-dist__bar { opacity: 0.8; }
-.gd-dist__col:active .gd-dist__bar { opacity: 1; }
-.gd-dist__col--active .gd-dist__bar { opacity: 1; background: var(--accent-bright); }
+.gd-dist__col--peak .gd-dist__bar,
+.gd-dist__col--active .gd-dist__bar { background: var(--accent); }
+.gd-dist__col:hover .gd-dist__bar { background: var(--accent-bright); }
+.gd-dist__col--active .gd-dist__bar { background: var(--accent-bright); }
 .gd-dist__col:focus-visible {
   outline: 2px solid var(--accent-bright); outline-offset: 2px;
 }
-.gd-dist__axis { display: flex; justify-content: space-between; }
+/* Rides above whichever bar currently carries it (the mode at rest, the
+   hovered one otherwise). Hidden rather than removed so moving between
+   bars doesn't reflow the row. */
+.gd-dist__badge {
+  position: absolute; bottom: 100%; left: 50%;
+  transform: translate(-50%, -6px);
+  padding: 3px 7px; border-radius: 6px;
+  background: color-mix(in srgb, var(--accent) 20%, var(--surface-high));
+  color: var(--accent-bright);
+  font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums;
+  white-space: nowrap; pointer-events: none;
+  opacity: 0; transition: opacity var(--dur-fast) var(--ease);
+}
+.gd-dist__col--showbadge .gd-dist__badge { opacity: 1; }
+.gd-dist__axis { display: flex; justify-content: space-between; align-items: center; }
+.gd-dist__end {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 12px; color: var(--ink-dim); font-variant-numeric: tabular-nums;
+}
+.gd-dist__end svg { width: 13px; height: 13px; }
 
 /* Active rating filter above the review list. */
 .gd-filter {
@@ -2886,6 +3042,55 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
    background. These match the accent fill already used by the centre
    tab-bar button, so the primary action looks the same wherever it
    appears in the app. */
+/* One rounded panel split into three equal cells by hairlines, rather
+   than three separate buttons with gaps — it reads as a single control
+   surface for the game, which is what it is. Icon over label, and the
+   leading action carries the accent so the primary thing to do is still
+   obvious without a filled slab. */
+.gd-bar {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  background: var(--surface-raised); border: 1px solid var(--line);
+  border-radius: var(--radius-m); overflow: hidden;
+}
+.gd-bar__btn {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 5px; padding: var(--space-3) 6px;
+  background: none; border: none; color: var(--ink-dim);
+  font-size: 12.5px; font-weight: 600; line-height: 1.2; text-align: center;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+.gd-bar__btn + .gd-bar__btn { border-left: 1px solid var(--line); }
+.gd-bar__btn:hover { background: var(--surface-high); color: var(--ink); }
+.gd-bar__btn:active { background: var(--surface-high); }
+.gd-bar__btn:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: -2px; }
+.gd-bar__btn--accent { color: var(--accent-bright); }
+.gd-bar__btn--accent:hover { color: var(--accent-bright); }
+.gd-bar__icon { display: block; width: 21px; height: 21px; }
+.gd-bar__icon svg { width: 100%; height: 100%; display: block; }
+
+/* The overflow sheet behind the row's third cell. */
+.gd-more { padding: 0 var(--space-4) var(--space-4); }
+.gd-more__stats {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2); margin-bottom: var(--space-3);
+}
+.gd-more__stat {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  padding: var(--space-3) 0; background: var(--surface); border-radius: var(--radius-s);
+}
+.gd-more__stat b { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.gd-more__stat span {
+  font-size: 10px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--ink-dim); font-weight: 600;
+}
+.gd-more__row {
+  width: 100%; text-align: left; padding: 14px var(--space-3);
+  background: none; border: none; border-top: 1px solid var(--line);
+  color: var(--ink); font-size: 15px; font-weight: 600;
+}
+.gd-more__row:active { background: var(--surface); }
+.gd-more__row--quiet { color: var(--ink-dim); }
+
 .gd-actions { display: flex; gap: var(--space-2); align-items: stretch; }
 .gd-btn {
   min-height: 44px; padding: 0 var(--space-4);
@@ -2918,21 +3123,18 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 /* ---- 4. stat strip ---- */
 /* Vertical hairlines between cells, no fill. The heavier rule above it
    is what marks this as a distinct block without needing a background. */
+/* Three centred columns, no dividers and no rules around them — the
+   figures carry themselves, and hairlines here fought with the action
+   panel directly above. */
 .gd-strip {
-  display: grid; grid-template-columns: repeat(4, 1fr);
-  border-top: 1px solid var(--gd-rule-strong);
-  border-bottom: 1px solid var(--gd-rule);
-  padding-top: var(--space-4); padding-bottom: var(--space-4);
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  padding-top: var(--space-2);
 }
 .gd-stat {
-  display: flex; flex-direction: column; gap: 4px;
-  padding: 0 var(--space-3);
-  border-right: 1px solid var(--gd-rule);
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
 }
-.gd-stat:last-child { border-right: none; }
-.gd-stat:first-child { padding-left: 0; }
 .gd-stat b {
-  font-size: 19px; font-weight: 700; color: var(--ink); letter-spacing: -0.01em;
+  font-size: 22px; font-weight: 700; color: var(--ink); letter-spacing: -0.01em;
   font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1;
 }
 .gd-stat span {

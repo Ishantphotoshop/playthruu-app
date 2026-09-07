@@ -61,6 +61,18 @@ function facePic(p, cls) {
 // under the title, so it's the first credited detail anyone sees.
 // Deliberately separate from the cast preview below: cast is cast,
 // director is its own line, not folded into the same strip.
+// The studio line under the title: a letter disc and the developer's
+// name, the same chip shape the director credit below it uses so the two
+// read as one family rather than two unrelated treatments.
+function studioChipHtml(developer) {
+  if (!developer) return '';
+  return `
+    <span class="gd-credit-chip gd-credit-chip--studio">
+      <span class="gd-credit-chip__photo gd-studio-disc">${esc(developer.trim().charAt(0).toUpperCase())}</span>
+      <span>${esc(developer)}</span>
+    </span>`;
+}
+
 function directorChipHtml(director) {
   if (!director) return '';
   // RAWG's own profile (real photo, real bio, real filmography) beats
@@ -121,6 +133,22 @@ export async function renderGameView(root, { id, igdbId }) {
   root.innerHTML = `<button type="button" class="topbar__back game-back" data-action="back" aria-label="Back">${iconBack()}</button>`
     + `<div class="view-body" id="game-body"><div class="view-loading" id="game-loading" hidden>${spinner()}</div></div>` + navBar('');
   const body = qs('#game-body', root);
+
+  // The back chevron is bare over the artwork (a filled disc there was
+  // the one thing competing with the picture), but it stays pinned while
+  // the page scrolls — and a bare white chevron sitting on top of body
+  // text is unreadable. So the plate fades back in once the artwork has
+  // scrolled away, which is exactly when it's needed and no sooner.
+  const backBtn = qs('.game-back', root);
+  if (backBtn) {
+    const syncBack = () => {
+      // Roughly the artwork's own height; below that there's no art left
+      // behind the chevron to protect.
+      backBtn.classList.toggle('game-back--plated', body.scrollTop > body.clientWidth * 0.42);
+    };
+    body.addEventListener('scroll', syncBack, { passive: true });
+    syncBack();
+  }
   let activeTab = 'cast';
   let crewCache = null;
   let castDirectorData = null; // { director, cast } — resolved below, before the first paint
@@ -355,7 +383,6 @@ export async function renderGameView(root, { id, igdbId }) {
       const replayCount = logs.filter((l) => l.is_replay).length;
       const platforms = (game.platform || '').split(',').map((p) => p.trim()).filter(Boolean);
       const year = game.release_year || (game.release_date ? new Date(game.release_date).getFullYear() : null);
-      const headMeta = [game.developer, year].filter(Boolean).join(' · ');
 
       const statCell = (value, label) =>
         `<div class="gd-stat"><b>${value}</b><span>${label}</span></div>`;
@@ -371,57 +398,88 @@ export async function renderGameView(root, { id, igdbId }) {
               ${posterFrame(poster, game.title, 'gd-head__cover', { id: 'game-cover', full: true })}
               <div class="gd-head__main">
                 <div id="game-logo-slot">${gameTitleHtml(game.title, logoReady ? resolvedLogoUrl : null)}</div>
-                ${headMeta ? `<p class="gd-kicker">${esc(headMeta)}</p>` : ''}
-                <div id="director-slot">${directorChipHtml(castDirectorData?.director)}</div>
-                <div class="gd-score">
-                  ${avg ? `<span class="gd-score__num">${avg.toFixed(1)}</span>` : ''}
-                  <span class="gd-kicker">${rated.length} log${rated.length === 1 ? '' : 's'}</span>
-                  ${game.trailer_url ? `<button type="button" class="gd-link gd-link--trailer" id="play-trailer">▶ Trailer</button>` : ''}
-                  <div id="cast-preview-slot">${castPreviewHtml(castDirectorData?.cast)}</div>
-                </div>
+                ${studioChipHtml(game.developer)}
+                ${year ? `<span class="gd-head__year">${esc(year)}</span>` : ''}
+                ${game.trailer_url ? `
+                  <button type="button" class="gd-trailer" id="play-trailer">
+                    <span class="gd-trailer__play"></span>Trailer
+                  </button>` : ''}
               </div>
             </header>
+            <!-- Below the header rather than inside its right-hand
+                 column: the poster is shorter than the title block, and
+                 running these underneath both fills that pocket instead
+                 of stretching the text column past the poster and
+                 leaving a hole beside it. -->
+            <div class="gd-credits">
+              <div id="director-slot">${directorChipHtml(castDirectorData?.director)}</div>
+              <div id="cast-preview-slot">${castPreviewHtml(castDirectorData?.cast)}</div>
+            </div>
           </div>
 
-          ${game.description ? `<p class="gd-synopsis">${esc(game.description)}</p>` : ''}
+          ${game.description ? `
+            <div class="gd-synopsis-wrap" id="synopsis-wrap">
+              <p class="gd-synopsis is-clamped" id="synopsis">${esc(game.description)}</p>
+              <button type="button" class="gd-seemore" id="see-more" hidden>See more</button>
+            </div>` : ''}
 
           ${rated.length ? `
             <section class="gd-dist" id="rating-chart-slot">
+              <div class="gd-dist__head">
+                <h2 class="gd-dist__title">Ratings</h2>
+              </div>
               <div class="gd-dist__bars">
                 ${halfSteps.map((star, i) => {
                   const count = stepCounts[i];
+                  const pct = rated.length ? Math.round((count / rated.length) * 100) : 0;
                   const label = `${count} log${count === 1 ? '' : 's'} rated ${star} star${star === 1 ? '' : 's'}`;
+                  // The mode carries the badge at rest; hovering or
+                  // tapping any other bar moves it there instead.
+                  const isPeak = count === stepMax && count > 0;
                   return `
-                  <button type="button" class="gd-dist__col" data-rating="${star}"
+                  <button type="button" class="gd-dist__col${isPeak ? ' gd-dist__col--peak' : ''}"
+                          data-rating="${star}" data-pct="${pct}" data-count="${count}"
                           aria-label="${label}" title="${label}">
-                    <span class="gd-dist__bar" style="height:${Math.max(2, Math.round((count / stepMax) * 100))}%"></span>
+                    <span class="gd-dist__badge">${pct}%</span>
+                    <span class="gd-dist__bar" style="height:${Math.max(4, Math.round((count / stepMax) * 100))}%"></span>
                   </button>`;
                 }).join('')}
               </div>
               <div class="gd-dist__axis">
-                <span class="gd-kicker">0.5 ★</span>
-                <span class="gd-kicker">5 ★</span>
+                <span class="gd-dist__end">${iconStarSmall()}0.5</span>
+                <span class="gd-dist__end">${iconStarSmall()}5</span>
               </div>
             </section>`
             : `<p class="gd-empty">No ratings yet — be the first.</p>`}
 
           ${ownLog
-            ? `<div class="gd-actions">
-                 <button type="button" class="gd-btn gd-btn--primary" id="edit-own-log">Edit your log${ownLogs.length > 1 ? ` · ${ownLogs.length}×` : ''}</button>
-                 <button type="button" class="gd-btn" id="log-again">Log again</button>
-                 <button type="button" class="gd-btn gd-btn--icon" id="add-to-list" aria-label="Add to list">${iconStack()}</button>
+            ? `<div class="gd-bar">
+                 <button type="button" class="gd-bar__btn gd-bar__btn--accent" id="log-again">
+                   <span class="gd-bar__icon">${iconLogAgain()}</span>Log again
+                 </button>
+                 <button type="button" class="gd-bar__btn" id="edit-own-log">
+                   <span class="gd-bar__icon">${iconPencil()}</span>Edit log${ownLogs.length > 1 ? ` · ${ownLogs.length}×` : ''}
+                 </button>
+                 <button type="button" class="gd-bar__btn" id="game-more">
+                   <span class="gd-bar__icon">${iconDots()}</span>More
+                 </button>
                </div>`
-            : `<div class="gd-actions">
-                 <button type="button" class="gd-btn gd-btn--primary" id="log-this-game">LOG it</button>
-                 <button type="button" class="gd-btn" id="add-backlog">Backlog</button>
-                 <button type="button" class="gd-btn gd-btn--icon" id="add-to-list" aria-label="Add to list">${iconStack()}</button>
+            : `<div class="gd-bar">
+                 <button type="button" class="gd-bar__btn gd-bar__btn--accent" id="log-this-game">
+                   <span class="gd-bar__icon">${iconLogAgain()}</span>Log it
+                 </button>
+                 <button type="button" class="gd-bar__btn" id="add-backlog">
+                   <span class="gd-bar__icon">${iconBookmark()}</span>Backlog
+                 </button>
+                 <button type="button" class="gd-bar__btn" id="game-more">
+                   <span class="gd-bar__icon">${iconDots()}</span>More
+                 </button>
                </div>`}
 
           <div class="gd-strip">
-            ${statCell(typicalHours ? `${typicalHours}h` : '—', 'Typical')}
-            ${statCell(beatenPct === null ? '—' : `${beatenPct}%`, 'Beat it')}
-            ${statCell(replayCount, 'Replays')}
-            ${statCell(platforms.length || '—', 'Platforms')}
+            ${statCell(platforms.length || '—', platforms.length === 1 ? 'Platform' : 'Platforms')}
+            ${statCell(logs.length, logs.length === 1 ? 'Log' : 'Logs')}
+            ${statCell(reviewedLogs.length, reviewedLogs.length === 1 ? 'Review' : 'Reviews')}
           </div>
 
           ${platforms.length ? `
@@ -547,12 +605,68 @@ export async function renderGameView(root, { id, igdbId }) {
         }
       });
 
-      const listBtn = qs('#add-to-list', body);
-      if (listBtn) listBtn.addEventListener('click', async () => {
-        if (!state.user) { promptSignIn('Sign in to save games.'); return; }
-        const saved = await ensureSavedGame();
-        if (saved) openAddToListPicker(game);
+      // "Add to list" moved off the action row into this menu when the
+      // row became three fixed cells — along with the numbers that used
+      // to have their own tiles in the strip, which now has room for
+      // only the three the design calls for.
+      const moreBtn = qs('#game-more', body);
+      if (moreBtn) moreBtn.addEventListener('click', () => {
+        openGameMoreSheet({
+          game,
+          typicalHours,
+          beatenPct,
+          replayCount,
+          onAddToList: async () => {
+            if (!state.user) { promptSignIn('Sign in to save games.'); return; }
+            const saved = await ensureSavedGame();
+            if (saved) openAddToListPicker(game);
+          },
+          onBacklog: ownLog ? null : async () => {
+            if (!state.user) { promptSignIn('Sign in to save games.'); return; }
+            const saved = await ensureSavedGame();
+            if (!saved) return;
+            await api.createLog({ game_id: game.id, user_id: state.user.id, status: 'backlog', is_public: true });
+            pulseLogTab();
+            toast('Added to your backlog.', 'success');
+            refreshCurrentView();
+          },
+        });
       });
+
+      // The synopsis is clamped to three lines; the toggle only appears
+      // when there is genuinely more text than that, so a short
+      // description doesn't get a "See more" that expands to nothing.
+      const synopsis = qs('#synopsis', body);
+      const seeMore = qs('#see-more', body);
+      if (synopsis && seeMore) {
+        // Measured after layout — scrollHeight is only meaningful once
+        // the clamp has actually been applied.
+        requestAnimationFrame(() => {
+          if (synopsis.scrollHeight > synopsis.clientHeight + 2) seeMore.hidden = false;
+        });
+        seeMore.addEventListener('click', () => {
+          const clamped = synopsis.classList.toggle('is-clamped');
+          seeMore.textContent = clamped ? 'See more' : 'See less';
+        });
+      }
+
+      // The percentage badge rides whichever bar is under the pointer,
+      // falling back to the tallest one when nothing is being touched —
+      // so the chart always names the figure it's drawing.
+      const distBars = qs('.gd-dist__bars', body);
+      if (distBars) {
+        const cols = qsa('.gd-dist__col', distBars);
+        const showBadgeOn = (col) => {
+          cols.forEach((c) => c.classList.toggle('gd-dist__col--showbadge', c === col));
+        };
+        const peak = cols.find((c) => c.classList.contains('gd-dist__col--peak')) || null;
+        showBadgeOn(peak);
+        cols.forEach((col) => {
+          col.addEventListener('pointerenter', () => showBadgeOn(col));
+          col.addEventListener('focus', () => showBadgeOn(col));
+        });
+        distBars.addEventListener('pointerleave', () => showBadgeOn(peak));
+      }
 
       // Review cards are wired inside paintReviews(), which runs on every
       // repaint — wiring them again here would double up every like
@@ -609,6 +723,9 @@ export async function renderGameView(root, { id, igdbId }) {
           ${game.genre ? factRow('Genre', esc(game.genre)) : ''}
           ${game.developer ? factRow('Developer', esc(game.developer)) : ''}
           ${game.publisher ? factRow('Publisher', esc(game.publisher)) : ''}
+          ${typicalHours ? factRow('Typical playtime', `${typicalHours}h`) : ''}
+          ${beatenPct === null ? '' : factRow('Finished it', `${beatenPct}% of logs`)}
+          ${replayCount ? factRow('Replays', String(replayCount)) : ''}
           ${!game.platform && !game.genre && !game.developer && !game.publisher ? '<p class="muted">No extra details yet.</p>' : ''}
         </div>
         <h2 class="section-heading">Studios</h2>
@@ -667,10 +784,58 @@ function openTrailer(embedUrl) {
 }
 
 function iconCloseSmall() { return `<svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>`; }
+function iconStarSmall() { return `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3.6l2.6 5.3 5.8.8-4.2 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8L3.6 9.7l5.8-.8z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>`; }
+function iconLogAgain() { return `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.4-5.7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M20 3.6V9h-5.4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`; }
+function iconPencil() { return `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15.6 4.6l3.8 3.8M5 19h3.6L19.4 8.2a1.6 1.6 0 0 0 0-2.3l-1.3-1.3a1.6 1.6 0 0 0-2.3 0L5 15.4z" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round"/></svg>`; }
+function iconDots() { return `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5.5" cy="12" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="18.5" cy="12" r="1.9"/></svg>`; }
+function iconBookmark() { return `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6.5 4h11a1 1 0 0 1 1 1v15l-6.5-4.2L5.5 20V5a1 1 0 0 1 1-1z" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/></svg>`; }
 function iconController() { return `<svg viewBox="0 0 24 24" fill="none"><path d="M7 9h10l2.5 7a2 2 0 0 1-3.7 1.4L14 15h-4l-1.8 2.4A2 2 0 0 1 4.5 16z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 11.5v3M7.5 13h3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="16" cy="12" r="0.9" fill="currentColor"/><circle cx="18" cy="14" r="0.9" fill="currentColor"/></svg>`; }
 function iconDoc() { return `<svg viewBox="0 0 24 24" fill="none"><path d="M6 3.5h9l4 4V19a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 10h6M9 13.5h6M9 17h3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>`; }
 function iconStack() { return `<svg viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="12" height="16" rx="1.5" stroke="currentColor" stroke-width="1.8"/><path d="M8 1.5h12v16" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" opacity="0.55"/></svg>`; }
 
+
+// The overflow menu behind the action row's third cell. It carries the
+// actions that no longer fit on a three-cell row, and the playtime
+// figures the stat strip gave up when it went from four tiles to the
+// three the design asks for — they're still worth having, just not worth
+// a permanent tile each.
+function openGameMoreSheet({ game, typicalHours, beatenPct, replayCount, onAddToList, onBacklog }) {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  const stat = (value, label) => `
+    <div class="gd-more__stat"><b>${esc(String(value))}</b><span>${esc(label)}</span></div>`;
+  overlay.innerHTML = `
+    <div class="modal">
+      <div class="modal__header"><h2>${esc(game.title)}</h2></div>
+      <div class="gd-more">
+        <div class="gd-more__stats">
+          ${stat(typicalHours ? `${typicalHours}h` : '—', 'Typical')}
+          ${stat(beatenPct === null ? '—' : `${beatenPct}%`, 'Beat it')}
+          ${stat(replayCount, replayCount === 1 ? 'Replay' : 'Replays')}
+        </div>
+        <button type="button" class="gd-more__row" data-act="list">Add to a list</button>
+        ${onBacklog ? `<button type="button" class="gd-more__row" data-act="backlog">Add to backlog</button>` : ''}
+        <button type="button" class="gd-more__row" data-act="share">Copy link</button>
+        <button type="button" class="gd-more__row gd-more__row--quiet" data-act="close">Cancel</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  const close = () => overlay.remove();
+  overlay.addEventListener('click', async (e) => {
+    if (e.target === overlay) return close();
+    const act = e.target.dataset?.act;
+    if (!act) return;
+    if (act === 'close') return close();
+    close();
+    if (act === 'list') await onAddToList?.();
+    if (act === 'backlog') await onBacklog?.();
+    if (act === 'share') {
+      const url = `${location.origin}${location.pathname}#/game/${game.id}`;
+      try { await navigator.clipboard.writeText(url); toast('Link copied', 'success'); }
+      catch { toast('Could not copy that link', 'error'); }
+    }
+  });
+}
 
 // Full-screen artwork viewer. Single tap on the cover opens it; inside,
 // double-tap steps through two zoom levels before returning to fit
