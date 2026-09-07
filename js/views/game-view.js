@@ -1,9 +1,10 @@
 import * as api from '../api.js';
 import { state } from '../state.js';
 import {
-  navBar, spinner, logCard, emptyState, posterFrame, iconUser, iconBack, avatarImg,
+  navBar, spinner, emptyState, posterFrame, iconUser, iconBack, avatarImg,
+  likeButton, iconReply, iconFlag,
 } from '../components.js';
-import { esc, starRow, formatDate, qs, qsa, toast, promptSignIn, recordRecentlyViewed, pulseLogTab } from '../utils.js';
+import { esc, starRow, formatDate, timeAgo, qs, qsa, toast, promptSignIn, recordRecentlyViewed, pulseLogTab } from '../utils.js';
 import { openLogModal } from './log-modal.js';
 import { openAddToListPicker } from './lists-view.js';
 import { refreshCurrentView, navigate } from '../router.js';
@@ -129,6 +130,43 @@ function crowdRowHtml(label, entries) {
       </span>
       <span class="gd-crowd__count">${compactNumber(people.length)}</span>
     </div>`;
+}
+
+// The game page's own review card — bordered, self-contained, no game
+// poster repeated on every row (unlike the shared feed logCard, this
+// list is already all reviews of the one game whose page you're on, so
+// that thumbnail would just be the same image forty times). Reuses the
+// feed card's data-action attributes and spoiler markup exactly, so it
+// stays wired by the existing wireLogCards() with no changes there.
+function reviewCardHtml(log, { likeInfo, commentCount, ownLog }) {
+  const author = log.profiles || {};
+  return `
+    <article class="gd-review" data-log-id="${log.id}">
+      <div class="gd-review__head">
+        <a href="#/profile/${esc(author.username)}" class="gd-review__author">
+          ${avatarImg(author, 32)}
+          <span class="gd-review__who">
+            <span class="gd-review__name">${esc(author.display_name || author.username)}</span>
+            <span class="gd-review__time">${esc(timeAgo(log.created_at))}</span>
+          </span>
+        </a>
+        ${log.rating ? starRow(log.rating, { size: 13 }) : ''}
+      </div>
+      ${log.contains_spoilers
+        ? `<button type="button" class="gd-review__body gd-review__body--spoiler" data-spoiler>
+             <span class="spoiler-tag">SPOILERS</span>
+             <span class="spoiler-veil">Tap to reveal</span>
+             <span class="spoiler-text">${esc(log.review)}</span>
+           </button>`
+        : `<p class="gd-review__body">${esc(log.review)}</p>`}
+      <div class="gd-review__foot">
+        ${likeButton(log.id, likeInfo || { count: 0, liked: false })}
+        <a href="#/review/${log.id}" class="gd-review__replies">${iconReply()}<span>${commentCount > 0 ? commentCount : ''}</span></a>
+        ${ownLog
+          ? `<button type="button" class="gd-review__edit" data-action="edit-log" data-log-id="${log.id}">Edit</button>`
+          : `<button type="button" class="gd-review__report" data-action="report-log" data-log-id="${log.id}" aria-label="Report this review" title="Report this review">${iconFlag()}</button>`}
+      </div>
+    </article>`;
 }
 
 function castPreviewHtml(cast) {
@@ -261,13 +299,18 @@ export async function renderGameView(root, { id, igdbId }) {
 
     const rated = logs.filter(l => l.rating);
     const avg = rated.length ? (rated.reduce((s, l) => s + Number(l.rating), 0) / rated.length) : null;
-    const likes = await api.getLikesForLogs(logs.map(l => l.id), state.user?.id);
+    const reviewIds = logs.filter(l => l.review).map(l => l.id);
+    const [likes, commentCounts] = await Promise.all([
+      api.getLikesForLogs(logs.map(l => l.id), state.user?.id),
+      api.getCommentCountsForLogs(reviewIds).catch(() => ({})),
+    ]);
     const ownLogs = state.user ? logs.filter(l => l.user_id === state.user.id) : []; // already newest-first
     const ownLog = ownLogs[0] || null;
 
     clearTimeout(showLoadingTimer);
     paintGame();
     loadMoreFromStudio();
+    loadSimilarGames();
     recordRecentlyViewed(game);
     loadCastDirector();
     // logoPromise (kicked off way back when `game` first loaded, above)
@@ -294,14 +337,16 @@ export async function renderGameView(root, { id, igdbId }) {
       try {
         castDirectorData = await api.getGameCastAndDirector(game);
       } catch {
-        castDirectorData = { director: null, cast: [] };
+        castDirectorData = { director: null, cast: [], crew: [] };
       }
       const directorSlot = qs('#director-slot', body);
       if (directorSlot) directorSlot.innerHTML = directorChipHtml(castDirectorData.director);
       const castPreviewSlot = qs('#cast-preview-slot', body);
       if (castPreviewSlot) castPreviewSlot.innerHTML = castPreviewHtml(castDirectorData.cast);
       wireCastPreviewJump();
-      if (activeTab === 'cast') paintTabContent();
+      // Both tabs resolve from this same castDirectorData fetch — whichever
+      // one is open needs repainting once the real result lands, not just Cast.
+      if (activeTab === 'cast' || activeTab === 'crew') paintTabContent();
     }
 
 
@@ -315,6 +360,38 @@ export async function renderGameView(root, { id, igdbId }) {
         qsa('.gd-tab', body).forEach((t) => t.classList.toggle('gd-tab--active', t.dataset.tab === 'cast'));
         paintTabContent();
         qs('#game-tabs', body)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+    }
+
+    // Shared by "More from [Studio]" and "Similar games" below — both are
+    // a kicker plus a horizontal poster strip that adds-then-opens
+    // whatever's tapped, differing only in which games they list and
+    // which slot they paint into.
+    function renderRail(slotId, kicker, games) {
+      const slot = qs(`#${slotId}`, body);
+      if (!slot || !games.length) return; // page navigated away, or nothing to show
+      slot.innerHTML = `
+        <div class="gd-row">
+          <span class="gd-kicker">${esc(kicker)}</span>
+        </div>
+        <div class="trending-strip">
+          ${games.map((g, i) => `
+            <button type="button" class="trending-card" data-idx="${i}" aria-label="${esc(g.title)}">
+              ${posterFrame(g.cover_url, g.title, 'trending-card__cover')}
+            </button>`).join('')}
+        </div>`;
+      qsa('.trending-card', slot).forEach((el) => {
+        el.addEventListener('click', async () => {
+          el.disabled = true;
+          const g = games[Number(el.dataset.idx)];
+          try {
+            const saved = await api.addGame({ igdb_id: g.igdb_id, title: g.title, cover_url: g.cover_url, release_year: g.year }, state.user?.id ?? null);
+            location.hash = `#/game/${saved.id}`;
+          } catch (err) {
+            toast(err.message || 'Could not open that game.', 'error');
+            el.disabled = false;
+          }
+        });
       });
     }
 
@@ -334,32 +411,19 @@ export async function renderGameView(root, { id, igdbId }) {
         if (!developer) return;
         const profile = await api.getStudioProfile(developer.igdb_id);
         const more = (profile?.games || []).filter((g) => g.igdb_id !== game.igdb_id).slice(0, 10);
-        if (!more.length) return;
-        const slot = qs('#more-from-slot', body);
-        if (!slot) return; // page was navigated away from before this landed
-        slot.innerHTML = `
-          <div class="gd-row">
-            <span class="gd-kicker">More from ${esc(developer.name)}</span>
-          </div>
-          <div class="trending-strip">
-            ${more.map((g, i) => `
-              <button type="button" class="trending-card" data-idx="${i}" aria-label="${esc(g.title)}">
-                ${posterFrame(g.cover_url, g.title, 'trending-card__cover')}
-              </button>`).join('')}
-          </div>`;
-        qsa('.trending-card', slot).forEach((el) => {
-          el.addEventListener('click', async () => {
-            el.disabled = true;
-            const g = more[Number(el.dataset.idx)];
-            try {
-              const saved = await api.addGame({ igdb_id: g.igdb_id, title: g.title, cover_url: g.cover_url, release_year: g.year }, state.user?.id ?? null);
-              location.hash = `#/game/${saved.id}`;
-            } catch (err) {
-              toast(err.message || 'Could not open that game.', 'error');
-              el.disabled = false;
-            }
-          });
-        });
+        renderRail('more-from-slot', `More from ${developer.name}`, more);
+      } catch { /* discovery extra, fine to quietly skip on any failure */ }
+    }
+
+    // "Similar games" — IGDB's own curated similar_games list for this
+    // title (see getSimilarGames in api.js). Same lazy-after-paint
+    // treatment as the studio rail above, and the same silent skip on
+    // any failure or empty result.
+    async function loadSimilarGames() {
+      if (!game.igdb_id) return;
+      try {
+        const similar = await api.getSimilarGames(game.igdb_id, 10);
+        renderRail('similar-games-slot', 'Similar games', similar);
       } catch { /* discovery extra, fine to quietly skip on any failure */ }
     }
 
@@ -564,6 +628,7 @@ export async function renderGameView(root, { id, igdbId }) {
 
           <div class="gd-tabs" id="game-tabs">
             <button class="gd-tab gd-tab--active" data-tab="cast">Cast</button>
+            <button class="gd-tab" data-tab="crew">Crew</button>
             <button class="gd-tab" data-tab="details">Details</button>
           </div>
           <div id="game-tab-content"></div>
@@ -581,6 +646,7 @@ export async function renderGameView(root, { id, igdbId }) {
           <div class="log-list gd-reviews" id="game-reviews"></div>
 
           <div id="more-from-slot"></div>
+          <div id="similar-games-slot"></div>
         </div>`;
 
       // Reviews are painted separately from the rest of the page so that
@@ -617,7 +683,11 @@ export async function renderGameView(root, { id, igdbId }) {
               : `No written reviews at ${ratingFilter} ★.`);
 
         listEl.innerHTML = shown.length
-          ? shown.map((l) => logCard(l, { showAuthor: true, likeInfo: likes[l.id], ownLog: l.user_id === state.user?.id })).join('')
+          ? shown.map((l) => reviewCardHtml(l, {
+              likeInfo: likes[l.id],
+              commentCount: commentCounts[l.id] || 0,
+              ownLog: l.user_id === state.user?.id,
+            })).join('')
           : `<p class="gd-empty">${emptyMsg}</p>`;
 
         // Re-wire after every repaint: the previous nodes (and their
@@ -793,6 +863,26 @@ export async function renderGameView(root, { id, igdbId }) {
                   </div>
                 </a>`).join('')}</div>`
           : `<p class="gd-empty">No cast listed for this game on Wikidata yet — coverage there is community-maintained.</p>`;
+        return;
+      }
+      if (activeTab === 'crew') {
+        if (castDirectorData === null) { slot.innerHTML = spinner(); return; }
+        // Same shape as the Cast branch above, minus the character
+        // column — a writer or composer doesn't have one. Director is
+        // deliberately excluded (see CREW_PROPS in api.js): it already
+        // has its own line in the header, so it isn't in castDirectorData.crew
+        // at all, not filtered out here.
+        const crew = castDirectorData.crew || [];
+        slot.innerHTML = crew.length
+          ? `<div class="crew-list">${crew.map((p) => `
+                <a href="#/person/${p.qid}" class="crew-row">
+                  ${facePic(p, '')}
+                  <div class="crew-row__info">
+                    <div class="crew-row__name">${esc(p.name)}</div>
+                    <div class="crew-row__role">${esc(p.role)}</div>
+                  </div>
+                </a>`).join('')}</div>`
+          : `<p class="gd-empty">No crew listed for this game on Wikidata yet — coverage there is community-maintained.</p>`;
         return;
       }
       if (activeTab === 'details') {

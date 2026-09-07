@@ -3267,20 +3267,62 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 .gd-tab--active { color: var(--accent-bright); border-bottom-color: var(--accent); }
 
 /* ---- 7. reviews ---- */
-/* logCard() is reused as-is so likes and their wiring keep working;
-   only its skin is replaced here — panel and radius stripped, rows
-   divided by hairlines. */
-.gd-reviews { display: flex; flex-direction: column; }
-.gd-reviews .log-card {
-  background: none; border: none; border-radius: 0; box-shadow: none;
-  padding: var(--space-4) 0;
-  border-bottom: 1px solid var(--gd-rule);
+/* Bordered, self-contained cards — reviewCardHtml() in game-view.js,
+   not the shared feed logCard: this list never needs the game poster
+   logCard normally leads with, since it's already all reviews of the
+   one game whose page this is. */
+.gd-reviews { display: flex; flex-direction: column; gap: var(--space-2); }
+.gd-review {
+  display: flex; flex-direction: column; gap: 10px;
+  padding: var(--space-3);
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius-m);
 }
-.gd-reviews .log-card:last-child { border-bottom: none; }
-.gd-reviews .log-card__review {
-  font-style: italic; font-size: 12.5px; line-height: 1.5; color: var(--ink-dim);
+.gd-review__head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-2); }
+.gd-review__author { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.gd-review__who { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.gd-review__name {
+  font-size: 13.5px; font-weight: 600; color: var(--ink);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.gd-reviews .log-card__author { font-size: 15px; font-weight: 600; color: var(--ink); }
+.gd-review__time { font-size: 11.5px; color: var(--ink-faint); font-family: var(--font-mono); }
+.gd-review__body { font-size: 14px; line-height: 1.55; color: var(--ink-dim); margin: 0; }
+/* Spoiler veil — identical behaviour/markup to the feed's own log-card
+   spoiler (same is-revealed class, toggled by the same wireLogCards
+   handler), only restyled to sit inside this card's own padding. */
+.gd-review__body--spoiler {
+  position: relative; display: block; width: 100%; text-align: left;
+  background: none; border: none; padding: 0; cursor: pointer;
+}
+.gd-review__body--spoiler .spoiler-text {
+  font-size: 14px; line-height: 1.55; color: var(--ink-dim); filter: blur(6px); user-select: none;
+}
+.gd-review__body--spoiler.is-revealed .spoiler-text { filter: none; user-select: auto; cursor: text; }
+.gd-review__body--spoiler .spoiler-veil {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font-size: 12.5px; font-weight: 700; color: var(--ink-dim);
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
+}
+.gd-review__body--spoiler.is-revealed .spoiler-veil { display: none; }
+.gd-review__body--spoiler .spoiler-tag {
+  position: absolute; top: -6px; left: var(--space-2);
+  font-size: 9.5px; font-weight: 700; letter-spacing: 0.08em;
+  color: var(--danger); background: var(--surface); padding: 0 5px;
+}
+.gd-review__foot { display: flex; align-items: center; gap: var(--space-4); }
+.gd-review__replies {
+  display: flex; align-items: center; gap: 4px;
+  color: var(--ink-faint); font-size: 12px; font-weight: 600;
+}
+.gd-review__replies svg { width: 16px; height: 16px; }
+.gd-review__edit {
+  margin-left: auto; background: none; border: none;
+  font-size: 12px; font-weight: 700; color: var(--accent-bright);
+}
+.gd-review__report {
+  margin-left: auto; background: none; border: none; color: var(--ink-faint);
+}
+.gd-review__report svg { width: 15px; height: 15px; }
 
 /* ---- cast portraits + director block --------------------------------
    Wikidata's photo coverage is partial even on well-documented games,

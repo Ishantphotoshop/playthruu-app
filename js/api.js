@@ -1545,15 +1545,31 @@ async function getRawgDirectorOnce(title) {
 // enrichment, not a new one.
 export async function getGameCastAndDirector(game) {
   if (typeof game === 'string') game = { title: game }; // legacy call shape, no row to cache against
-  if (game.credits_fetched) return game.credits_json || { director: null, cast: [] };
+  if (game.credits_fetched) {
+    const cached = { director: null, cast: [], crew: [], ...(game.credits_json || {}) };
+    // A row cached before Crew existed has credits_json with no `crew`
+    // key at all — distinct from a game that was actually checked and
+    // has none (that's `crew: []`, a real empty array). Without this,
+    // every game credits-cached before this feature shipped would show
+    // "no crew" forever, even for well-documented games that genuinely
+    // have some (verified: God of War 2018's own cache was exactly this
+    // — Bear McCreary as composer, sitting right there on Wikidata,
+    // never asked for because credits_fetched short-circuited above it).
+    // One extra Wikidata query, only ever once per game, only for rows
+    // that predate this feature.
+    if (!('crew' in (game.credits_json || {})) && game.id) {
+      backfillCrew(game, cached).catch(() => {});
+    }
+    return cached;
+  }
   const result = await fetchCastAndDirectorLive(game.title);
-  // A totally empty result (no director, no cast) almost always means the
-  // lookup missed rather than that the game genuinely has neither — RAWG
-  // or Wikidata being briefly unreachable, a title not matching yet, etc.
-  // Caching that as final locked it in as "no cast" forever, even after a
-  // later fix would've found it, since nothing ever asked again. Only a
-  // result with something in it is worth freezing.
-  if (game.id && (result.director || result.cast.length)) {
+  // A totally empty result (no director, no cast, no crew) almost always
+  // means the lookup missed rather than that the game genuinely has none
+  // of it — RAWG or Wikidata being briefly unreachable, a title not
+  // matching yet, etc. Caching that as final locked it in forever, even
+  // after a later fix would've found it, since nothing ever asked again.
+  // Only a result with something in it is worth freezing.
+  if (game.id && (result.director || result.cast.length || result.crew.length)) {
     // Fire-and-forget: a failed save (signed out) just means no
     // persistence this time, same tradeoff already accepted for IGDB
     // enrichment — the live result above is still returned either way.
@@ -1602,6 +1618,22 @@ export async function getGameArt(game) {
   return { logo_url, grid_url };
 }
 
+// One-time backfill for a game whose credits were cached before Crew
+// existed (see the `'crew' in ...` check in getGameCastAndDirector
+// above). Re-resolves the same Wikidata item the original cast/director
+// lookup would have used and asks it for crew alone — no need to redo
+// the RAWG director lookup or the cast query, both already sitting in
+// credits_json. Mutates `cached` in place (harmless even if nothing
+// reads it again this session) and persists the merged result so the
+// NEXT visit has it without this backfill running again.
+async function backfillCrew(game, cached) {
+  const qid = await findWikidataGameIdOnce(game.title).catch(() => null);
+  const crew = qid ? await fetchWikidataCrew(qid).catch(() => []) : [];
+  cached.crew = crew;
+  const merged = { ...(game.credits_json || {}), crew };
+  await supabase.from('games').update({ credits_json: merged }).eq('id', game.id);
+}
+
 async function fetchCastAndDirectorLive(title) {
   // RAWG only ever contributes the director; the whole cast comes from
   // Wikidata. Running RAWG first and awaiting it therefore meant that
@@ -1626,6 +1658,7 @@ async function fetchCastAndDirectorLive(title) {
   }
 
   let credits = qid ? await fetchWikidataCredits(qid).catch(() => null) : null;
+  let usedQid = qid;
 
   // The qid lookup can "succeed" on a remaster/remake's own bare stub
   // item (see EDITION_SUFFIX above) — that's not the same as it having
@@ -1637,17 +1670,20 @@ async function fetchCastAndDirectorLive(title) {
       const originalQid = await findWikidataGameIdOnce(stripped).catch(() => null);
       if (originalQid && originalQid !== qid) {
         const retry = await fetchWikidataCredits(originalQid).catch(() => null);
-        if (retry && (retry.director || retry.cast.length)) credits = retry;
+        if (retry && (retry.director || retry.cast.length)) { credits = retry; usedQid = originalQid; }
       }
     }
   }
 
-  if (!credits) return { director: rawgDirector, cast: [] };
+  if (!credits) return { director: rawgDirector, cast: [], crew: [] };
+  // Same qid the (possibly retried) cast/director credits came from, so
+  // Crew isn't asked against a stub item that was already rejected above.
+  const crew = usedQid ? await fetchWikidataCrew(usedQid).catch(() => []) : [];
   // RAWG's director wins when both have one — it comes from an
   // explicit "director" job role, more reliable than Wikidata's P57
   // which is sometimes populated from a film-style single "director"
   // field that doesn't always fit how games credit that role.
-  return { director: rawgDirector || credits.director, cast: credits.cast };
+  return { director: rawgDirector || credits.director, cast: credits.cast, crew };
 }
 
 // P18 is the item's image. Wikidata hands it back as a Commons
@@ -1704,6 +1740,53 @@ async function fetchWikidataCredits(qid) {
   }
   const cast = [...castMap.values()].map((c) => ({ ...c, characters: [...c.characters] }));
   return { director, cast };
+}
+
+// The properties that make up the Crew tab (writers, composer,
+// designers), each tagged with the plain-English role this app shows
+// rather than Wikidata's own property label ("designed by" reads as a
+// verb phrase, not a job title). Director (P57) is deliberately NOT
+// here — it already has its own line in the header, so repeating it in
+// Crew would just be the same fact twice under a different tab.
+const CREW_PROPS = { P58: 'Writer', P86: 'Composer', P287: 'Designer', P162: 'Producer' };
+
+// One row per (person, role) via UNION rather than piling more OPTIONALs
+// onto fetchWikidataCredits above — OPTIONALs at the same level
+// cross-multiply when more than one is multi-valued (a game with 2
+// writers and 2 designers would come back as 4 rows of nonsense
+// combinations), UNION doesn't have that problem.
+async function fetchWikidataCrew(qid) {
+  const clauses = Object.keys(CREW_PROPS)
+    .map((p) => `{ wd:${qid} wdt:${p} ?person . BIND(wd:${p} as ?role) }`)
+    .join(' UNION ');
+  const data = await wikidataQuery(`
+    SELECT ?person ?personLabel ?personImage ?role WHERE {
+      ${clauses}
+      OPTIONAL { ?person wdt:P18 ?personImage. }
+      SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
+    } LIMIT 60`);
+
+  const crewMap = new Map();
+  for (const row of data.results.bindings) {
+    if (!row.person || !row.personLabel) continue;
+    // An item with no English label at all comes back with the raw QID
+    // as its own "label" — not a name worth showing.
+    if (/^Q\d+$/.test(row.personLabel.value)) continue;
+    const personQid = row.person.value.split('/').pop();
+    const propId = row.role.value.split('/').pop();
+    if (!crewMap.has(personQid)) {
+      crewMap.set(personQid, {
+        qid: personQid,
+        name: row.personLabel.value,
+        photo: commonsThumb(row.personImage?.value),
+        roles: new Set(),
+      });
+    }
+    const entry = crewMap.get(personQid);
+    if (!entry.photo) entry.photo = commonsThumb(row.personImage?.value);
+    entry.roles.add(CREW_PROPS[propId] || 'Crew');
+  }
+  return [...crewMap.values()].map((c) => ({ qid: c.qid, name: c.name, photo: c.photo, role: [...c.roles].join(', ') }));
 }
 
 // A cast member's own mini bio page: description + every other game
@@ -1808,6 +1891,32 @@ export async function getRawgPersonProfile(slug) {
       rating: g.rating ? Math.round(g.rating * 20) : null, // RAWG's 0-5 -> the app's 0-100 scale (see starRow callers, which divide by 20)
     })),
   };
+}
+
+// The "Similar games" rail. IGDB's own `similar_games` field is a bare
+// list of ids curated by IGDB itself (shared genre/theme/tags) — two
+// calls: the id list off this game, then one batch fetch for their
+// titles/covers/years. Neither call is cached on the row (unlike
+// Studios/credits) since the whole point is that it can change as IGDB's
+// own graph is edited; it's cheap enough to just ask fresh each visit.
+export async function getSimilarGames(igdbId, limit = 10) {
+  if (!igdbId) return [];
+  try {
+    const [detail] = await igdb('games', `fields similar_games; where id = ${igdbId};`);
+    const ids = (detail?.similar_games || []).slice(0, limit);
+    if (!ids.length) return [];
+    const games = await igdb('games', `fields name,cover.image_id,first_release_date; where id = (${ids.join(',')}) & cover != null;`);
+    // IGDB doesn't promise the batch comes back in id order — reorder to
+    // match similar_games, which IS meaningfully ordered (most-similar
+    // first), so the rail isn't shuffled every load.
+    const byId = new Map(games.map((g) => [g.id, g]));
+    return ids.map((id) => byId.get(id)).filter(Boolean).map((g) => ({
+      igdb_id: g.id, title: g.name, cover_url: igdbImageUrl(g.cover?.image_id, '1080p'),
+      year: g.first_release_date ? new Date(g.first_release_date * 1000).getFullYear() : null,
+    }));
+  } catch {
+    return [];
+  }
 }
 
 export async function getGameStudios(igdbId) {
@@ -2297,6 +2406,18 @@ export async function getLikeInfo(logId, userId) {
 
 // ---- comments on a review (a log) --------------------------
 // Backed by the `comments` table (migrations/2026-08-17_comments.sql).
+// Bulk reply counts for a list of logs — the same shape/tradeoff as
+// getLikesForLogs above, one query instead of one per card.
+export async function getCommentCountsForLogs(logIds) {
+  const counts = {};
+  logIds.forEach((id) => (counts[id] = 0));
+  if (!logIds.length) return counts;
+  const { data, error } = await supabase.from('comments').select('log_id').in('log_id', logIds);
+  if (error) throw error;
+  for (const row of data) counts[row.log_id] = (counts[row.log_id] || 0) + 1;
+  return counts;
+}
+
 export async function getComments(logId) {
   const { data, error } = await supabase
     .from('comments')
