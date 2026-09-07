@@ -2981,6 +2981,10 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 .gd-dist__bars {
   display: flex; align-items: flex-end; gap: 5px;
   height: 118px; padding-top: 26px;
+  /* Clears the average block opposite the heading — the badge that
+     rides the tallest bar lives in that top padding and was landing
+     right under the rating count. */
+  margin-top: var(--space-2);
 }
 /* Each bar is a real <button>, so it is focusable and clickable on its
    own. The button fills the full column height rather than only the
@@ -3047,8 +3051,11 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
    surface for the game, which is what it is. Icon over label, and the
    leading action carries the accent so the primary thing to do is still
    obvious without a filled slab. */
+/* Four cells: the log action, Rate, Review, and the overflow. The last
+   is narrower than the rest — it's a fallback, not a peer of the three
+   real actions. */
 .gd-bar {
-  display: grid; grid-template-columns: repeat(3, 1fr);
+  display: grid; grid-template-columns: 1fr 1fr 1fr 0.78fr;
   background: var(--surface-raised); border: 1px solid var(--line);
   border-radius: var(--radius-m); overflow: hidden;
 }
@@ -3123,24 +3130,39 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 /* ---- 4. stat strip ---- */
 /* Vertical hairlines between cells, no fill. The heavier rule above it
    is what marks this as a distinct block without needing a background. */
-/* Centred columns, no dividers and no rules around them — the figures
-   carry themselves, and hairlines here fought with the action panel
-   directly above. Four across now that Lists joined the set, so the
-   type steps down a little to keep a four-digit count on one line. */
-.gd-strip {
-  display: grid; grid-template-columns: repeat(4, 1fr);
-  padding-top: var(--space-2);
+/* The counts, as three cards rather than the bare centred columns they
+   used to be — sitting under "Where to play", they now read as their
+   own block instead of a loose row floating under the action panel. */
+.gd-social { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-2); }
+.gd-social__card {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: var(--space-1); height: 76px;
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius-m);
 }
-.gd-stat {
-  display: flex; flex-direction: column; align-items: center; gap: 5px;
-}
-.gd-stat b {
+.gd-social__card b {
   font-size: 20px; font-weight: 700; color: var(--ink); letter-spacing: -0.01em;
   font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1;
 }
-.gd-stat span {
+.gd-social__card span {
   font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
   color: var(--ink-dim); font-weight: 600;
+}
+
+/* The average, sitting opposite the "Ratings" heading — the one figure
+   the distribution underneath can't state outright. */
+.gd-avg { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; flex-shrink: 0; }
+.gd-avg__num {
+  font-size: 30px; font-weight: 700; line-height: 1; letter-spacing: -0.03em;
+  color: var(--ink); font-variant-numeric: tabular-nums;
+}
+.gd-avg__num i {
+  font-style: normal; font-size: 12px; font-family: var(--font-mono);
+  color: var(--ink-faint); margin-left: 2px;
+}
+.gd-avg__count {
+  font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--ink-faint); font-weight: 600;
 }
 
 /* ---- who's playing it -----------------------------------------------

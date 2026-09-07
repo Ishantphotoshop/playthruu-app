@@ -430,8 +430,8 @@ export async function renderGameView(root, { id, igdbId }) {
       const platforms = (game.platform || '').split(',').map((p) => p.trim()).filter(Boolean);
       const year = game.release_year || (game.release_date ? new Date(game.release_date).getFullYear() : null);
 
-      const statCell = (value, label) =>
-        `<div class="gd-stat"><b>${value}</b><span>${label}</span></div>`;
+      const socialCard = (value, label) =>
+        `<div class="gd-social__card"><b>${value}</b><span>${label}</span></div>`;
 
       body.innerHTML = `
         <div class="gd">
@@ -473,6 +473,11 @@ export async function renderGameView(root, { id, igdbId }) {
             <section class="gd-dist" id="rating-chart-slot">
               <div class="gd-dist__head">
                 <h2 class="gd-dist__title">Ratings</h2>
+                ${avg ? `
+                  <div class="gd-avg">
+                    <span class="gd-avg__num">${avg.toFixed(1)}<i>/5</i></span>
+                    <span class="gd-avg__count">${rated.length} rating${rated.length === 1 ? '' : 's'}</span>
+                  </div>` : ''}
               </div>
               <div class="gd-dist__bars">
                 ${halfSteps.map((star, i) => {
@@ -498,35 +503,28 @@ export async function renderGameView(root, { id, igdbId }) {
             </section>`
             : `<p class="gd-empty">No ratings yet — be the first.</p>`}
 
-          ${ownLog
-            ? `<div class="gd-bar">
-                 <button type="button" class="gd-bar__btn gd-bar__btn--accent" id="log-again">
+          <!-- Four cells, per the sketch: the log action, then the two
+               things you'd most often come here to do to a game you've
+               already logged, then the overflow. Rate and Review both
+               open the log sheet — they're two ways into the same form,
+               which is how people actually think about it. -->
+          <div class="gd-bar">
+            ${ownLog
+              ? `<button type="button" class="gd-bar__btn gd-bar__btn--accent" id="log-again">
                    <span class="gd-bar__icon">${iconLogAgain()}</span>Log again
-                 </button>
-                 <button type="button" class="gd-bar__btn" id="edit-own-log">
-                   <span class="gd-bar__icon">${iconPencil()}</span>Edit log${ownLogs.length > 1 ? ` · ${ownLogs.length}×` : ''}
-                 </button>
-                 <button type="button" class="gd-bar__btn" id="game-more">
-                   <span class="gd-bar__icon">${iconDots()}</span>More
-                 </button>
-               </div>`
-            : `<div class="gd-bar">
-                 <button type="button" class="gd-bar__btn gd-bar__btn--accent" id="log-this-game">
+                 </button>`
+              : `<button type="button" class="gd-bar__btn gd-bar__btn--accent" id="log-this-game">
                    <span class="gd-bar__icon">${iconLogAgain()}</span>Log it
-                 </button>
-                 <button type="button" class="gd-bar__btn" id="add-backlog">
-                   <span class="gd-bar__icon">${iconBookmark()}</span>Backlog
-                 </button>
-                 <button type="button" class="gd-bar__btn" id="game-more">
-                   <span class="gd-bar__icon">${iconDots()}</span>More
-                 </button>
-               </div>`}
-
-          <div class="gd-strip">
-            ${statCell(platforms.length || '—', platforms.length === 1 ? 'Platform' : 'Platforms')}
-            ${statCell(logs.length, logs.length === 1 ? 'Log' : 'Logs')}
-            ${statCell(reviewedLogs.length, reviewedLogs.length === 1 ? 'Review' : 'Reviews')}
-            ${statCell(compactNumber(listsCount), listsCount === 1 ? 'List' : 'Lists')}
+                 </button>`}
+            <button type="button" class="gd-bar__btn" id="rate-game">
+              <span class="gd-bar__icon">${iconStarLine()}</span>Rate
+            </button>
+            <button type="button" class="gd-bar__btn" id="review-game">
+              <span class="gd-bar__icon">${iconPencil()}</span>${ownLog ? 'Edit' : 'Review'}
+            </button>
+            <button type="button" class="gd-bar__btn" id="game-more">
+              <span class="gd-bar__icon">${iconDots()}</span>More
+            </button>
           </div>
 
           ${crowdHtml ? `<section class="gd-crowd">${crowdHtml}</section>` : ''}
@@ -542,6 +540,15 @@ export async function renderGameView(root, { id, igdbId }) {
                   </span>`).join('')}
               </div>
             </section>` : ''}
+
+          <section class="gd-section">
+            <span class="gd-kicker">Social</span>
+            <div class="gd-social">
+              ${socialCard(logs.length, logs.length === 1 ? 'Log' : 'Logs')}
+              ${socialCard(reviewedLogs.length, reviewedLogs.length === 1 ? 'Review' : 'Reviews')}
+              ${socialCard(compactNumber(listsCount), listsCount === 1 ? 'List' : 'Lists')}
+            </div>
+          </section>
 
           <!-- Points at the app's own News tab, not an external URL —
                that's the real destination this maps to; there's no
@@ -660,35 +667,27 @@ export async function renderGameView(root, { id, igdbId }) {
         const saved = await ensureSavedGame();
         if (saved) openLogModal({ game, onSaved: () => refreshCurrentView() });
       });
-      const editBtn = qs('#edit-own-log', body);
-      if (editBtn) editBtn.addEventListener('click', () => openLogModal({ existingLog: ownLog, onSaved: () => refreshCurrentView() }));
       const logAgainBtn = qs('#log-again', body);
       if (logAgainBtn) logAgainBtn.addEventListener('click', async () => {
         const saved = await ensureSavedGame();
         if (saved) openLogModal({ game, defaultReplay: true, onSaved: () => refreshCurrentView() });
       });
+
+      // Rate and Review are two doors into the same log sheet — it's one
+      // form with both fields on it, and which one you came in through
+      // is just which one you had in mind. On a game you've already
+      // logged they edit that log rather than starting a second one.
+      const openLogSheet = async () => {
+        if (!state.user) { promptSignIn('Sign in to log this game.'); return; }
+        if (ownLog) { openLogModal({ existingLog: ownLog, onSaved: () => refreshCurrentView() }); return; }
+        const saved = await ensureSavedGame();
+        if (saved) openLogModal({ game, onSaved: () => refreshCurrentView() });
+      };
+      qs('#rate-game', body)?.addEventListener('click', openLogSheet);
+      qs('#review-game', body)?.addEventListener('click', openLogSheet);
+
       const trailerBtn = qs('#play-trailer', body);
       if (trailerBtn) trailerBtn.addEventListener('click', () => openTrailer(game.trailer_url));
-
-      // One tap straight onto the backlog — the full log sheet asks for
-      // a rating and a date, neither of which mean anything for a game
-      // you haven't started.
-      const backlogBtn = qs('#add-backlog', body);
-      if (backlogBtn) backlogBtn.addEventListener('click', async () => {
-        if (!state.user) { promptSignIn('Sign in to save games.'); return; }
-        backlogBtn.disabled = true;
-        try {
-          const saved = await ensureSavedGame();
-          if (!saved) { backlogBtn.disabled = false; return; }
-          await api.createLog({ game_id: game.id, user_id: state.user.id, status: 'backlog', is_public: true });
-          pulseLogTab();
-          toast('Added to your backlog.', 'success');
-          refreshCurrentView();
-        } catch (err) {
-          toast(err.message || 'Could not add that.', 'error');
-          backlogBtn.disabled = false;
-        }
-      });
 
       // "Add to list" moved off the action row into this menu when the
       // row became three fixed cells — along with the numbers that used
@@ -873,9 +872,9 @@ function iconStarSmall() { return `<svg viewBox="0 0 24 24" fill="none" aria-hid
 function iconLogAgain() { return `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.4-5.7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M20 3.6V9h-5.4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`; }
 function iconPencil() { return `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15.6 4.6l3.8 3.8M5 19h3.6L19.4 8.2a1.6 1.6 0 0 0 0-2.3l-1.3-1.3a1.6 1.6 0 0 0-2.3 0L5 15.4z" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round"/></svg>`; }
 function iconDots() { return `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5.5" cy="12" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="18.5" cy="12" r="1.9"/></svg>`; }
-function iconBookmark() { return `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6.5 4h11a1 1 0 0 1 1 1v15l-6.5-4.2L5.5 20V5a1 1 0 0 1 1-1z" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/></svg>`; }
 function iconNewspaper() { return `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 5.5h13a1.5 1.5 0 0 1 1.5 1.5v11a1.5 1.5 0 0 1-3 0V6" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M4 5.5v11.5A1.5 1.5 0 0 0 5.5 18.5H15.5" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7.2 9h6.6M7.2 12h6.6M7.2 15h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>`; }
 function iconChevronSmall() { return `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`; }
+function iconStarLine() { return `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3.8l2.7 5.6 6.1.85-4.4 4.3 1.05 6.1-5.45-2.9-5.45 2.9L7.6 14.55 3.2 10.25l6.1-.85z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>`; }
 function iconController() { return `<svg viewBox="0 0 24 24" fill="none"><path d="M7 9h10l2.5 7a2 2 0 0 1-3.7 1.4L14 15h-4l-1.8 2.4A2 2 0 0 1 4.5 16z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 11.5v3M7.5 13h3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="16" cy="12" r="0.9" fill="currentColor"/><circle cx="18" cy="14" r="0.9" fill="currentColor"/></svg>`; }
 function iconDoc() { return `<svg viewBox="0 0 24 24" fill="none"><path d="M6 3.5h9l4 4V19a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 10h6M9 13.5h6M9 17h3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>`; }
 function iconStack() { return `<svg viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="12" height="16" rx="1.5" stroke="currentColor" stroke-width="1.8"/><path d="M8 1.5h12v16" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" opacity="0.55"/></svg>`; }
