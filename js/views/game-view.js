@@ -1,7 +1,7 @@
 import * as api from '../api.js';
 import { state } from '../state.js';
 import {
-  navBar, spinner, logCard, emptyState, posterFrame, iconUser, iconBack,
+  navBar, spinner, logCard, emptyState, posterFrame, iconUser, iconBack, avatarImg,
 } from '../components.js';
 import { esc, starRow, formatDate, qs, qsa, toast, promptSignIn, recordRecentlyViewed, pulseLogTab } from '../utils.js';
 import { openLogModal } from './log-modal.js';
@@ -101,6 +101,34 @@ function gameTitleHtml(title, logoUrl) {
   return `
     <h1 class="gd-head__title${logoUrl ? ' gd-head__title--hidden' : ''}">${esc(title)}</h1>
     ${logoUrl ? `<img class="gd-head__logo" src="${esc(logoUrl)}" alt="${esc(title)}">` : ''}`;
+}
+
+// One row of "who's doing this" social proof — Played by / Playing /
+// Want to play — each an overlapping avatar stack plus a count, in the
+// same visual language castPreviewHtml already uses for the voice cast
+// teaser. `entries` is the raw logs list for one status; deduped by
+// user here since a replay can leave more than one log per person and
+// this is meant to count PEOPLE, not rows.
+function crowdRowHtml(label, entries) {
+  const seen = new Set();
+  const people = [];
+  for (const l of entries) {
+    if (!l.profiles || seen.has(l.user_id)) continue;
+    seen.add(l.user_id);
+    people.push(l.profiles);
+  }
+  if (!people.length) return '';
+  const shown = people.slice(0, 5);
+  const extra = people.length - shown.length;
+  return `
+    <div class="gd-crowd__row">
+      <span class="gd-crowd__label">${esc(label)}</span>
+      <span class="gd-crowd__stack">
+        ${shown.map((p) => `<span class="gd-crowd__avatar">${avatarImg(p, 24)}</span>`).join('')}
+        ${extra > 0 ? `<span class="gd-crowd__avatar gd-crowd__more">+${extra}</span>` : ''}
+      </span>
+      <span class="gd-crowd__count">${compactNumber(people.length)}</span>
+    </div>`;
 }
 
 function castPreviewHtml(cast) {
@@ -219,11 +247,15 @@ export async function renderGameView(root, { id, igdbId }) {
     // the rest of the page paints, with its own spinner in the Cast tab
     // that swaps for the real content the moment it resolves, however
     // long that actually takes.
-    const [enriched, logs, breakdown, listsCount] = await Promise.all([
+    const [enriched, logs, breakdown, listsCount, followingIds] = await Promise.all([
       enrichNeeded ? api.enrichGameDetails(game).catch(() => game) : Promise.resolve(game),
       id ? api.getLogsForGame(id) : Promise.resolve([]),
       id ? api.getGameRatingBreakdown(id) : Promise.resolve({}),
       id ? api.getListsCountForGame(id) : Promise.resolve(0),
+      // Only worth asking for when there's someone signed in to have a
+      // following list at all — the Friends tab on the review list below
+      // is simply hidden otherwise.
+      state.user ? api.getFollowingIdSet(state.user.id).catch(() => new Set()) : Promise.resolve(new Set()),
     ]);
     game = enriched || game;
 
@@ -360,7 +392,21 @@ export async function renderGameView(root, { id, igdbId }) {
       const topReviews = [...reviewedLogs]
         .sort((a, b) => (likes[b.id]?.count || 0) - (likes[a.id]?.count || 0))
         .slice(0, 5);
+      // Same pool, filtered to people you follow — already ordered
+      // newest-first (getLogsForGame's own query order), so no reason to
+      // re-sort it by likes the way the Popular tab does.
+      const friendsReviews = reviewedLogs.filter((l) => followingIds.has(l.user_id));
       const poster = game.cover_url;
+
+      // People this game has been logged against, split by status —
+      // feeds the Played by / Playing / Want to play rows just under
+      // the action bar. Built from `logs`, already fetched, so this is
+      // free: no extra query.
+      const crowdHtml = [
+        crowdRowHtml('Played by', logs.filter((l) => l.status === 'played')),
+        crowdRowHtml('Playing', logs.filter((l) => l.status === 'playing')),
+        crowdRowHtml('Want to play', logs.filter((l) => l.status === 'backlog')),
+      ].join('');
 
       // --- derived stats for the strip -----------------------------
       // Ten bars, one per half-star step, matching how ratings are
@@ -480,7 +526,10 @@ export async function renderGameView(root, { id, igdbId }) {
             ${statCell(platforms.length || '—', platforms.length === 1 ? 'Platform' : 'Platforms')}
             ${statCell(logs.length, logs.length === 1 ? 'Log' : 'Logs')}
             ${statCell(reviewedLogs.length, reviewedLogs.length === 1 ? 'Review' : 'Reviews')}
+            ${statCell(compactNumber(listsCount), listsCount === 1 ? 'List' : 'Lists')}
           </div>
+
+          ${crowdHtml ? `<section class="gd-crowd">${crowdHtml}</section>` : ''}
 
           ${platforms.length ? `
             <section class="gd-section">
@@ -494,6 +543,18 @@ export async function renderGameView(root, { id, igdbId }) {
               </div>
             </section>` : ''}
 
+          <!-- Points at the app's own News tab, not an external URL —
+               that's the real destination this maps to; there's no
+               separate news microsite to send anyone off to. -->
+          <a href="#/news" class="gd-news-banner">
+            <span class="gd-news-banner__icon">${iconNewspaper()}</span>
+            <span class="gd-news-banner__text">
+              <span class="gd-news-banner__title">PlayThruu News</span>
+              <span class="gd-news-banner__sub">Latest updates and community picks</span>
+            </span>
+            ${iconChevronSmall()}
+          </a>
+
           <div class="gd-tabs" id="game-tabs">
             <button class="gd-tab gd-tab--active" data-tab="cast">Cast</button>
             <button class="gd-tab" data-tab="details">Details</button>
@@ -504,6 +565,11 @@ export async function renderGameView(root, { id, igdbId }) {
             <span class="gd-kicker">Reviews</span>
             ${reviewedLogs.length ? `<a href="#/game/${id}/reviews" class="gd-link">All ${reviewedLogs.length}</a>` : ''}
           </div>
+          ${friendsReviews.length ? `
+            <div class="segmented segmented--wide" id="review-tabs">
+              <button type="button" class="segmented__item segmented__item--active" data-review-tab="popular">Popular</button>
+              <button type="button" class="segmented__item" data-review-tab="friends">Friends</button>
+            </div>` : ''}
           <div id="review-filter-slot"></div>
           <div class="log-list gd-reviews" id="game-reviews"></div>
 
@@ -514,15 +580,20 @@ export async function renderGameView(root, { id, igdbId }) {
       // tapping a bar in the distribution can repaint just this list
       // rather than re-rendering (and re-fetching) the whole screen.
       let ratingFilter = null;
+      // 'friends' only ever gets set from the segmented control, which
+      // is itself only rendered when friendsReviews is non-empty — so
+      // this can stay 'popular' unconditionally as the resting state.
+      let reviewTab = 'popular';
 
       function paintReviews() {
         const listEl = qs('#game-reviews', body);
         const filterEl = qs('#review-filter-slot', body);
         if (!listEl) return;
 
+        const pool = reviewTab === 'friends' ? friendsReviews : reviewedLogs;
         const shown = ratingFilter === null
-          ? topReviews
-          : reviewedLogs.filter((l) => Number(l.rating) === ratingFilter);
+          ? (reviewTab === 'friends' ? friendsReviews : topReviews)
+          : pool.filter((l) => Number(l.rating) === ratingFilter);
 
         filterEl.innerHTML = ratingFilter === null ? '' : `
           <div class="gd-filter">
@@ -530,11 +601,17 @@ export async function renderGameView(root, { id, igdbId }) {
             <button type="button" class="gd-link" id="clear-rating-filter">Clear</button>
           </div>`;
 
+        const emptyMsg = reviewTab === 'friends'
+          ? (ratingFilter === null
+              ? "None of the people you follow have reviewed this yet."
+              : `Nobody you follow rated it ${ratingFilter} ★.`)
+          : (ratingFilter === null
+              ? 'No written reviews yet — be the first.'
+              : `No written reviews at ${ratingFilter} ★.`);
+
         listEl.innerHTML = shown.length
           ? shown.map((l) => logCard(l, { showAuthor: true, likeInfo: likes[l.id], ownLog: l.user_id === state.user?.id })).join('')
-          : `<p class="gd-empty">${ratingFilter === null
-              ? 'No written reviews yet — be the first.'
-              : `No written reviews at ${ratingFilter} ★.`}</p>`;
+          : `<p class="gd-empty">${emptyMsg}</p>`;
 
         // Re-wire after every repaint: the previous nodes (and their
         // listeners) are gone once innerHTML is replaced.
@@ -550,6 +627,14 @@ export async function renderGameView(root, { id, igdbId }) {
         });
         paintReviews();
       }
+
+      qsa('[data-review-tab]', body).forEach((btn) => {
+        btn.addEventListener('click', () => {
+          reviewTab = btn.dataset.reviewTab;
+          qsa('[data-review-tab]', body).forEach((b) => b.classList.toggle('segmented__item--active', b === btn));
+          paintReviews();
+        });
+      });
 
       qsa('.gd-dist__col', body).forEach((btn) => {
         btn.addEventListener('click', () => {
@@ -789,6 +874,8 @@ function iconLogAgain() { return `<svg viewBox="0 0 24 24" fill="none" aria-hidd
 function iconPencil() { return `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15.6 4.6l3.8 3.8M5 19h3.6L19.4 8.2a1.6 1.6 0 0 0 0-2.3l-1.3-1.3a1.6 1.6 0 0 0-2.3 0L5 15.4z" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round"/></svg>`; }
 function iconDots() { return `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5.5" cy="12" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="18.5" cy="12" r="1.9"/></svg>`; }
 function iconBookmark() { return `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6.5 4h11a1 1 0 0 1 1 1v15l-6.5-4.2L5.5 20V5a1 1 0 0 1 1-1z" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/></svg>`; }
+function iconNewspaper() { return `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 5.5h13a1.5 1.5 0 0 1 1.5 1.5v11a1.5 1.5 0 0 1-3 0V6" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M4 5.5v11.5A1.5 1.5 0 0 0 5.5 18.5H15.5" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7.2 9h6.6M7.2 12h6.6M7.2 15h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>`; }
+function iconChevronSmall() { return `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`; }
 function iconController() { return `<svg viewBox="0 0 24 24" fill="none"><path d="M7 9h10l2.5 7a2 2 0 0 1-3.7 1.4L14 15h-4l-1.8 2.4A2 2 0 0 1 4.5 16z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 11.5v3M7.5 13h3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="16" cy="12" r="0.9" fill="currentColor"/><circle cx="18" cy="14" r="0.9" fill="currentColor"/></svg>`; }
 function iconDoc() { return `<svg viewBox="0 0 24 24" fill="none"><path d="M6 3.5h9l4 4V19a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 10h6M9 13.5h6M9 17h3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>`; }
 function iconStack() { return `<svg viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="12" height="16" rx="1.5" stroke="currentColor" stroke-width="1.8"/><path d="M8 1.5h12v16" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" opacity="0.55"/></svg>`; }

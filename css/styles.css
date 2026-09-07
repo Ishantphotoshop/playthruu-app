@@ -3123,24 +3123,89 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 /* ---- 4. stat strip ---- */
 /* Vertical hairlines between cells, no fill. The heavier rule above it
    is what marks this as a distinct block without needing a background. */
-/* Three centred columns, no dividers and no rules around them — the
-   figures carry themselves, and hairlines here fought with the action
-   panel directly above. */
+/* Centred columns, no dividers and no rules around them — the figures
+   carry themselves, and hairlines here fought with the action panel
+   directly above. Four across now that Lists joined the set, so the
+   type steps down a little to keep a four-digit count on one line. */
 .gd-strip {
-  display: grid; grid-template-columns: repeat(3, 1fr);
+  display: grid; grid-template-columns: repeat(4, 1fr);
   padding-top: var(--space-2);
 }
 .gd-stat {
   display: flex; flex-direction: column; align-items: center; gap: 5px;
 }
 .gd-stat b {
-  font-size: 22px; font-weight: 700; color: var(--ink); letter-spacing: -0.01em;
+  font-size: 20px; font-weight: 700; color: var(--ink); letter-spacing: -0.01em;
   font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1;
 }
 .gd-stat span {
-  font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase;
+  font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
   color: var(--ink-dim); font-weight: 600;
 }
+
+/* ---- who's playing it -----------------------------------------------
+   Played by / Playing / Want to play. Each row is a label, an
+   overlapping avatar stack and a count — the same stack recipe as the
+   voice-cast teaser in the header, so the two read as one idea used
+   twice rather than two different treatments of "some people". */
+.gd-crowd {
+  display: flex; flex-direction: column;
+  border-top: 1px solid var(--gd-rule);
+}
+.gd-crowd__row {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-3) 0;
+}
+.gd-crowd__row + .gd-crowd__row { border-top: 1px solid var(--gd-rule); }
+.gd-crowd__label {
+  flex: 1; min-width: 0;
+  font-size: 13.5px; font-weight: 600; color: var(--ink-dim);
+}
+.gd-crowd__stack { display: flex; align-items: center; flex-shrink: 0; }
+/* The ring is the page background, so overlapping avatars read as
+   separate discs rather than one merged blob. */
+.gd-crowd__avatar {
+  display: block; margin-left: -8px; border-radius: 50%;
+  box-shadow: 0 0 0 2px var(--bg);
+}
+.gd-crowd__avatar:first-child { margin-left: 0; }
+.gd-crowd__avatar .avatar { display: block; }
+.gd-crowd__more {
+  display: grid; place-items: center; width: 24px; height: 24px;
+  background: var(--surface-high);
+  font-size: 10px; font-weight: 700; color: var(--ink-dim);
+}
+.gd-crowd__count {
+  flex-shrink: 0; min-width: 34px; text-align: right;
+  font-size: 14px; font-weight: 700; color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- news banner ---------------------------------------------------- */
+.gd-news-banner {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius-m); color: var(--ink);
+  text-decoration: none;
+  transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+.gd-news-banner:hover { background: var(--surface-raised); border-color: var(--line-strong); }
+.gd-news-banner:active { transform: scale(0.99); }
+.gd-news-banner__icon {
+  width: 38px; height: 38px; flex-shrink: 0;
+  display: grid; place-items: center; border-radius: var(--radius-s);
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+  color: var(--accent-bright);
+}
+.gd-news-banner__icon svg { width: 19px; height: 19px; }
+.gd-news-banner__text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.gd-news-banner__title { font-size: 14.5px; font-weight: 700; }
+.gd-news-banner__sub {
+  font-size: var(--text-label); color: var(--ink-faint); line-height: 1.35;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.gd-news-banner > svg { width: 18px; height: 18px; flex-shrink: 0; color: var(--ink-faint); }
 
 /* ---- 5/7. kicker rows ---- */
 .gd-section { display: flex; flex-direction: column; gap: var(--space-3); }
