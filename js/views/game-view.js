@@ -127,7 +127,7 @@ function crowdSectionHtml(label, entries) {
       <div class="gd-faces">
         ${shown.map((p) => `
           <a class="gd-face" href="#/profile/${esc(p.username)}" title="${esc(p.display_name || p.username)}">
-            ${avatarImg(p, 44)}
+            ${avatarImg(p, 38)}
           </a>`).join('')}
         ${extra > 0 ? `<span class="gd-face gd-face--more">+${compactNumber(extra)}</span>` : ''}
       </div>
@@ -339,6 +339,7 @@ export async function renderGameView(root, { id, igdbId }) {
     paintGame();
     loadMoreFromStudio();
     loadSimilarGames();
+    loadGameNews();
     recordRecentlyViewed(game);
     loadCastDirector();
     // logoPromise (kicked off way back when `game` first loaded, above)
@@ -447,6 +448,38 @@ export async function renderGameView(root, { id, igdbId }) {
       } catch { /* discovery extra, fine to quietly skip on any failure */ }
     }
 
+    // getGameNews() is one merged feed for the whole app (custom posts +
+    // RSS), not something that can be asked for "just this game" — so
+    // this narrows it client-side to headlines that actually mention the
+    // title, and only falls back to the general front page when nothing
+    // matches, rather than showing unrelated news under this game's name.
+    async function loadGameNews() {
+      const slot = qs('#game-news-slot', body);
+      if (!slot) return;
+      try {
+        const all = await api.getGameNews();
+        const needle = game.title.toLowerCase();
+        const matched = all.filter((a) => (a.title || '').toLowerCase().includes(needle));
+        const shown = (matched.length ? matched : all).slice(0, 3);
+        if (!qs('#game-news-slot', body)) return; // navigated away while this was in flight
+        if (!shown.length) { qs('#game-news-block', body)?.remove(); return; }
+        slot.innerHTML = `
+          <div class="gd-news-list">
+            ${shown.map((a) => `
+              <a class="gd-news-card" href="${esc(a.link || '#/news')}" ${a.link ? 'target="_blank" rel="noopener noreferrer"' : ''}>
+                ${a.image ? `<span class="gd-news-card__cover" style="background-image:url('${esc(a.image)}')"></span>` : '<span class="gd-news-card__cover"></span>'}
+                <span class="gd-news-card__body">
+                  <span class="gd-news-card__title">${esc(a.title)}</span>
+                  <span class="gd-news-card__meta">${esc(a.source || 'PlayThruu')} &middot; ${esc(timeAgo(a.pubDate))} ago</span>
+                </span>
+              </a>`).join('')}
+          </div>
+          <a href="#/news" class="gd-link gd-news-more">All news</a>`;
+      } catch {
+        qs('#game-news-block', body)?.remove(); // nice-to-have — a failed fetch just means no section, not an error state
+      }
+    }
+
     // Viewing this page never needed a database row (see getIgdbGameDetail
     // in api.js) — game.id is null until someone actually does something
     // that needs one. This is that moment: called right before any write
@@ -514,8 +547,13 @@ export async function renderGameView(root, { id, igdbId }) {
       const platforms = (game.platform || '').split(',').map((p) => p.trim()).filter(Boolean);
       const year = game.release_year || (game.release_date ? new Date(game.release_date).getFullYear() : null);
 
-      const socialCard = (value, label) =>
-        `<div class="gd-social__card"><b>${value}</b><span>${label}</span></div>`;
+      const discussionCount = Object.values(commentCounts).reduce((s, n) => s + n, 0);
+
+      const socialCard = (icon, value, label) => `
+        <div class="gd-social__card">
+          <span class="gd-social__icon">${icon}</span>
+          <b>${value}</b><span>${label}</span>
+        </div>`;
 
       body.innerHTML = `
         <div class="gd">
@@ -530,8 +568,8 @@ export async function renderGameView(root, { id, igdbId }) {
                 <div id="game-logo-slot">${gameTitleHtml(game.title, logoReady ? resolvedLogoUrl : null)}</div>
                 <div id="director-slot">${headCreditHtml(year, castDirectorData?.director, game.developer)}</div>
                 ${game.trailer_url ? `
-                  <button type="button" class="gd-trailer" id="play-trailer">
-                    Trailer<span class="gd-trailer__play"></span>
+                  <button type="button" class="gd-trailer" id="play-trailer" aria-label="Play trailer">
+                    <span class="gd-trailer__play"></span>
                   </button>` : ''}
               </div>
             </header>
@@ -592,9 +630,9 @@ export async function renderGameView(root, { id, igdbId }) {
             ${ownLog
               ? `<button type="button" class="gd-bar__act" id="log-again">Log</button>`
               : `<button type="button" class="gd-bar__act" id="log-this-game">Log</button>`}
-            <span class="gd-bar__slash">/</span>
+            <span class="gd-bar__slash" aria-hidden="true"></span>
             <button type="button" class="gd-bar__act" id="rate-game">Rate</button>
-            <span class="gd-bar__slash">/</span>
+            <span class="gd-bar__slash" aria-hidden="true"></span>
             <button type="button" class="gd-bar__act" id="review-game">${ownLog ? 'Edit' : 'Review'}</button>
             <button type="button" class="gd-bar__more" id="game-more" aria-label="More actions">${iconDots()}</button>
           </div>
@@ -615,28 +653,29 @@ export async function renderGameView(root, { id, igdbId }) {
             </section>
             <div class="gd-rule"></div>` : ''}
 
+          <!-- Discovery — kept strictly separate from "Where to play"
+               above, which is about running THIS game, not finding the
+               next one. Loaded in below by loadMoreFromStudio/
+               loadSimilarGames once the page is already up. -->
+          <div id="more-from-slot"></div>
+          <div id="similar-games-slot"></div>
+
           <section class="gd-block">
             <h2 class="gd-block__title">Social</h2>
             <div class="gd-social">
-              ${socialCard(logs.length, logs.length === 1 ? 'Play' : 'Plays')}
-              ${socialCard(reviewedLogs.length, reviewedLogs.length === 1 ? 'Review' : 'Reviews')}
-              ${socialCard(compactNumber(listsCount), listsCount === 1 ? 'List' : 'Lists')}
+              ${socialCard(iconController(), logs.length, logs.length === 1 ? 'Play' : 'Plays')}
+              ${socialCard(iconPencil(), reviewedLogs.length, reviewedLogs.length === 1 ? 'Review' : 'Reviews')}
+              ${socialCard(iconStack(), compactNumber(listsCount), listsCount === 1 ? 'List' : 'Lists')}
+              ${socialCard(iconReply(), compactNumber(discussionCount), discussionCount === 1 ? 'Reply' : 'Replies')}
             </div>
           </section>
 
           <div class="gd-rule"></div>
 
-          <!-- Points at the app's own News tab, not an external URL —
-               that's the real destination this maps to; there's no
-               separate news microsite to send anyone off to. -->
-          <a href="#/news" class="gd-news-banner">
-            <span class="gd-news-banner__icon">${iconNewspaper()}</span>
-            <span class="gd-news-banner__text">
-              <span class="gd-news-banner__title">PlayThruu News</span>
-              <span class="gd-news-banner__sub">Latest updates and community picks</span>
-            </span>
-            ${iconChevronSmall()}
-          </a>
+          <section class="gd-block" id="game-news-block">
+            <h2 class="gd-block__title">News</h2>
+            <div id="game-news-slot">${spinner()}</div>
+          </section>
 
           <div class="gd-rule"></div>
 
@@ -662,11 +701,6 @@ export async function renderGameView(root, { id, igdbId }) {
             <div id="review-filter-slot"></div>
             <div class="gd-reviews" id="game-reviews"></div>
           </section>
-
-          <div class="gd-rule"></div>
-
-          <div id="more-from-slot"></div>
-          <div id="similar-games-slot"></div>
         </div>`;
 
       // Reviews are painted separately from the rest of the page so that
@@ -969,7 +1003,6 @@ function iconStarSmall() { return `<svg viewBox="0 0 24 24" fill="none" aria-hid
 function iconLogAgain() { return `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.4-5.7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M20 3.6V9h-5.4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`; }
 function iconPencil() { return `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15.6 4.6l3.8 3.8M5 19h3.6L19.4 8.2a1.6 1.6 0 0 0 0-2.3l-1.3-1.3a1.6 1.6 0 0 0-2.3 0L5 15.4z" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round"/></svg>`; }
 function iconDots() { return `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5.5" cy="12" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="18.5" cy="12" r="1.9"/></svg>`; }
-function iconNewspaper() { return `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 5.5h13a1.5 1.5 0 0 1 1.5 1.5v11a1.5 1.5 0 0 1-3 0V6" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M4 5.5v11.5A1.5 1.5 0 0 0 5.5 18.5H15.5" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7.2 9h6.6M7.2 12h6.6M7.2 15h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>`; }
 function iconChevronSmall() { return `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`; }
 function iconStarLine() { return `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3.8l2.7 5.6 6.1.85-4.4 4.3 1.05 6.1-5.45-2.9-5.45 2.9L7.6 14.55 3.2 10.25l6.1-.85z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>`; }
 function iconController() { return `<svg viewBox="0 0 24 24" fill="none"><path d="M7 9h10l2.5 7a2 2 0 0 1-3.7 1.4L14 15h-4l-1.8 2.4A2 2 0 0 1 4.5 16z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 11.5v3M7.5 13h3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="16" cy="12" r="0.9" fill="currentColor"/><circle cx="18" cy="14" r="0.9" fill="currentColor"/></svg>`; }

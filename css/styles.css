@@ -2893,26 +2893,28 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 }
 a.gd-credit__name { text-decoration: none; }
 
-/* Solid white pill with the play mark AFTER the word, per the
-   reference — the one deliberately loud control in the header, which is
-   what makes it read as "watch this" rather than another metadata row. */
+/* A compact solid-white disc with just the play mark — no label, no
+   pill-width text runway. The header already says the game's name in
+   giant type two lines up; "Trailer" spelled out again added width
+   without adding information, and the reference-mockup pill wastes
+   exactly the space this needs to give back. */
 .gd-trailer {
-  display: inline-flex; align-items: center; gap: 8px;
-  margin-top: 4px; padding: 7px 14px;
-  border: none; border-radius: var(--radius-pill);
+  display: grid; place-items: center; flex-shrink: 0;
+  width: 34px; height: 34px; margin-top: 4px;
+  border: none; border-radius: 50%;
   background: #fff; color: #0a0b0f;
-  font-family: var(--font-serif);
-  font-size: 14px; font-weight: 700; letter-spacing: 0.01em;
   transition: transform var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
 }
 .gd-trailer:hover { background: #e8e8e8; }
-.gd-trailer:active { transform: scale(0.96); }
+.gd-trailer:active { transform: scale(0.9); }
 /* A CSS triangle rather than an SVG — it's three lines and it can't
-   fail to load. */
+   fail to load. Nudged 1px right of true-centre, which is what actually
+   reads as centred for a triangle (its own visual weight sits left of
+   its bounding box). */
 .gd-trailer__play {
-  width: 0; height: 0; flex-shrink: 0;
-  border-left: 8px solid currentColor;
-  border-top: 5px solid transparent; border-bottom: 5px solid transparent;
+  width: 0; height: 0; margin-left: 2px;
+  border-left: 11px solid currentColor;
+  border-top: 7px solid transparent; border-bottom: 7px solid transparent;
 }
 
 /* The full-bleed hairline that separates every band on this page. The
@@ -2938,10 +2940,10 @@ a.gd-credit__name { text-decoration: none; }
 .gd-face { display: block; flex-shrink: 0; }
 .gd-face .avatar { display: block; }
 .gd-face--more {
-  width: 44px; height: 44px; border-radius: 50%;
+  width: 38px; height: 38px; border-radius: 50%;
   display: grid; place-items: center;
   background: var(--surface-high); color: var(--ink-dim);
-  font-size: 12px; font-weight: 700;
+  font-size: 11px; font-weight: 700;
 }
 /* Kept in the DOM (a real, accessible heading) but visually hidden once
    the transparent logo PNG below has loaded and taken its place — the
@@ -3014,14 +3016,16 @@ a.gd-credit__name { text-decoration: none; }
    summary of the bars beside it rather than a separate stat. */
 .gd-dist__plot { display: flex; align-items: flex-end; gap: var(--space-3); }
 .gd-dist__plot .gd-dist__bars { flex: 1; min-width: 0; }
-/* Tall enough for the shape of the distribution to actually be legible —
-   at the old 42px every bar but the mode collapsed into the baseline and
-   the chart said nothing. The top padding is headroom for the percentage
-   badge, which sits above the tallest bar. */
+/* Tall enough for the shape of the distribution to actually be
+   legible — at 42px every bar but the mode used to collapse into the
+   baseline and the chart said nothing — but no taller than it needs to
+   be: this is one panel among many on a long page, not the page's
+   whole reason to exist. The top padding is headroom for the
+   percentage badge, which sits above the tallest bar. */
 .gd-dist__bars {
-  display: flex; align-items: flex-end; gap: 4px;
-  height: 124px; padding-top: 26px; /* headroom for the percentage badge */
-  margin-top: var(--space-3);
+  display: flex; align-items: flex-end; gap: 3px;
+  height: 84px; padding-top: 22px; /* headroom for the percentage badge */
+  margin-top: var(--space-2);
 }
 /* Each bar is a real <button>, so it is focusable and clickable on its
    own. The button fills the full column height rather than only the
@@ -3113,22 +3117,22 @@ a.gd-credit__name { text-decoration: none; }
    two read as the same voice. */
 .gd-bar {
   display: flex; align-items: center; gap: var(--space-2);
-  padding: 6px var(--space-3) 6px 8px;
+  padding: 5px var(--space-3) 5px 6px;
   background: #fff; border-radius: var(--radius-pill);
   color: #0a0b0f;
 }
 /* The person-shaped disc that opens the row, per the reference — it's
    what marks the whole bar as "you", not the game. */
 .gd-bar__mark {
-  width: 32px; height: 32px; flex-shrink: 0;
+  width: 28px; height: 28px; flex-shrink: 0;
   display: grid; place-items: center; border-radius: 50%;
   background: #0a0b0f; color: #fff;
 }
-.gd-bar__mark svg { width: 19px; height: 19px; }
+.gd-bar__mark svg { width: 16px; height: 16px; }
 .gd-bar__act {
-  flex: 1; min-width: 0; padding: 8px 0;
+  flex: 1; min-width: 0; padding: 7px 0;
   background: none; border: none; color: #0a0b0f;
-  font-family: var(--font-serif); font-size: 17px; font-weight: 500;
+  font-family: var(--font-serif); font-size: 16px; font-weight: 500;
   letter-spacing: 0.01em; white-space: nowrap;
   -webkit-tap-highlight-color: transparent;
   transition: opacity var(--dur-fast) var(--ease);
@@ -3136,18 +3140,29 @@ a.gd-credit__name { text-decoration: none; }
 .gd-bar__act:hover { opacity: 0.6; }
 .gd-bar__act:active { opacity: 0.45; }
 .gd-bar__act:focus-visible { outline: 2px solid #0a0b0f; outline-offset: 2px; border-radius: 4px; }
+/* A real diagonal divider, not a "/" glyph — skewX shears the element
+   sideways while leaving its top and bottom edges exactly where they
+   were, which is what lets a 2px vertical bar become a slanted line
+   that still touches both boundaries of the bar, per the sketch. A
+   rotate() transform was tried first and rejected: it foreshortens the
+   element's own height, so the ends pull in from the top/bottom edges
+   instead of meeting them. align-self:stretch is what supplies "the
+   full height" for skewX to shear — the parent's align-items:center
+   would otherwise size every child to its own content. */
 .gd-bar__slash {
-  flex-shrink: 0; color: rgba(10,11,15,0.32);
-  font-family: var(--font-serif); font-size: 19px; font-weight: 400;
+  align-self: stretch; flex-shrink: 0;
+  width: 2px; margin: 0 -2px;
+  background: rgba(10,11,15,0.25);
+  transform: skewX(-18deg);
 }
 .gd-bar__more {
-  flex-shrink: 0; width: 30px; height: 30px; padding: 0;
+  flex-shrink: 0; width: 28px; height: 28px; padding: 0;
   display: grid; place-items: center;
   background: none; border: none; color: #0a0b0f;
   transition: opacity var(--dur-fast) var(--ease);
 }
 .gd-bar__more:hover { opacity: 0.6; }
-.gd-bar__more svg { width: 20px; height: 20px; }
+.gd-bar__more svg { width: 18px; height: 18px; }
 /* The bar's whole job is to be the one inverted thing on the page. On a
    cream light-theme background a white slab isn't inverted, it's
    invisible — so it flips to dark-on-light there instead. */
@@ -3155,7 +3170,7 @@ a.gd-credit__name { text-decoration: none; }
 :root[data-theme="light"] .gd-bar__mark { background: #fffdf8; color: #2b1d0e; }
 :root[data-theme="light"] .gd-bar__act,
 :root[data-theme="light"] .gd-bar__more { color: #fffdf8; }
-:root[data-theme="light"] .gd-bar__slash { color: rgba(255,253,248,0.4); }
+:root[data-theme="light"] .gd-bar__slash { background: rgba(255,253,248,0.35); }
 :root[data-theme="light"] .gd-bar__act:focus-visible { outline-color: #fffdf8; }
 /* Same reasoning for the Trailer pill, which sits on artwork in one
    theme and on the page's own ground in the other. */
@@ -3214,54 +3229,52 @@ a.gd-credit__name { text-decoration: none; }
 .gd-btn:disabled { opacity: 0.5; cursor: default; }
 
 /* ---- 4. stat strip ---- */
-/* Vertical hairlines between cells, no fill. The heavier rule above it
-   is what marks this as a distinct block without needing a background. */
-/* The counts, as three cards rather than the bare centred columns they
-   used to be — sitting under "Where to play", they now read as their
-   own block instead of a loose row floating under the action panel. */
-.gd-social { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-2); }
-.gd-social__card {
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: var(--space-1); height: 76px;
-  background: var(--surface); border: 1px solid var(--line);
-  border-radius: var(--radius-m);
+/* Clean icon + number + label, in a row — not the boxed stat cards this
+   used to be. Wraps rather than scrolling: four of these are meant to
+   be seen at once, not swiped through. */
+.gd-social { display: flex; flex-wrap: wrap; gap: var(--space-4) var(--space-5); }
+.gd-social__card { display: flex; align-items: center; gap: 9px; }
+.gd-social__icon {
+  width: 30px; height: 30px; flex-shrink: 0;
+  display: grid; place-items: center; border-radius: 50%;
+  background: var(--surface-high); color: var(--ink-dim);
 }
+.gd-social__icon svg { width: 15px; height: 15px; }
 .gd-social__card b {
-  font-size: 20px; font-weight: 700; color: var(--ink); letter-spacing: -0.01em;
+  font-size: 15px; font-weight: 700; color: var(--ink);
   font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1;
+  margin-right: 4px;
 }
 .gd-social__card span {
-  font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
-  color: var(--ink-dim); font-weight: 600;
+  font-size: 12.5px; color: var(--ink-dim); font-weight: 500;
 }
 
-
-
-/* ---- news banner ---------------------------------------------------- */
-.gd-news-banner {
+/* ---- news: compact stacked cards ------------------------------------
+   Each row is a thumbnail, a headline, and a source/date line — the
+   list itself scrolls with the page rather than sideways, since these
+   read top to bottom like the headlines they are. */
+.gd-news-list { display: flex; flex-direction: column; gap: var(--space-2); }
+.gd-news-card {
   display: flex; align-items: center; gap: var(--space-3);
-  padding: var(--space-3);
+  padding: var(--space-2);
   background: var(--surface); border: 1px solid var(--line);
   border-radius: var(--radius-m); color: var(--ink);
   text-decoration: none;
   transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
 }
-.gd-news-banner:hover { background: var(--surface-raised); border-color: var(--line-strong); }
-.gd-news-banner:active { transform: scale(0.99); }
-.gd-news-banner__icon {
-  width: 38px; height: 38px; flex-shrink: 0;
-  display: grid; place-items: center; border-radius: var(--radius-s);
-  background: color-mix(in srgb, var(--accent) 14%, var(--surface));
-  color: var(--accent-bright);
+.gd-news-card:hover { background: var(--surface-raised); border-color: var(--line-strong); }
+.gd-news-card:active { transform: scale(0.99); }
+.gd-news-card__cover {
+  width: 56px; height: 56px; flex-shrink: 0; border-radius: var(--radius-s);
+  background-color: var(--surface-high); background-size: cover; background-position: center;
 }
-.gd-news-banner__icon svg { width: 19px; height: 19px; }
-.gd-news-banner__text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.gd-news-banner__title { font-size: 14.5px; font-weight: 700; }
-.gd-news-banner__sub {
-  font-size: var(--text-label); color: var(--ink-faint); line-height: 1.35;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+.gd-news-card__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.gd-news-card__title {
+  font-size: 13.5px; font-weight: 600; line-height: 1.3;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;
 }
-.gd-news-banner > svg { width: 18px; height: 18px; flex-shrink: 0; color: var(--ink-faint); }
+.gd-news-card__meta { font-size: 11px; color: var(--ink-faint); }
+.gd-news-more { display: block; margin-top: var(--space-2); text-align: right; }
 
 /* ---- 5/7. kicker rows ---- */
 .gd-section { display: flex; flex-direction: column; gap: var(--space-3); }
