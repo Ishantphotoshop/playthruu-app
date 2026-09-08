@@ -568,8 +568,8 @@ export async function renderGameView(root, { id, igdbId }) {
                 <div id="game-logo-slot">${gameTitleHtml(game.title, logoReady ? resolvedLogoUrl : null)}</div>
                 <div id="director-slot">${headCreditHtml(year, castDirectorData?.director, game.developer)}</div>
                 ${game.trailer_url ? `
-                  <button type="button" class="gd-trailer" id="play-trailer" aria-label="Play trailer">
-                    <span class="gd-trailer__play"></span>
+                  <button type="button" class="gd-trailer" id="play-trailer">
+                    Trailer<span class="gd-trailer__play"></span>
                   </button>` : ''}
               </div>
             </header>
@@ -589,32 +589,27 @@ export async function renderGameView(root, { id, igdbId }) {
                 <h2 class="gd-dist__title">Ratings</h2>
               </div>
               <div class="gd-dist__plot">
-                <div class="gd-dist__bars">
+                <div class="gd-dist__bars" id="rating-bars">
                   ${halfSteps.map((star, i) => {
                     const count = stepCounts[i];
-                    const pct = rated.length ? Math.round((count / rated.length) * 100) : 0;
                     const label = `${count} log${count === 1 ? '' : 's'} rated ${star} star${star === 1 ? '' : 's'}`;
-                    // The mode carries the badge at rest; hovering or
-                    // tapping any other bar moves it there instead.
                     const isPeak = count === stepMax && count > 0;
                     return `
                     <button type="button" class="gd-dist__col${isPeak ? ' gd-dist__col--peak' : ''}"
-                            data-rating="${star}" data-pct="${pct}" data-count="${count}"
+                            data-rating="${star}" data-count="${count}"
                             aria-label="${label}" title="${label}">
-                      <span class="gd-dist__badge">${pct}%</span>
                       <span class="gd-dist__bar" style="height:${Math.max(4, Math.round((count / stepMax) * 100))}%"></span>
                     </button>`;
                   }).join('')}
                 </div>
                 ${avg ? `
                   <div class="gd-avg">
-                    <span class="gd-avg__num">${avg.toFixed(1)}</span>
-                    <span class="gd-avg__stars">${starRow(avg, { size: 13 })}</span>
+                    <span class="gd-avg__num" id="rating-avg-num">${avg.toFixed(1)}</span>
+                    <span class="gd-avg__stars" id="rating-avg-stars">${starRow(avg, { size: 13 })}</span>
                   </div>` : ''}
               </div>
               <div class="gd-dist__axis">
                 <span class="gd-dist__end">${iconStarSmall()}</span>
-                <span class="gd-dist__end">${rated.length} rating${rated.length === 1 ? '' : 's'}</span>
               </div>
             </section>`
             : `<p class="gd-empty">No ratings yet — be the first.</p>`}
@@ -858,22 +853,49 @@ export async function renderGameView(root, { id, igdbId }) {
         });
       }
 
-      // The percentage badge rides whichever bar is under the pointer,
-      // falling back to the tallest one when nothing is being touched —
-      // so the chart always names the figure it's drawing.
-      const distBars = qs('.gd-dist__bars', body);
-      if (distBars) {
-        const cols = qsa('.gd-dist__col', distBars);
-        const showBadgeOn = (col) => {
-          cols.forEach((c) => c.classList.toggle('gd-dist__col--showbadge', c === col));
+      // Hold a bar (or drag across several) to swap the average readout
+      // for that bar's own numbers — how many logs actually landed on
+      // it, and its own star value rather than the overall average's.
+      // A plain tap is untouched and still toggles the rating filter
+      // below (that's the click listener above, native `click` still
+      // fires after a short pointerdown+up with no real movement) — this
+      // only ever touches the read-only number/star display, never the
+      // filter, so holding to look never accidentally sets one.
+      const distBars = qs('#rating-bars', body);
+      const avgNumEl = qs('#rating-avg-num', body);
+      const avgStarsEl = qs('#rating-avg-stars', body);
+      if (distBars && avgNumEl) {
+        const showAverage = () => {
+          avgNumEl.textContent = avg.toFixed(1);
+          if (avgStarsEl) avgStarsEl.innerHTML = starRow(avg, { size: 13 });
         };
-        const peak = cols.find((c) => c.classList.contains('gd-dist__col--peak')) || null;
-        showBadgeOn(peak);
-        cols.forEach((col) => {
-          col.addEventListener('pointerenter', () => showBadgeOn(col));
-          col.addEventListener('focus', () => showBadgeOn(col));
+        const showCol = (col) => {
+          avgNumEl.textContent = col.dataset.count;
+          if (avgStarsEl) avgStarsEl.innerHTML = starRow(Number(col.dataset.rating), { size: 13 });
+        };
+        // A fixed Y (the row's own vertical centre) is enough to find
+        // whichever column the finger is over on any X — every column
+        // button already fills the row's full height.
+        const colAtX = (x) => {
+          const r = distBars.getBoundingClientRect();
+          return document.elementFromPoint(x, r.top + r.height / 2)?.closest('.gd-dist__col');
+        };
+
+        let holding = false;
+        distBars.addEventListener('pointerdown', (e) => {
+          holding = true;
+          const col = e.target.closest('.gd-dist__col');
+          if (col) showCol(col);
         });
-        distBars.addEventListener('pointerleave', () => showBadgeOn(peak));
+        distBars.addEventListener('pointermove', (e) => {
+          if (!holding) return;
+          const col = colAtX(e.clientX);
+          if (col) showCol(col);
+        });
+        const release = () => { if (!holding) return; holding = false; showAverage(); };
+        distBars.addEventListener('pointerup', release);
+        distBars.addEventListener('pointercancel', release);
+        distBars.addEventListener('pointerleave', release);
       }
 
       // Review cards are wired inside paintReviews(), which runs on every

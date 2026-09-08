@@ -93,11 +93,6 @@
   /* The wordmark's font (see the <link> in index.html). */
   --font-brand: 'Unbounded', system-ui, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Consolas, monospace;
-  /* The editorial serif on the game page — the director credit, the
-     Ratings heading and its average, and the Log/Rate/Review bar. Its
-     job is to make those read as a printed record rather than as UI
-     chrome, which is the whole character of that screen's design. */
-  --font-serif: 'Lora', Georgia, 'Times New Roman', serif;
 
   --text-display: 34px;
   --text-title: 24px;
@@ -1862,7 +1857,15 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 .stat-links--vertical .stat-link span { order: -1; }
 .more-activity-link { display: inline-block; margin-top: 10px; }
 
-.lightbox-overlay { background: rgba(6,6,10,0.92); align-items: center; }
+/* .modal-overlay's own align-items:flex-end (below, later in the
+   cascade) was winning over this at equal specificity — a plain
+   .lightbox-overlay rule this early in the file loses to any later
+   single-class rule touching the same property. The combined selector
+   fixes that regardless of where either rule sits in the file, which
+   is what was actually pinning the trailer/image lightbox to the
+   bottom of the screen instead of the vertical centre this line asks
+   for. */
+.modal-overlay.lightbox-overlay { background: rgba(6,6,10,0.92); align-items: center; }
 .lightbox-image { max-width: 88vw; max-height: 70vh; border-radius: var(--radius-m); object-fit: contain; }
 .lightbox-close { position: absolute; top: calc(16px + var(--safe-top)); right: 16px; background: rgba(255,255,255,0.12); }
 
@@ -2852,11 +2855,15 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
   padding-top: calc(56.25% + 10px);
 }
 
-.gd-head { position: relative; z-index: 1; display: flex; gap: var(--space-4); align-items: flex-start; }
+/* Centred, not top-aligned: the poster is now taller than the logo +
+   credit + trailer column beside it, and centring keeps that column
+   sitting alongside the poster's own middle rather than pinned to its
+   top edge with empty space opening up under it. */
+.gd-head { position: relative; z-index: 1; display: flex; gap: var(--space-4); align-items: center; }
 .gd-head__cover {
-  width: 96px; flex-shrink: 0; aspect-ratio: 3/4;
-  border-radius: 8px; overflow: hidden; background: var(--surface);
-  box-shadow: 0 6px 20px rgba(0,0,0,0.45);
+  width: 128px; flex-shrink: 0; aspect-ratio: 3/4;
+  border-radius: 10px; overflow: hidden; background: var(--surface);
+  box-shadow: 0 8px 26px rgba(0,0,0,0.5);
 }
 /* This one frame fills rather than fits: the header art is a fixed
    crop by design, so `cover` is correct here even though posters
@@ -2876,45 +2883,43 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
   font-weight: 800; letter-spacing: -0.02em;
 }
 
-/* "2020 · Directed By" over the name it belongs to. The serif is the
-   whole point of this credit: it's the one place on the screen that
-   should read like a printed title card rather than app chrome. */
+/* "2020 · Directed By" over the name it belongs to. */
 .gd-credit__line {
   display: block;
-  font-family: var(--font-serif); font-size: 14px; font-weight: 400;
+  font-size: 13.5px; font-weight: 500;
   color: var(--ink-dim); line-height: 1.3;
 }
 .gd-credit__name {
   display: block; margin-top: 2px;
-  font-family: var(--font-serif); font-size: 19px; font-weight: 700;
-  /* A warm cream rather than plain white — it lifts the one name on the
-     screen that's a person off the rest of the metadata. */
-  color: #efe7c8; line-height: 1.2; letter-spacing: 0.01em;
+  font-size: 18px; font-weight: 700;
+  /* The accent, not a hardcoded cream — the credit sits on the page's
+     OWN background (below the artwork strip, not overlaid on it), which
+     is dark in dark theme and cream in light theme. A literal light
+     colour meant to pop off black instead went invisible on that cream
+     ground; the accent is already proven to read on both (see "See
+     more" right above it, same token, same page). */
+  color: var(--accent-bright); line-height: 1.2; letter-spacing: 0.01em;
 }
 a.gd-credit__name { text-decoration: none; }
 
-/* A compact solid-white disc with just the play mark — no label, no
-   pill-width text runway. The header already says the game's name in
-   giant type two lines up; "Trailer" spelled out again added width
-   without adding information, and the reference-mockup pill wastes
-   exactly the space this needs to give back. */
+/* A solid-white curved pill: the word "Trailer" plus the play mark
+   after it. */
 .gd-trailer {
-  display: grid; place-items: center; flex-shrink: 0;
-  width: 34px; height: 34px; margin-top: 4px;
-  border: none; border-radius: 50%;
+  display: inline-flex; align-items: center; gap: 7px; flex-shrink: 0;
+  margin-top: 6px; padding: 8px 16px;
+  border: none; border-radius: var(--radius-pill);
   background: #fff; color: #0a0b0f;
+  font-size: 14px; font-weight: 700; letter-spacing: 0.01em;
   transition: transform var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
 }
 .gd-trailer:hover { background: #e8e8e8; }
-.gd-trailer:active { transform: scale(0.9); }
+.gd-trailer:active { transform: scale(0.96); }
 /* A CSS triangle rather than an SVG — it's three lines and it can't
-   fail to load. Nudged 1px right of true-centre, which is what actually
-   reads as centred for a triangle (its own visual weight sits left of
-   its bounding box). */
+   fail to load. */
 .gd-trailer__play {
-  width: 0; height: 0; margin-left: 2px;
-  border-left: 11px solid currentColor;
-  border-top: 7px solid transparent; border-bottom: 7px solid transparent;
+  width: 0; height: 0; flex-shrink: 0;
+  border-left: 8px solid currentColor;
+  border-top: 5px solid transparent; border-bottom: 5px solid transparent;
 }
 
 /* The full-bleed hairline that separates every band on this page. The
@@ -3008,8 +3013,8 @@ a.gd-credit__name { text-decoration: none; }
 .gd-dist { display: flex; flex-direction: column; gap: var(--space-2); }
 .gd-dist__head { display: flex; align-items: baseline; justify-content: space-between; }
 .gd-dist__title {
-  font-family: var(--font-serif); font-size: 27px; font-weight: 500;
-  letter-spacing: 0; color: var(--ink); margin: 0;
+  font-family: var(--font-display); font-size: 22px; font-weight: 700;
+  letter-spacing: -0.01em; color: var(--ink); margin: 0;
 }
 /* Chart and average sit side by side: the distribution takes the room
    it needs and the average is pinned to its right, reading as the
@@ -3020,12 +3025,14 @@ a.gd-credit__name { text-decoration: none; }
    legible — at 42px every bar but the mode used to collapse into the
    baseline and the chart said nothing — but no taller than it needs to
    be: this is one panel among many on a long page, not the page's
-   whole reason to exist. The top padding is headroom for the
-   percentage badge, which sits above the tallest bar. */
+   whole reason to exist. touch-action:none hands the whole gesture to
+   the hold-to-scrub handlers in game-view.js instead of letting a
+   finger's vertical wobble scroll the page mid-hold. */
 .gd-dist__bars {
   display: flex; align-items: flex-end; gap: 3px;
-  height: 84px; padding-top: 22px; /* headroom for the percentage badge */
+  height: 84px; padding-top: 10px;
   margin-top: var(--space-2);
+  touch-action: none;
 }
 /* Each bar is a real <button>, so it is focusable and clickable on its
    own. The button fills the full column height rather than only the
@@ -3055,22 +3062,8 @@ a.gd-credit__name { text-decoration: none; }
 .gd-dist__col:focus-visible {
   outline: 2px solid var(--accent-bright); outline-offset: 2px;
 }
-/* Rides above whichever bar currently carries it (the mode at rest, the
-   hovered one otherwise). Hidden rather than removed so moving between
-   bars doesn't reflow the row. */
-.gd-dist__badge {
-  position: absolute; bottom: 100%; left: 50%;
-  transform: translate(-50%, -6px);
-  padding: 3px 7px; border-radius: 6px;
-  background: color-mix(in srgb, var(--accent) 20%, var(--surface-high));
-  color: var(--accent-bright);
-  font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums;
-  white-space: nowrap; pointer-events: none;
-  opacity: 0; transition: opacity var(--dur-fast) var(--ease);
-}
-.gd-dist__col--showbadge .gd-dist__badge { opacity: 1; }
 .gd-dist__axis {
-  display: flex; justify-content: space-between; align-items: center;
+  display: flex; justify-content: flex-start; align-items: center;
   margin-top: var(--space-2);
 }
 .gd-dist__end {
@@ -3081,15 +3074,17 @@ a.gd-credit__name { text-decoration: none; }
    which without spelling out "0.5 stars", which the bars already say. */
 .gd-dist__end svg { width: 14px; height: 14px; color: var(--star-fill); }
 
-/* The average, pinned to the right of the chart: the big serif figure
-   over its own star row, which is the summary the bars can't state. */
+/* The average, pinned to the right of the chart: the big figure over
+   its own star row — the summary the bars can't state on their own,
+   and (see the hold-to-scrub wiring in game-view.js) the same spot a
+   held bar's own count and rating swap into. */
 .gd-avg {
   display: flex; flex-direction: column; align-items: center; gap: 2px;
   flex-shrink: 0; padding-bottom: 2px;
 }
 .gd-avg__num {
-  font-family: var(--font-serif); font-size: 34px; font-weight: 700;
-  line-height: 1; letter-spacing: -0.01em; color: var(--ink);
+  font-size: 30px; font-weight: 700;
+  line-height: 1; letter-spacing: -0.02em; color: var(--ink);
   font-variant-numeric: tabular-nums;
 }
 .gd-avg__stars .stars { --star-size: 11px; }
@@ -3113,8 +3108,7 @@ a.gd-credit__name { text-decoration: none; }
 /* A single white slab reading "Log / Rate / Review" with the overflow
    on the end — the one inverted element on the page, which is exactly
    what makes the primary action unmissable without a coloured button
-   fighting the artwork above it. Serif, like the credit line, so the
-   two read as the same voice. */
+   fighting the artwork above it. */
 .gd-bar {
   display: flex; align-items: center; gap: var(--space-2);
   padding: 5px var(--space-3) 5px 6px;
@@ -3132,8 +3126,8 @@ a.gd-credit__name { text-decoration: none; }
 .gd-bar__act {
   flex: 1; min-width: 0; padding: 7px 0;
   background: none; border: none; color: #0a0b0f;
-  font-family: var(--font-serif); font-size: 16px; font-weight: 500;
-  letter-spacing: 0.01em; white-space: nowrap;
+  font-size: 15.5px; font-weight: 700;
+  letter-spacing: 0; white-space: nowrap;
   -webkit-tap-highlight-color: transparent;
   transition: opacity var(--dur-fast) var(--ease);
 }
