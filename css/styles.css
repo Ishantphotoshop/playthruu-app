@@ -2880,8 +2880,8 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
    top edge with empty space opening up under it. */
 .gd-head { position: relative; z-index: 1; display: flex; gap: var(--space-4); align-items: center; }
 .gd-head__cover {
-  width: 142px; flex-shrink: 0; aspect-ratio: 3/4;
-  border-radius: 10px; overflow: hidden; background: var(--surface);
+  width: 135px; flex-shrink: 0; aspect-ratio: 3/4;
+  border-radius: 0; overflow: hidden; background: var(--surface);
   box-shadow: 0 8px 26px rgba(0,0,0,0.5);
   /* Nudges the poster up into the hero's fade, on its own — relative
      positioning paints it higher without touching where it sits in the
