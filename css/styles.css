@@ -2877,11 +2877,10 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
   padding-top: calc(56.25% + 10px);
 }
 
-/* Centred, not top-aligned: the poster is now taller than the logo +
-   credit + trailer column beside it, and centring keeps that column
-   sitting alongside the poster's own middle rather than pinned to its
-   top edge with empty space opening up under it. */
-.gd-head { position: relative; z-index: 1; display: flex; gap: var(--space-4); align-items: center; }
+/* Top-aligned: the logo sits right beside the poster's own top edge,
+   with the credit line and Trailer pill flowing down below it rather
+   than the whole column floating at the poster's vertical middle. */
+.gd-head { position: relative; z-index: 1; display: flex; gap: var(--space-4); align-items: flex-start; }
 .gd-head__cover {
   width: 130px; flex-shrink: 0; aspect-ratio: 3/4;
   border-radius: 5px; overflow: hidden; background: var(--surface);
