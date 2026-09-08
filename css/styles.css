@@ -2893,7 +2893,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
      item's margin also feeds into the row's own cross-axis centring
      math, which would have nudged the text column right along with it
      — exactly what this isn't supposed to touch. */
-  position: relative; top: -34px;
+  position: relative; top: -22px;
 }
 /* This one frame fills rather than fits: the header art is a fixed
    crop by design, so `cover` is correct here even though posters
