@@ -22,16 +22,17 @@
    as the secondary accent, aligned to the website's exact hue.
    ============================================================ */
 :root {
-  /* --- foundation: near-black, five steps of elevation ---
-     Derived from the website's --void (#0a0b0f) / --panel
-     (#14161d) pair, extrapolated out to the same five elevation
-     steps the app already used. */
-  --bg: #0a0b0f;
-  --bg-deep: #050609;
-  --bg-lift: #0f1015;
-  --surface: #101218;
-  --surface-raised: #14161d;
-  --surface-high: #1c1f28;
+  /* --- foundation: the black → brown → cream ramp Ishan picked out,
+     extrapolated to the same six elevation steps the app already used.
+     bg is the swatch's own black; surface-high lands exactly on its
+     medium brown; the steps between are interpolated so a card doesn't
+     jump straight from black to brown with nothing in between. */
+  --bg: #000000;
+  --bg-deep: #000000;
+  --bg-lift: #150e08;
+  --surface: #1f160d;
+  --surface-raised: #2c1f11;
+  --surface-high: #3d2914;
 
   /* --- glass --- */
   --glass-fill: rgba(255, 255, 255, 0.03);
@@ -48,10 +49,15 @@
   --glass: rgba(255, 255, 255, 0.05);
   --glass-strong: rgba(10, 11, 15, 0.74);
 
-  /* --- text: the website's warm cream primary, dim green-grey below it --- */
-  --ink: #f1f0e9;
-  --ink-dim: #8a9086;
-  --ink-faint: #5c6158;
+  /* --- text: the cream from the same swatch, the fourth and lightest
+     stop — dim/faint steps are it blended down toward the surface
+     tones above rather than toward grey, so text and background read
+     as one warm family instead of a cream on top of an unrelated
+     neutral grey ramp. --line follows: it was already ink's own RGB at
+     low alpha, kept exactly that relationship on the new colour. */
+  --ink: #dfd8c4;
+  --ink-dim: #a9987b;
+  --ink-faint: #6e6047;
 
   /* --- accent: the website's acid lime --- */
   --accent: #d9ff3f;
@@ -74,8 +80,8 @@
   --violet: #a78bfa;
 
   /* --- semantic --- */
-  --line: rgba(241, 240, 233, 0.08);
-  --line-strong: rgba(241, 240, 233, 0.16);
+  --line: rgba(223, 216, 196, 0.08);
+  --line-strong: rgba(223, 216, 196, 0.16);
   --danger: #ff6b6b;
   --success: #4ade9b;
   --warning: #ffc247;
@@ -167,20 +173,30 @@
 }
 
 /* ============================================================
-   LIGHT THEME — "creamy white + olive lime"
+   LIGHT THEME — "pale yellow → coral"
    ------------------------------------------------------------
    An alternate palette, switched via [data-theme="light"] on
    <html> (see the Dark/Light toggle in Settings, and the no-flash
    init script in index.html). Dark mode stays the default — this
    only applies when someone explicitly opts in.
 
-   Same structural relationships as the dark palette above (base is
-   the dullest tone, more "elevated" surfaces get closer to pure
-   white, glass/lines/shadows all keep the same job) just inverted
-   onto a warm cream base instead of near-black. The accent stays
-   in the lime family but is darkened to an olive lime — the dark
-   theme's neon #d9ff3f has almost no contrast against a light
-   surface, so it's toned down rather than reused as-is.
+   The elevation ramp comes straight from Ishan's own four-stop swatch:
+   pale yellow at the base, up through yellow, landing surface-raised
+   (the one every card/row in the app uses) exactly on it — the
+   dominant colour of this theme by sheer frequency of use. Orange and
+   coral, the swatch's two boldest stops, are saved for surface-high
+   and danger/coral instead of spread across every panel: those are
+   sparse, small-footprint uses (hover states, badges, likes, errors),
+   which is where a genuinely saturated colour reads as an accent
+   rather than becoming the whole screen's wallpaper.
+
+   ink stays dark brown rather than coming from the swatch — the
+   swatch is a light-to-saturated ramp with no dark stop in it at all,
+   and body text has to be dark for this to remain readable regardless
+   of which warm tones sit behind it. The accent stays the same olive
+   lime dark theme uses, chosen when the accent question was raised —
+   also darkened here as before, since the dark theme's neon #d9ff3f
+   still has almost no contrast against any light surface.
 
    Known gap: a few effects were hand-tuned specifically for dark
    backdrops with literal rgba() values rather than tokens — the
@@ -188,12 +204,12 @@
    liquid-glass sheen. Both still work here, just not re-tuned for
    light yet; a good first candidate for a follow-up pass. */
 :root[data-theme="light"] {
-  --bg: #f5ecda;
-  --bg-deep: #ecdfc4;
-  --bg-lift: #faf5ea;
-  --surface: #fffdf8;
-  --surface-raised: #ffffff;
-  --surface-high: #fff3e0;
+  --bg: #ffecaf;
+  --bg-deep: #ffe18c;
+  --bg-lift: #fff6d9;
+  --surface: #ffdd8f;
+  --surface-raised: #ffcc5c;
+  --surface-high: #ff9f5c;
 
   --glass-fill: rgba(43, 29, 14, 0.03);
   --glass-fill-strong: rgba(43, 29, 14, 0.06);
@@ -221,7 +237,10 @@
 
   --line: rgba(43, 29, 14, 0.08);
   --line-strong: rgba(43, 29, 14, 0.15);
-  --danger: #d8433f;
+  /* The swatch's fourth stop, the coral — its one appearance outside
+     the elevation ramp, since it's close kin to the coral/danger red
+     this token already was. */
+  --danger: #ff7a7a;
   --success: #2f9e64;
   --warning: #c9820c;
 
@@ -4106,6 +4125,17 @@ a.gd-credit__name { text-decoration: none; }
   font: inherit; font-weight: 800; color: #fff; cursor: pointer;
 }
 .landing-entry__link-inline:active { color: rgba(255,255,255,0.8); }
+/* This whole family assumed the dark backdrop the landing screen always
+   used to have — plain white text, no theme awareness at all. Harmless
+   while the old light bg was a near-neutral cream (white-on-cream still
+   read, just faintly), but the new light palette's pale yellow is
+   saturated enough that white text on it genuinely disappears, which
+   "Already have an account? Log in" was doing outright. */
+:root[data-theme="light"] .landing-entry__link { color: var(--ink); }
+:root[data-theme="light"] .landing-entry__link:active { color: var(--ink-dim); }
+:root[data-theme="light"] .landing-entry__link--strong { color: var(--ink-dim); }
+:root[data-theme="light"] .landing-entry__link-inline { color: var(--ink); }
+:root[data-theme="light"] .landing-entry__link-inline:active { color: var(--ink-dim); }
 
 /* ---- feature tour: full-screen carousel, rebuilt from scratch -------
    min-height:100dvh directly on .tour, not height:100% inherited
