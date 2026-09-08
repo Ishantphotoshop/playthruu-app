@@ -37,6 +37,9 @@ export function renderSearchView(root) {
 
   root.innerHTML = `
     <div class="view-body view-body--no-topbar view-body--search">
+      <div class="msg-inbox-head">
+        <h1 class="msg-inbox-title">Search</h1>
+      </div>
       <div class="segmented segmented--wide" id="search-tabs">
         <button class="segmented__item segmented__item--active" data-tab="games">Games</button>
         <button class="segmented__item" data-tab="people">Players</button>

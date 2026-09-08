@@ -459,7 +459,10 @@ ul { list-style: none; margin: 0; padding: 0; }
 /* Search has no corner-action chip (unlike Messages/Profile), so it
    doesn't need the 54px row reserved for one — the tabs and everything
    below can sit much higher, closer to the top of the screen. */
-.view-body--search { padding-top: calc(var(--safe-top) + 18px); }
+/* Matches #messages-body's own override exactly (see the "Messages"
+   heading below) — the "Search" heading now added at the top of this
+   screen needs to sit at the same offset so the two screens line up. */
+.view-body--search { padding-top: calc(var(--safe-top) + 16px); }
 /* Compose (Messages) / settings (own Profile): with no topbar to hold a
    right-side action, it floats in the corner of the content itself
    instead — same round chip as .icon-btn, positioned in the reserved
