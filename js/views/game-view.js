@@ -1002,83 +1002,151 @@ function iconStack() { return `<svg viewBox="0 0 24 24" fill="none"><rect x="4" 
 function openLogSheet({ game, ownLog, replayCount, ensureSavedGame, onChanged, onAddToList }) {
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
-  const status = ownLog?.status || null;
-  const rating = ownLog?.rating || 0;
-
-  const tg = (key, label, icon) => `
-    <button type="button" class="lg-tg${status === key ? ' lg-tg--on' : ''}" data-status="${key}">
-      <span class="lg-tg__icon">${icon}</span>
-      <span>${esc(label)}</span>
-    </button>`;
-
-  const row = (act, label, icon, opts = {}) => `
-    <button type="button" class="lg-row${opts.danger ? ' lg-row--danger' : ''}" data-act="${act}">
-      <span class="lg-row__icon">${icon}</span>
-      <span class="lg-row__label">${esc(label)}</span>
-      ${opts.note ? `<span class="lg-row__note">${esc(opts.note)}</span>` : ''}
-    </button>`;
-
-  overlay.innerHTML = `
-    <div class="modal lg-sheet">
-      <div class="lg-head">
-        <h2 class="lg-head__title">${esc(game.title)}</h2>
-        ${game.release_year ? `<p class="lg-head__year">${esc(String(game.release_year))}</p>` : ''}
-      </div>
-
-      <div class="lg-toggles">
-        ${tg('played', 'Played', iconController())}
-        ${tg('playing', 'Playing', iconPlay())}
-        ${tg('backlog', 'Backlog', iconBookmarkSm())}
-      </div>
-
-      <div class="lg-rate">
-        <div class="lg-rate__stars" id="lg-stars">
-          ${[1, 2, 3, 4, 5].map((n) => `
-            <button type="button" class="lg-star${n <= rating ? ' lg-star--on' : ''}" data-star="${n}" aria-label="${n} star${n === 1 ? '' : 's'}"></button>`).join('')}
-        </div>
-        <span class="lg-rate__label">${rating ? `Rated ${rating}` : 'Rate'}</span>
-      </div>
-
-      <div class="lg-list">
-        ${row('review', ownLog?.review ? 'Edit your review' : 'Write a review', iconPencilSm())}
-        ${ownLog ? row('again', 'Log again', iconPlusSm(), { note: replayCount ? `${replayCount} replay${replayCount === 1 ? '' : 's'}` : '' }) : ''}
-        ${row('list', 'Add to lists', iconStack())}
-        ${row('share', 'Copy link', iconLinkSm())}
-        ${ownLog ? row('delete', 'Delete this log', iconTrashSm(), { danger: true }) : ''}
-      </div>
-    </div>`;
   document.body.appendChild(overlay);
   document.body.style.overflow = 'hidden';
-  const close = () => { overlay.remove(); document.body.style.overflow = ''; };
 
-  // Status and rating write immediately. Everything in the list below
-  // opens something else, so those close the sheet on the way out.
+  // Local truth. Every tap updates this and repaints immediately, then
+  // the write goes out behind it — a status toggle that waits on a
+  // round trip before it moves feels broken even when it isn't. On a
+  // failed write this is rolled back to `before` and repainted.
+  let log = ownLog;
+  let dirty = false;
+
+  function close() {
+    overlay.remove();
+    document.body.style.overflow = '';
+    // One reconcile on the way out instead of one per tap: the rest of
+    // the page (Played by, the ratings chart, the review list) has to
+    // catch up, but it doesn't have to do it four times while someone
+    // sets a status and then a rating.
+    if (dirty) onChanged?.();
+  }
+
+  function render() {
+    const status = log?.status || null;
+    const rating = log?.rating || 0;
+
+    const tg = (key, label, icon) => `
+      <button type="button" class="lg-tg${status === key ? ' lg-tg--on' : ''}" data-status="${key}">
+        <span class="lg-tg__icon">${icon}</span>
+        <span>${esc(label)}</span>
+      </button>`;
+
+    const row = (act, label, icon, opts = {}) => `
+      <button type="button" class="lg-row${opts.danger ? ' lg-row--danger' : ''}" data-act="${act}">
+        <span class="lg-row__icon">${icon}</span>
+        <span class="lg-row__label">${esc(label)}</span>
+        ${opts.note ? `<span class="lg-row__note">${esc(opts.note)}</span>` : ''}
+      </button>`;
+
+    overlay.innerHTML = `
+      <div class="modal lg-sheet">
+        <div class="lg-head">
+          <h2 class="lg-head__title">${esc(game.title)}</h2>
+          ${game.release_year ? `<p class="lg-head__year">${esc(String(game.release_year))}</p>` : ''}
+        </div>
+
+        <div class="lg-toggles">
+          ${tg('played', 'Played', iconController())}
+          ${tg('playing', 'Playing', iconPlay())}
+          ${tg('backlog', 'Backlog', iconBookmarkSm())}
+        </div>
+
+        <div class="lg-rate">
+          <div class="lg-rate__stars">
+            ${[1, 2, 3, 4, 5].map((n) => `
+              <button type="button" class="lg-star${n <= rating ? ' lg-star--on' : ''}" data-star="${n}" aria-label="${n} star${n === 1 ? '' : 's'}"></button>`).join('')}
+          </div>
+          <span class="lg-rate__label">${rating ? `Rated ${rating}` : 'Rate'}</span>
+        </div>
+
+        <div class="lg-list">
+          ${row('review', log?.review ? 'Edit your review' : 'Write a review', iconPencilSm())}
+          ${log ? row('again', 'Log again', iconPlusSm(), { note: replayCount ? `${replayCount} replay${replayCount === 1 ? '' : 's'}` : '' }) : ''}
+          ${row('list', 'Add to lists', iconStack())}
+          ${row('share', 'Copy link', iconLinkSm())}
+          ${log ? row('delete', 'Delete this log', iconTrashSm(), { danger: true }) : ''}
+        </div>
+      </div>`;
+
+    // Keep the row on the page underneath in sync as we go, so closing
+    // the sheet never shows a stale sentence for the moment it takes
+    // the reconcile to land.
+    const rowText = document.querySelector('#open-log-sheet .gd-log__text');
+    if (rowText) rowText.innerHTML = logRowLabel(log);
+  }
+
+  render();
+
+  // Tapping the status you're already on clears it — that's the only way
+  // to take a game back out of your backlog, and without it the toggles
+  // are one-way. Clearing means deleting the log, so a log carrying a
+  // rating or a review is refused here and sent to "Delete this log",
+  // which is explicit about what it destroys.
+  // Guards the window between an optimistic repaint and its write
+  // landing: during it `log` is a local object with no id yet, so a
+  // second tap would try to update or delete a row it can't name.
+  let inFlight = false;
+
   async function setStatus(next) {
+    if (inFlight) return;
+    const before = log;
+    const clearing = !!log && log.status === next;
+    if (clearing && (log.rating || log.review)) {
+      toast('Your rating and review live on this log — use Delete this log.', 'info');
+      return;
+    }
+
     const saved = await ensureSavedGame();
     if (!saved) return;
+
+    log = clearing ? null : { ...(log || {}), status: next };
+    dirty = true;
+    inFlight = true;
+    render();
+
     try {
-      if (ownLog && ownLog.status === next) { close(); return; }
-      if (ownLog) await api.updateLog(ownLog.id, { status: next });
-      else await api.createLog({ game_id: game.id, user_id: state.user.id, status: next, is_public: true });
+      if (clearing) await api.deleteLog(before.id);
+      else if (before?.id) log = await api.updateLog(before.id, { status: next });
+      else log = await api.createLog({ game_id: game.id, user_id: state.user.id, status: next, is_public: true });
       pulseLogTab();
-      close();
-      onChanged?.();
+      render();
     } catch (err) {
+      log = before;
+      render();
       toast(err.message || 'Could not save that.', 'error');
+    } finally {
+      inFlight = false;
     }
   }
 
   async function setRating(n) {
+    if (inFlight) return;
+    const before = log;
+    // Tapping the star you're already on clears the rating rather than
+    // re-setting it — the same "tap it again to undo" the status
+    // toggles have, so the two behave alike.
+    const clearing = !!log && log.rating === n;
+
     const saved = await ensureSavedGame();
     if (!saved) return;
+
+    log = { ...(log || {}), rating: clearing ? null : n, status: log?.status || 'played' };
+    dirty = true;
+    inFlight = true;
+    render();
+
     try {
-      if (ownLog) await api.updateLog(ownLog.id, { rating: n, status: ownLog.status || 'played' });
-      else await api.createLog({ game_id: game.id, user_id: state.user.id, status: 'played', rating: n, is_public: true });
+      if (before?.id) log = await api.updateLog(before.id, { rating: clearing ? null : n, status: before.status || 'played' });
+      else log = await api.createLog({ game_id: game.id, user_id: state.user.id, status: 'played', rating: n, is_public: true });
       pulseLogTab();
-      close();
-      onChanged?.();
+      render();
     } catch (err) {
+      log = before;
+      render();
       toast(err.message || 'Could not save that rating.', 'error');
+    } finally {
+      inFlight = false;
     }
   }
 
@@ -1094,9 +1162,10 @@ function openLogSheet({ game, ownLog, replayCount, ensureSavedGame, onChanged, o
     const actBtn = e.target.closest('[data-act]');
     if (!actBtn) return;
     const act = actBtn.dataset.act;
+    const current = log;
     close();
     if (act === 'review') {
-      if (ownLog) openLogModal({ existingLog: ownLog, onSaved: onChanged });
+      if (current) openLogModal({ existingLog: current, onSaved: onChanged });
       else {
         const saved = await ensureSavedGame();
         if (saved) openLogModal({ game, onSaved: onChanged });
@@ -1112,9 +1181,9 @@ function openLogSheet({ game, ownLog, replayCount, ensureSavedGame, onChanged, o
       try { await navigator.clipboard.writeText(url); toast('Link copied', 'success'); }
       catch { toast('Could not copy that link', 'error'); }
     }
-    if (act === 'delete' && ownLog) {
+    if (act === 'delete' && current) {
       try {
-        await api.deleteLog(ownLog.id);
+        await api.deleteLog(current.id);
         toast('Log deleted.', 'success');
         onChanged?.();
       } catch (err) { toast(err.message || 'Could not delete that.', 'error'); }
