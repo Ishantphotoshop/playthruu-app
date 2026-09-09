@@ -2976,16 +2976,18 @@ export async function getImportedGames(userId, { limit = 200 } = {}) {
   return data;
 }
 
-async function psnProxy(body) {
+async function psnProxy(body, timeout = 12000) {
   // 12s, not the file's usual 3.5s default — a cold PSN proxy call is a
   // real multi-hop OAuth exchange (NPSSO -> code -> access token, THEN
   // the actual search/library request) on top of a cold Supabase Edge
   // Function start, not one simple query the way IGDB calls here are.
+  // The completions action needs far longer still: it reads the trophy
+  // list of every played title, two requests apiece.
   const res = await fetchWithTimeout(PSN_FUNCTION_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${SUPABASE_ANON_KEY}` },
     body: JSON.stringify(body),
-  }, 12000);
+  }, timeout);
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || 'PlayStation lookup failed.');
   return data;
@@ -3053,7 +3055,126 @@ export async function connectPsnAccount(userId, onlineId) {
     if (rowsErr) throw rowsErr;
   }
 
-  return { total: rows.length, matched: matches.filter(Boolean).length };
+  // Trophy reading is a bonus pass, not part of the import: if PSN's
+  // trophy endpoints are slow or unhappy, the library still connected
+  // and that shouldn't read as a failure.
+  let logged = 0;
+  try {
+    ({ logged } = await syncPsnCompletions(userId, resolved.accountId));
+  } catch { /* library is in; completions can catch up on the next sync */ }
+
+  return { total: rows.length, matched: matches.filter(Boolean).length, logged };
+}
+
+// Trophy sets and the played-games list name the same game differently:
+// "Marvel's Spider-Man Remastered" in trophies is "Marvel's Spider-Man"
+// in the library, "Grand Theft Auto V" is "Grand Theft Auto V
+// (PlayStation®5)", and trophy sets for service games get a literal
+// "Trophies" suffix. So matching goes exact-first and only falls back to
+// this looser key, which drops platform parentheticals and edition
+// words. Looseness cuts both ways, so a key two different games share
+// ("Little Nightmares" and "Little Nightmares II" both reduce to the
+// same thing once "II" survives but the edition words don't) is thrown
+// away rather than guessed at.
+function looseTitleKey(name) {
+  return normalizeTitle(String(name || '').replace(/\([^)]*\)/g, ' '))
+    .replace(/\b(trophy set|trophies|remastered|remake|reforged|definitive|complete|deluxe|ultimate|standard|game of the year|goty|directors cut|edition)\b/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function buildTitleIndex(rows, nameOf) {
+  const exact = new Map();
+  const loose = new Map();
+  for (const row of rows) {
+    const name = nameOf(row);
+    if (!exact.has(normalizeTitle(name))) exact.set(normalizeTitle(name), row);
+    const key = looseTitleKey(name);
+    if (!key) continue;
+    loose.set(key, loose.has(key) ? null : row); // null = ambiguous, never used
+  }
+  return {
+    find(name) {
+      return exact.get(normalizeTitle(name)) || loose.get(looseTitleKey(name)) || null;
+    },
+  };
+}
+
+// Reads the trophy data for a connected account and writes a diary
+// entry for every game it can tell was actually FINISHED — platinum,
+// every trophy, or a "complete the story" trophy (the proxy does that
+// detection; see its comments for how). Dated by when the trophy was
+// earned, with the hours PSN recorded, because that's the whole point:
+// a shelf of games you finished years ago shouldn't need re-logging by
+// hand.
+//
+// Two things it will never do: touch a game you have already logged
+// yourself, and log the same import twice — imported_games.auto_logged_at
+// records that a row has had its turn, so deleting an auto-created entry
+// makes it stay deleted through the next re-sync.
+export async function syncPsnCompletions(userId, accountId) {
+  const { titles } = await psnProxy({ action: 'completions', accountId }, 90000);
+  const completed = (titles || []).filter((t) => t.completed && t.completedAt);
+  if (!completed.length) return { logged: 0 };
+
+  const { data: rows, error } = await supabase
+    .from('imported_games')
+    .select('id, name, game_id, playtime_minutes')
+    .eq('user_id', userId)
+    .not('game_id', 'is', null)
+    .is('auto_logged_at', null);
+  if (error) throw error;
+  if (!rows?.length) return { logged: 0 };
+
+  const index = buildTitleIndex(rows, (r) => r.name);
+  const pairs = [];
+  const seen = new Set();
+  for (const done of completed) {
+    const row = index.find(done.name);
+    if (!row || seen.has(row.id)) continue;
+    seen.add(row.id);
+    pairs.push({ row, done });
+  }
+  if (!pairs.length) return { logged: 0 };
+
+  // Anything already in the diary is left exactly as it is — an
+  // automatic import must never overwrite or duplicate what someone
+  // wrote themselves.
+  const { data: existing, error: exErr } = await supabase
+    .from('logs')
+    .select('game_id')
+    .eq('user_id', userId)
+    .in('game_id', pairs.map((p) => p.row.game_id));
+  if (exErr) throw exErr;
+  const alreadyLogged = new Set((existing || []).map((l) => l.game_id));
+
+  const fresh = pairs.filter((p) => !alreadyLogged.has(p.row.game_id));
+  if (fresh.length) {
+    const { error: insErr } = await supabase.from('logs').insert(fresh.map(({ row, done }) => ({
+      game_id: row.game_id,
+      user_id: userId,
+      status: 'played',
+      played_date: String(done.completedAt).slice(0, 10),
+      // logs.hours_played is numeric(6,1) capped at 20000 by a check
+      // constraint — a stray huge value would fail the whole insert.
+      hours_played: row.playtime_minutes > 0
+        ? Math.min(20000, Math.round(row.playtime_minutes / 6) / 10)
+        : null,
+      is_public: true,
+    })));
+    if (insErr) throw insErr;
+  }
+
+  // Every matched row is marked, including ones skipped for already
+  // having a log: they've had their turn either way, and leaving them
+  // unmarked would re-check them on every future sync forever.
+  const { error: markErr } = await supabase
+    .from('imported_games')
+    .update({ auto_logged_at: new Date().toISOString() })
+    .in('id', pairs.map((p) => p.row.id));
+  if (markErr) throw markErr;
+
+  return { logged: fresh.length };
 }
 
 export async function disconnectPsnAccount(userId) {

@@ -183,6 +183,14 @@ export function renderSettingsView(root) {
     }
   }
 
+  // Games the trophy pass could tell were finished get written straight
+  // into the diary, so the toast has to say so — a silent handful of new
+  // entries appearing on someone's profile would be alarming.
+  function completionNote({ logged }) {
+    if (!logged) return '';
+    return ` ${logged} finished ${logged === 1 ? 'game' : 'games'} added to your diary.`;
+  }
+
   function wireConnectedAccounts(psn) {
     const form = qs('#psn-connect-form', body);
     if (form) {
@@ -196,7 +204,7 @@ export function renderSettingsView(root) {
         try {
           const result = await api.connectPsnAccount(state.user.id, onlineId);
           invalidateProfileBundleCache(state.user.id);
-          toast(`Connected — ${result.matched} of ${result.total} games matched.`, 'success');
+          toast(`Connected — ${result.matched} of ${result.total} games matched.${completionNote(result)}`, 'success');
           loadConnectedAccounts();
         } catch (err) {
           toast(err.message || 'Could not connect that account.', 'error');
@@ -211,7 +219,7 @@ export function renderSettingsView(root) {
       try {
         const result = await api.connectPsnAccount(state.user.id, psn.handle);
         invalidateProfileBundleCache(state.user.id);
-        toast(`Synced — ${result.matched} of ${result.total} games matched.`, 'success');
+        toast(`Synced — ${result.matched} of ${result.total} games matched.${completionNote(result)}`, 'success');
         loadConnectedAccounts();
       } catch (err) {
         toast(err.message || 'Could not sync.', 'error');

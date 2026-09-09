@@ -40,6 +40,9 @@ import {
   exchangeCodeForAccessToken,
   makeUniversalSearch,
   getUserPlayedGames,
+  getUserTitles,
+  getTitleTrophies,
+  getUserTrophiesEarnedForTitle,
 } from "npm:psn-api@2";
 
 const NPSSO = Deno.env.get("PSN_NPSSO");
@@ -137,6 +140,169 @@ async function fetchLibrary(accountId: string) {
   };
 }
 
+// ------------------------------------------------------------
+// DID THEY FINISH IT?
+// ------------------------------------------------------------
+// PSN has no "completed" flag, so this reads it out of trophies. Three
+// signals, in order of certainty:
+//   1. platinum earned          — unambiguous
+//   2. 100% progress            — every trophy, so also unambiguous
+//   3. a "finished the story" trophy — needs the heuristic below
+//
+// The heuristic was written against a real 74-title account and checked
+// title by title. The rule that makes it work: a completion verb has to
+// directly govern the WHOLE game. Modifiers trailing after that don't
+// weaken the signal — "complete the story on Grounded", "finish the game
+// in under 2 hours", "complete the game without using the radio" all
+// still required finishing it. What breaks the signal is a different
+// OBJECT: "complete a game in an Arena" (one match of Rocket League),
+// "complete 30 street races", "complete all optional Honor story
+// missions". Hence a permissive tail and a strict head.
+const VERB = String.raw`(?:complete[ds]?|finish(?:ed)?|beat(?:en)?)`;
+const COMPLETION = new RegExp(
+  String.raw`\b${VERB}\s+(?:the\s+)?(?:(?:main|full|entire|whole|base)\s+)?(?:story|game|campaign|adventure|epilogue)\b`,
+  "i",
+);
+// "Completed the final mission." (GTA V) names the last beat of the
+// story rather than calling it "the story".
+const FINAL_BEAT = new RegExp(
+  String.raw`\b${VERB}\s+the\s+(?:final|last)\s+(?:mission|chapter|episode|level|act|battle|boss)\b`,
+  "i",
+);
+const NOT_THE_WHOLE_GAME = [
+  new RegExp(String.raw`\b${VERB}\s+(?:a|an|one|another|\d+|all|each|every)\b`, "i"),
+  /\ba\s+complete\s+game\b/i,
+  /\b(co-?op|online|multiplayer|versus|legends mode|arena|mini-?game|side\s*quest|optional)\b/i,
+];
+
+function normalizeTrophyText(s: string) {
+  return String(s).toLowerCase()
+    .replace(/[‘’']/g, "")
+    .replace(/\b(trophy set|trophies)\b/g, "")
+    .replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+// Plenty of games name themselves instead of saying "the game" —
+// "Complete Marvel's Guardians of the Galaxy." — so the title counts as
+// the object too. One-word titles are skipped: they match far too loosely.
+function titleIsTheObject(text: string, trophyTitleName: string) {
+  const title = normalizeTrophyText(trophyTitleName);
+  if (title.split(" ").length < 2) return false;
+  const norm = normalizeTrophyText(text);
+  const m = new RegExp(String.raw`\b${VERB}\s+(?:the\s+)?`, "i").exec(norm);
+  if (!m) return false;
+  const after = norm.slice(m.index + m[0].length);
+  // Either the trophy names the whole title, or the title is a longer
+  // edition name ("The Stanley Parable: Ultra Deluxe") that starts with
+  // exactly what the trophy said.
+  const head = after.split(" ").slice(0, title.split(" ").length).join(" ");
+  return after.startsWith(title) || (head.split(" ").length >= 2 && title.startsWith(head));
+}
+
+type Trophy = { trophyId: number; trophyName?: string; trophyDetail?: string; trophyType?: string };
+type EarnedTrophy = { trophyId: number; earned?: boolean; earnedDateTime?: string };
+
+function findCompletionTrophy(defs: Trophy[], earned: EarnedTrophy[], trophyTitleName: string) {
+  const earnedById = new Map(earned.map((e) => [e.trophyId, e]));
+  const hits = defs
+    .map((d) => ({ def: d, got: earnedById.get(d.trophyId) }))
+    .filter(({ def, got }) => {
+      if (!got?.earned) return false;
+      const text = `${def.trophyName ?? ""} ${def.trophyDetail ?? ""}`;
+      const looksDone = COMPLETION.test(text) || FINAL_BEAT.test(text) || titleIsTheObject(text, trophyTitleName);
+      return looksDone && !NOT_THE_WHOLE_GAME.some((re) => re.test(text));
+    })
+    .filter((h) => h.got?.earnedDateTime);
+  if (!hits.length) return null;
+  // Earliest wins: if they later finished it again on a harder
+  // difficulty, the diary should date the FIRST time they finished it.
+  hits.sort((a, b) => String(a.got!.earnedDateTime).localeCompare(String(b.got!.earnedDateTime)));
+  return { at: hits[0].got!.earnedDateTime!, label: hits[0].def.trophyName ?? "" };
+}
+
+type TrophyTitle = {
+  npCommunicationId: string; npServiceName: string; trophyTitleName: string;
+  trophyTitlePlatform?: string; progress?: number;
+  earnedTrophies?: { platinum?: number }; lastUpdatedDateTime?: string;
+};
+
+async function fetchCompletions(accountId: string) {
+  const auth = await getAuth();
+
+  const titles: TrophyTitle[] = [];
+  let offset = 0;
+  for (;;) {
+    const res = await getUserTitles(auth, accountId, { limit: 100, offset });
+    const page = (res as { trophyTitles?: TrophyTitle[] }).trophyTitles ?? [];
+    titles.push(...page);
+    offset += page.length;
+    if (!page.length || offset >= ((res as { totalItemCount?: number }).totalItemCount ?? offset)) break;
+  }
+
+  const results: Record<string, unknown>[] = [];
+
+  // A title with no trophies at all was never really played — skip it and
+  // spend the requests on the rest.
+  const queue = titles.filter((t) => (t.progress ?? 0) > 0);
+  for (const t of titles) {
+    if ((t.progress ?? 0) === 0) {
+      results.push({ name: t.trophyTitleName, platform: t.trophyTitlePlatform, progress: t.progress, completed: false });
+    }
+  }
+
+  // Every played title gets its trophy list pulled, even the platinumed
+  // ones. The cheap shortcut — dating a platinum from the title's
+  // lastUpdatedDateTime — is wrong whenever DLC trophies were earned
+  // after the platinum: Ghost of Tsushima platinumed in June 2024 but
+  // last updated in Feb 2025, and the diary would have been eight months
+  // off. Trophy names live only in the definitions call and earned state
+  // only in the other, so each title costs two requests; bounded
+  // concurrency keeps a big library quick without hammering PSN through
+  // the one shared service account.
+  await Promise.all(Array.from({ length: 8 }, async () => {
+    for (;;) {
+      const t = queue.shift();
+      if (!t) return;
+      const base = { name: t.trophyTitleName, platform: t.trophyTitlePlatform, progress: t.progress };
+      const opts = { npServiceName: t.npServiceName };
+      try {
+        const [defsRes, earnedRes] = await Promise.all([
+          getTitleTrophies(auth, t.npCommunicationId, "all", opts),
+          getUserTrophiesEarnedForTitle(auth, accountId, t.npCommunicationId, "all", opts),
+        ]);
+        const defs = (defsRes as { trophies?: Trophy[] }).trophies ?? [];
+        const earned = (earnedRes as { trophies?: EarnedTrophy[] }).trophies ?? [];
+
+        const platinumId = defs.find((d) => d.trophyType === "platinum")?.trophyId;
+        const platinum = earned.find((e) => e.trophyId === platinumId && e.earned && e.earnedDateTime);
+        if (platinum) {
+          results.push({ ...base, completed: true, completedAt: platinum.earnedDateTime, reason: "platinum", label: null });
+          continue;
+        }
+        if (t.progress === 100) {
+          const last = earned.filter((e) => e.earned && e.earnedDateTime)
+            .map((e) => e.earnedDateTime!).sort().pop();
+          if (last) {
+            results.push({ ...base, completed: true, completedAt: last, reason: "every trophy", label: null });
+            continue;
+          }
+        }
+        const hit = findCompletionTrophy(defs, earned, t.trophyTitleName);
+        results.push({
+          ...base, completed: !!hit, completedAt: hit?.at ?? null,
+          reason: hit ? "story trophy" : null, label: hit?.label ?? null,
+        });
+      } catch {
+        // One unreadable title (privacy, a delisted set) must not sink
+        // the whole sync — report it as undetermined and move on.
+        results.push({ ...base, completed: false });
+      }
+    }
+  }));
+
+  return { titles: results };
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS_HEADERS });
 
@@ -150,9 +316,9 @@ Deno.serve(async (req: Request) => {
     action = body.action;
     onlineId = body.onlineId;
     accountId = body.accountId;
-    if (action !== "resolve" && action !== "library") throw new Error("bad action");
+    if (action !== "resolve" && action !== "library" && action !== "completions") throw new Error("bad action");
   } catch {
-    return json({ error: 'Body must be { action: "resolve", onlineId } or { action: "library", accountId }' }, 400);
+    return json({ error: 'Body must be { action: "resolve", onlineId } or { action: "library" | "completions", accountId }' }, 400);
   }
 
   try {
@@ -161,6 +327,7 @@ Deno.serve(async (req: Request) => {
       return json(await resolveOnlineId(onlineId));
     }
     if (!accountId) return json({ error: "accountId is required" }, 400);
+    if (action === "completions") return json(await fetchCompletions(accountId));
     return json(await fetchLibrary(accountId));
   } catch (err) {
     // A stale/expired NPSSO surfaces here as an auth failure on the
