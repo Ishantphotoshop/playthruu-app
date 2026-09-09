@@ -99,25 +99,42 @@ async function resolveOnlineId(onlineId: string) {
   };
 }
 
+type PlayedGame = {
+  titleId?: string; npTitleId?: string; concept?: { id?: string };
+  name?: string; titleName?: string;
+  playDuration?: unknown; playTime?: unknown;
+  lastPlayedDateTime?: string; firstPlayedDateTime?: string;
+};
+
+// getUserPlayedGames pages at 200 titles per call (its own server-side
+// cap, unrelated to our own imported_games limit) and reports how many
+// titles exist in total via totalItemCount — so a library bigger than
+// one page needs this loop, or only the most-recently-played 200 games
+// would ever show up.
+const PAGE_SIZE = 200;
+
 async function fetchLibrary(accountId: string) {
   const auth = await getAuth();
-  const res = await getUserPlayedGames(auth, accountId);
-  type PlayedGame = {
-    titleId?: string; npTitleId?: string; concept?: { id?: string };
-    name?: string; titleName?: string;
-    playDuration?: unknown; playTime?: unknown;
-    lastPlayedDateTime?: string; firstPlayedDateTime?: string;
+  const titles: PlayedGame[] = [];
+  let offset = 0;
+  for (;;) {
+    const res = await getUserPlayedGames(auth, accountId, { limit: PAGE_SIZE, offset });
+    const page = ((res as { titles?: PlayedGame[]; games?: PlayedGame[] }).titles
+      ?? (res as { titles?: PlayedGame[]; games?: PlayedGame[] }).games
+      ?? []);
+    titles.push(...page);
+    const total = (res as { totalItemCount?: number }).totalItemCount ?? titles.length;
+    offset += page.length;
+    if (page.length === 0 || offset >= total) break;
+  }
+  return {
+    titles: titles.map((g) => ({
+      platformGameId: g.titleId || g.npTitleId || g.concept?.id || g.name || g.titleName || crypto.randomUUID(),
+      name: g.name || g.titleName || "Untitled",
+      playtimeMinutes: durationToMinutes(g.playDuration ?? g.playTime),
+      lastPlayedAt: g.lastPlayedDateTime || g.firstPlayedDateTime || null,
+    })),
   };
-  const list = ((res as { titles?: PlayedGame[]; games?: PlayedGame[] }).titles
-    ?? (res as { titles?: PlayedGame[]; games?: PlayedGame[] }).games
-    ?? []);
-  const titles = list.map((g) => ({
-    platformGameId: g.titleId || g.npTitleId || g.concept?.id || g.name || g.titleName || crypto.randomUUID(),
-    name: g.name || g.titleName || "Untitled",
-    playtimeMinutes: durationToMinutes(g.playDuration ?? g.playTime),
-    lastPlayedAt: g.lastPlayedDateTime || g.firstPlayedDateTime || null,
-  }));
-  return { titles };
 }
 
 Deno.serve(async (req: Request) => {
