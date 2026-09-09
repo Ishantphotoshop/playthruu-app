@@ -27,7 +27,12 @@ function platformIcon(name) {
     return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M7 7.2C9 9.6 10.6 11 12 12.4M17 7.2c-2 2.4-3.6 3.8-5 5.2M7 16.8c2-2.4 3.6-3.8 5-5.2M17 16.8c-2-2.4-3.6-3.8-5-5.2"/></svg>`;
   }
   if (n.includes('switch') || n.includes('nintendo')) {
-    return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="6.5" height="16" rx="3.2"/><rect x="14.5" y="4" width="6.5" height="16" rx="3.2"/><circle cx="6.25" cy="8" r="0.9" fill="currentColor" stroke="none"/></svg>`;
+    // A handheld silhouette, not two bare pills — at the 24px this
+    // renders at, two side-by-side rounded rectangles with nothing
+    // joining them read as the digits "00" rather than a console. The
+    // connecting screen bar is what breaks that illusion; the dot and
+    // stick keep it legible as a Joy-Con rail rather than a plain slab.
+    return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6.5" width="5.5" height="11" rx="2.6"/><rect x="16" y="6.5" width="5.5" height="11" rx="2.6"/><path d="M8 9.5h8v5H8z" stroke-linejoin="round"/><circle cx="5.25" cy="9.7" r="0.85" fill="currentColor" stroke="none"/><path d="M18.75 10.5v3M17.25 12h3" stroke-width="1.4"/></svg>`;
   }
   if (n.includes('pc') || n.includes('windows') || n.includes('mac') || n.includes('linux') || n.includes('steam')) {
     return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4.5" width="19" height="12.5" rx="1.6"/><path d="M9 20.5h6M12 17v3.5"/></svg>`;
@@ -240,7 +245,8 @@ export async function renderGameView(root, { id, igdbId }) {
   // and it cut a hard rectangle across the hero image right where the
   // whole point of .gd-hero__scrim/--hero-fade is a seamless blend.
   // Just the back button, floating on its own (see .game-back).
-  root.innerHTML = `<button type="button" class="topbar__back game-back" data-action="back" aria-label="Back">${iconBack()}</button>`
+  root.innerHTML = `<div class="game-topbar-fill" id="game-topbar-fill"></div>`
+    + `<button type="button" class="topbar__back game-back" data-action="back" aria-label="Back">${iconBack()}</button>`
     + `<div class="view-body" id="game-body"><div class="view-loading" id="game-loading" hidden>${spinner()}</div></div>` + navBar('');
   const body = qs('#game-body', root);
 
@@ -250,11 +256,20 @@ export async function renderGameView(root, { id, igdbId }) {
   // text is unreadable. So the plate fades back in once the artwork has
   // scrolled away, which is exactly when it's needed and no sooner.
   const backBtn = qs('.game-back', root);
+  const topbarFill = qs('#game-topbar-fill', root);
   if (backBtn) {
     const syncBack = () => {
       // Roughly the artwork's own height; below that there's no art left
       // behind the chevron to protect.
-      backBtn.classList.toggle('game-back--plated', body.scrollTop > body.clientWidth * 0.42);
+      const plated = body.scrollTop > body.clientWidth * 0.42;
+      backBtn.classList.toggle('game-back--plated', plated);
+      // The button alone, floating with nothing behind it, let whatever
+      // scrolled content settled in that corner (an avatar circle, a
+      // poster edge) show through right at its rim — two overlapping
+      // circles read as a rendering glitch, not deliberate layering. A
+      // full-width shelf under the button gives content a real edge to
+      // scroll under instead of a hole to peek through.
+      topbarFill?.classList.toggle('game-topbar-fill--on', plated);
     };
     body.addEventListener('scroll', syncBack, { passive: true });
     syncBack();
@@ -262,6 +277,15 @@ export async function renderGameView(root, { id, igdbId }) {
   let activeTab = 'cast';
   let crewCache = null;
   let castDirectorData = null; // { director, cast } — resolved below, before the first paint
+  // Set inside paintGame() below, read by paintTabContent()'s Details
+  // branch and by the log sheet's "Log again" note. Both are separate
+  // functions from paintGame — a plain function declaration closes over
+  // the scope it's DEFINED in, not the scope it's called from, so these
+  // have to live up here rather than as locals inside paintGame() for
+  // any sibling function to see them.
+  let typicalHours = null;
+  let beatenPct = null;
+  let replayCount = 0;
 
   // Most games are already catalogued and resolve in well under this —
   // showing the spinner immediately would flash it for a fraction of a
@@ -522,17 +546,19 @@ export async function renderGameView(root, { id, igdbId }) {
       for (let v = 0.5; v <= 5; v += 0.5) halfSteps.push(Number(v.toFixed(1)));
       const stepCounts = halfSteps.map((v) => breakdown[v.toFixed(1)] || 0);
       const stepMax = Math.max(1, ...stepCounts);
-      const beatenPct = logs.length
+      // Assigned onto the outer-scope lets declared near activeTab — see
+      // the comment there for why these can't just be const here.
+      beatenPct = logs.length
         ? Math.round((logs.filter((l) => l.status === 'played').length / logs.length) * 100)
         : null;
       // "Typical" prefers what this game's own players reported over the
       // single static figure that came from the games catalogue — the
       // catalogue value is only the fallback until real logs exist.
       const reportedHours = logs.map((l) => Number(l.hours_played)).filter((h) => h > 0);
-      const typicalHours = reportedHours.length
+      typicalHours = reportedHours.length
         ? Math.round(reportedHours.reduce((s, h) => s + h, 0) / reportedHours.length)
         : (game.playtime_hours || null);
-      const replayCount = logs.filter((l) => l.is_replay).length;
+      replayCount = logs.filter((l) => l.is_replay).length;
       const platforms = (game.platform || '').split(',').map((p) => p.trim()).filter(Boolean);
       const year = game.release_year || (game.release_date ? new Date(game.release_date).getFullYear() : null);
 
@@ -843,6 +869,15 @@ export async function renderGameView(root, { id, igdbId }) {
         let holding = false;
         distBars.addEventListener('pointerdown', (e) => {
           holding = true;
+          // Without this, pointerup/pointercancel only fire on distBars
+          // if the pointer happens to still be over it at release — a
+          // thumb sliding down off these short bars (a completely normal
+          // way to hold one) would leave the release listeners never
+          // firing at all, and the average stuck showing whatever bar
+          // was last held. Capturing the pointer routes every later
+          // event for this touch to distBars regardless of where it
+          // physically ends up, so release is guaranteed to fire.
+          distBars.setPointerCapture(e.pointerId);
           const col = e.target.closest('.gd-dist__col');
           if (col) showCol(col);
         });
@@ -851,9 +886,20 @@ export async function renderGameView(root, { id, igdbId }) {
           const col = colAtX(e.clientX);
           if (col) showCol(col);
         });
-        const release = () => { if (!holding) return; holding = false; showAverage(); };
+        const release = (e) => {
+          if (!holding) return;
+          holding = false;
+          showAverage();
+          if (e?.pointerId != null && distBars.hasPointerCapture?.(e.pointerId)) {
+            distBars.releasePointerCapture(e.pointerId);
+          }
+        };
         distBars.addEventListener('pointerup', release);
         distBars.addEventListener('pointercancel', release);
+        // Kept alongside pointer capture rather than removed: capture
+        // suppresses boundary events for OTHER elements but a captured
+        // element still fires its own pointerleave, so this stays as a
+        // second, harmless path to the same release() cleanup.
         distBars.addEventListener('pointerleave', release);
       }
 

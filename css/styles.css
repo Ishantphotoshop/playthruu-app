@@ -563,6 +563,22 @@ ul { list-style: none; margin: 0; padding: 0; }
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
   transition: background var(--dur) var(--ease);
 }
+/* The shelf the plated back button sits on. Without it, whatever page
+   content has scrolled up to that corner (an avatar circle, a card
+   edge) shows through right at the button's rim — two overlapping
+   circles reads as broken layout, not intentional chrome. Same fade-in
+   as the button itself, toggled by the same scroll listener. */
+.game-topbar-fill {
+  position: absolute; z-index: 19; top: 0; left: 0; right: 0;
+  height: calc(56px + var(--safe-top));
+  background: var(--bg);
+  opacity: 0; pointer-events: none;
+  transition: opacity var(--dur) var(--ease);
+}
+.game-topbar-fill--on {
+  opacity: 1;
+  box-shadow: 0 1px 0 var(--line);
+}
 
 /* ------------------------------------------------------------ tabbar
    Floats above the content rather than sitting flush at the bottom
