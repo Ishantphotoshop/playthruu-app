@@ -550,11 +550,17 @@ ul { list-style: none; margin: 0; padding: 0; }
 .game-back svg { width: 26px; height: 26px; stroke-width: 2.4; }
 /* Restored once the artwork has scrolled past — see syncBack() in
    game-view.js for why this is scroll-dependent rather than always on. */
+/* Nearly opaque, not --glass-strong's 0.74. Once the artwork is gone
+   this button floats over ordinary page content, and at 74% a section
+   heading scrolling under it stayed legible through the plate — which
+   reads as a rendering fault rather than as a control sitting on top
+   of the page. It has to occlude to look deliberate. */
 .game-back--plated {
-  background: var(--glass-strong);
+  background: rgba(11, 11, 11, 0.94);
   -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
   border-radius: 50%;
   filter: none;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
   transition: background var(--dur) var(--ease);
 }
 
@@ -2860,6 +2866,14 @@ a.gd-credit__name { text-decoration: none; }
 
 /* A titled band — "Played by", "Where to play", "Social". */
 .gd-block { display: flex; flex-direction: column; gap: var(--space-3); }
+/* Heading and content on one line rather than stacked — for a block
+   that states a single fact ("Where to play" + the platform icons)
+   rather than introducing a body of content. */
+.gd-block--inline {
+  flex-direction: row; align-items: center; justify-content: space-between;
+  gap: var(--space-4);
+}
+.gd-block--inline .gd-platforms { justify-content: flex-end; }
 .gd-block__head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2); }
 .gd-block__title {
   font-size: 19px; font-weight: 800; letter-spacing: -0.01em;
@@ -2922,8 +2936,8 @@ a.gd-credit__name { text-decoration: none; }
    as the two overlapping rather than the text running out. */
 .gd-seemore {
   position: absolute; right: 0; bottom: 0;
-  padding: 0 0 0 48px;
-  background: linear-gradient(90deg, transparent 0, var(--bg) 44px, var(--bg) 100%);
+  padding: 0 0 0 76px;
+  background: linear-gradient(90deg, transparent 0, var(--bg) 68px, var(--bg) 100%);
   border: none; color: var(--accent-bright);
   font-size: var(--text-body); font-weight: 700;
 }
@@ -3157,32 +3171,32 @@ a.gd-credit__name { text-decoration: none; }
   font-size: 12.5px; color: var(--ink-dim); font-weight: 500;
 }
 
-/* ---- news: compact stacked cards ------------------------------------
-   Each row is a thumbnail, a headline, and a source/date line — the
-   list itself scrolls with the page rather than sideways, since these
-   read top to bottom like the headlines they are. */
-.gd-news-list { display: flex; flex-direction: column; gap: var(--space-2); }
-.gd-news-card {
+/* ---- news: one banner, not a feed ----------------------------------
+   The sketch draws this as a single wide strip carrying the site's own
+   news URL, which is also the only version that can't be wrong: the
+   article list this replaced matched headlines against the game title
+   and fell back to the general top three, so a game with no coverage
+   showed whatever happened to be trending instead. */
+.gd-newsad {
   display: flex; align-items: center; gap: var(--space-3);
-  padding: var(--space-2);
+  padding: var(--space-3) var(--space-4);
   background: var(--surface); border: 1px solid var(--line);
-  border-radius: var(--radius-m); color: var(--ink);
-  text-decoration: none;
+  border-radius: var(--radius-m); color: var(--ink); text-decoration: none;
   transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
 }
-.gd-news-card:hover { background: var(--surface-raised); border-color: var(--line-strong); }
-.gd-news-card:active { transform: scale(0.99); }
-.gd-news-card__cover {
-  width: 56px; height: 56px; flex-shrink: 0; border-radius: var(--radius-s);
-  background-color: var(--surface-high); background-size: cover; background-position: center;
+.gd-newsad:hover { background: var(--surface-raised); border-color: var(--line-strong); }
+.gd-newsad:active { transform: scale(0.99); }
+.gd-newsad__label {
+  font-size: 19px; font-weight: 800; letter-spacing: -0.01em; flex-shrink: 0;
 }
-.gd-news-card__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-.gd-news-card__title {
-  font-size: 13.5px; font-weight: 600; line-height: 1.3;
-  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;
+.gd-newsad__url {
+  flex: 1; min-width: 0;
+  font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.02em;
+  color: var(--accent);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.gd-news-card__meta { font-size: 11px; color: var(--ink-faint); }
-.gd-news-more { display: block; margin-top: var(--space-2); text-align: right; }
+.gd-newsad__go { flex-shrink: 0; color: var(--ink-faint); display: flex; }
+.gd-newsad__go svg { width: 18px; height: 18px; }
 
 /* ---- 5/7. kicker rows ---- */
 .gd-section { display: flex; flex-direction: column; gap: var(--space-3); }

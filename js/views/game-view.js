@@ -2,7 +2,7 @@ import * as api from '../api.js';
 import { state } from '../state.js';
 import {
   navBar, spinner, emptyState, posterFrame, iconUser, iconBack, avatarImg,
-  likeButton, iconReply, iconFlag,
+  likeButton, iconReply, iconFlag, iconChevronRight,
 } from '../components.js';
 import { esc, starRow, formatDate, timeAgo, qs, qsa, toast, promptSignIn, recordRecentlyViewed, pulseLogTab } from '../utils.js';
 import { openLogModal } from './log-modal.js';
@@ -339,7 +339,6 @@ export async function renderGameView(root, { id, igdbId }) {
     paintGame();
     loadMoreFromStudio();
     loadSimilarGames();
-    loadGameNews();
     recordRecentlyViewed(game);
     loadCastDirector();
     // logoPromise (kicked off way back when `game` first loaded, above)
@@ -388,9 +387,15 @@ export async function renderGameView(root, { id, igdbId }) {
     // a kicker plus a horizontal poster strip that adds-then-opens
     // whatever's tapped, differing only in which games they list and
     // which slot they paint into.
-    function renderRail(slotId, kicker, games) {
+    function renderRail(slotId, kicker, allGames) {
       const slot = qs(`#${slotId}`, body);
-      if (!slot || !games.length) return; // page navigated away, or nothing to show
+      if (!slot) return; // page navigated away
+      // A poster rail is nothing but posters, so an entry without cover
+      // art renders as a blank tile with no way to tell what it is.
+      // IGDB carries plenty of those (bundles, regional SKUs, unreleased
+      // entries); one fewer tile beats one unreadable tile.
+      const games = allGames.filter((g) => g.cover_url);
+      if (!games.length) return;
       slot.innerHTML = `
         <div class="gd-row">
           <span class="gd-kicker">${esc(kicker)}</span>
@@ -446,38 +451,6 @@ export async function renderGameView(root, { id, igdbId }) {
         const similar = await api.getSimilarGames(game.igdb_id, 10);
         renderRail('similar-games-slot', 'Similar games', similar);
       } catch { /* discovery extra, fine to quietly skip on any failure */ }
-    }
-
-    // getGameNews() is one merged feed for the whole app (custom posts +
-    // RSS), not something that can be asked for "just this game" — so
-    // this narrows it client-side to headlines that actually mention the
-    // title, and only falls back to the general front page when nothing
-    // matches, rather than showing unrelated news under this game's name.
-    async function loadGameNews() {
-      const slot = qs('#game-news-slot', body);
-      if (!slot) return;
-      try {
-        const all = await api.getGameNews();
-        const needle = game.title.toLowerCase();
-        const matched = all.filter((a) => (a.title || '').toLowerCase().includes(needle));
-        const shown = (matched.length ? matched : all).slice(0, 3);
-        if (!qs('#game-news-slot', body)) return; // navigated away while this was in flight
-        if (!shown.length) { qs('#game-news-block', body)?.remove(); return; }
-        slot.innerHTML = `
-          <div class="gd-news-list">
-            ${shown.map((a) => `
-              <a class="gd-news-card" href="${esc(a.link || '#/news')}" ${a.link ? 'target="_blank" rel="noopener noreferrer"' : ''}>
-                ${a.image ? `<span class="gd-news-card__cover" style="background-image:url('${esc(a.image)}')"></span>` : '<span class="gd-news-card__cover"></span>'}
-                <span class="gd-news-card__body">
-                  <span class="gd-news-card__title">${esc(a.title)}</span>
-                  <span class="gd-news-card__meta">${esc(a.source || 'PlayThruu')} &middot; ${esc(timeAgo(a.pubDate))} ago</span>
-                </span>
-              </a>`).join('')}
-          </div>
-          <a href="#/news" class="gd-link gd-news-more">All news</a>`;
-      } catch {
-        qs('#game-news-block', body)?.remove(); // nice-to-have — a failed fetch just means no section, not an error state
-      }
     }
 
     // Viewing this page never needed a database row (see getIgdbGameDetail
@@ -636,8 +609,11 @@ export async function renderGameView(root, { id, igdbId }) {
 
           ${crowdHtml}
 
+          <!-- Label and icons share one row, per the sketch — this is a
+               one-line fact about the game, not a section with a heading
+               and a body. -->
           ${platforms.length ? `
-            <section class="gd-block">
+            <section class="gd-block gd-block--inline">
               <h2 class="gd-block__title">Where to play</h2>
               <div class="gd-platforms">
                 ${platforms.map((p) => `
@@ -647,13 +623,6 @@ export async function renderGameView(root, { id, igdbId }) {
               </div>
             </section>
             <div class="gd-rule"></div>` : ''}
-
-          <!-- Discovery — kept strictly separate from "Where to play"
-               above, which is about running THIS game, not finding the
-               next one. Loaded in below by loadMoreFromStudio/
-               loadSimilarGames once the page is already up. -->
-          <div id="more-from-slot"></div>
-          <div id="similar-games-slot"></div>
 
           <section class="gd-block">
             <h2 class="gd-block__title">Social</h2>
@@ -667,10 +636,18 @@ export async function renderGameView(root, { id, igdbId }) {
 
           <div class="gd-rule"></div>
 
-          <section class="gd-block" id="game-news-block">
-            <h2 class="gd-block__title">News</h2>
-            <div id="game-news-slot">${spinner()}</div>
-          </section>
+          <!-- A promo for the app's own news section, not a feed of
+               articles. The article list that used to sit here matched
+               headlines against the game's title and fell back to the
+               general top three when nothing matched — which meant a
+               Stardew Valley page routinely served Elden Ring and PC
+               hardware stories. A banner is what the sketch asks for and
+               it can't be wrong about the game it's on. -->
+          <a class="gd-newsad" href="#/news">
+            <span class="gd-newsad__label">News</span>
+            <span class="gd-newsad__url">www.playthruu.com/news</span>
+            <span class="gd-newsad__go" aria-hidden="true">${iconChevronRight()}</span>
+          </a>
 
           <div class="gd-rule"></div>
 
@@ -696,6 +673,13 @@ export async function renderGameView(root, { id, igdbId }) {
             <div id="review-filter-slot"></div>
             <div class="gd-reviews" id="game-reviews"></div>
           </section>
+
+          <!-- Discovery lives at the very bottom, per the sketch: it's
+               where you go once you're done with THIS game, so it sits
+               after everything about this one. Filled in by
+               loadMoreFromStudio/loadSimilarGames once the page is up. -->
+          <div id="more-from-slot"></div>
+          <div id="similar-games-slot"></div>
         </div>`;
 
       // Reviews are painted separately from the rest of the page so that
