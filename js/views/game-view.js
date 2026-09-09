@@ -110,6 +110,21 @@ function gameTitleHtml(title, logoUrl) {
 // logs list for one status; deduped by user here since a replay can
 // leave more than one log per person and this is meant to count PEOPLE,
 // not rows.
+// What the row says depends entirely on where you already stand with
+// this game — that's the point of it. Signed out it's an invitation;
+// with a log it reports the log back, rating included, so the row is
+// worth reading rather than just worth pressing.
+function logRowLabel(ownLog) {
+  if (!state.user) return 'Rate, log, review + more';
+  if (!ownLog) return 'Rate, log, review + more';
+  if (ownLog.status === 'backlog') return 'In your backlog';
+  if (ownLog.status === 'playing') return `You're playing this`;
+  if (ownLog.rating) {
+    return `You logged this ${starRow(ownLog.rating, { size: 13 })}`;
+  }
+  return 'You logged this';
+}
+
 function crowdSectionHtml(label, entries) {
   const seen = new Set();
   const people = [];
@@ -589,21 +604,17 @@ export async function renderGameView(root, { id, igdbId }) {
 
           <div class="gd-rule"></div>
 
-          <!-- One bar, per the sketch: a single white slab reading
-               "Log / Rate / Review" with the overflow on the end. Rate
-               and Review both open the log sheet — they're two ways into
-               the same form, which is how people think about it. -->
-          <div class="gd-bar">
-            <span class="gd-bar__mark">${iconUser()}</span>
-            ${ownLog
-              ? `<button type="button" class="gd-bar__act" id="log-again">Log</button>`
-              : `<button type="button" class="gd-bar__act" id="log-this-game">Log</button>`}
-            <span class="gd-bar__slash" aria-hidden="true"></span>
-            <button type="button" class="gd-bar__act" id="rate-game">Rate</button>
-            <span class="gd-bar__slash" aria-hidden="true"></span>
-            <button type="button" class="gd-bar__act" id="review-game">${ownLog ? 'Edit' : 'Review'}</button>
-            <button type="button" class="gd-bar__more" id="game-more" aria-label="More actions">${iconDots()}</button>
-          </div>
+          <!-- One row that reports where you stand, not three abstract
+               verbs. Three fixed actions have to be written for the case
+               where you have done none of them, so they stay generic
+               forever; a row that says "You're playing this" is doing a
+               second job at the same size. The whole row opens the sheet
+               where the actual choices live. -->
+          <button type="button" class="gd-log" id="open-log-sheet">
+            <span class="gd-log__mark">${state.profile ? avatarImg(state.profile, 30) : iconUser()}</span>
+            <span class="gd-log__text">${logRowLabel(ownLog)}</span>
+            <span class="gd-log__more" aria-hidden="true">${iconDots()}</span>
+          </button>
 
           <div class="gd-rule"></div>
 
@@ -762,63 +773,26 @@ export async function renderGameView(root, { id, igdbId }) {
 
       // "All N" is a real link now, so its href does the navigating —
       // no click handler needed.
-      const logBtn = qs('#log-this-game', body);
-      if (logBtn) logBtn.addEventListener('click', async () => {
-        // Game pages are open to anyone now (see landing-view.js), but
-        // logging one writes a row — that needs an account.
+      // Game pages are open to anyone (see landing-view.js), but every
+      // action behind this row writes a row of its own — so the account
+      // check happens once, here, rather than inside each handler.
+      qs('#open-log-sheet', body)?.addEventListener('click', () => {
         if (!state.user) { promptSignIn('Sign in to log this game.'); return; }
-        const saved = await ensureSavedGame();
-        if (saved) openLogModal({ game, onSaved: () => refreshCurrentView() });
-      });
-      const logAgainBtn = qs('#log-again', body);
-      if (logAgainBtn) logAgainBtn.addEventListener('click', async () => {
-        const saved = await ensureSavedGame();
-        if (saved) openLogModal({ game, defaultReplay: true, onSaved: () => refreshCurrentView() });
-      });
-
-      // Rate and Review are two doors into the same log sheet — it's one
-      // form with both fields on it, and which one you came in through
-      // is just which one you had in mind. On a game you've already
-      // logged they edit that log rather than starting a second one.
-      const openLogSheet = async () => {
-        if (!state.user) { promptSignIn('Sign in to log this game.'); return; }
-        if (ownLog) { openLogModal({ existingLog: ownLog, onSaved: () => refreshCurrentView() }); return; }
-        const saved = await ensureSavedGame();
-        if (saved) openLogModal({ game, onSaved: () => refreshCurrentView() });
-      };
-      qs('#rate-game', body)?.addEventListener('click', openLogSheet);
-      qs('#review-game', body)?.addEventListener('click', openLogSheet);
-
-      const trailerBtn = qs('#play-trailer', body);
-      if (trailerBtn) trailerBtn.addEventListener('click', () => openTrailer(game.trailer_url));
-
-      // "Add to list" moved off the action row into this menu when the
-      // row became three fixed cells — along with the numbers that used
-      // to have their own tiles in the strip, which now has room for
-      // only the three the design calls for.
-      const moreBtn = qs('#game-more', body);
-      if (moreBtn) moreBtn.addEventListener('click', () => {
-        openGameMoreSheet({
+        openLogSheet({
           game,
-          typicalHours,
-          beatenPct,
+          ownLog,
           replayCount,
+          ensureSavedGame,
+          onChanged: () => refreshCurrentView(),
           onAddToList: async () => {
-            if (!state.user) { promptSignIn('Sign in to save games.'); return; }
             const saved = await ensureSavedGame();
             if (saved) openAddToListPicker(game);
           },
-          onBacklog: ownLog ? null : async () => {
-            if (!state.user) { promptSignIn('Sign in to save games.'); return; }
-            const saved = await ensureSavedGame();
-            if (!saved) return;
-            await api.createLog({ game_id: game.id, user_id: state.user.id, status: 'backlog', is_public: true });
-            pulseLogTab();
-            toast('Added to your backlog.', 'success');
-            refreshCurrentView();
-          },
         });
       });
+
+      const trailerBtn = qs('#play-trailer', body);
+      if (trailerBtn) trailerBtn.addEventListener('click', () => openTrailer(game.trailer_url));
 
       // The synopsis is clamped to three lines; the toggle only appears
       // when there is genuinely more text than that, so a short
@@ -1016,48 +990,144 @@ function iconDoc() { return `<svg viewBox="0 0 24 24" fill="none"><path d="M6 3.
 function iconStack() { return `<svg viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="12" height="16" rx="1.5" stroke="currentColor" stroke-width="1.8"/><path d="M8 1.5h12v16" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" opacity="0.55"/></svg>`; }
 
 
-// The overflow menu behind the action row's third cell. It carries the
-// actions that no longer fit on a three-cell row, and the playtime
-// figures the stat strip gave up when it went from four tiles to the
-// three the design asks for — they're still worth having, just not worth
-// a permanent tile each.
-function openGameMoreSheet({ game, typicalHours, beatenPct, replayCount, onAddToList, onBacklog }) {
+// The sheet behind the log row. Everything you can do to a game lives
+// here rather than on the page, which is what lets the row itself stay
+// one line that reports your state instead of a menu bar that cannot.
+//
+// The three statuses across the top are toggles, not checkboxes: a game
+// is in your backlog, or you are playing it, or you have played it, and
+// picking one clears whichever was set. "Like" is deliberately NOT up
+// there — it is not a status, it is an opinion, so it sits in the list
+// below rather than competing with the three that are exclusive.
+function openLogSheet({ game, ownLog, replayCount, ensureSavedGame, onChanged, onAddToList }) {
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
-  const stat = (value, label) => `
-    <div class="gd-more__stat"><b>${esc(String(value))}</b><span>${esc(label)}</span></div>`;
+  const status = ownLog?.status || null;
+  const rating = ownLog?.rating || 0;
+
+  const tg = (key, label, icon) => `
+    <button type="button" class="lg-tg${status === key ? ' lg-tg--on' : ''}" data-status="${key}">
+      <span class="lg-tg__icon">${icon}</span>
+      <span>${esc(label)}</span>
+    </button>`;
+
+  const row = (act, label, icon, opts = {}) => `
+    <button type="button" class="lg-row${opts.danger ? ' lg-row--danger' : ''}" data-act="${act}">
+      <span class="lg-row__icon">${icon}</span>
+      <span class="lg-row__label">${esc(label)}</span>
+      ${opts.note ? `<span class="lg-row__note">${esc(opts.note)}</span>` : ''}
+    </button>`;
+
   overlay.innerHTML = `
-    <div class="modal">
-      <div class="modal__header"><h2>${esc(game.title)}</h2></div>
-      <div class="gd-more">
-        <div class="gd-more__stats">
-          ${stat(typicalHours ? `${typicalHours}h` : '—', 'Typical')}
-          ${stat(beatenPct === null ? '—' : `${beatenPct}%`, 'Beat it')}
-          ${stat(replayCount, replayCount === 1 ? 'Replay' : 'Replays')}
+    <div class="modal lg-sheet">
+      <div class="lg-head">
+        <h2 class="lg-head__title">${esc(game.title)}</h2>
+        ${game.release_year ? `<p class="lg-head__year">${esc(String(game.release_year))}</p>` : ''}
+      </div>
+
+      <div class="lg-toggles">
+        ${tg('played', 'Played', iconController())}
+        ${tg('playing', 'Playing', iconPlay())}
+        ${tg('backlog', 'Backlog', iconBookmarkSm())}
+      </div>
+
+      <div class="lg-rate">
+        <div class="lg-rate__stars" id="lg-stars">
+          ${[1, 2, 3, 4, 5].map((n) => `
+            <button type="button" class="lg-star${n <= rating ? ' lg-star--on' : ''}" data-star="${n}" aria-label="${n} star${n === 1 ? '' : 's'}"></button>`).join('')}
         </div>
-        <button type="button" class="gd-more__row" data-act="list">Add to a list</button>
-        ${onBacklog ? `<button type="button" class="gd-more__row" data-act="backlog">Add to backlog</button>` : ''}
-        <button type="button" class="gd-more__row" data-act="share">Copy link</button>
-        <button type="button" class="gd-more__row gd-more__row--quiet" data-act="close">Cancel</button>
+        <span class="lg-rate__label">${rating ? `Rated ${rating}` : 'Rate'}</span>
+      </div>
+
+      <div class="lg-list">
+        ${row('review', ownLog?.review ? 'Edit your review' : 'Write a review', iconPencilSm())}
+        ${ownLog ? row('again', 'Log again', iconPlusSm(), { note: replayCount ? `${replayCount} replay${replayCount === 1 ? '' : 's'}` : '' }) : ''}
+        ${row('list', 'Add to lists', iconStack())}
+        ${row('share', 'Copy link', iconLinkSm())}
+        ${ownLog ? row('delete', 'Delete this log', iconTrashSm(), { danger: true }) : ''}
       </div>
     </div>`;
   document.body.appendChild(overlay);
-  const close = () => overlay.remove();
+  document.body.style.overflow = 'hidden';
+  const close = () => { overlay.remove(); document.body.style.overflow = ''; };
+
+  // Status and rating write immediately. Everything in the list below
+  // opens something else, so those close the sheet on the way out.
+  async function setStatus(next) {
+    const saved = await ensureSavedGame();
+    if (!saved) return;
+    try {
+      if (ownLog && ownLog.status === next) { close(); return; }
+      if (ownLog) await api.updateLog(ownLog.id, { status: next });
+      else await api.createLog({ game_id: game.id, user_id: state.user.id, status: next, is_public: true });
+      pulseLogTab();
+      close();
+      onChanged?.();
+    } catch (err) {
+      toast(err.message || 'Could not save that.', 'error');
+    }
+  }
+
+  async function setRating(n) {
+    const saved = await ensureSavedGame();
+    if (!saved) return;
+    try {
+      if (ownLog) await api.updateLog(ownLog.id, { rating: n, status: ownLog.status || 'played' });
+      else await api.createLog({ game_id: game.id, user_id: state.user.id, status: 'played', rating: n, is_public: true });
+      pulseLogTab();
+      close();
+      onChanged?.();
+    } catch (err) {
+      toast(err.message || 'Could not save that rating.', 'error');
+    }
+  }
+
   overlay.addEventListener('click', async (e) => {
     if (e.target === overlay) return close();
-    const act = e.target.dataset?.act;
-    if (!act) return;
-    if (act === 'close') return close();
+
+    const star = e.target.closest('[data-star]');
+    if (star) return setRating(Number(star.dataset.star));
+
+    const tgBtn = e.target.closest('[data-status]');
+    if (tgBtn) return setStatus(tgBtn.dataset.status);
+
+    const actBtn = e.target.closest('[data-act]');
+    if (!actBtn) return;
+    const act = actBtn.dataset.act;
     close();
+    if (act === 'review') {
+      if (ownLog) openLogModal({ existingLog: ownLog, onSaved: onChanged });
+      else {
+        const saved = await ensureSavedGame();
+        if (saved) openLogModal({ game, onSaved: onChanged });
+      }
+    }
+    if (act === 'again') {
+      const saved = await ensureSavedGame();
+      if (saved) openLogModal({ game, defaultReplay: true, onSaved: onChanged });
+    }
     if (act === 'list') await onAddToList?.();
-    if (act === 'backlog') await onBacklog?.();
     if (act === 'share') {
       const url = `${location.origin}${location.pathname}#/game/${game.id}`;
       try { await navigator.clipboard.writeText(url); toast('Link copied', 'success'); }
       catch { toast('Could not copy that link', 'error'); }
     }
+    if (act === 'delete' && ownLog) {
+      try {
+        await api.deleteLog(ownLog.id);
+        toast('Log deleted.', 'success');
+        onChanged?.();
+      } catch (err) { toast(err.message || 'Could not delete that.', 'error'); }
+    }
   });
 }
+
+function iconPlay() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M10 8.5l6 3.5-6 3.5z"/></svg>`; }
+function iconBookmarkSm() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round"><path d="M6 3.8h12a1 1 0 0 1 1 1V20.5l-7-4.1-7 4.1V4.8a1 1 0 0 1 1-1z"/></svg>`; }
+function iconPencilSm() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L20 8l-4-4L4 16z"/></svg>`; }
+function iconPlusSm() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>`; }
+function iconLinkSm() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M10 13.5a4 4 0 0 0 5.7 0l2.8-2.8a4 4 0 0 0-5.7-5.7L11.5 6.3"/><path d="M14 10.5a4 4 0 0 0-5.7 0l-2.8 2.8a4 4 0 0 0 5.7 5.7l1.3-1.3"/></svg>`; }
+function iconTrashSm() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h14M9.5 7V5a1.5 1.5 0 0 1 1.5-1.5h2A1.5 1.5 0 0 1 14.5 5v2M6.5 7l1 12.5A1.5 1.5 0 0 0 9 21h6a1.5 1.5 0 0 0 1.5-1.5L17.5 7"/></svg>`; }
 
 // Full-screen artwork viewer. Single tap on the cover opens it; inside,
 // double-tap steps through two zoom levels before returning to fit
