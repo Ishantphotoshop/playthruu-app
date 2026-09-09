@@ -14,6 +14,15 @@ const IGDB_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/igdb-proxy`;
 // as IGDB above.
 const STEAMGRIDDB_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/steamgriddb-proxy`;
 
+// A user's PlayStation library and playtime, via the one service PSN
+// account behind supabase/functions/psn-proxy — see that function's own
+// header comment for the full reasoning: no official PSN API exists, so
+// this holds one account's session server-side and looks up whichever
+// online ID a user types in, the same way scripts/psn-spike.mjs proved
+// works. Nothing belonging to the user (a password, their own PSN
+// session) is ever asked for or stored — only the online ID they type.
+const PSN_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/psn-proxy`;
+
 // Every outbound call in this file goes through here.
 //
 // Without a timeout, a source that is DOWN doesn't fail — it hangs. A
@@ -2940,4 +2949,114 @@ export function subscribeToConversations(userId, onChange) {
     .on('postgres_changes', { event: '*', schema: 'public', table: 'conversation_participants', filter: `user_id=eq.${userId}` }, onChange)
     .subscribe();
   return () => supabase.removeChannel(channel);
+}
+
+// ------------------------------------------------------------
+// CONNECTED ACCOUNTS (Steam, PSN, Xbox libraries — see
+// migrations/2026-09-09_connected_accounts.sql)
+// ------------------------------------------------------------
+
+export async function getConnectedAccounts(userId) {
+  const { data, error } = await supabase.from('connected_accounts').select('*').eq('user_id', userId);
+  if (error) throw error;
+  return data;
+}
+
+// Newest-played first — the same ordering a real "recently played"
+// shelf would use, and the one people actually scan for when they open
+// their own imported library.
+export async function getImportedGames(userId, { limit = 200 } = {}) {
+  const { data, error } = await supabase
+    .from('imported_games')
+    .select('*, games(*)')
+    .eq('user_id', userId)
+    .order('playtime_minutes', { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return data;
+}
+
+async function psnProxy(body) {
+  // 12s, not the file's usual 3.5s default — a cold PSN proxy call is a
+  // real multi-hop OAuth exchange (NPSSO -> code -> access token, THEN
+  // the actual search/library request) on top of a cold Supabase Edge
+  // Function start, not one simple query the way IGDB calls here are.
+  const res = await fetchWithTimeout(PSN_FUNCTION_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${SUPABASE_ANON_KEY}` },
+    body: JSON.stringify(body),
+  }, 12000);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'PlayStation lookup failed.');
+  return data;
+}
+
+// Best-effort match against the local catalogue: an exact (case-
+// insensitive) title hit first, since that's free and instant; failing
+// that, one IGDB search, but only trusted when a result's title matches
+// closely enough to actually be confident — PSN's own titles carry
+// trademark symbols and edition suffixes IGDB's don't, so this compares
+// through the same normalizeTitle() search ranking already uses above,
+// not the raw strings. A plausible-but-not-confident IGDB result is
+// worse than no match: it would silently mislabel someone's playtime
+// as the wrong game.
+async function matchImportedTitle(rawTitle, addedBy) {
+  const { data: local } = await supabase.from('games').select('*').ilike('title', rawTitle).limit(1);
+  if (local?.length) return local[0];
+  try {
+    const results = await searchIgdb(rawTitle, 5);
+    const norm = normalizeTitle(rawTitle);
+    const hit = results.find((r) => normalizeTitle(r.title) === norm);
+    if (hit) return await addGame(hit, addedBy);
+  } catch { /* IGDB down or no match — stays unmatched, not an error */ }
+  return null;
+}
+
+// The whole "Connect PlayStation" action: resolve the typed online ID
+// to an account, fetch its library, upsert the link and every title.
+// Returns a small summary the UI can show directly rather than the raw
+// rows — how many titles came in and how many actually matched a game
+// in the catalogue, since "matched" is the number someone actually
+// cares about seeing after they connect.
+export async function connectPsnAccount(userId, onlineId) {
+  const resolved = await psnProxy({ action: 'resolve', onlineId });
+  if (!resolved.accountId) {
+    throw new Error(`Couldn't find a PSN account called "${onlineId}" — check the exact online ID and try again.`);
+  }
+
+  const { data: account, error: acctErr } = await supabase
+    .from('connected_accounts')
+    .upsert({
+      user_id: userId, platform: 'psn', platform_id: resolved.accountId,
+      handle: resolved.onlineId || onlineId, avatar_url: resolved.avatarUrl || null,
+      library_visibility: 'public', last_synced_at: new Date().toISOString(), last_sync_error: null,
+    }, { onConflict: 'user_id,platform' })
+    .select().single();
+  if (acctErr) throw acctErr;
+
+  const { titles } = await psnProxy({ action: 'library', accountId: resolved.accountId });
+
+  // Matching runs for every title in parallel — libraries here are
+  // small enough (tens of titles, not thousands) that this is a burst
+  // of quick requests rather than the kind of hammering that would
+  // actually risk a rate limit, and it's IGDB being asked, not PSN.
+  const matches = await Promise.all(titles.map((t) => matchImportedTitle(t.name, userId).catch(() => null)));
+
+  const rows = titles.map((t, i) => ({
+    account_id: account.id, user_id: userId,
+    platform_game_id: t.platformGameId, name: t.name,
+    playtime_minutes: t.playtimeMinutes, last_played_at: t.lastPlayedAt,
+    game_id: matches[i]?.id || null, match_state: matches[i] ? 'matched' : 'unmatched',
+  }));
+  if (rows.length) {
+    const { error: rowsErr } = await supabase.from('imported_games').upsert(rows, { onConflict: 'account_id,platform_game_id' });
+    if (rowsErr) throw rowsErr;
+  }
+
+  return { total: rows.length, matched: matches.filter(Boolean).length };
+}
+
+export async function disconnectPsnAccount(userId) {
+  const { error } = await supabase.from('connected_accounts').delete().eq('user_id', userId).eq('platform', 'psn');
+  if (error) throw error;
 }

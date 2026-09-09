@@ -112,8 +112,17 @@ function report(label, games) {
   let accountId = null;
   try {
     const search = await makeUniversalSearch(auth, targetId, 'SocialAllAccounts');
-    accountId = search?.domainResponses?.[0]?.results?.[0]?.socialMetadata?.accountId || null;
+    const results = search?.domainResponses?.[0]?.results || [];
+    accountId = results[0]?.socialMetadata?.accountId || null;
     console.log(accountId ? `  found accountId ${accountId}` : '  could not resolve that online ID');
+    if (!accountId) {
+      // Distinguishes "PSN genuinely found nobody" from "the response
+      // shape wasn't what this script expected" — the two look
+      // identical from the one-line message above but mean opposite
+      // things for whether cross-user reads are even possible.
+      console.log('  raw response (for diagnosis):');
+      console.log('  ' + JSON.stringify(search).slice(0, 500));
+    }
   } catch (err) {
     console.log('  search failed:', err.message);
   }

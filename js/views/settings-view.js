@@ -55,6 +55,11 @@ export function renderSettingsView(root) {
         <button type="button" class="btn btn--accent btn--block" id="save-favorites" style="display:none">Save favourites</button>
       </div>
 
+      <p class="set-group__title">Connected accounts</p>
+      <div class="set-card set-card--pad">
+        <div id="connected-accounts-list"><div class="spinner"></div></div>
+      </div>
+
       <p class="set-group__title">Privacy</p>
       <div class="set-card">
         <form class="set-form" id="privacy-form">
@@ -140,6 +145,95 @@ export function renderSettingsView(root) {
     }
   }
   loadModeration();
+
+  // ---- connected accounts (PlayStation) ----
+  // The four DualShock/DualSense face buttons — same abstraction used
+  // on the game page's "Where to play" row, so PlayStation reads as the
+  // same mark everywhere in the app rather than two different logos.
+  const iconPsn = () => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6l2.8 4.9H9.2z"/><circle cx="18.6" cy="12" r="2.15"/><path d="M9.9 16.6l4.2 4.2M14.1 16.6l-4.2 4.2"/><rect x="3.65" y="9.85" width="4.3" height="4.3" rx="0.3"/></svg>`;
+
+  function connectedRowHtml(account) {
+    return `
+      <div class="conn-row">
+        <span class="conn-row__icon">${iconPsn()}</span>
+        <div class="conn-row__meta"><b>PlayStation</b><span>${esc(account.handle)}</span></div>
+        <button type="button" class="btn btn--ghost conn-row__btn" id="psn-resync-btn">Re-sync</button>
+        <button type="button" class="btn btn--ghost conn-row__btn" id="psn-disconnect-btn">Disconnect</button>
+      </div>`;
+  }
+  function disconnectedRowHtml() {
+    return `
+      <form class="conn-connect" id="psn-connect-form">
+        <span class="conn-row__icon">${iconPsn()}</span>
+        <input type="text" name="onlineId" placeholder="Your PSN online ID" autocomplete="off" required>
+        <button type="submit" class="btn btn--accent">Connect</button>
+      </form>`;
+  }
+
+  async function loadConnectedAccounts() {
+    const el = qs('#connected-accounts-list', body);
+    try {
+      const accounts = await api.getConnectedAccounts(state.user.id);
+      const psn = accounts.find((a) => a.platform === 'psn');
+      el.innerHTML = psn ? connectedRowHtml(psn) : disconnectedRowHtml();
+      wireConnectedAccounts(psn);
+    } catch (err) {
+      el.innerHTML = `<p class="set-hint" style="margin:0">Couldn't load: ${esc(err.message)}</p>`;
+    }
+  }
+
+  function wireConnectedAccounts(psn) {
+    const form = qs('#psn-connect-form', body);
+    if (form) {
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const onlineId = new FormData(e.target).get('onlineId')?.trim();
+        if (!onlineId) return;
+        const btn = qs('button[type="submit"]', form);
+        const input = qs('input', form);
+        btn.disabled = true; input.disabled = true; btn.textContent = 'Connecting…';
+        try {
+          const result = await api.connectPsnAccount(state.user.id, onlineId);
+          toast(`Connected — ${result.matched} of ${result.total} games matched.`, 'success');
+          loadConnectedAccounts();
+        } catch (err) {
+          toast(err.message || 'Could not connect that account.', 'error');
+          btn.disabled = false; input.disabled = false; btn.textContent = 'Connect';
+        }
+      });
+      return;
+    }
+    const resyncBtn = qs('#psn-resync-btn', body);
+    resyncBtn?.addEventListener('click', async () => {
+      resyncBtn.disabled = true; resyncBtn.textContent = 'Syncing…';
+      try {
+        const result = await api.connectPsnAccount(state.user.id, psn.handle);
+        toast(`Synced — ${result.matched} of ${result.total} games matched.`, 'success');
+        loadConnectedAccounts();
+      } catch (err) {
+        toast(err.message || 'Could not sync.', 'error');
+        resyncBtn.disabled = false; resyncBtn.textContent = 'Re-sync';
+      }
+    });
+    const disconnectBtn = qs('#psn-disconnect-btn', body);
+    disconnectBtn?.addEventListener('click', async () => {
+      // Same confirm() the account-deletion flow below uses — this is a
+      // much smaller action (unlinking, not deleting anything of the
+      // user's own), but it does remove the imported library, so it
+      // still deserves a real "are you sure" rather than firing instantly.
+      if (!confirm('Disconnect PlayStation? Your imported library will be removed — you can reconnect any time.')) return;
+      disconnectBtn.disabled = true;
+      try {
+        await api.disconnectPsnAccount(state.user.id);
+        toast('PlayStation disconnected.', 'success');
+        loadConnectedAccounts();
+      } catch (err) {
+        toast(err.message || 'Could not disconnect.', 'error');
+        disconnectBtn.disabled = false;
+      }
+    });
+  }
+  loadConnectedAccounts();
 
   // ---- avatar upload ----
   // The crop step (opened before anything uploads) is what guarantees
