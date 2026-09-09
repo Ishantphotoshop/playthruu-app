@@ -1,5 +1,4 @@
 import { esc, starRow, statusStamp, formatDate, timeAgo, placeholderCover, igdbSized, initials, qs, qsa, toast, enableSwipeToDismiss, tapFeedback } from './utils.js';
-import { getTheme } from './theme.js';
 import { state } from './state.js';
 
 // Renders a cover image inside the blur-fill poster mechanism (see
@@ -156,7 +155,7 @@ export function topBar(title, { back = false, right = '', home = false, wordmark
   if (home) {
     return `
       <header class="topbar topbar--home">
-        <img src="icons/${getTheme() === 'light' ? 'mark-orange' : 'mark-blue'}.svg" alt="PlayThruu" class="topbar__mark">
+        <img src="icons/mark-blue.svg" alt="PlayThruu" class="topbar__mark">
         ${wordmark ? `<span class="topbar__logo">PlayThruu</span>` : ''}
         ${right ? `<div class="topbar__right topbar__right--home">${right}</div>` : ''}
       </header>`;
@@ -629,15 +628,12 @@ export function emptyState(message, { actionLabel, actionRoute, icon } = {}) {
 // The brand mark itself, animated — the "u" loader instead of a generic
 // ring, so "loading" reads as Playthruu everywhere it shows up (game
 // pages, tab switches, every spinner in the app goes through this one
-// function). Each loader SVG animates on its own (the chase is a
-// stroke-dashoffset keyframe baked into the file's own <style>), so
-// this just has to pick the right file for the theme — cream track +
-// orange chase on light, light track + blue chase on dark.
+// function). The SVG animates on its own: the chase is a
+// stroke-dashoffset keyframe baked into the file's own <style>.
 export function spinner() {
-  const file = getTheme() === 'light' ? 'thruu-loader-cream.svg' : 'thruu-loader-blue.svg';
   return `
     <span class="spinner" role="status" aria-label="Loading">
-      <img src="icons/${file}" width="100%" height="100%" alt="" aria-hidden="true">
+      <img src="icons/thruu-loader-blue.svg" width="100%" height="100%" alt="" aria-hidden="true">
     </span>`;
 }
 

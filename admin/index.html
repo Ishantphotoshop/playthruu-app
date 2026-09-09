@@ -4,19 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <title>PlayThruu Admin</title>
-<script>
-  // Same pre-paint theme read as the main app (see index.html at the
-  // repo root). Both pages are the same origin, so the choice made in
-  // the app's settings carries over here for free — the admin build
-  // follows whatever theme PlayThruu itself is set to.
-  try {
-    if (localStorage.getItem('playthruu_theme') === 'light') {
-      document.documentElement.setAttribute('data-theme', 'light');
-    }
-  } catch (e) { /* storage unavailable — dark default, same as the app */ }
-</script>
 <meta name="description" content="Control room for PlayThruu — curate trending, publish news, moderate people.">
-<meta name="theme-color" content="#12121a">
+<meta name="theme-color" content="#0f0e0d">
 <meta name="robots" content="noindex, nofollow">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

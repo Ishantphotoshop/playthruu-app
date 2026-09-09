@@ -5,7 +5,6 @@ import { getLoginBackground, openCreditedGame } from '../api.js';
 import { iconUser, iconLock, iconMail, iconEye, iconEyeOff, iconClose, iconBack } from '../components.js';
 import { renderLandingView } from './landing-view.js';
 import { navigate } from '../router.js';
-import { getTheme } from '../theme.js';
 
 // Only providers actually switched on in Supabase belong here — a button
 // for a disabled provider fails with an unhelpful error the moment it's
@@ -319,7 +318,7 @@ export function renderAuthView(root, { startMode = 'signin' } = {}) {
         <div class="auth-screen__content">
         <div class="auth-screen__brand">
           <div class="auth-screen__brand-row">
-            <img src="icons/${getTheme() === 'light' ? 'mark-orange' : 'mark-blue'}.svg" alt="" class="auth-screen__mark">
+            <img src="icons/mark-blue.svg" alt="" class="auth-screen__mark">
             <h1>PlayThruu</h1>
           </div>
           <p>LOG it. Rate it. Review it. Remember it</p>

@@ -17,7 +17,6 @@
 import { supabase } from '../js/supabase-client.js';
 import { searchGamesEverywhere, addGame, getPresenceFor } from '../js/api.js';
 import { esc, qs, qsa, toast, timeAgo } from '../js/utils.js';
-import { getTheme, applyTheme } from '../js/theme.js';
 import {
   emptyState, spinner, avatarImg, ratingHistogram, wireRatingHistogram,
   iconBack, iconChevronRight, iconChevronUp, iconChevronDown,
@@ -227,7 +226,6 @@ function paletteCommands() {
   cmds.push(
     { title: 'Write a news post', hint: 'Publish to the News tab', icon: iconNewspaper(), run: () => { go('news'); setTimeout(() => openNewsEditor(null), 60); } },
     { title: 'Feature a game', hint: 'Add to Trending', icon: iconFlame(), run: () => { go('trending'); setTimeout(openGamePicker, 60); } },
-    { title: 'Switch theme', hint: 'Light or dark', icon: iconTheme(), run: toggleTheme },
     { title: 'Sign out', hint: 'End this session', icon: iconUser(), run: signOut },
   );
   return cmds;
@@ -409,7 +407,6 @@ SCREENS.home = function home() {
           <span class="adm-quick__key">${navigator.platform?.includes('Mac') ? '⌘' : 'Ctrl'} K</span>
           Search or jump to…
         </button>
-        <button class="icon-btn icon-btn--small" id="theme-toggle" aria-label="Switch theme">${iconTheme()}</button>
         <button class="icon-btn icon-btn--small" id="refresh-now" aria-label="Refresh">${iconRefresh()}</button>
       </div>
 
@@ -447,7 +444,6 @@ SCREENS.home = function home() {
   qs('#signout').addEventListener('click', signOut);
   qsa('[data-go]').forEach((el) => el.addEventListener('click', () => go(el.dataset.go)));
   qs('#open-palette').addEventListener('click', showPalette);
-  qs('#theme-toggle').addEventListener('click', toggleTheme);
   qs('#refresh-now').addEventListener('click', (e) => {
     e.currentTarget.classList.add('is-spinning');
     loadDashboard().finally(() => e.currentTarget.classList.remove('is-spinning'));
@@ -464,14 +460,7 @@ SCREENS.home = function home() {
   }, 60000);
 };
 
-function iconTheme() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4"/></svg>`; }
 function iconRefresh() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 4v4.5h-4.5"/></svg>`; }
-
-function toggleTheme() {
-  const next = getTheme() === 'light' ? 'dark' : 'light';
-  applyTheme(next);
-  toast(next === 'light' ? 'Light' : 'Dark', 'success');
-}
 
 // Pulls the raw rows once and computes everything client-side. At this
 // app's scale (tens of players, low hundreds of logs) that's a couple of

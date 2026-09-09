@@ -1,16 +1,18 @@
 /* ============================================================
-   PLAYTHRUU — Design system v4 ("shared brand")
+   PLAYTHRUU — Design system v5 ("ash & acid")
    ------------------------------------------------------------
-   Same structural reasoning as v3 (navy over black, light large
-   text, generous space, tone over borders) — only the palette
-   changed, to derive directly from playthruu.com's own tokens
-   (app/globals.css there) instead of the earlier PS5-navy-blue
-   direction, so the marketing site and the app finally read as
-   the same product.
+   Dark theme only — there is no light theme, by design. Same
+   structural reasoning as v4 (light large text, generous space,
+   tone over borders) and the same acid lime accent the marketing
+   site is built on, so app and playthruu.com still read as one
+   product. What changed is the base: v4 inherited the website's
+   --void (#0a0b0f), which measured cool — blue was its highest
+   channel — and made the whole app feel colder than intended.
 
-   1. The base is near-black, matching the website's --void —
-      not pure black (#000), which is harsher and flattens cover
-      art sitting on it.
+   1. The base is a warm-neutral charcoal — not near-black-but-blue
+      like v4, not the brown ramp tried after it (too much chroma,
+      it tinted every cover), and not pure black (#000), which is
+      harsher and flattens cover art sitting on it.
    2. Large text is LIGHT weight, not heavy. Big + bold shouts;
       big + light feels premium and quiet.
    3. Space is the main design element. Sections are given far
@@ -22,21 +24,27 @@
    as the secondary accent, aligned to the website's exact hue.
    ============================================================ */
 :root {
-  /* --- foundation: near-black, five steps of elevation ---
-     Derived from the website's --void (#0a0b0f) / --panel
-     (#14161d) pair, extrapolated out to the same five elevation
-     steps the app already used. */
-  --bg: #0a0b0f;
-  --bg-deep: #050609;
-  --bg-lift: #0f1015;
-  --surface: #101218;
-  --surface-raised: #14161d;
-  --surface-high: #1c1f28;
+  /* --- foundation: warm-neutral charcoal, six steps of elevation ---
+     The previous ramp was derived from the website's --void (#0a0b0f)
+     and was quietly COOL: blue was its highest channel (R10 G11 B15),
+     and --surface-raised pushed blue nine points above red. That's what
+     made the app feel cold enough to go looking for a warmer palette.
+     The brown swatch tried next overcorrected — it put heavy chroma
+     into the whole ramp, so every cover sat on a visibly tinted field.
+     This is the middle: red leads blue by two points instead of
+     trailing it by five. Warm to the eye, no measurable tint on the
+     artwork, which is the only thing this ramp really has to protect. */
+  --bg: #0f0e0d;
+  --bg-deep: #090807;
+  --bg-lift: #141312;
+  --surface: #1a1816;
+  --surface-raised: #211f1c;
+  --surface-high: #2d2a26;
 
   /* --- glass --- */
   --glass-fill: rgba(255, 255, 255, 0.03);
   --glass-fill-strong: rgba(255, 255, 255, 0.08);
-  --glass-tint: rgba(10, 11, 15, 0.14);
+  --glass-tint: rgba(15, 14, 13, 0.14);
   --glass-filter: blur(22px) saturate(240%) brightness(1.24) contrast(1.05);
   --glass-filter-strong: blur(34px) saturate(230%) brightness(1.16) contrast(1.04);
   --glass-light: rgba(255, 255, 255, 0.045);
@@ -46,12 +54,15 @@
   --blur: 30px;
   --blur-strong: 42px;
   --glass: rgba(255, 255, 255, 0.05);
-  --glass-strong: rgba(10, 11, 15, 0.74);
+  --glass-strong: rgba(15, 14, 13, 0.74);
 
-  /* --- text: the website's warm cream primary, dim green-grey below it --- */
-  --ink: #f1f0e9;
-  --ink-dim: #8a9086;
-  --ink-faint: #5c6158;
+  /* --- text: warm off-white, stepped down through the base's own
+     warmth rather than toward a green-grey. The old --ink-dim
+     (#8a9086) was where a lot of the app's coldness actually lived —
+     it's the colour of every timestamp and metadata row on screen. --- */
+  --ink: #f2f0ec;
+  --ink-dim: #9a958c;
+  --ink-faint: #6a655d;
 
   /* --- accent: the website's acid lime --- */
   --accent: #d9ff3f;
@@ -74,8 +85,8 @@
   --violet: #a78bfa;
 
   /* --- semantic --- */
-  --line: rgba(241, 240, 233, 0.08);
-  --line-strong: rgba(241, 240, 233, 0.16);
+  --line: rgba(242, 240, 236, 0.08);
+  --line-strong: rgba(242, 240, 236, 0.16);
   --danger: #ff6b6b;
   --success: #4ade9b;
   --warning: #ffc247;
@@ -165,90 +176,6 @@
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-top: env(safe-area-inset-top, 0px);
 }
-
-/* ============================================================
-   LIGHT THEME — "creamy white + olive lime"
-   ------------------------------------------------------------
-   An alternate palette, switched via [data-theme="light"] on
-   <html> (see the Dark/Light toggle in Settings, and the no-flash
-   init script in index.html). Dark mode stays the default — this
-   only applies when someone explicitly opts in.
-
-   Same structural relationships as the dark palette above (base is
-   the dullest tone, more "elevated" surfaces get closer to pure
-   white, glass/lines/shadows all keep the same job) just inverted
-   onto a warm cream base instead of near-black. The accent stays
-   in the lime family but is darkened to an olive lime — the dark
-   theme's neon #d9ff3f has almost no contrast against a light
-   surface, so it's toned down rather than reused as-is.
-
-   Known gap: a few effects were hand-tuned specifically for dark
-   backdrops with literal rgba() values rather than tokens — the
-   login screen's photo-backdrop text treatment and the tabbar's
-   liquid-glass sheen. Both still work here, just not re-tuned for
-   light yet; a good first candidate for a follow-up pass. */
-:root[data-theme="light"] {
-  --bg: #f5ecda;
-  --bg-deep: #ecdfc4;
-  --bg-lift: #faf5ea;
-  --surface: #fffdf8;
-  --surface-raised: #ffffff;
-  --surface-high: #fff3e0;
-
-  --glass-fill: rgba(43, 29, 14, 0.03);
-  --glass-fill-strong: rgba(43, 29, 14, 0.06);
-  --glass-tint: rgba(255, 250, 240, 0.5);
-  --glass-filter: blur(22px) saturate(160%) brightness(1.04) contrast(1.02);
-  --glass-filter-strong: blur(34px) saturate(150%) brightness(1.03) contrast(1.02);
-  --glass-light: rgba(43, 29, 14, 0.03);
-  --glass-border: rgba(43, 29, 14, 0.10);
-  --glass-highlight: rgba(255, 255, 255, 0.75);
-  --glass-shade: rgba(43, 29, 14, 0.08);
-  --glass: rgba(43, 29, 14, 0.04);
-  --glass-strong: rgba(255, 250, 240, 0.82);
-
-  --ink: #2b1d0e;
-  --ink-dim: #7c6a51;
-  --ink-faint: #ab9b81;
-
-  /* The dark theme's bright neon lime (#d9ff3f) is nearly invisible on a
-     cream/white surface — same hue family, darkened to a legible olive
-     lime instead of just inheriting the raw brand value. */
-  --accent: #6b8a12;
-  --accent-bright: #85a821;
-  --accent-deep: #526b0d;
-  --accent-dim: rgba(107, 138, 18, 0.14);
-
-  --line: rgba(43, 29, 14, 0.08);
-  --line-strong: rgba(43, 29, 14, 0.15);
-  --danger: #d8433f;
-  --success: #2f9e64;
-  --warning: #c9820c;
-
-  --shadow-card: 0 6px 20px rgba(43, 29, 14, 0.12);
-  --shadow-float: 0 10px 34px rgba(43, 29, 14, 0.16);
-  --shadow-modal: 0 20px 60px rgba(43, 29, 14, 0.22);
-  --shadow-accent: 0 6px 20px rgba(43, 29, 14, 0.12);
-  --glow-focus: 0 0 0 2px rgba(255,255,255,0.9), 0 0 22px rgba(107, 138, 18, 0.45);
-}
-
-/* .tabbar's own background/border now use theme-aware tokens (var(--
-   surface-raised), var(--line)) directly, so it no longer needs a
-   light-theme override here — only the item text/icon colours below
-   still need one, since those stay hardcoded to a white-ish value
-   that only worked against the old dark glass fill. */
-:root[data-theme="light"] .tabbar__item {
-  color: rgba(43, 29, 14, 0.55);
-  text-shadow: none;
-}
-:root[data-theme="light"] .tabbar__item svg {
-  filter: drop-shadow(0 1px 1.5px rgba(43,29,14,0.10));
-}
-:root[data-theme="light"] .tabbar__item--active { color: var(--ink); }
-:root[data-theme="light"] .tabbar__item--active svg {
-  filter: drop-shadow(0 1px 1.5px rgba(43,29,14,0.10)) drop-shadow(0 0 6px rgba(107,138,18,0.30));
-}
-
 
 /* ------------------------------------------------------------ reset */
 *, *::before, *::after { box-sizing: border-box; }
@@ -387,13 +314,10 @@ ul { list-style: none; margin: 0; padding: 0; }
 @media (prefers-reduced-motion: reduce) {
   .boot-loader::before { animation: none; opacity: 0.32; }
 }
-/* The real brand mark (icons/mark-blue.svg, icons/mark-orange.svg) — a
-   background-image rather than an <img>, so the theme-appropriate one
-   can be picked with a plain CSS override instead of JS, which hasn't
-   run yet at the point this is on screen (see index.html's boot-loader,
-   painted before js/app.js even loads). The [data-theme] attribute
-   IS already set by then, by the same inline script that avoids a
-   flash of the wrong theme on the stylesheet itself. */
+/* The real brand mark (icons/mark-blue.svg) — a background-image rather
+   than an <img>, so it paints with the stylesheet itself, before
+   js/app.js has run (see index.html's boot-loader, which is on screen
+   by then). */
 .boot-loader__mark {
   position: relative; z-index: 1;
   width: 64px; height: 64px;
@@ -407,7 +331,6 @@ ul { list-style: none; margin: 0; padding: 0; }
   background-size: cover;
   animation: pulse 1.4s ease-in-out infinite;
 }
-:root[data-theme="light"] .boot-loader__mark { background-image: url('../icons/mark-orange.svg'); }
 @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(0.92); } }
 
 .view-body {
@@ -556,11 +479,8 @@ ul { list-style: none; margin: 0; padding: 0; }
 .topbar--home .topbar__logo { font-size: 26px; letter-spacing: -0.01em; }
 .topbar__mark { width: 28px; height: 28px; border-radius: 8px; flex-shrink: 0; }
 /* Flat, bold, and the plain theme ink — matches the actual "PlayThruu"
-   brand mark exactly (see icons/mark-blue.svg, icons/mark-orange.svg)
-   rather than a decorative gradient invented separately from it. Being
-   a plain colour rather than a background-clip trick is also what lets
-   this read correctly in both themes for free, no separate light-theme
-   override needed the way the old gradient version required. */
+   brand mark exactly (see icons/mark-blue.svg) rather than a decorative
+   gradient invented separately from it. */
 .topbar__logo {
   font-family: var(--font-brand);
   font-weight: 800; /* Unbounded Extrabold — a chunky, geometric mark, not a thin one */
@@ -1047,7 +967,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .discovery-tile__saved {
   position: absolute; inset: 0; z-index: 2;
   display: grid; place-items: center; border-radius: inherit;
-  background: rgba(10,14,22,0.35); color: #fff;
+  background: rgba(10,10,11,0.35); color: #fff;
   opacity: 0; pointer-events: none;
 }
 .discovery-tile__saved svg { width: 34px; height: 34px; filter: drop-shadow(0 2px 8px rgba(0,0,0,0.5)); }
@@ -2325,7 +2245,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 /* ------------------------------------------------------------ auth screen */
 .auth-screen {
   position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column;
-  justify-content: flex-end; background: #0b0b10; overflow: hidden;
+  justify-content: flex-end; background: #0e0d0c; overflow: hidden;
   transition: filter 320ms ease;
 }
 /* Whole screen blurs while the "Continue with" popup is open — art,
@@ -2355,7 +2275,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
    match the screen, in exchange for zero letterboxing/empty space. */
 .auth-screen__art {
   position: absolute; inset: 0;
-  background-color: #0b0b10; background-size: cover; background-position: center 22%; background-repeat: no-repeat;
+  background-color: #0e0d0c; background-size: cover; background-position: center 22%; background-repeat: no-repeat;
   opacity: 0; transition: opacity 1.1s ease;
 }
 .auth-screen__art.is-active { opacity: 1; }
@@ -2420,7 +2340,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
   text-shadow: 0 2px 8px rgba(0,0,0,0.85);
 }
 .auth-form .field input {
-  width: 100%; background: #fff; color: #12121a; border: none; border-radius: 12px;
+  width: 100%; background: #fff; color: #1a1613; border: none; border-radius: 12px;
   padding: 15px 16px; font-family: var(--font-body); font-size: 15px;
   box-shadow: 0 0 0 0 transparent; transition: box-shadow 0.15s ease;
 }
@@ -2429,16 +2349,16 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 .auth-form .field--password input { padding-right: 44px; }
 .auth-form .field__icon {
   position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
-  width: 17px; height: 17px; color: #8d8d97; pointer-events: none;
+  width: 17px; height: 17px; color: #97928c; pointer-events: none;
 }
 .auth-form .field__icon svg { width: 100%; height: 100%; display: block; }
 .auth-form .field__toggle {
   position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
   width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
-  background: none; border: none; padding: 0; color: #8d8d97; cursor: pointer; border-radius: 8px;
+  background: none; border: none; padding: 0; color: #97928c; cursor: pointer; border-radius: 8px;
 }
 .auth-form .field__toggle svg { width: 18px; height: 18px; display: block; }
-.auth-form .field__toggle:active { color: #12121a; background: rgba(0,0,0,0.06); }
+.auth-form .field__toggle:active { color: #1a1613; background: rgba(0,0,0,0.06); }
 /* Content fades/rises in on mount rather than just popping into place.
    Respects reduced-motion — no animation at all in that case, content
    just appears instantly in its final position. */
@@ -2453,7 +2373,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
   .auth-screen__art { transition: none; }
 }
 .auth-form .field input:focus { outline: none; box-shadow: 0 0 0 3px rgba(242,183,5,0.55); }
-.auth-form .field input::placeholder { color: #9a9aa5; }
+.auth-form .field input::placeholder { color: #a5a09a; }
 .auth-form .field { margin-bottom: 14px; display: block; }
 .auth-screen .btn--accent {
   background: var(--gold); color: #14100a; border-radius: 999px; border: none;
@@ -2636,7 +2556,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
    surface here. The literal dark-theme accent value stays vivid as a
    small accent chip in both themes, the way a call-to-action often
    does regardless of surrounding theme. */
-.avatar-crop__apply { background: #d9ff3f; color: #0a0b0f; border-color: transparent; }
+.avatar-crop__apply { background: #d9ff3f; color: #0f0e0d; border-color: transparent; }
 .avatar-crop__cancel svg, .avatar-crop__apply svg { width: 16px; height: 16px; }
 .avatar-crop__stage-wrap {
   flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center;
@@ -2832,24 +2752,13 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
      until the last third, where the title and poster actually sit and
      genuinely need the contrast. */
   background: linear-gradient(180deg,
-    rgba(10,14,22,0) 0%,
-    rgba(10,14,22,0.06) 42%,
-    rgba(10,14,22,0.28) 66%,
-    rgba(10,14,22,0.62) 84%,
-    rgba(10,14,22,0.86) 100%);
+    rgba(10,10,11,0) 0%,
+    rgba(10,10,11,0.06) 42%,
+    rgba(10,10,11,0.28) 66%,
+    rgba(10,10,11,0.62) 84%,
+    rgba(10,10,11,0.86) 100%);
 }
-/* The title/kicker/score sitting on this hero read var(--ink), which in
-   light theme is dark brown — invisible on a scrim that's always dark
-   regardless of theme (it's drawn over real game art, not the page
-   background). Pinned back to the dark-theme ink values, but only when
-   the art+scrim are actually present (:has) — a game with no backdrop
-   sits on the plain page background instead and should read the real
-   theme ink like everything else. No-op in dark theme either way, since
-   these already equal the dark-theme defaults there. */
 .gd-hero:has(.gd-hero__bg) {
-  --ink: #f1f0e9;
-  --ink-dim: #8a9086;
-  --ink-faint: #5c6158;
   /* +10px, not the old -40px: the poster starts just BELOW the artwork's
      bottom edge rather than being pulled up into it. The overlap read as
      the poster covering the picture instead of sitting under it. 56.25%
@@ -2918,7 +2827,7 @@ a.gd-credit__name { text-decoration: none; }
   display: inline-flex; align-items: center; gap: 7px; flex-shrink: 0;
   margin-top: 6px; padding: 8px 16px;
   border: none; border-radius: var(--radius-pill);
-  background: #fff; color: #0a0b0f;
+  background: #fff; color: #0f0e0d;
   font-size: 14px; font-weight: 700; letter-spacing: 0.01em;
   transition: transform var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
 }
@@ -3123,19 +3032,19 @@ a.gd-credit__name { text-decoration: none; }
   display: flex; align-items: center; gap: var(--space-2);
   padding: 5px var(--space-3) 5px 6px;
   background: #fff; border-radius: var(--radius-pill);
-  color: #0a0b0f;
+  color: #0f0e0d;
 }
 /* The person-shaped disc that opens the row, per the reference — it's
    what marks the whole bar as "you", not the game. */
 .gd-bar__mark {
   width: 28px; height: 28px; flex-shrink: 0;
   display: grid; place-items: center; border-radius: 50%;
-  background: #0a0b0f; color: #fff;
+  background: #0f0e0d; color: #fff;
 }
 .gd-bar__mark svg { width: 16px; height: 16px; }
 .gd-bar__act {
   flex: 1; min-width: 0; padding: 7px 0;
-  background: none; border: none; color: #0a0b0f;
+  background: none; border: none; color: #0f0e0d;
   font-size: 15.5px; font-weight: 700;
   letter-spacing: 0; white-space: nowrap;
   -webkit-tap-highlight-color: transparent;
@@ -3143,7 +3052,7 @@ a.gd-credit__name { text-decoration: none; }
 }
 .gd-bar__act:hover { opacity: 0.6; }
 .gd-bar__act:active { opacity: 0.45; }
-.gd-bar__act:focus-visible { outline: 2px solid #0a0b0f; outline-offset: 2px; border-radius: 4px; }
+.gd-bar__act:focus-visible { outline: 2px solid #0f0e0d; outline-offset: 2px; border-radius: 4px; }
 /* A real diagonal divider, not a "/" glyph — skewX shears the element
    sideways while leaving its top and bottom edges exactly where they
    were, which is what lets a 2px vertical bar become a slanted line
@@ -3162,24 +3071,11 @@ a.gd-credit__name { text-decoration: none; }
 .gd-bar__more {
   flex-shrink: 0; width: 28px; height: 28px; padding: 0;
   display: grid; place-items: center;
-  background: none; border: none; color: #0a0b0f;
+  background: none; border: none; color: #0f0e0d;
   transition: opacity var(--dur-fast) var(--ease);
 }
 .gd-bar__more:hover { opacity: 0.6; }
 .gd-bar__more svg { width: 18px; height: 18px; }
-/* The bar's whole job is to be the one inverted thing on the page. On a
-   cream light-theme background a white slab isn't inverted, it's
-   invisible — so it flips to dark-on-light there instead. */
-:root[data-theme="light"] .gd-bar { background: #2b1d0e; color: #fffdf8; }
-:root[data-theme="light"] .gd-bar__mark { background: #fffdf8; color: #2b1d0e; }
-:root[data-theme="light"] .gd-bar__act,
-:root[data-theme="light"] .gd-bar__more { color: #fffdf8; }
-:root[data-theme="light"] .gd-bar__slash { background: rgba(255,253,248,0.35); }
-:root[data-theme="light"] .gd-bar__act:focus-visible { outline-color: #fffdf8; }
-/* Same reasoning for the Trailer pill, which sits on artwork in one
-   theme and on the page's own ground in the other. */
-:root[data-theme="light"] .gd-trailer { background: #2b1d0e; color: #fffdf8; }
-:root[data-theme="light"] .gd-trailer:hover { background: #43301b; }
 
 /* The overflow sheet behind the row's third cell. */
 .gd-more { padding: 0 var(--space-4) var(--space-4); }
@@ -3935,18 +3831,7 @@ a.gd-credit__name { text-decoration: none; }
   padding: 6px 0 calc(6px + var(--safe-bottom));
   /* Flat solid surface, not glass — matches the real in-app .tabbar
      (see above) and every other panel in the app now. */
-  background: #101014;
-  box-shadow: 0 10px 34px -8px rgba(0,0,0,0.55);
-}
-/* :root[data-theme="light"] .tabbar (the real in-app nav's light-theme
-   retint, added earlier) is one selector more specific than
-   .landing-nav.tabbar above, so without this it would win in light
-   theme and put the light tint back. Same specificity as that rule,
-   this wins the tie by simply being the one this screen means — the
-   glass stays the same in either theme, matching the rest of this
-   always-dark screen. */
-:root[data-theme="light"] .landing-nav.tabbar {
-  background: #101014;
+  background: #131211;
   box-shadow: 0 10px 34px -8px rgba(0,0,0,0.55);
 }
 .landing-nav .tabbar__item {

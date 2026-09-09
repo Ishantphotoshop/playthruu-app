@@ -1,14 +1,14 @@
 /* ============================================================
    PLAYTHRUU ADMIN — the thin layer on top of the app's own stylesheet.
 
-   ../css/styles.css does the heavy lifting: colour tokens, both themes,
-   type scale, .btn, .field, .list-card, .modal, .topbar, .stamp, and so
-   on. Everything here is either genuinely absent from the app (a
-   presence dot, a SQL block) or a small adjustment where an app
-   component is being used for a slightly different job.
+   ../css/styles.css does the heavy lifting: colour tokens, type scale,
+   .btn, .field, .list-card, .modal, .topbar, .stamp, and so on.
+   Everything here is either genuinely absent from the app (a presence
+   dot, a SQL block) or a small adjustment where an app component is
+   being used for a slightly different job.
 
    Nothing in this file may redefine an app token. If a colour is needed,
-   it comes from var(--...) so light theme keeps working.
+   it comes from var(--...) so a palette change reaches this build too.
    ============================================================ */
 
 /* ---------------------------------------------------------- shell */
@@ -128,7 +128,6 @@
   background: url('../icons/mark-blue.svg') center / cover;
   margin-bottom: var(--space-3);
 }
-:root[data-theme="light"] .adm-gate__mark { background-image: url('../icons/mark-orange.svg'); }
 .adm-gate__title {
   font-family: var(--font-brand); font-weight: 800; font-size: 26px;
   letter-spacing: -0.02em; margin: 0 0 var(--space-2);
@@ -318,7 +317,7 @@ a.btn { text-decoration: none; }
   color: var(--ink-dim); background: transparent; border: none;
   transition: background 0.18s var(--ease), color 0.18s var(--ease);
 }
-.sc__range[aria-selected="true"] { background: var(--accent); color: #0a0b0f; }
+.sc__range[aria-selected="true"] { background: var(--accent); color: #0f0e0d; }
 .sc__empty { font-size: var(--text-meta); color: var(--ink-faint); text-align: center; margin: var(--space-4) 0 0; }
 
 .adm-panel--chart { padding-bottom: var(--space-3); }
@@ -539,7 +538,7 @@ a.btn { text-decoration: none; }
 }
 .adm-check::after {
   content: ""; width: 10px; height: 6px; margin-top: -2px;
-  border-left: 2px solid #0a0b0f; border-bottom: 2px solid #0a0b0f;
+  border-left: 2px solid #0f0e0d; border-bottom: 2px solid #0f0e0d;
   transform: rotate(-45deg) scale(0); transform-origin: center;
   transition: transform 0.15s var(--ease);
 }

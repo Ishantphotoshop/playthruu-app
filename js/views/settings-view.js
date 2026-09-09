@@ -3,7 +3,6 @@ import { state } from '../state.js';
 import { topBar, navBar, avatarImg, combinedGameResults, wireCombinedGameResults, iconCamera, iconDrag, iconClose, iconPlus } from '../components.js';
 import { esc, toast, qs, qsa, debounce, placeholderCover, igdbSized, enableSwipeToDismiss } from '../utils.js';
 import { changePassword, changeEmail, signOut } from '../auth.js';
-import { getTheme, setTheme } from '../theme.js';
 import { openAvatarCropModal } from './avatar-crop.js';
 
 const PRONOUN_OPTIONS = ['he/his', 'she/her', 'they/their', 'custom'];
@@ -78,14 +77,6 @@ export function renderSettingsView(root) {
         <div id="moderation-list"><div class="spinner"></div></div>
       </div>
 
-      <p class="set-group__title">Appearance</p>
-      <div class="set-card set-card--pad">
-        <div class="segmented" id="theme-toggle">
-          <button type="button" class="segmented__item${getTheme() === 'dark' ? ' segmented__item--active' : ''}" data-theme-choice="dark">Dark</button>
-          <button type="button" class="segmented__item${getTheme() === 'light' ? ' segmented__item--active' : ''}" data-theme-choice="light">Light</button>
-        </div>
-      </div>
-
       <p class="set-group__title">Security</p>
       <div class="set-card">
         <form class="set-form" id="password-form">
@@ -149,16 +140,6 @@ export function renderSettingsView(root) {
     }
   }
   loadModeration();
-
-  // ---- appearance (theme) ----
-  qsa('#theme-toggle .segmented__item', body).forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const chosen = setTheme(btn.dataset.themeChoice);
-      qsa('#theme-toggle .segmented__item', body).forEach((b) => {
-        b.classList.toggle('segmented__item--active', b.dataset.themeChoice === chosen);
-      });
-    });
-  });
 
   // ---- avatar upload ----
   // The crop step (opened before anything uploads) is what guarantees

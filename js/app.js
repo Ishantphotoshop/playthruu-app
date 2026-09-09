@@ -1,6 +1,5 @@
 import { supabase } from './supabase-client.js';
 import { onAuthChange, signOut, updatePasswordAfterReset } from './auth.js';
-import { getTheme, applyTheme } from './theme.js';
 import * as api from './api.js';
 import { state } from './state.js';
 import { route, setNotFound, startRouter, navigate, refreshCurrentView } from './router.js';
@@ -429,12 +428,6 @@ function handleSignedOut() {
 }
 
 async function boot() {
-  // The [data-theme] attribute itself is already set by the inline
-  // script in index.html (before first paint, to avoid a flash) — this
-  // just brings the native status-bar colour (<meta name="theme-color">)
-  // in line with it too, which that early script can't do since the
-  // meta tag isn't in the DOM yet at that point in <head>.
-  applyTheme(getTheme());
   wireGlobalChrome();
   wireHardwareBack();
   wireAuthDeepLink();

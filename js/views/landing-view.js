@@ -7,7 +7,6 @@ import {
 import { esc, starRow, qs, qsa, toast } from '../utils.js';
 import { renderAuthView } from './auth-view.js';
 import { navigate } from '../router.js';
-import { getTheme } from '../theme.js';
 import { state } from '../state.js';
 
 // The funnel shown to anyone who opens the app signed out. Structured to
@@ -260,7 +259,7 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
         ${starfieldHtml()}
         <div class="landing-entry__content">
           <div class="landing-entry__brand">
-            <img src="icons/${getTheme() === 'light' ? 'mark-orange' : 'mark-blue'}.svg" alt="" class="landing-entry__mark">
+            <img src="icons/mark-blue.svg" alt="" class="landing-entry__mark">
             <span class="landing-entry__word">PlayThruu</span>
           </div>
           <p class="landing-entry__tagline">The diary for everything you play.</p>
@@ -290,7 +289,7 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
       <div class="landing-browse">
         <div class="landing-browse__head">
           <div class="landing-browse__brand">
-            <img src="icons/${getTheme() === 'light' ? 'mark-orange' : 'mark-blue'}.svg" alt="" class="landing-browse__mark">
+            <img src="icons/mark-blue.svg" alt="" class="landing-browse__mark">
             <span class="landing-header__logo">PlayThruu</span>
           </div>
         </div>

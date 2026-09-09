@@ -4,19 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <title>Playthruu — your gaming diary</title>
-<script>
-  // Applies a saved Light-theme choice BEFORE the stylesheet paints, as
-  // a plain inline script rather than deferring to js/theme.js (an ES
-  // module, which loads async) — the whole point is that this can't be
-  // a beat late, or the page flashes dark before switching to light.
-  try {
-    if (localStorage.getItem('playthruu_theme') === 'light') {
-      document.documentElement.setAttribute('data-theme', 'light');
-    }
-  } catch (e) { /* storage unavailable — dark default, same as a fresh install */ }
-</script>
 <meta name="description" content="Log, rate, and review the games you play. Follow friends and see what they're playing.">
-<meta name="theme-color" content="#12121a">
+<meta name="theme-color" content="#0f0e0d">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <!-- Manrope: the app's general UI font (--font-display/--font-body),
