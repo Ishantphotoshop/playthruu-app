@@ -169,11 +169,33 @@ const FINAL_BEAT = new RegExp(
   String.raw`\b${VERB}\s+the\s+(?:final|last)\s+(?:mission|chapter|episode|level|act|battle|boss)\b`,
   "i",
 );
+// Reaching the ending is the same statement as completing the story.
+const ENDING = /\b(?:reach(?:ed)?|see|saw|view(?:ed)?|watch(?:ed)?|unlock(?:ed)?|got|obtain(?:ed)?)\s+(?:the\s+)?(?:true\s+|final\s+|good\s+|best\s+|normal\s+|any\s+)?(?:ending|credits)\b/i;
 const NOT_THE_WHOLE_GAME = [
   new RegExp(String.raw`\b${VERB}\s+(?:a|an|one|another|\d+|all|each|every)\b`, "i"),
   /\ba\s+complete\s+game\b/i,
   /\b(co-?op|online|multiplayer|versus|legends mode|arena|mini-?game|side\s*quest|optional)\b/i,
 ];
+
+// Some games mark the end of the story with a numbered chapter instead
+// of the word "final" — Tekken 8's last story trophy is "Finished
+// Chapter 15 of The Dark Awakens", which no amount of wording rules
+// would catch. Earning the highest-numbered chapter the SET DEFINES
+// says the same thing, so the number is read off the whole trophy list
+// rather than guessed at.
+const NUMBERED_CHAPTER = /\b(?:complete[ds]?|finish(?:ed)?|beat(?:en)?|clear(?:ed)?)\s+(?:the\s+)?(?:chapter|episode|act)\s+(\d+)\b/i;
+function finalChapterTrophyId(defs: Trophy[]) {
+  let best: { n: number; id: number } | null = null;
+  for (const d of defs) {
+    const m = NUMBERED_CHAPTER.exec(`${d.trophyName ?? ""} ${d.trophyDetail ?? ""}`);
+    if (!m) continue;
+    const n = Number(m[1]);
+    if (!best || n > best.n) best = { n, id: d.trophyId };
+  }
+  // A set that only ever mentions "chapter 1" is marking an early
+  // milestone, not an ending.
+  return best && best.n >= 2 ? best.id : null;
+}
 
 function normalizeTrophyText(s: string) {
   return String(s).toLowerCase()
@@ -204,12 +226,14 @@ type EarnedTrophy = { trophyId: number; earned?: boolean; earnedDateTime?: strin
 
 function findCompletionTrophy(defs: Trophy[], earned: EarnedTrophy[], trophyTitleName: string) {
   const earnedById = new Map(earned.map((e) => [e.trophyId, e]));
+  const finalChapter = finalChapterTrophyId(defs);
   const hits = defs
     .map((d) => ({ def: d, got: earnedById.get(d.trophyId) }))
     .filter(({ def, got }) => {
       if (!got?.earned) return false;
       const text = `${def.trophyName ?? ""} ${def.trophyDetail ?? ""}`;
-      const looksDone = COMPLETION.test(text) || FINAL_BEAT.test(text) || titleIsTheObject(text, trophyTitleName);
+      const looksDone = COMPLETION.test(text) || FINAL_BEAT.test(text) || ENDING.test(text)
+        || def.trophyId === finalChapter || titleIsTheObject(text, trophyTitleName);
       return looksDone && !NOT_THE_WHOLE_GAME.some((re) => re.test(text));
     })
     .filter((h) => h.got?.earnedDateTime);
