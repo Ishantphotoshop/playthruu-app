@@ -21,7 +21,11 @@ import { wireLogCards } from './feed-view.js';
 function platformIcon(name) {
   const n = (name || '').toLowerCase();
   if (n.includes('playstation') || /\bps[1-5]\b/.test(n)) {
-    return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4.6 15 11"/><circle cx="16.2" cy="13.6" r="1.6"/><path d="m12 4.6-3 6.4"/><path d="M7.8 13.6a1.6 1.6 0 1 1 0-.1z"/><circle cx="12" cy="16.2" r="1.6"/><circle cx="12" cy="9.4" r="1.6"/></svg>`;
+    // The four DualShock/DualSense face buttons in their real layout
+    // (triangle top, circle right, X bottom, square left) — the one
+    // PlayStation abstraction that reads instantly to anyone who's held
+    // the controller, rather than a shape that needs a caption.
+    return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6l2.8 4.9H9.2z"/><circle cx="18.6" cy="12" r="2.15"/><path d="M9.9 16.6l4.2 4.2M14.1 16.6l-4.2 4.2"/><rect x="3.65" y="9.85" width="4.3" height="4.3" rx="0.3"/></svg>`;
   }
   if (n.includes('xbox')) {
     return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M7 7.2C9 9.6 10.6 11 12 12.4M17 7.2c-2 2.4-3.6 3.8-5 5.2M7 16.8c2-2.4 3.6-3.8 5-5.2M17 16.8c-2-2.4-3.6-3.8-5-5.2"/></svg>`;
@@ -97,16 +101,15 @@ function headCreditHtml(year, director, developer) {
   return year ? `<span class="gd-credit__line">${esc(year)}</span>` : '';
 }
 
-// The game's title: a transparent-background logo PNG when one's been
-// found (see api.getGameArt), otherwise the plain text heading it always
-// was. The <h1> stays present either way — visually hidden behind the
-// logo image, not removed — so the page keeps one real, accessible
-// heading for screen readers and there's no layout jump when the logo
-// swaps in.
-function gameTitleHtml(title, logoUrl) {
-  return `
-    <h1 class="gd-head__title${logoUrl ? ' gd-head__title--hidden' : ''}">${esc(title)}</h1>
-    ${logoUrl ? `<img class="gd-head__logo" src="${esc(logoUrl)}" alt="${esc(title)}">` : ''}`;
+// The game's title, in the app's own real type rather than a fetched
+// logo PNG — that image also had to be a transparent-background asset
+// SteamGridDB happened to have for this specific title, so it was
+// missing or oddly cropped often enough to not be worth the extra
+// network round trip, the layout jump when it swapped in late, and a
+// heading rendered in whatever font a third-party asset shipped with
+// rather than the app's own.
+function gameTitleHtml(title) {
+  return `<h1 class="gd-head__title">${esc(title)}</h1>`;
 }
 
 // One "who's doing this" block — Played by / Playing / Want to play —
@@ -148,7 +151,7 @@ function crowdSectionHtml(label, entries) {
       <div class="gd-faces">
         ${shown.map((p) => `
           <a class="gd-face" href="#/profile/${esc(p.username)}" title="${esc(p.display_name || p.username)}">
-            ${avatarImg(p, 38)}
+            ${avatarImg(p, 50)}
           </a>`).join('')}
         ${extra > 0 ? `<span class="gd-face gd-face--more">+${compactNumber(extra)}</span>` : ''}
       </div>
@@ -302,40 +305,6 @@ export async function renderGameView(root, { id, igdbId }) {
     let game = id ? await api.getGame(id) : await api.getIgdbGameDetail(igdbId);
     if (!game) throw new Error("Couldn't find that game.");
 
-    // Kicked off right here — in parallel with the Promise.all below, not
-    // after it — so the logo has the maximum possible head start instead
-    // of only beginning once everything else has already finished and
-    // painted. For a game that's already cached (the common case, once
-    // any single visitor has opened it once) this is just one small
-    // image preload with no network round-trip to look the URL up first,
-    // so it very often finishes before the page's OTHER data even does —
-    // letting the very first paint below show the real logo directly,
-    // with nothing to swap in later at all. `logoReady`/`resolvedLogoUrl`
-    // are read synchronously right before that first paint to decide.
-    //
-    // Note: api.getGameArt also returns a `grid_url` (a SteamGridDB
-    // cover) — deliberately unused here. It used to also replace the
-    // page's poster as a "quality upgrade", reverted because SteamGridDB
-    // grids are predominantly fan-made/alternate cover art, not official
-    // box art (see the comment on getGameArt in api.js). The poster
-    // below (`poster`/game.cover_url) is IGDB/RAWG only.
-    let resolvedLogoUrl = null;
-    let logoReady = false;
-    const logoPromise = (async () => {
-      if (!id) return null; // an uncatalogued game (igdbId mode) has nothing to cache against
-      let url = game.logo_fetched ? (game.logo_url || null) : null;
-      if (!game.logo_fetched) {
-        try { ({ logo_url: url } = await api.getGameArt(game)); } catch { url = null; }
-      }
-      if (url) {
-        try { const img = new Image(); img.src = url; await img.decode(); }
-        catch { url = null; } // failed to actually load — treat as no logo
-      }
-      resolvedLogoUrl = url;
-      logoReady = true;
-      return url;
-    })();
-
     // getIgdbGameDetail already fetched everything enrichGameDetails
     // would (and set igdb_enriched: true), so there's nothing left to
     // enrich in igdbId mode; likewise a game with no local id has, by
@@ -381,19 +350,6 @@ export async function renderGameView(root, { id, igdbId }) {
     loadSimilarGames();
     recordRecentlyViewed(game);
     loadCastDirector();
-    // logoPromise (kicked off way back when `game` first loaded, above)
-    // may well have already resolved by now, in which case the header
-    // just painted with the real logo directly and this is a no-op — it
-    // only actually swaps anything in for the slower case (a game nobody
-    // has ever opened before, still needing the SteamGridDB lookup
-    // itself before any image download can even start).
-    logoPromise.then((logo_url) => {
-      if (!logo_url) return;
-      const slot = qs('#game-logo-slot', body);
-      // If the first paint above already had logoReady=true, it
-      // already rendered the <img> directly — this is then a no-op.
-      if (slot && !qs('.gd-head__logo', slot)) slot.innerHTML = gameTitleHtml(game.title, logo_url);
-    });
 
     // Runs after the page has already painted (castDirectorData starts
     // null, which paintTabContent's Cast branch renders as a spinner —
@@ -562,12 +518,18 @@ export async function renderGameView(root, { id, igdbId }) {
       const platforms = (game.platform || '').split(',').map((p) => p.trim()).filter(Boolean);
       const year = game.release_year || (game.release_date ? new Date(game.release_date).getFullYear() : null);
 
-      const discussionCount = Object.values(commentCounts).reduce((s, n) => s + n, 0);
-
+      // A square tile per stat rather than an icon-and-number row — icon
+      // on top, count and label stacked under it, the count doing the
+      // job the label used to have to do alone. Discussion replies are
+      // dropped: three tiles that answer "how many people did something
+      // with this game" (played it, reviewed it, listed it), not four
+      // where the last one is a comment count nobody reads this page to
+      // find.
       const socialCard = (icon, value, label) => `
         <div class="gd-social__card">
           <span class="gd-social__icon">${icon}</span>
-          <b>${value}</b><span>${label}</span>
+          <b>${value}</b>
+          <span>${label}</span>
         </div>`;
 
       body.innerHTML = `
@@ -580,7 +542,7 @@ export async function renderGameView(root, { id, igdbId }) {
             <header class="gd-head">
               ${posterFrame(poster, game.title, 'gd-head__cover', { id: 'game-cover', full: true })}
               <div class="gd-head__main">
-                <div id="game-logo-slot">${gameTitleHtml(game.title, logoReady ? resolvedLogoUrl : null)}</div>
+                ${gameTitleHtml(game.title)}
                 <div id="director-slot">${headCreditHtml(year, castDirectorData?.director, game.developer)}</div>
                 ${game.trailer_url ? `
                   <button type="button" class="gd-trailer" id="play-trailer">
@@ -608,9 +570,13 @@ export async function renderGameView(root, { id, igdbId }) {
                   ${halfSteps.map((star, i) => {
                     const count = stepCounts[i];
                     const label = `${count} log${count === 1 ? '' : 's'} rated ${star} star${star === 1 ? '' : 's'}`;
-                    const isPeak = count === stepMax && count > 0;
+                    // No permanent highlight on the tallest bar or the
+                    // active filter anymore — every bar is the same
+                    // colour at rest, and the only one that ever lights
+                    // up brighter is whichever one a finger is actually
+                    // on right now (see the pointer handlers below).
                     return `
-                    <button type="button" class="gd-dist__col${isPeak ? ' gd-dist__col--peak' : ''}"
+                    <button type="button" class="gd-dist__col"
                             data-rating="${star}" data-count="${count}"
                             aria-label="${label}" title="${label}">
                       <span class="gd-dist__bar" style="height:${Math.max(4, Math.round((count / stepMax) * 100))}%"></span>
@@ -620,7 +586,7 @@ export async function renderGameView(root, { id, igdbId }) {
                 ${avg ? `
                   <div class="gd-avg">
                     <span class="gd-avg__num" id="rating-avg-num">${avg.toFixed(1)}</span>
-                    <span class="gd-avg__stars" id="rating-avg-stars">${starRow(avg, { size: 13 })}</span>
+                    <span class="gd-avg__stars" id="rating-avg-stars">${starRow(avg, { size: 13, count: 5 })}</span>
                   </div>` : ''}
               </div>
               <div class="gd-dist__axis">
@@ -668,7 +634,6 @@ export async function renderGameView(root, { id, igdbId }) {
               ${socialCard(iconController(), logs.length, logs.length === 1 ? 'Play' : 'Plays')}
               ${socialCard(iconPencil(), reviewedLogs.length, reviewedLogs.length === 1 ? 'Review' : 'Reviews')}
               ${socialCard(iconStack(), compactNumber(listsCount), listsCount === 1 ? 'List' : 'Lists')}
-              ${socialCard(iconReply(), compactNumber(discussionCount), discussionCount === 1 ? 'Reply' : 'Replies')}
             </div>
           </section>
 
@@ -699,10 +664,7 @@ export async function renderGameView(root, { id, igdbId }) {
           <div class="gd-rule"></div>
 
           <section class="gd-block">
-            <div class="gd-block__head">
-              <h2 class="gd-block__title">Reviews</h2>
-              ${reviewedLogs.length ? `<a href="#/game/${id}/reviews" class="gd-link">All ${reviewedLogs.length}</a>` : ''}
-            </div>
+            <h2 class="gd-block__title">Reviews</h2>
             ${friendsReviews.length ? `
               <div class="gd-pilltabs" id="review-tabs">
                 <button type="button" class="gd-pilltab gd-pilltab--on" data-review-tab="popular">Popular</button>
@@ -710,6 +672,7 @@ export async function renderGameView(root, { id, igdbId }) {
               </div>` : ''}
             <div id="review-filter-slot"></div>
             <div class="gd-reviews" id="game-reviews"></div>
+            ${reviewedLogs.length ? `<a href="#/game/${id}/reviews" class="gd-link gd-reviews-more">See more</a>` : ''}
           </section>
 
           <!-- Discovery lives at the very bottom, per the sketch: it's
@@ -769,17 +732,25 @@ export async function renderGameView(root, { id, igdbId }) {
       }
 
       function setRatingFilter(star) {
+        // No lasting highlight on the bar you tapped — the "Showing N ★
+        // only · Clear" chip below is what tells you a filter is on, so
+        // the bar itself doesn't need to stay lit after your finger
+        // leaves it. The only bar that ever lights up is whichever one
+        // is currently held (see the pointer handlers further down).
         ratingFilter = star;
-        qsa('.gd-dist__col', body).forEach((b) => {
-          b.classList.toggle('gd-dist__col--active', Number(b.dataset.rating) === star);
-        });
         paintReviews();
       }
 
       qsa('[data-review-tab]', body).forEach((btn) => {
         btn.addEventListener('click', () => {
           reviewTab = btn.dataset.reviewTab;
-          qsa('[data-review-tab]', body).forEach((b) => b.classList.toggle('segmented__item--active', b === btn));
+          // Was toggling 'segmented__item--active' — a class from a
+          // different component entirely (the app's generic segmented
+          // control). These buttons are .gd-pilltab, styled by
+          // .gd-pilltab--on, so Friends was genuinely switching the
+          // list (paintReviews() below ran fine) but never looked
+          // selected, since the class it added matched no CSS rule here.
+          qsa('[data-review-tab]', body).forEach((b) => b.classList.toggle('gd-pilltab--on', b === btn));
           paintReviews();
         });
       });
@@ -819,7 +790,17 @@ export async function renderGameView(root, { id, igdbId }) {
       });
 
       const trailerBtn = qs('#play-trailer', body);
-      if (trailerBtn) trailerBtn.addEventListener('click', () => openTrailer(game.trailer_url));
+      if (trailerBtn) {
+        // Opens the TCP/TLS connection to YouTube the moment the page
+        // is up, rather than only once the button is actually tapped —
+        // by the time someone taps Trailer, the round trip that used to
+        // happen first (DNS + TLS handshake) has usually already
+        // finished, so the video starts noticeably sooner. Only added
+        // when there's actually a trailer button on the page, not on
+        // every game page regardless of whether one exists.
+        warmYouTubeConnection();
+        trailerBtn.addEventListener('click', () => openTrailer(game.trailer_url));
+      }
 
       // The synopsis is clamped to three lines; the toggle only appears
       // when there is genuinely more text than that, so a short
@@ -850,13 +831,24 @@ export async function renderGameView(root, { id, igdbId }) {
       const avgNumEl = qs('#rating-avg-num', body);
       const avgStarsEl = qs('#rating-avg-stars', body);
       if (distBars && avgNumEl) {
+        // The only bar that's ever coloured differently from the rest —
+        // lit for exactly as long as a finger is on it, on it alone.
+        let heldCol = null;
+        const setHeld = (col) => {
+          if (heldCol === col) return;
+          heldCol?.classList.remove('gd-dist__col--held');
+          col?.classList.add('gd-dist__col--held');
+          heldCol = col || null;
+        };
         const showAverage = () => {
           avgNumEl.textContent = avg.toFixed(1);
-          if (avgStarsEl) avgStarsEl.innerHTML = starRow(avg, { size: 13 });
+          if (avgStarsEl) avgStarsEl.innerHTML = starRow(avg, { size: 13, count: 5 });
+          setHeld(null);
         };
         const showCol = (col) => {
           avgNumEl.textContent = col.dataset.count;
-          if (avgStarsEl) avgStarsEl.innerHTML = starRow(Number(col.dataset.rating), { size: 13 });
+          if (avgStarsEl) avgStarsEl.innerHTML = starRow(Number(col.dataset.rating), { size: 13, count: 5 });
+          setHeld(col);
         };
         // A fixed Y (the row's own vertical centre) is enough to find
         // whichever column the finger is over on any X — every column
@@ -1011,6 +1003,19 @@ function isSafeHttpUrl(url) {
   }
 }
 const isSafeImageUrl = isSafeHttpUrl;
+
+let youtubeWarmed = false;
+function warmYouTubeConnection() {
+  if (youtubeWarmed) return; // one game page can call this more than once across renders
+  youtubeWarmed = true;
+  for (const href of ['https://www.youtube.com', 'https://i.ytimg.com']) {
+    const link = document.createElement('link');
+    link.rel = 'preconnect';
+    link.href = href;
+    link.crossOrigin = '';
+    document.head.appendChild(link);
+  }
+}
 
 function openTrailer(embedUrl) {
   if (!isSafeHttpUrl(embedUrl)) return;

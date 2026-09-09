@@ -23,9 +23,16 @@ export function esc(str) {
 // actually has something to show (full or half) — a plain display
 // isn't a fixed "X out of 5" scale, so trailing empty stars there were
 // just visual noise, not information.
-export function starRow(rating, { interactive = false, size = 18 } = {}) {
+export function starRow(rating, { interactive = false, size = 18, count: fixedCount } = {}) {
   const r = Number(rating) || 0;
-  const count = interactive ? 5 : Math.ceil(r);
+  // Fixed callers (a single held bar being swapped in and out of the
+  // same slot) pass `count` explicitly so the row is always 5 glyphs
+  // wide regardless of the rating shown — otherwise a 1-star and a
+  // 5-star value render a different number of stars, and the row (and
+  // whatever sits next to it) visibly resizes every time the value
+  // changes. Everywhere else keeps the old "just enough stars for this
+  // rating" compact look, which is deliberate there.
+  const count = fixedCount ?? (interactive ? 5 : Math.ceil(r));
   let html = `<span class="stars${interactive ? ' stars--interactive' : ''}" style="--star-size:${size}px" data-rating="${r}">`;
   for (let i = 1; i <= count; i++) {
     const fill = r >= i ? 'full' : r >= i - 0.5 ? 'half' : 'empty';

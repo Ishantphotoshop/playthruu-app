@@ -1820,7 +1820,15 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
    for. */
 .modal-overlay.lightbox-overlay { background: rgba(6,6,10,0.92); align-items: center; }
 .lightbox-image { max-width: 88vw; max-height: 70vh; border-radius: var(--radius-m); object-fit: contain; }
-.lightbox-close { position: absolute; top: calc(16px + var(--safe-top)); right: 16px; background: rgba(255,255,255,0.12); }
+/* Same cascade fight as the align-items fix above, one property over:
+   .modal__close (later in the file, equal specificity) sets
+   position:relative, which was winning over this rule's
+   position:absolute — the close button was never actually being pulled
+   to the corner at all, just sitting in normal flex flow whatever that
+   happened to leave it (left edge, vertical middle of the overlay's
+   centred column). The combined selector wins regardless of source
+   order, the same fix as .modal-overlay.lightbox-overlay just above. */
+.modal__close.lightbox-close { position: absolute; top: calc(16px + var(--safe-top)); right: 16px; background: rgba(255,255,255,0.12); }
 
 .modal--qr { border-radius: var(--radius-l); }
 .qr-modal__body { display: flex; flex-direction: column; align-items: center; gap: 12px; padding-bottom: 10px; }
@@ -2106,7 +2114,18 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 .crew-row__name { font-weight: 600; font-size: 14px; }
 .crew-row__role { font-size: 12px; color: var(--ink-dim); margin-top: 2px; }
 
-.trailer-video { max-width: 92vw; max-height: 70vh; border-radius: var(--radius-m); }
+/* max-width/max-height alone only CAP a size — an <iframe> with no
+   width/height attribute and no other CSS width falls back to the
+   browser's own default box (300x150), so the player was rendering
+   tiny in the middle of a dark overlay rather than filling it, which
+   read as "not centred" even though the overlay's own centring was
+   already correct. width + aspect-ratio give it a real size to hold
+   before content loads, instead of a size only ever set as an upper
+   bound nothing was reaching. */
+.trailer-video {
+  width: min(92vw, 640px); aspect-ratio: 16 / 9; max-height: 70vh;
+  border-radius: var(--radius-m); border: none;
+}
 
 .own-log-row { display: flex; gap: 8px; align-items: stretch; margin-bottom: 16px; }
 .own-log-card {
@@ -2672,7 +2691,11 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
    throughout — no margin collapsing to reason about.
    ============================================================ */
 .gd {
-  display: flex; flex-direction: column; gap: var(--space-5);
+  /* Was --space-5 (28px) — the log row, Played by/Playing/Backlog,
+     Where to play and Social each read as their own island with that
+     much air around them. Each still gets its own hairline from
+     .gd-rule; this is just how much daylight sits on top of that. */
+  display: flex; flex-direction: column; gap: var(--space-3);
   --gd-rule: rgba(255,255,255,0.12);
   --gd-rule-strong: rgba(255,255,255,0.28);
 }
@@ -2695,6 +2718,9 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
   color: var(--accent-bright); font-size: 10.5px; letter-spacing: 0.1em;
   text-transform: uppercase; font-weight: 600; background: none; border: none; padding: 0;
 }
+/* Below the list it belongs to, not up by the heading where it read as
+   a count of reviews rather than a way to see more of them. */
+.gd-reviews-more { display: block; margin-top: var(--space-2); text-align: center; }
 
 /* ---- 1. header ---- */
 /* A real screenshot as ambience behind the title, same idea as the
@@ -2819,16 +2845,20 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
    elsewhere in the app use `contain` to avoid trimming box art. */
 .gd-head__cover .poster-frame__img { object-fit: cover; }
 .gd-head__cover .poster-frame__blur { display: none; }
-/* The right-hand column is CENTRED, per the reference — the title
-   logo, the credit line under it and the Trailer pill all share one
-   centre line rather than ragging off the poster's edge. */
+/* Left-aligned, and nudged up by the exact same -22px the poster is —
+   the poster's own offset is paint-time only (relative positioning),
+   so without matching it here the text column starts flush with where
+   the poster WOULD sit at top:0, a visible 22px below its actual top
+   edge. Matching the offset is what puts the title's own top edge
+   level with the poster's real, visible top edge. */
 .gd-head__main {
   flex: 1; min-width: 0;
-  display: flex; flex-direction: column; align-items: center; gap: 9px;
-  text-align: center;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 8px;
+  text-align: left;
+  position: relative; top: -22px;
 }
 .gd-head__title {
-  font-family: var(--font-display); font-size: 26px; line-height: 1.05;
+  font-family: var(--font-display); font-size: 25px; line-height: 1.15;
   font-weight: 800; letter-spacing: -0.02em;
 }
 
@@ -2852,13 +2882,14 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 a.gd-credit__name { text-decoration: none; }
 
 /* A solid-white curved pill: the word "Trailer" plus the play mark
-   after it. */
+   after it. Smaller than before — it's a secondary action sitting
+   right under a real heading, not the loudest thing in the header. */
 .gd-trailer {
-  display: inline-flex; align-items: center; gap: 7px; flex-shrink: 0;
-  margin-top: 6px; padding: 8px 16px;
+  display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0;
+  margin-top: 4px; padding: 6px 13px;
   border: none; border-radius: var(--radius-pill);
   background: #fff; color: #0b0b0b;
-  font-size: 14px; font-weight: 700; letter-spacing: 0.01em;
+  font-size: 12.5px; font-weight: 700; letter-spacing: 0.01em;
   transition: transform var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
 }
 .gd-trailer:hover { background: #e8e8e8; }
@@ -2867,8 +2898,8 @@ a.gd-credit__name { text-decoration: none; }
    fail to load. */
 .gd-trailer__play {
   width: 0; height: 0; flex-shrink: 0;
-  border-left: 8px solid currentColor;
-  border-top: 5px solid transparent; border-bottom: 5px solid transparent;
+  border-left: 6px solid currentColor;
+  border-top: 4px solid transparent; border-bottom: 4px solid transparent;
 }
 
 /* The full-bleed hairline that separates every band on this page. The
@@ -2902,27 +2933,10 @@ a.gd-credit__name { text-decoration: none; }
 .gd-face { display: block; flex-shrink: 0; }
 .gd-face .avatar { display: block; }
 .gd-face--more {
-  width: 38px; height: 38px; border-radius: 50%;
+  width: 50px; height: 50px; border-radius: 50%;
   display: grid; place-items: center;
   background: var(--surface-high); color: var(--ink-dim);
-  font-size: 11px; font-weight: 700;
-}
-/* Kept in the DOM (a real, accessible heading) but visually hidden once
-   the transparent logo PNG below has loaded and taken its place — the
-   standard clip-to-1px pattern, not display:none, so screen readers and
-   the page's outline still see one real <h1>. */
-.gd-head__title--hidden {
-  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
-  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
-}
-/* The transparent-background title-logo PNG itself (see api.getGameLogo
-   / gameTitleHtml in game-view.js). Capped to roughly the text title's
-   own footprint so a wide logo can't blow out the header layout; drawn
-   left-aligned like the text it replaces. object-fit:contain preserves
-   the logo's own aspect ratio rather than stretching it. */
-.gd-head__logo {
-  display: block; max-width: 100%; max-height: 64px; width: auto;
-  object-fit: contain; object-position: left center;
+  font-size: 13px; font-weight: 700;
 }
 .gd-tags { display: flex; flex-wrap: wrap; gap: 6px; }
 .gd-tag {
@@ -2936,11 +2950,13 @@ a.gd-credit__name { text-decoration: none; }
    first screen. The button is only unhidden when the text genuinely
    overflows — see the measurement in game-view.js. */
 .gd-synopsis-wrap { position: relative; }
-/* White and heavy, per the reference — the synopsis is the first real
-   copy on the page and it's meant to be read, not skimmed past as
-   secondary metadata the way a dimmed grey paragraph reads. */
+/* Full ink colour, not dimmed — the synopsis is the first real copy on
+   the page and it's meant to be read, not skimmed past as secondary
+   metadata the way a dimmed grey paragraph reads. Regular weight
+   though: bold across four full lines of running text read as shouting
+   rather than emphasis. */
 .gd-synopsis {
-  font-size: 15.5px; line-height: 1.55; font-weight: 700;
+  font-size: 15.5px; line-height: 1.55; font-weight: 400;
   color: var(--ink); margin: 0; letter-spacing: -0.01em;
 }
 .gd-synopsis.is-clamped {
@@ -3003,19 +3019,19 @@ a.gd-credit__name { text-decoration: none; }
   border-radius: 4px 4px 0 0;
   -webkit-tap-highlight-color: transparent;
 }
-/* Every bar is drawn in the accent, as the reference has it — the
-   shape of the distribution is what carries the meaning here, so the
-   whole curve is one colour and the peak/selected bar is picked out by
-   brightness rather than by being the only coloured one. */
+/* Every bar is the same colour at rest — no permanently-brighter "peak"
+   bar and no lasting highlight for whichever one was last tapped. The
+   only bar that ever lights up brighter is the one a finger is
+   currently on (--held, set live by the hold-to-scrub handlers), so
+   the highlight always tracks touch and nothing else. */
 .gd-dist__bar {
   width: 100%; min-height: 4px; border-radius: 3px 3px 0 0;
   background: var(--accent-deep);
   transition: background var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
   pointer-events: none; /* clicks belong to the button, not the bar */
 }
-.gd-dist__col--peak .gd-dist__bar { background: var(--accent); }
 .gd-dist__col:hover .gd-dist__bar,
-.gd-dist__col--active .gd-dist__bar { background: var(--accent-bright); }
+.gd-dist__col--held .gd-dist__bar { background: var(--accent-bright); }
 .gd-dist__col:focus-visible {
   outline: 2px solid var(--accent-bright); outline-offset: 2px;
 }
@@ -3036,15 +3052,24 @@ a.gd-credit__name { text-decoration: none; }
    and (see the hold-to-scrub wiring in game-view.js) the same spot a
    held bar's own count and rating swap into. */
 .gd-avg {
-  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  display: flex; flex-direction: column; align-items: center; gap: 1px;
   flex-shrink: 0; padding-bottom: 2px;
+  /* Fixed, not just flex-shrink:0 — that alone stops THIS block from
+     shrinking, but its own width still grows/shrinks with its content
+     (a held bar's count is 1-3 digits, the average is always "N.N"),
+     and every change reflows the bars beside it (flex:1) narrower or
+     wider along with it. Wide enough for "100" over 5 fixed-count
+     stars at 11px, so nothing here ever changes size while scrubbing. */
+  width: 68px;
 }
 .gd-avg__num {
   font-size: 30px; font-weight: 700;
   line-height: 1; letter-spacing: -0.02em; color: var(--ink);
   font-variant-numeric: tabular-nums;
 }
-.gd-avg__stars .stars { --star-size: 11px; }
+/* gap:0 — starRow's default 2px between glyphs read as visible daylight
+   at this size; touching stars is what looks like one continuous row. */
+.gd-avg__stars .stars { --star-size: 11px; gap: 0; }
 
 /* Active rating filter above the review list. */
 .gd-filter {
@@ -3158,21 +3183,29 @@ a.gd-credit__name { text-decoration: none; }
 /* Clean icon + number + label, in a row — not the boxed stat cards this
    used to be. Wraps rather than scrolling: four of these are meant to
    be seen at once, not swiped through. */
-.gd-social { display: flex; flex-wrap: wrap; gap: var(--space-4) var(--space-5); }
-.gd-social__card { display: flex; align-items: center; gap: 9px; }
+/* Three square tiles — icon on top, count and label stacked below —
+   rather than an icon-and-number row. A row of small circular icons
+   with numbers beside them read as a stat you'd skim past; a tile is
+   the same shape as everything else worth tapping on this page. */
+.gd-social { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-2); }
+.gd-social__card {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: var(--space-3) var(--space-2);
+  background: var(--surface-raised); border-radius: var(--radius-m);
+  text-align: center;
+}
 .gd-social__icon {
-  width: 30px; height: 30px; flex-shrink: 0;
+  width: 34px; height: 34px; flex-shrink: 0;
   display: grid; place-items: center; border-radius: 50%;
   background: var(--surface-high); color: var(--ink-dim);
 }
-.gd-social__icon svg { width: 15px; height: 15px; }
+.gd-social__icon svg { width: 17px; height: 17px; }
 .gd-social__card b {
-  font-size: 15px; font-weight: 700; color: var(--ink);
+  font-size: 17px; font-weight: 700; color: var(--ink); line-height: 1.1;
   font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1;
-  margin-right: 4px;
 }
 .gd-social__card span {
-  font-size: 12.5px; color: var(--ink-dim); font-weight: 500;
+  font-size: 11.5px; color: var(--ink-dim); font-weight: 500;
 }
 
 /* ---- news: one banner, not a feed ----------------------------------
