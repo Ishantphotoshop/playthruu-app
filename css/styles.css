@@ -1,50 +1,56 @@
 /* ============================================================
-   PLAYTHRUU — Design system v5 ("ash & acid")
+   PLAYTHRUU — Design system v6 ("monochrome & signal")
    ------------------------------------------------------------
    Dark theme only — there is no light theme, by design. Same
-   structural reasoning as v4 (light large text, generous space,
-   tone over borders) and the same acid lime accent the marketing
-   site is built on, so app and playthruu.com still read as one
-   product. What changed is the base: v4 inherited the website's
-   --void (#0a0b0f), which measured cool — blue was its highest
-   channel — and made the whole app feel colder than intended.
+   structural reasoning as every version before it (light large
+   text, generous space, tone over borders). What changed is that
+   the base stopped having an opinion.
 
-   1. The base is a warm-neutral charcoal — not near-black-but-blue
-      like v4, not the brown ramp tried after it (too much chroma,
-      it tinted every cover), and not pure black (#000), which is
-      harsher and flattens cover art sitting on it.
+   Every earlier ramp leaned somewhere: v4's #0a0b0f was quietly
+   blue, the brown after it was loudly brown, v5's charcoal was
+   deliberately warm. All of them tinted the cover art, which is
+   most of what is on screen and none of which this app controls.
+   This ramp has zero chroma — R, G and B are equal at every step
+   — so it cannot tint anything at all.
+
+   1. The base is neutral grey, not pure black (#000), which is
+      harsher and flattens artwork sitting on it.
    2. Large text is LIGHT weight, not heavy. Big + bold shouts;
       big + light feels premium and quiet.
    3. Space is the main design element. Sections are given far
       more room than feels necessary at first glance.
    4. Almost no borders. Surfaces separate by tone, not by lines.
 
-   Accent is the website's acid lime, used sparingly — on a calm
-   field, one saturated colour goes a very long way. Violet stays
-   as the secondary accent, aligned to the website's exact hue.
+   All of the personality lives in one hot orange, which is the
+   trade this palette makes: grey alone reads clinical, so the
+   single accent has to carry the warmth for the whole interface.
+   Ratings are white rather than a second warm tone, so nothing
+   competes with it. Note that --danger moved to a rose — against
+   an orange primary, a plain red is close enough in hue to be
+   mistaken for it, and a destructive action that looks like the
+   primary action is a real failure, not a cosmetic one.
    ============================================================ */
 :root {
-  /* --- foundation: warm-neutral charcoal, six steps of elevation ---
-     The previous ramp was derived from the website's --void (#0a0b0f)
-     and was quietly COOL: blue was its highest channel (R10 G11 B15),
-     and --surface-raised pushed blue nine points above red. That's what
-     made the app feel cold enough to go looking for a warmer palette.
-     The brown swatch tried next overcorrected — it put heavy chroma
-     into the whole ramp, so every cover sat on a visibly tinted field.
-     This is the middle: red leads blue by two points instead of
-     trailing it by five. Warm to the eye, no measurable tint on the
-     artwork, which is the only thing this ramp really has to protect. */
-  --bg: #0f0e0d;
-  --bg-deep: #090807;
-  --bg-lift: #141312;
-  --surface: #1a1816;
-  --surface-raised: #211f1c;
-  --surface-high: #2d2a26;
+  /* --- foundation: zero-chroma grey, six steps of elevation ---
+     R, G and B are equal at every step. This is deliberate and it is
+     the whole idea: a base with no chroma at all cannot tint anything
+     sitting on it, and this app's screens are mostly cover art it does
+     not control. Previous ramps all leaned somewhere — the old #0a0b0f
+     was quietly blue, the brown after it was loudly brown — and every
+     poster inherited that lean. Nothing here leans. The cost is that
+     grey alone reads clinical, which is exactly the job the single
+     accent below is carrying. */
+  --bg: #0b0b0b;
+  --bg-deep: #050505;
+  --bg-lift: #111111;
+  --surface: #161616;
+  --surface-raised: #1d1d1d;
+  --surface-high: #292929;
 
   /* --- glass --- */
   --glass-fill: rgba(255, 255, 255, 0.03);
   --glass-fill-strong: rgba(255, 255, 255, 0.08);
-  --glass-tint: rgba(15, 14, 13, 0.14);
+  --glass-tint: rgba(11, 11, 11, 0.14);
   --glass-filter: blur(22px) saturate(240%) brightness(1.24) contrast(1.05);
   --glass-filter-strong: blur(34px) saturate(230%) brightness(1.16) contrast(1.04);
   --glass-light: rgba(255, 255, 255, 0.045);
@@ -54,41 +60,47 @@
   --blur: 30px;
   --blur-strong: 42px;
   --glass: rgba(255, 255, 255, 0.05);
-  --glass-strong: rgba(15, 14, 13, 0.74);
+  --glass-strong: rgba(11, 11, 11, 0.74);
 
-  /* --- text: warm off-white, stepped down through the base's own
-     warmth rather than toward a green-grey. The old --ink-dim
-     (#8a9086) was where a lot of the app's coldness actually lived —
-     it's the colour of every timestamp and metadata row on screen. --- */
-  --ink: #f2f0ec;
-  --ink-dim: #9a958c;
-  --ink-faint: #6a655d;
+  /* --- text: neutral, same as the ground it sits on. Any tint here
+     would defeat the point of a zero-chroma base, since ink covers
+     more of the screen than any surface does. --- */
+  --ink: #f5f5f5;
+  --ink-dim: #969696;
+  --ink-faint: #646464;
 
-  /* --- accent: the website's acid lime --- */
-  --accent: #d9ff3f;
-  --accent-bright: #e4ff70;
-  --accent-deep: #a8cc20;
-  --accent-dim: rgba(217, 255, 63, 0.15);
+  /* --- accent: one hot signal colour, and only one ---
+     On a field with literally zero chroma, a single saturated colour
+     carries the entire personality, so it does not need help and must
+     not get competition. Everything that is not this orange is grey. */
+  --accent: #ff7a29;
+  --accent-bright: #ff9a5c;
+  --accent-deep: #d15c14;
+  --accent-dim: rgba(255, 122, 41, 0.15);
   --gold: #ffc247;
-  /* Warm orange — the Messenger's status accent (Playing / send), sitting
-     between the app's gold and coral so it reads as part of the palette.
-     Online presence stays green (--success); orange is for status/actions. */
+  /* Warm orange — the Messenger's status accent (Playing / send).
+     Online presence stays green (--success); orange is for status. */
   --orange: #ff8c3a;
-  /* The rating-star colour specifically — a bolder olive-yellow than
-     --gold's warmer orange, matching a reference the user provided.
-     Kept separate from --gold since that token is also used for
-     unrelated gold accents (GOTY badges, tour mockups) that were never
-     meant to change here. */
-  --star-fill: #c9c92c;
+  /* White, not gold. With the accent doing all the colour work, a
+     second warm tone on ratings would read as a competing signal —
+     and against a neutral grey a pure-white star is the sharper,
+     more editorial mark anyway. Empty stars fall back to --ink-faint,
+     which is what keeps filled-vs-empty legible. */
+  --star-fill: #ffffff;
   --coral: #ff6b6b;
   --teal: #4dabff;
   --violet: #a78bfa;
 
   /* --- semantic --- */
-  --line: rgba(242, 240, 236, 0.08);
-  --line-strong: rgba(242, 240, 236, 0.16);
-  --danger: #ff6b6b;
-  --success: #4ade9b;
+  --line: rgba(245, 245, 245, 0.08);
+  --line-strong: rgba(245, 245, 245, 0.16);
+  /* Rose, not the old #ff6b6b. Against an orange primary a plain red
+     sits ~20 degrees away in hue and reads as the same colour at a
+     glance, which is how "delete account" ends up looking like "log
+     it". This is ~33 degrees off the accent — far enough to separate
+     by hue rather than relying on brightness alone. */
+  --danger: #f43f5e;
+  --success: #3ddc97;
   --warning: #ffc247;
 
   /* --- type ---
@@ -145,7 +157,7 @@
   --shadow-accent: 0 6px 22px rgba(0,0,0,0.34);
   /* The console focus ring: a soft accent bloom, the cue that tells
      you where you are on a screen you're navigating, not clicking. */
-  --glow-focus: 0 0 0 2px rgba(255,255,255,0.85), 0 0 26px rgba(217,255,63,0.5);
+  --glow-focus: 0 0 0 2px rgba(255,255,255,0.85), 0 0 26px rgba(255,122,41,0.5);
 
   --ease: cubic-bezier(0.25, 0.8, 0.25, 1);
   --dur-fast: 0.16s;
@@ -163,10 +175,6 @@
      (outer radius 11, centred in the 24x24 box) — only the ratio
      changed, from 0.52 down to 0.38. */
   --star-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 1L14.46 8.62L22.46 8.6L15.98 13.29L18.47 20.9L12 16.18L5.53 20.9L8.02 13.29L1.54 8.6L9.54 8.62Z'/%3E%3C/svg%3E");
-  /* Star fill — the muted chartreuse-gold from the reference image, not
-     the amber used elsewhere, so ratings match what Ishan showed. */
-  --star-fill: #c6c42e;
-
   /* 3:4 (e.g. 264x352). Covers arrive from IGDB at assorted shapes, so
      the frame is a fixed 3:4 box and the artwork is fitted INSIDE it
      rather than filled to it — see .poster-frame__img. */
@@ -653,7 +661,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 /* Active tab is marked by the icon/label lighting up to full white (from
    the 60%-opacity resting state) — no dot beneath it. */
 .tabbar__item--active { color: #fff; }
-.tabbar__item--active svg { filter: drop-shadow(0 1px 1.5px rgba(0,0,0,0.38)) drop-shadow(0 0 6px rgba(217,255,63,0.35)); }
+.tabbar__item--active svg { filter: drop-shadow(0 1px 1.5px rgba(0,0,0,0.38)) drop-shadow(0 0 6px rgba(255,122,41,0.35)); }
 /* Sits inline with the other items — same min-width/height as its
    siblings (see .tabbar__item above), so it lands dead centre every
    time. No badge/disc — a plain white icon like any other tabbar
@@ -1010,7 +1018,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   box-shadow: var(--shadow-card); transition: box-shadow var(--dur) var(--ease);
 }
 .discovery-tile:hover { transform: translateY(-4px) scale(1.03); }
-.discovery-tile:hover .discovery-tile__cover { box-shadow: 0 14px 40px rgba(0,0,0,0.5), 0 0 22px rgba(217, 255, 63,0.22); }
+.discovery-tile:hover .discovery-tile__cover { box-shadow: 0 14px 40px rgba(0,0,0,0.5), 0 0 22px rgba(255, 122, 41,0.22); }
 .discovery-tile:focus-visible { outline: none; transform: translateY(-4px) scale(1.03); }
 .discovery-tile:focus-visible .discovery-tile__cover { box-shadow: var(--glow-focus); }
 .discovery-tile:focus-visible .discovery-tile__cover { box-shadow: var(--glow-focus); }
@@ -2245,7 +2253,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 /* ------------------------------------------------------------ auth screen */
 .auth-screen {
   position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column;
-  justify-content: flex-end; background: #0e0d0c; overflow: hidden;
+  justify-content: flex-end; background: #0a0a0a; overflow: hidden;
   transition: filter 320ms ease;
 }
 /* Whole screen blurs while the "Continue with" popup is open — art,
@@ -2275,7 +2283,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
    match the screen, in exchange for zero letterboxing/empty space. */
 .auth-screen__art {
   position: absolute; inset: 0;
-  background-color: #0e0d0c; background-size: cover; background-position: center 22%; background-repeat: no-repeat;
+  background-color: #0a0a0a; background-size: cover; background-position: center 22%; background-repeat: no-repeat;
   opacity: 0; transition: opacity 1.1s ease;
 }
 .auth-screen__art.is-active { opacity: 1; }
@@ -2340,7 +2348,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
   text-shadow: 0 2px 8px rgba(0,0,0,0.85);
 }
 .auth-form .field input {
-  width: 100%; background: #fff; color: #1a1613; border: none; border-radius: 12px;
+  width: 100%; background: #fff; color: #161616; border: none; border-radius: 12px;
   padding: 15px 16px; font-family: var(--font-body); font-size: 15px;
   box-shadow: 0 0 0 0 transparent; transition: box-shadow 0.15s ease;
 }
@@ -2349,16 +2357,16 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 .auth-form .field--password input { padding-right: 44px; }
 .auth-form .field__icon {
   position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
-  width: 17px; height: 17px; color: #97928c; pointer-events: none;
+  width: 17px; height: 17px; color: #929292; pointer-events: none;
 }
 .auth-form .field__icon svg { width: 100%; height: 100%; display: block; }
 .auth-form .field__toggle {
   position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
   width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
-  background: none; border: none; padding: 0; color: #97928c; cursor: pointer; border-radius: 8px;
+  background: none; border: none; padding: 0; color: #929292; cursor: pointer; border-radius: 8px;
 }
 .auth-form .field__toggle svg { width: 18px; height: 18px; display: block; }
-.auth-form .field__toggle:active { color: #1a1613; background: rgba(0,0,0,0.06); }
+.auth-form .field__toggle:active { color: #161616; background: rgba(0,0,0,0.06); }
 /* Content fades/rises in on mount rather than just popping into place.
    Respects reduced-motion — no animation at all in that case, content
    just appears instantly in its final position. */
@@ -2373,7 +2381,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
   .auth-screen__art { transition: none; }
 }
 .auth-form .field input:focus { outline: none; box-shadow: 0 0 0 3px rgba(242,183,5,0.55); }
-.auth-form .field input::placeholder { color: #a5a09a; }
+.auth-form .field input::placeholder { color: #a0a0a0; }
 .auth-form .field { margin-bottom: 14px; display: block; }
 .auth-screen .btn--accent {
   background: var(--gold); color: #14100a; border-radius: 999px; border: none;
@@ -2456,7 +2464,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 .quick-act[data-on="1"] .quick-act__icon--pad { color: var(--success); filter: drop-shadow(0 0 10px rgba(74,222,155,0.5)); }
 .quick-act[data-on="1"] .quick-act__icon--heart { color: var(--coral); filter: drop-shadow(0 0 10px rgba(255,107,107,0.5)); }
 .quick-act[data-on="1"] .quick-act__icon--heart svg path { fill: var(--coral); }
-.quick-act[data-on="1"] .quick-act__icon--save { color: var(--accent-bright); filter: drop-shadow(0 0 10px rgba(217, 255, 63,0.5)); }
+.quick-act[data-on="1"] .quick-act__icon--save { color: var(--accent-bright); filter: drop-shadow(0 0 10px rgba(255, 122, 41,0.5)); }
 .quick-act[data-on="1"] .quick-act__icon--save svg path { fill: var(--accent-bright); }
 
 /* Controller "rumble" on activation — a short physical wobble that
@@ -2556,7 +2564,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
    surface here. The literal dark-theme accent value stays vivid as a
    small accent chip in both themes, the way a call-to-action often
    does regardless of surrounding theme. */
-.avatar-crop__apply { background: #d9ff3f; color: #0f0e0d; border-color: transparent; }
+.avatar-crop__apply { background: var(--accent); color: #0b0b0b; border-color: transparent; }
 .avatar-crop__cancel svg, .avatar-crop__apply svg { width: 16px; height: 16px; }
 .avatar-crop__stage-wrap {
   flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center;
@@ -2619,12 +2627,12 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 .avatar-crop__zoom::-webkit-slider-thumb {
   -webkit-appearance: none; margin-top: -8px;
   width: 20px; height: 20px; border-radius: 50%;
-  background: #d9ff3f; border: 2px solid var(--bg);
+  background: var(--accent); border: 2px solid var(--bg);
 }
 .avatar-crop__zoom::-moz-range-track { height: 4px; border-radius: 2px; background: var(--line-strong); }
 .avatar-crop__zoom::-moz-range-thumb {
   width: 20px; height: 20px; border-radius: 50%;
-  background: #d9ff3f; border: 2px solid var(--bg);
+  background: var(--accent); border: 2px solid var(--bg);
 }
 .avatar-crop__hint {
   text-align: center; font-size: var(--text-meta); color: var(--ink-dim);
@@ -2827,7 +2835,7 @@ a.gd-credit__name { text-decoration: none; }
   display: inline-flex; align-items: center; gap: 7px; flex-shrink: 0;
   margin-top: 6px; padding: 8px 16px;
   border: none; border-radius: var(--radius-pill);
-  background: #fff; color: #0f0e0d;
+  background: #fff; color: #0b0b0b;
   font-size: 14px; font-weight: 700; letter-spacing: 0.01em;
   transition: transform var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
 }
@@ -3032,19 +3040,19 @@ a.gd-credit__name { text-decoration: none; }
   display: flex; align-items: center; gap: var(--space-2);
   padding: 5px var(--space-3) 5px 6px;
   background: #fff; border-radius: var(--radius-pill);
-  color: #0f0e0d;
+  color: #0b0b0b;
 }
 /* The person-shaped disc that opens the row, per the reference — it's
    what marks the whole bar as "you", not the game. */
 .gd-bar__mark {
   width: 28px; height: 28px; flex-shrink: 0;
   display: grid; place-items: center; border-radius: 50%;
-  background: #0f0e0d; color: #fff;
+  background: #0b0b0b; color: #fff;
 }
 .gd-bar__mark svg { width: 16px; height: 16px; }
 .gd-bar__act {
   flex: 1; min-width: 0; padding: 7px 0;
-  background: none; border: none; color: #0f0e0d;
+  background: none; border: none; color: #0b0b0b;
   font-size: 15.5px; font-weight: 700;
   letter-spacing: 0; white-space: nowrap;
   -webkit-tap-highlight-color: transparent;
@@ -3052,7 +3060,7 @@ a.gd-credit__name { text-decoration: none; }
 }
 .gd-bar__act:hover { opacity: 0.6; }
 .gd-bar__act:active { opacity: 0.45; }
-.gd-bar__act:focus-visible { outline: 2px solid #0f0e0d; outline-offset: 2px; border-radius: 4px; }
+.gd-bar__act:focus-visible { outline: 2px solid #0b0b0b; outline-offset: 2px; border-radius: 4px; }
 /* A real diagonal divider, not a "/" glyph — skewX shears the element
    sideways while leaving its top and bottom edges exactly where they
    were, which is what lets a 2px vertical bar become a slanted line
@@ -3071,7 +3079,7 @@ a.gd-credit__name { text-decoration: none; }
 .gd-bar__more {
   flex-shrink: 0; width: 28px; height: 28px; padding: 0;
   display: grid; place-items: center;
-  background: none; border: none; color: #0f0e0d;
+  background: none; border: none; color: #0b0b0b;
   transition: opacity var(--dur-fast) var(--ease);
 }
 .gd-bar__more:hover { opacity: 0.6; }
@@ -3451,7 +3459,7 @@ a.gd-credit__name { text-decoration: none; }
   position: absolute; left: 50%; bottom: 0; width: 2px; height: 56px;
   margin-left: -1px; background: var(--accent-bright);
   border-radius: 1px; pointer-events: none;
-  box-shadow: 0 0 8px rgba(217, 255, 63,0.6);
+  box-shadow: 0 0 8px rgba(255, 122, 41,0.6);
 }
 
 /* ---- moderation: report sheet, block, delete account ---------------- */
@@ -3831,7 +3839,7 @@ a.gd-credit__name { text-decoration: none; }
   padding: 6px 0 calc(6px + var(--safe-bottom));
   /* Flat solid surface, not glass — matches the real in-app .tabbar
      (see above) and every other panel in the app now. */
-  background: #131211;
+  background: #121212;
   box-shadow: 0 10px 34px -8px rgba(0,0,0,0.55);
 }
 .landing-nav .tabbar__item {

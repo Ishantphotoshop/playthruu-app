@@ -317,7 +317,7 @@ a.btn { text-decoration: none; }
   color: var(--ink-dim); background: transparent; border: none;
   transition: background 0.18s var(--ease), color 0.18s var(--ease);
 }
-.sc__range[aria-selected="true"] { background: var(--accent); color: #0f0e0d; }
+.sc__range[aria-selected="true"] { background: var(--accent); color: #0b0b0b; }
 .sc__empty { font-size: var(--text-meta); color: var(--ink-faint); text-align: center; margin: var(--space-4) 0 0; }
 
 .adm-panel--chart { padding-bottom: var(--space-3); }
@@ -538,7 +538,7 @@ a.btn { text-decoration: none; }
 }
 .adm-check::after {
   content: ""; width: 10px; height: 6px; margin-top: -2px;
-  border-left: 2px solid #0f0e0d; border-bottom: 2px solid #0f0e0d;
+  border-left: 2px solid #0b0b0b; border-bottom: 2px solid #0b0b0b;
   transform: rotate(-45deg) scale(0); transform-origin: center;
   transition: transform 0.15s var(--ease);
 }
