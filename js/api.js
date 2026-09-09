@@ -2976,13 +2976,16 @@ export async function getImportedGames(userId, { limit = 200 } = {}) {
   return data;
 }
 
-async function psnProxy(body, timeout = 12000) {
-  // 12s, not the file's usual 3.5s default — a cold PSN proxy call is a
-  // real multi-hop OAuth exchange (NPSSO -> code -> access token, THEN
-  // the actual search/library request) on top of a cold Supabase Edge
-  // Function start, not one simple query the way IGDB calls here are.
-  // The completions action needs far longer still: it reads the trophy
-  // list of every played title, two requests apiece.
+async function psnProxy(body, timeout = 40000) {
+  // Nothing like the file's usual 3.5s default — a cold PSN proxy call
+  // is a real multi-hop OAuth exchange (NPSSO -> code -> access token,
+  // THEN the actual search/library request) on top of a cold Supabase
+  // Edge Function start, not one simple query the way IGDB calls here
+  // are. This was 12s and a cold start blew straight through it, which
+  // failed the connect AFTER the account row had been written — leaving
+  // a linked account with an empty library. The completions action needs
+  // longer still: it reads the trophy list of every played title, two
+  // requests apiece.
   const res = await fetchWithTimeout(PSN_FUNCTION_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${SUPABASE_ANON_KEY}` },
@@ -3002,15 +3005,36 @@ async function psnProxy(body, timeout = 12000) {
 // not the raw strings. A plausible-but-not-confident IGDB result is
 // worse than no match: it would silently mislabel someone's playtime
 // as the wrong game.
+// PSN names carry platform and edition baggage the catalogue doesn't:
+// "Grand Theft Auto V (PlayStation®5)", "My Friend Peppa Pig: Complete
+// Edition", "The Stanley Parable: Ultra Deluxe". Each of those failed to
+// match anything and so never made it into a diary, despite being
+// finished games. Dropping the suffix is only ever a SECOND attempt —
+// the full name is always tried first, so a game genuinely called
+// "…Remastered" still wins its own exact match.
+function simplifyImportedTitle(name) {
+  return String(name || '')
+    .replace(/\([^)]*\)/g, ' ')
+    .replace(/[:\-–—]\s*(?:the\s+)?(?:\S+\s+){0,2}edition\b/gi, ' ')
+    .replace(/[:\-–—]?\s*\b(remastered|remake|reforged|redux|director'?s cut|ultra deluxe|game of the year|goty)\b/gi, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .replace(/[\s:\-–—]+$/, '')
+    .trim();
+}
+
 async function matchImportedTitle(rawTitle, addedBy) {
-  const { data: local } = await supabase.from('games').select('*').ilike('title', rawTitle).limit(1);
-  if (local?.length) return local[0];
-  try {
-    const results = await searchIgdb(rawTitle, 5);
-    const norm = normalizeTitle(rawTitle);
-    const hit = results.find((r) => normalizeTitle(r.title) === norm);
-    if (hit) return await addGame(hit, addedBy);
-  } catch { /* IGDB down or no match — stays unmatched, not an error */ }
+  const attempts = [rawTitle, simplifyImportedTitle(rawTitle)]
+    .filter((t, i, all) => t && all.indexOf(t) === i);
+  for (const title of attempts) {
+    const { data: local } = await supabase.from('games').select('*').ilike('title', title).limit(1);
+    if (local?.length) return local[0];
+    try {
+      const results = await searchIgdb(title, 5);
+      const norm = normalizeTitle(title);
+      const hit = results.find((r) => normalizeTitle(r.title) === norm);
+      if (hit) return await addGame(hit, addedBy);
+    } catch { /* IGDB down or no match — try the next shape, then give up */ }
+  }
   return null;
 }
 
