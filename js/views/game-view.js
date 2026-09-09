@@ -119,10 +119,11 @@ function logRowLabel(ownLog) {
   if (!ownLog) return 'Rate, log, review + more';
   if (ownLog.status === 'backlog') return 'In your backlog';
   if (ownLog.status === 'playing') return `You're playing this`;
-  if (ownLog.rating) {
-    return `You logged this ${starRow(ownLog.rating, { size: 13 })}`;
-  }
-  return 'You logged this';
+  // The verb tracks the status, the way the other two do — "logged" is
+  // what the app calls the act, not what you did to the game.
+  const stars = ownLog.rating ? ` ${starRow(ownLog.rating, { size: 13 })}` : '';
+  if (ownLog.status === 'played') return `You played this${stars}`;
+  return `You logged this${stars}`;
 }
 
 function crowdSectionHtml(label, entries) {
