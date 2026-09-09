@@ -1564,9 +1564,19 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
   scrollbar-width: none; -ms-overflow-style: none;
 }
 .recent-played-row::-webkit-scrollbar { display: none; }
-.recent-played-item { display: block; flex-shrink: 0; width: 90px; transition: transform 0.12s ease; }
+.recent-played-item { display: block; position: relative; flex-shrink: 0; width: 90px; transition: transform 0.12s ease; }
 .recent-played-item:active { transform: scale(0.95); }
 .recent-played-item__cover { width: 100%; aspect-ratio: var(--ratio-card); object-fit: cover; border-radius: 7px; background: var(--surface); box-shadow: var(--shadow-card); }
+/* PlayStation library only — real playtime pulled straight off the
+   console, so it earns a spot ON the poster rather than beside it the
+   way this row's other items go caption-free. */
+.recent-played-item__hours {
+  position: absolute; right: 5px; bottom: 5px;
+  background: rgba(11,11,11,0.82); backdrop-filter: blur(4px);
+  color: var(--ink); font-size: 10px; font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  padding: 2px 6px; border-radius: var(--radius-pill);
+}
 /* Currently-playing posters share the recently-played strip's size and
    sit in the same horizontal row, so the two read as one aligned band. */
 .recent-played-row .playing-slot { flex-shrink: 0; width: 90px; }

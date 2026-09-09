@@ -4,6 +4,7 @@ import { topBar, navBar, avatarImg, combinedGameResults, wireCombinedGameResults
 import { esc, toast, qs, qsa, debounce, placeholderCover, igdbSized, enableSwipeToDismiss } from '../utils.js';
 import { changePassword, changeEmail, signOut } from '../auth.js';
 import { openAvatarCropModal } from './avatar-crop.js';
+import { invalidateProfileBundleCache } from './profile-view.js';
 
 const PRONOUN_OPTIONS = ['he/his', 'she/her', 'they/their', 'custom'];
 
@@ -194,6 +195,7 @@ export function renderSettingsView(root) {
         btn.disabled = true; input.disabled = true; btn.textContent = 'Connecting…';
         try {
           const result = await api.connectPsnAccount(state.user.id, onlineId);
+          invalidateProfileBundleCache(state.user.id);
           toast(`Connected — ${result.matched} of ${result.total} games matched.`, 'success');
           loadConnectedAccounts();
         } catch (err) {
@@ -208,6 +210,7 @@ export function renderSettingsView(root) {
       resyncBtn.disabled = true; resyncBtn.textContent = 'Syncing…';
       try {
         const result = await api.connectPsnAccount(state.user.id, psn.handle);
+        invalidateProfileBundleCache(state.user.id);
         toast(`Synced — ${result.matched} of ${result.total} games matched.`, 'success');
         loadConnectedAccounts();
       } catch (err) {
@@ -225,6 +228,7 @@ export function renderSettingsView(root) {
       disconnectBtn.disabled = true;
       try {
         await api.disconnectPsnAccount(state.user.id);
+        invalidateProfileBundleCache(state.user.id);
         toast('PlayStation disconnected.', 'success');
         loadConnectedAccounts();
       } catch (err) {

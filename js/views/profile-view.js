@@ -22,6 +22,15 @@ import { getCached, setCached } from '../cache.js';
 const PROFILE_BUNDLE_TTL = 60_000;
 let profileBundleCache = null; // { id, at, promise }
 
+// Called after anything that changes a profile's own bundle out from under
+// it (connecting/disconnecting PSN, etc.) so the next visit fetches live
+// data instead of the pre-change snapshot warmOwnProfile() cached at sign-in.
+export function invalidateProfileBundleCache(profileId) {
+  if (profileBundleCache && profileBundleCache.id === profileId) {
+    profileBundleCache = null;
+  }
+}
+
 function profileBundle(profile) {
   const fresh = profileBundleCache
     && profileBundleCache.id === profile.id
@@ -39,7 +48,22 @@ function profileBundle(profile) {
     api.getRatingBreakdown(profile.id),
     api.getListsForUser(profile.id),
     state.user ? api.isFollowing(state.user.id, profile.id) : Promise.resolve(false),
+    // Empty array for the (still overwhelmingly common) case of nobody
+    // having connected a PlayStation account — one indexed query against
+    // a table that's usually empty for this user, not worth splitting
+    // into its own after-first-paint fetch the way cast/director is.
+    api.getImportedGames(profile.id),
   ]);
+}
+
+// imported_games stores minutes (see the migration's own reasoning —
+// rounding to hours at import time would throw away detail). Rounded to
+// one decimal past 1h so a badge reads "84.5h" rather than a false-
+// precise "84.48333...h"; under an hour reads in minutes outright,
+// since "0.1h" says less than "6m" does.
+function formatImportedHours(minutes) {
+  if (minutes < 60) return `${minutes}m`;
+  return `${(minutes / 60).toFixed(1).replace(/\.0$/, '')}h`;
 }
 
 // Called from app.js once a session is up, so tapping through to your own
@@ -84,7 +108,7 @@ export async function renderProfileView(root, { username }) {
 
   try {
     const profile = isOwn ? state.profile : await api.getProfileByUsername(username);
-    const [stats, counts, logs, favorites, breakdown, lists, following] = await profileBundle(profile);
+    const [stats, counts, logs, favorites, breakdown, lists, following, importedGames] = await profileBundle(profile);
 
     const diary = logs.filter((l) => l.status === 'played' || l.status === 'dropped');
     const backlog = logs.filter((l) => l.status === 'backlog');
@@ -164,6 +188,20 @@ export async function renderProfileView(root, { username }) {
               ${posterFrame(l.games.cover_url, l.games.title, 'recent-played-item__cover')}
             </a>`).join('')}
         </div>` : ''}
+
+      ${importedGames.length ? `
+        <h2 class="section-heading">PlayStation library</h2>
+        <div class="recent-played-row">
+          ${importedGames.filter((g) => g.games).map((g) => `
+            <a href="#/game/${g.games.id}" class="recent-played-item">
+              ${posterFrame(g.games.cover_url, g.name, 'recent-played-item__cover')}
+              <span class="recent-played-item__hours">${formatImportedHours(g.playtime_minutes)}</span>
+            </a>`).join('')}
+        </div>
+        ${importedGames.some((g) => !g.games) ? `
+          <p class="muted playing-empty-hint">
+            +${importedGames.filter((g) => !g.games).length} more not linked to a game page yet
+          </p>` : ''}` : ''}
 
       <div class="feed-section-head">
         <h2 class="section-heading">Currently playing</h2>
