@@ -1346,7 +1346,17 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    (the real image, fully visible via object-fit:contain). Used wherever
    a landscape source image needs to sit inside a portrait poster shape
    without an ugly crop or empty letterbox bars. */
-.poster-frame { position: relative; overflow: hidden; display: block; background: var(--surface-raised); }
+/* A hairline white edge on every poster. Box art is frequently dark
+   right up to its own edge, which left covers bleeding into the page
+   with no boundary; this just draws the poster's shape. Kept at 10%
+   so it reads as an edge rather than as a frame, and it costs no
+   layout — box-sizing is border-box globally, so the border sits
+   inside the width the poster already had. */
+.poster-frame {
+  position: relative; overflow: hidden; display: block;
+  background: var(--surface-raised);
+  border: 1px solid rgba(255,255,255,0.10);
+}
 .poster-frame__blur {
   position: absolute; inset: -10%; width: 120%; height: 120%;
   object-fit: cover; filter: blur(20px) brightness(0.8) saturate(1.4);
