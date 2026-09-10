@@ -4483,6 +4483,11 @@ a.gd-credit__name { text-decoration: none; }
 }
 .psn-sheet__group span { font-variant-numeric: tabular-nums; }
 .psn-sheet__note { margin: 0 0 10px; font-size: 0.78rem; color: var(--text-dim); }
+.psn-sheet__disclaimer {
+  margin: 18px 0 4px; font-size: 0.74rem; line-height: 1.45;
+  color: var(--text-dim); opacity: 0.8; text-align: center;
+}
+.psn-library-note { margin: -4px 0 10px; font-size: 0.76rem; line-height: 1.45; }
 .psn-sheet__list { display: flex; flex-direction: column; gap: 2px; }
 .psn-pick {
   display: flex; align-items: center; gap: 12px;

@@ -63,6 +63,7 @@ export function openPsnImportSheet({ candidates, onDone = () => {} }) {
           <p class="psn-sheet__group">Played, not finished <span>${rest.length}</span></p>
           <p class="psn-sheet__note">No trophy says these were finished, so they'd be added as Playing or Backlog — never as finished.</p>
           <div class="psn-sheet__list" data-group="rest">${rest.map(row).join('')}</div>` : ''}
+        <p class="psn-sheet__disclaimer">This list can be imperfect — PlayStation doesn't report everything, so a game may be missing, or matched to the wrong version.</p>
       </div>
       <footer class="psn-sheet__foot">
         <button type="button" class="btn btn--ghost" data-close>Skip</button>

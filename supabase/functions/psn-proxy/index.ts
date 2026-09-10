@@ -116,6 +116,33 @@ type PlayedGame = {
 // would ever show up.
 const PAGE_SIZE = 200;
 
+// A PlayStation library is full of things that aren't games. PSN labels
+// them itself: every app category ends in "_app" —
+// ps5_native_media_app (Netflix, YouTube, Prime Video, Apple Music),
+// ps5_web_based_media_app (Spotify, Twitch, Plex),
+// ps4_videoservice_web_app. The categories that are NOT excluded matter
+// just as much: "unknown" and "not_found" are real games PSN has simply
+// lost the metadata for (Black Ops Cold War, NBA 2K17, Tales from the
+// Borderlands), and dropping those would lose actual games.
+function isMediaApp(category: string | undefined) {
+  return /_app$/.test(category || "");
+}
+
+// Sony's own utilities are miscategorised as games — Share Factory
+// Studio reports as ps5_native_game — so the category rule can't catch
+// them and they have to be named. Deliberately first-party system tools
+// only: anything ambiguous stays in, since wrongly dropping a real game
+// is worse than leaving one utility on the shelf.
+const SYSTEM_APPS = [
+  "share factory studio", "sharefactory", "share factory",
+  "ps remote play", "remote play", "media player", "playstation store",
+  "ps app", "web browser", "playstation video", "video editor",
+];
+function isSystemApp(name: string | undefined) {
+  const n = String(name || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  return SYSTEM_APPS.includes(n);
+}
+
 async function fetchLibrary(accountId: string) {
   const auth = await getAuth();
   const titles: PlayedGame[] = [];
@@ -131,7 +158,9 @@ async function fetchLibrary(accountId: string) {
     if (page.length === 0 || offset >= total) break;
   }
   return {
-    titles: titles.map((g) => ({
+    titles: titles
+      .filter((g) => !isMediaApp(g.category) && !isSystemApp(g.name || g.titleName))
+      .map((g) => ({
       platformGameId: g.titleId || g.npTitleId || g.concept?.id || g.name || g.titleName || crypto.randomUUID(),
       name: g.name || g.titleName || "Untitled",
       playtimeMinutes: durationToMinutes(g.playDuration ?? g.playTime),
@@ -259,7 +288,7 @@ type TrophyTitle = {
 async function fetchCompletions(accountId: string) {
   const auth = await getAuth();
 
-  const titles: TrophyTitle[] = [];
+  let titles: TrophyTitle[] = [];
   let offset = 0;
   for (;;) {
     const res = await getUserTitles(auth, accountId, { limit: 100, offset });
@@ -270,6 +299,10 @@ async function fetchCompletions(accountId: string) {
   }
 
   const results: Record<string, unknown>[] = [];
+
+  // Same app rule as the played-games list, so an app with a trophy set
+  // can't sneak back in through this door.
+  titles = titles.filter((t) => !isSystemApp(t.trophyTitleName));
 
   // A title with no trophies at all was never really played — skip it and
   // spend the requests on the rest.
