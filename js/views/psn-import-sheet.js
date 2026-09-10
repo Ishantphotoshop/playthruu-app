@@ -48,16 +48,24 @@ export function openPsnImportSheet({ candidates, onDone = () => {} }) {
       <header class="psn-sheet__head">
         <button class="modal__close" data-close aria-label="Close">&times;</button>
         <h2 class="psn-sheet__title">Which games have you finished?</h2>
-        <p class="psn-sheet__hint">Everything you tick is added to your diary as played, so tick only the games you actually finished.${finished.length ? ' The ones your trophies already prove are ticked for you.' : ''}</p>
+        <p class="psn-sheet__hint">Everything you tick is added as played, so tick only what you actually finished.${finished.length ? ' The ones your trophies prove are ticked already.' : ''}</p>
       </header>
+      <div class="segmented psn-sheet__tabs" id="psn-tabs">
+        <button type="button" class="segmented__item segmented__item--active" data-pane="finished">Finished ${finished.length}</button>
+        <button type="button" class="segmented__item" data-pane="rest">Not finished ${rest.length}</button>
+      </div>
       <div class="modal__body psn-sheet__body">
-        ${finished.length ? `
-          <p class="psn-sheet__group">Finished <span>${finished.length}</span></p>
-          <div class="psn-sheet__list" data-group="finished">${finished.map(row).join('')}</div>` : ''}
-        ${rest.length ? `
-          <p class="psn-sheet__group">Played, not finished <span>${rest.length}</span></p>
-          <p class="psn-sheet__note">No trophy says you reached the end of these — tick any you did finish.</p>
-          <div class="psn-sheet__list" data-group="rest">${rest.map(row).join('')}</div>` : ''}
+        <div data-pane-body="finished">
+          ${finished.length
+            ? `<div class="psn-sheet__list" data-group="finished">${finished.map(row).join('')}</div>`
+            : '<p class="psn-sheet__note">Nothing new was finished since last time.</p>'}
+        </div>
+        <div data-pane-body="rest" hidden>
+          ${rest.length
+            ? `<p class="psn-sheet__note">No trophy says you reached the end of these — tick any you did finish.</p>
+               <div class="psn-sheet__list" data-group="rest">${rest.map(row).join('')}</div>`
+            : '<p class="psn-sheet__note">Nothing else to show.</p>'}
+        </div>
         <p class="psn-sheet__disclaimer">All of this is read from your trophies, so it's only ever as complete as PlayStation's own records. A game can go missing, and a remaster can be mistaken for the original — anything here can be edited or deleted afterwards.</p>
       </div>
       <footer class="psn-sheet__foot">
@@ -65,6 +73,20 @@ export function openPsnImportSheet({ candidates, onDone = () => {} }) {
         <button type="button" class="btn btn--accent" id="psn-apply">Add to diary</button>
       </footer>
     </div>`;
+
+  // Two panes, one selection. Switching tabs only changes what's on
+  // screen — a tick made under Finished still counts while you're
+  // looking at Not finished, and the button totals both.
+  const body = qs('.psn-sheet__body', overlay);
+  qsa('#psn-tabs .segmented__item', overlay).forEach((tab) => {
+    tab.addEventListener('click', () => {
+      qsa('#psn-tabs .segmented__item', overlay)
+        .forEach((t) => t.classList.toggle('segmented__item--active', t === tab));
+      qsa('[data-pane-body]', overlay)
+        .forEach((p) => { p.hidden = p.dataset.paneBody !== tab.dataset.pane; });
+      body.scrollTop = 0;
+    });
+  });
 
   const applyBtn = qs('#psn-apply', overlay);
   const byId = new Map(candidates.map((c) => [c.importedGameId, c]));

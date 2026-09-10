@@ -4533,6 +4533,7 @@ a.gd-credit__name { text-decoration: none; }
 .psn-sheet__title { margin: 0; font-size: 1.15rem; }
 .psn-sheet__hint { margin: 6px 0 0; font-size: 0.82rem; color: var(--text-dim); }
 .psn-sheet__body { flex: 1 1 auto; overflow-y: auto; padding: 0 16px 12px; }
+.psn-sheet__tabs { flex: 0 0 auto; margin: 0 16px 12px; }
 .psn-sheet__group {
   display: flex; align-items: center; justify-content: space-between;
   margin: 18px 4px 8px; font-size: 0.76rem; letter-spacing: 0.05em;
