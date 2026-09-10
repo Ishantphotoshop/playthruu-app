@@ -3021,14 +3021,57 @@ async function psnProxy(body, timeout = 40000) {
 // finished games. Dropping the suffix is only ever a SECOND attempt —
 // the full name is always tried first, so a game genuinely called
 // "…Remastered" still wins its own exact match.
-function simplifyImportedTitle(name) {
-  return String(name || '')
+function buildTitleAttempts(name) {
+  const out = [];
+  const push = (v) => {
+    const t = String(v || '').replace(/\s{2,}/g, ' ').replace(/[\s:\-–—&]+$/, '').trim();
+    if (t && !out.includes(t)) out.push(t);
+  };
+  // The full name always goes first, so a game that genuinely owns a
+  // word this strips ("Alan Wake Remastered") still wins its own match
+  // before any of the loosened shapes get a turn.
+  push(name);
+
+  // ™ ® © become SPACES, never nothing: PSN writes "FAR CRY®6", and
+  // deleting the symbol leaves "FAR CRY6", which matches nothing.
+  const noMarks = String(name).replace(/[\u2122\u00ae\u00a9]/g, ' ');
+  push(noMarks);
+
+  // Console names PSN bakes into the title itself — "(PlayStation®5)",
+  // "PS4 & PS5", "MotoGP™23 PS4 & PS5".
+  const noPlatform = noMarks
     .replace(/\([^)]*\)/g, ' ')
+    .replace(/\b(ps4|ps5|playstation\s*[45]?)\b(\s*(&|and|\/)\s*\b(ps4|ps5|playstation\s*[45]?)\b)*/gi, ' ')
+    .replace(/\bfor\s+(ps4|ps5)\b/gi, ' ');
+  push(noPlatform);
+
+  // PSN's own trophy-set naming: "Copycat Trophy Set", "MultiVersus Trophies".
+  const noTrophySet = noPlatform.replace(/\b(trophy\s*set|trophies)\b\s*$/i, ' ');
+  push(noTrophySet);
+
+  // Publisher labels the catalogue doesn't carry: "EA SPORTS™ NHL® 24".
+  const noPublisher = noTrophySet
+    .replace(/^\s*(ea\s+sports|ea\s+originals|2k|wb\s+games|square\s+enix|bandai\s+namco|nis\s+america)\b[\s:\-–—]*/i, ' ');
+  push(noPublisher);
+
+  // Storefront noise that isn't part of the name.
+  const noShelf = noPublisher.replace(/[\s:\-–—]*\b(early access(?: version)?|standard|bundle)\b\s*$/i, ' ');
+  push(noShelf);
+
+  // A licensing prefix is not the title: "Disney•Pixar Wall-E" is filed
+  // as "WALL-E". Only these studio names, and only at the very front, so
+  // a game that genuinely owns its brand ("Marvel's Spider-Man") keeps it.
+  const noBrand = noShelf.replace(/^\s*(?:(?:disney|pixar|dreamworks|lucasfilm|nickelodeon|hasbro|mattel)[\s\u2022:\-]+)+/i, '');
+  push(noBrand);
+
+  // Edition / remaster words go LAST of all, since dropping them is the
+  // loosest thing here and must never pre-empt an exact hit.
+  const noEdition = noBrand
     .replace(/[:\-–—]\s*(?:the\s+)?(?:\S+\s+){0,2}edition\b/gi, ' ')
-    .replace(/[:\-–—]?\s*\b(remastered|remake|reforged|redux|director'?s cut|ultra deluxe|game of the year|goty)\b/gi, ' ')
-    .replace(/\s{2,}/g, ' ')
-    .replace(/[\s:\-–—]+$/, '')
-    .trim();
+    .replace(/[:\-–—]?\s*\b(remastered|remake|reforged|redux|director'?s cut|ultra deluxe|game of the year|goty)\b/gi, ' ');
+  push(noEdition);
+
+  return out;
 }
 
 // Matching used to fire every title's IGDB search at once. On a
@@ -3168,9 +3211,7 @@ function collapseDuplicateImports(entries, matches) {
 }
 
 async function matchImportedTitle(entry, addedBy) {
-  const attempts = [entry.name, simplifyImportedTitle(entry.name)]
-    .filter((t, i, all) => t && all.indexOf(t) === i);
-  for (const title of attempts) {
+  for (const title of buildTitleAttempts(entry.name)) {
     // Every same-named row, not just the first one the database happens
     // to hand back — that arbitrary pick is what chose 2009's Demon's
     // Souls over the 2020 remake.
@@ -3277,7 +3318,10 @@ export async function connectPsnAccount(userId, onlineId) {
     candidates = await psnDiaryCandidates(userId, trophyTitles);
   } catch { /* library is in; the next sync can offer them again */ }
 
-  return { total: rows.length, matched: matches.filter(Boolean).length, candidates };
+  // Counted off the collapsed rows, not the raw entries. Counting
+  // matches before the duplicate-fold and the total after it produced
+  // "91 of 89 games matched".
+  return { total: rows.length, matched: rows.filter((r) => r.game_id).length, candidates };
 }
 
 // Trophy sets and the played-games list name the same game differently:

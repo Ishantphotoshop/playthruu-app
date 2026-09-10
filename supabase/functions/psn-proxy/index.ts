@@ -152,9 +152,13 @@ function platformLabel(raw: string | undefined) {
   return found.join(" · ") || null;
 }
 
+// Companion viewers ship under their publisher's name ("Square Enix
+// Digital Content Viewer"), so they can't be listed one by one; the
+// trailing "content viewer" is what gives them away.
+const SYSTEM_APP_SUFFIXES = /\b(content viewer|companion app|media remote)$/;
 function isSystemApp(name: string | undefined) {
   const n = String(name || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-  return SYSTEM_APPS.includes(n);
+  return SYSTEM_APPS.includes(n) || SYSTEM_APP_SUFFIXES.test(n);
 }
 
 async function fetchLibrary(accountId: string) {
