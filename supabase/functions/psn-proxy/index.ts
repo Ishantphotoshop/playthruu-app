@@ -270,7 +270,7 @@ async function fetchCompletions(accountId: string) {
   const queue = titles.filter((t) => (t.progress ?? 0) > 0);
   for (const t of titles) {
     if ((t.progress ?? 0) === 0) {
-      results.push({ name: t.trophyTitleName, platform: t.trophyTitlePlatform, progress: t.progress, completed: false });
+      results.push({ id: t.npCommunicationId, name: t.trophyTitleName, platform: t.trophyTitlePlatform, progress: t.progress, completed: false });
     }
   }
 
@@ -287,7 +287,7 @@ async function fetchCompletions(accountId: string) {
     for (;;) {
       const t = queue.shift();
       if (!t) return;
-      const base = { name: t.trophyTitleName, platform: t.trophyTitlePlatform, progress: t.progress };
+      const base = { id: t.npCommunicationId, name: t.trophyTitleName, platform: t.trophyTitlePlatform, progress: t.progress };
       const opts = { npServiceName: t.npServiceName };
       try {
         const [defsRes, earnedRes] = await Promise.all([

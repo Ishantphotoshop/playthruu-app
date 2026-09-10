@@ -3022,6 +3022,26 @@ function simplifyImportedTitle(name) {
     .trim();
 }
 
+// Matching used to fire every title's IGDB search at once. On a
+// 141-game library that's a stampede of hundreds of parallel requests:
+// the proxy throttles, individual searches time out, and each timeout is
+// swallowed as "no match" — so games as ordinary as The Last of Us Part I
+// and Far Cry 6 silently ended up with no game page and never reached a
+// diary. Six at a time is slower in name only; nothing is being dropped
+// on the floor and retried any more.
+async function mapWithLimit(items, limit, fn) {
+  const out = new Array(items.length);
+  let next = 0;
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, async () => {
+    for (;;) {
+      const i = next++;
+      if (i >= items.length) return;
+      out[i] = await fn(items[i], i);
+    }
+  }));
+  return out;
+}
+
 async function matchImportedTitle(rawTitle, addedBy) {
   const attempts = [rawTitle, simplifyImportedTitle(rawTitle)]
     .filter((t, i, all) => t && all.indexOf(t) === i);
@@ -3060,15 +3080,41 @@ export async function connectPsnAccount(userId, onlineId) {
     .select().single();
   if (acctErr) throw acctErr;
 
-  const { titles } = await psnProxy({ action: 'library', accountId: resolved.accountId });
+  // PSN answers "what have you played?" two different ways and NEITHER
+  // is complete on its own. The played-games list carries real playtime
+  // but only reaches back so far — for one real account it was missing
+  // 22 games the player had demonstrably finished, Uncharted 2/3/4 and
+  // Jak II/3 among them. The trophy list reaches much further back but
+  // has no playtime at all. So both are read and merged: playtime where
+  // PSN knows it, and nothing left out because only one list mentioned
+  // it.
+  const [libraryRes, trophyRes] = await Promise.all([
+    psnProxy({ action: 'library', accountId: resolved.accountId }),
+    psnProxy({ action: 'completions', accountId: resolved.accountId }, 120000)
+      .catch(() => ({ titles: [] })), // library still imports if trophies are unhappy
+  ]);
+  const played = libraryRes.titles || [];
+  const trophyTitles = trophyRes.titles || [];
 
-  // Matching runs for every title in parallel — libraries here are
-  // small enough (tens of titles, not thousands) that this is a burst
-  // of quick requests rather than the kind of hammering that would
-  // actually risk a rate limit, and it's IGDB being asked, not PSN.
-  const matches = await Promise.all(titles.map((t) => matchImportedTitle(t.name, userId).catch(() => null)));
+  const entries = played.map((t) => ({
+    platformGameId: t.platformGameId, name: t.name,
+    playtimeMinutes: t.playtimeMinutes, lastPlayedAt: t.lastPlayedAt,
+  }));
+  const known = buildTitleIndex(entries, (e) => e.name);
+  for (const t of trophyTitles) {
+    if (known.find(t.name)) continue;
+    // A trophy set PSN's played list never mentioned. There's no
+    // playtime to report for these, which is honest — PSN doesn't know
+    // it either — but the game was unquestionably played.
+    entries.push({
+      platformGameId: `trophy:${t.id}`, name: t.name,
+      playtimeMinutes: 0, lastPlayedAt: t.completedAt || null,
+    });
+  }
 
-  const rows = titles.map((t, i) => ({
+  const matches = await mapWithLimit(entries, 6, (e) => matchImportedTitle(e.name, userId).catch(() => null));
+
+  const rows = entries.map((t, i) => ({
     account_id: account.id, user_id: userId,
     platform_game_id: t.platformGameId, name: t.name,
     playtime_minutes: t.playtimeMinutes, last_played_at: t.lastPlayedAt,
@@ -3079,12 +3125,12 @@ export async function connectPsnAccount(userId, onlineId) {
     if (rowsErr) throw rowsErr;
   }
 
-  // Trophy reading is a bonus pass, not part of the import: if PSN's
-  // trophy endpoints are slow or unhappy, the library still connected
-  // and that shouldn't read as a failure.
+  // Writing diary entries is a bonus pass, not part of the import: if it
+  // fails, the library still connected and that shouldn't read as a
+  // failure.
   let logged = 0;
   try {
-    ({ logged } = await syncPsnCompletions(userId, resolved.accountId));
+    ({ logged } = await syncPsnCompletions(userId, trophyTitles));
   } catch { /* library is in; completions can catch up on the next sync */ }
 
   return { total: rows.length, matched: matches.filter(Boolean).length, logged };
@@ -3136,9 +3182,8 @@ function buildTitleIndex(rows, nameOf) {
 // yourself, and log the same import twice — imported_games.auto_logged_at
 // records that a row has had its turn, so deleting an auto-created entry
 // makes it stay deleted through the next re-sync.
-export async function syncPsnCompletions(userId, accountId) {
-  const { titles } = await psnProxy({ action: 'completions', accountId }, 90000);
-  const completed = (titles || []).filter((t) => t.completed && t.completedAt);
+export async function syncPsnCompletions(userId, trophyTitles) {
+  const completed = (trophyTitles || []).filter((t) => t.completed && t.completedAt);
   if (!completed.length) return { logged: 0 };
 
   const { data: rows, error } = await supabase
