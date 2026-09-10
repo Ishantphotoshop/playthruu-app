@@ -1572,7 +1572,18 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
   scrollbar-width: none; -ms-overflow-style: none;
 }
 .recent-played-row::-webkit-scrollbar { display: none; }
-.recent-played-item { display: block; position: relative; flex-shrink: 0; width: 90px; transition: transform 0.12s ease; }
+/* Sized the way the feed's trending strip is, rather than a fixed 90px:
+   three posters fully visible with the fourth clipped, so the row reads
+   as scrollable instead of as a row that happens to end mid-poster at
+   whatever width the phone is. The 30px is the three inter-card gaps
+   that sit inside those 3.2 cards; /3.2 leaves the 20% peek. Percentages
+   resolve against the flex container's VISIBLE width, so this scales
+   with the device instead of being tuned to one screen. */
+.recent-played-item {
+  display: block; position: relative; flex-shrink: 0;
+  width: calc((100% - 30px) / 3.2);
+  transition: transform 0.12s ease;
+}
 .recent-played-item:active { transform: scale(0.95); }
 .recent-played-item__cover { width: 100%; aspect-ratio: var(--ratio-card); object-fit: cover; border-radius: 7px; background: var(--surface); box-shadow: var(--shadow-card); }
 /* PlayStation library only — real playtime pulled straight off the
@@ -1587,7 +1598,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 }
 /* Currently-playing posters share the recently-played strip's size and
    sit in the same horizontal row, so the two read as one aligned band. */
-.recent-played-row .playing-slot { flex-shrink: 0; width: 90px; }
+.recent-played-row .playing-slot { flex-shrink: 0; width: calc((100% - 30px) / 3.2); }
 
 /* Want-to-play: cover-only grid, three across (discover-screen style). */
 .poster-grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-2); }
