@@ -5,6 +5,7 @@ import { esc, toast, qs, qsa, debounce, placeholderCover, igdbSized, enableSwipe
 import { changePassword, changeEmail, signOut } from '../auth.js';
 import { openAvatarCropModal } from './avatar-crop.js';
 import { invalidateProfileBundleCache } from './profile-view.js';
+import { openPsnImportSheet } from './psn-import-sheet.js';
 
 const PRONOUN_OPTIONS = ['he/his', 'she/her', 'they/their', 'custom'];
 
@@ -183,12 +184,19 @@ export function renderSettingsView(root) {
     }
   }
 
-  // Games the trophy pass could tell were finished get written straight
-  // into the diary, so the toast has to say so — a silent handful of new
-  // entries appearing on someone's profile would be alarming.
-  function completionNote({ logged }) {
-    if (!logged) return '';
-    return ` ${logged} finished ${logged === 1 ? 'game' : 'games'} added to your diary.`;
+  // Nothing reaches the diary without being shown first. The library
+  // itself is already in by this point; this only decides what becomes a
+  // diary entry.
+  function reviewImport(result, verb) {
+    const base = `${verb} — ${result.matched} of ${result.total} games matched.`;
+    if (!result.candidates?.length) { toast(base, 'success'); return; }
+    openPsnImportSheet({
+      candidates: result.candidates,
+      onDone: ({ logged }) => {
+        invalidateProfileBundleCache(state.user.id);
+        toast(logged ? `${base} ${logged} added to your diary.` : base, 'success');
+      },
+    });
   }
 
   function wireConnectedAccounts(psn) {
@@ -204,8 +212,8 @@ export function renderSettingsView(root) {
         try {
           const result = await api.connectPsnAccount(state.user.id, onlineId);
           invalidateProfileBundleCache(state.user.id);
-          toast(`Connected — ${result.matched} of ${result.total} games matched.${completionNote(result)}`, 'success');
           loadConnectedAccounts();
+          reviewImport(result, 'Connected');
         } catch (err) {
           toast(err.message || 'Could not connect that account.', 'error');
           btn.disabled = false; input.disabled = false; btn.textContent = 'Connect';
@@ -219,8 +227,8 @@ export function renderSettingsView(root) {
       try {
         const result = await api.connectPsnAccount(state.user.id, psn.handle);
         invalidateProfileBundleCache(state.user.id);
-        toast(`Synced — ${result.matched} of ${result.total} games matched.${completionNote(result)}`, 'success');
         loadConnectedAccounts();
+        reviewImport(result, 'Synced');
       } catch (err) {
         toast(err.message || 'Could not sync.', 'error');
         resyncBtn.disabled = false; resyncBtn.textContent = 'Re-sync';

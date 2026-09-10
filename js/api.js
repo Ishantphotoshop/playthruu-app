@@ -3125,15 +3125,16 @@ export async function connectPsnAccount(userId, onlineId) {
     if (rowsErr) throw rowsErr;
   }
 
-  // Writing diary entries is a bonus pass, not part of the import: if it
-  // fails, the library still connected and that shouldn't read as a
-  // failure.
-  let logged = 0;
+  // Working out what to put in the diary is a bonus pass, not part of
+  // the import: if it fails, the library still connected and that
+  // shouldn't read as a failure. Nothing is written here — the caller
+  // shows these for approval first.
+  let candidates = [];
   try {
-    ({ logged } = await syncPsnCompletions(userId, trophyTitles));
-  } catch { /* library is in; completions can catch up on the next sync */ }
+    candidates = await psnDiaryCandidates(userId, trophyTitles);
+  } catch { /* library is in; the next sync can offer them again */ }
 
-  return { total: rows.length, matched: matches.filter(Boolean).length, logged };
+  return { total: rows.length, matched: matches.filter(Boolean).length, candidates };
 }
 
 // Trophy sets and the played-games list name the same game differently:
@@ -3182,68 +3183,97 @@ function buildTitleIndex(rows, nameOf) {
 // yourself, and log the same import twice — imported_games.auto_logged_at
 // records that a row has had its turn, so deleting an auto-created entry
 // makes it stay deleted through the next re-sync.
-export async function syncPsnCompletions(userId, trophyTitles) {
-  const completed = (trophyTitles || []).filter((t) => t.completed && t.completedAt);
-  if (!completed.length) return { logged: 0 };
+// Everything the trophy pass thinks is worth putting in the diary,
+// handed back for the person to approve rather than written behind
+// their back. Only games that matched a game page can be offered (there
+// is nothing to link a diary entry to otherwise), and only ones they
+// haven't already logged themselves or previously decided about.
+//
+// A game that ISN'T finished is never suggested as "played" — claiming
+// a completion the player didn't earn is the one thing this must never
+// do. It's offered as Playing or Backlog instead, and left unticked.
+const RECENTLY_PLAYED_DAYS = 60;
 
+export async function psnDiaryCandidates(userId, trophyTitles) {
   const { data: rows, error } = await supabase
     .from('imported_games')
-    .select('id, name, game_id, playtime_minutes')
+    .select('id, name, game_id, playtime_minutes, last_played_at, games(id, title, cover_url)')
     .eq('user_id', userId)
     .not('game_id', 'is', null)
     .is('auto_logged_at', null);
   if (error) throw error;
-  if (!rows?.length) return { logged: 0 };
+  if (!rows?.length) return [];
 
+  const completedByRow = new Map();
   const index = buildTitleIndex(rows, (r) => r.name);
-  const pairs = [];
-  const seen = new Set();
-  for (const done of completed) {
-    const row = index.find(done.name);
-    if (!row || seen.has(row.id)) continue;
-    seen.add(row.id);
-    pairs.push({ row, done });
+  for (const t of (trophyTitles || [])) {
+    if (!t.completed || !t.completedAt) continue;
+    const row = index.find(t.name);
+    if (row && !completedByRow.has(row.id)) completedByRow.set(row.id, t);
   }
-  if (!pairs.length) return { logged: 0 };
 
-  // Anything already in the diary is left exactly as it is — an
-  // automatic import must never overwrite or duplicate what someone
-  // wrote themselves.
+  // Anything already in the diary is left exactly as it is — an import
+  // must never overwrite or duplicate what someone wrote themselves.
   const { data: existing, error: exErr } = await supabase
-    .from('logs')
-    .select('game_id')
-    .eq('user_id', userId)
-    .in('game_id', pairs.map((p) => p.row.game_id));
+    .from('logs').select('game_id').eq('user_id', userId)
+    .in('game_id', rows.map((r) => r.game_id));
   if (exErr) throw exErr;
   const alreadyLogged = new Set((existing || []).map((l) => l.game_id));
 
-  const fresh = pairs.filter((p) => !alreadyLogged.has(p.row.game_id));
-  if (fresh.length) {
-    const { error: insErr } = await supabase.from('logs').insert(fresh.map(({ row, done }) => ({
-      game_id: row.game_id,
+  const recentCutoff = Date.now() - RECENTLY_PLAYED_DAYS * 86400000;
+  return rows
+    .filter((r) => r.games && !alreadyLogged.has(r.game_id))
+    .map((r) => {
+      const done = completedByRow.get(r.id);
+      const lastPlayed = r.last_played_at ? Date.parse(r.last_played_at) : NaN;
+      const recent = !isNaN(lastPlayed) && lastPlayed > recentCutoff;
+      return {
+        importedGameId: r.id,
+        gameId: r.game_id,
+        title: r.games.title,
+        coverUrl: r.games.cover_url,
+        completed: !!done,
+        // logs.hours_played is numeric(6,1) capped at 20000 by a check
+        // constraint — a stray huge value would fail the whole insert.
+        hours: r.playtime_minutes > 0 ? Math.min(20000, Math.round(r.playtime_minutes / 6) / 10) : null,
+        status: done ? 'played' : (recent ? 'playing' : 'backlog'),
+        playedDate: done ? String(done.completedAt).slice(0, 10)
+          : (recent && r.last_played_at ? String(r.last_played_at).slice(0, 10) : null),
+      };
+    })
+    .sort((a, b) => (b.completed - a.completed) || String(b.playedDate).localeCompare(String(a.playedDate)));
+}
+
+// Writes the picks, then marks which imports have been dealt with.
+// Finished games are marked either way — ticked or deliberately left
+// out, the person has decided about them and shouldn't be asked again.
+// Unfinished ones are NOT marked: they may well be finished later, and
+// that's exactly when they become worth offering.
+export async function applyPsnDiaryPicks(userId, chosen, offered) {
+  if (chosen.length) {
+    const { error } = await supabase.from('logs').insert(chosen.map((c) => ({
+      game_id: c.gameId,
       user_id: userId,
-      status: 'played',
-      played_date: String(done.completedAt).slice(0, 10),
-      // logs.hours_played is numeric(6,1) capped at 20000 by a check
-      // constraint — a stray huge value would fail the whole insert.
-      hours_played: row.playtime_minutes > 0
-        ? Math.min(20000, Math.round(row.playtime_minutes / 6) / 10)
-        : null,
+      status: c.status,
+      played_date: c.status === 'backlog' ? null : c.playedDate,
+      hours_played: c.hours,
       is_public: true,
     })));
-    if (insErr) throw insErr;
+    if (error) throw error;
   }
 
-  // Every matched row is marked, including ones skipped for already
-  // having a log: they've had their turn either way, and leaving them
-  // unmarked would re-check them on every future sync forever.
-  const { error: markErr } = await supabase
-    .from('imported_games')
-    .update({ auto_logged_at: new Date().toISOString() })
-    .in('id', pairs.map((p) => p.row.id));
-  if (markErr) throw markErr;
-
-  return { logged: fresh.length };
+  const chosenIds = new Set(chosen.map((c) => c.importedGameId));
+  const settled = offered
+    .filter((c) => c.completed || chosenIds.has(c.importedGameId))
+    .map((c) => c.importedGameId);
+  if (settled.length) {
+    const { error } = await supabase
+      .from('imported_games')
+      .update({ auto_logged_at: new Date().toISOString() })
+      .in('id', settled);
+    if (error) throw error;
+  }
+  return { logged: chosen.length };
 }
 
 export async function disconnectPsnAccount(userId) {
