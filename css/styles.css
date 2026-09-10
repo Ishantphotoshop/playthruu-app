@@ -1836,13 +1836,21 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 .stat-link:active { background: var(--surface-raised); }
 .stat-link b { display: block; font-family: var(--font-mono); font-size: 19px; font-weight: 500; color: var(--ink); letter-spacing: -0.02em; }
 .stat-link__year { font-size: 12px; color: var(--ink-dim); }
-.stat-link span { font-size: 10.5px; color: var(--ink-dim); text-transform: uppercase; letter-spacing: 0.03em; }
+/* Direct child only. This is the stat's LABEL — the "/6" beside the
+   total is also a span, just nested inside the <b>, and an unscoped
+   selector styled it as a label too (it out-specified
+   .stat-link__year and shrank it). */
+.stat-link > span { font-size: 10.5px; color: var(--ink-dim); text-transform: uppercase; letter-spacing: 0.03em; }
 
 /* Vertical variant — one full-width row per stat instead of a 2-col grid. */
 .stat-links--vertical { grid-template-columns: 1fr; }
 .stat-links--vertical .stat-link { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
 .stat-links--vertical .stat-link b { display: inline-flex; align-items: baseline; gap: 4px; }
-.stat-links--vertical .stat-link span { order: -1; }
+/* Puts the label before the number in the row layout. Scoped to the
+   direct child for the same reason: unscoped, it also reordered the
+   "/6" inside the <b> (which is an inline-flex container), so the
+   completed stat rendered as "/6 38" instead of "38/6". */
+.stat-links--vertical .stat-link > span { order: -1; }
 .more-activity-link { display: inline-block; margin-top: 10px; }
 
 /* .modal-overlay's own align-items:flex-end (below, later in the
