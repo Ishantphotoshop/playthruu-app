@@ -3452,19 +3452,16 @@ export async function psnDiaryCandidates(userId, trophyTitles) {
           : (r.last_played_at ? String(r.last_played_at).slice(0, 10) : null),
       };
     })
-    // Finished games first, newest completion at the top — that group is
-    // a history, so it reads by date. Everything below it is a shelf of
-    // things still on the go, and there the useful question is how much
-    // of your life a game actually took, so it runs most-played first.
-    // Dates break ties and, being compared as '' when absent, sort last
-    // instead of first (the raw values put the string "null" above every
-    // real date, which floated the emptiest entries to the top).
-    .sort((a, b) => {
-      if (a.completed !== b.completed) return b.completed - a.completed;
-      if (a.completed) return (b.playedDate || '').localeCompare(a.playedDate || '');
-      return ((b.hours || 0) - (a.hours || 0))
-        || (b.playedDate || '').localeCompare(a.playedDate || '');
-    });
+    // Finished games first, then most played within each group — the
+    // useful question in both lists is how much of your life a game
+    // actually took, so the biggest sits at the top and it tails off
+    // from there. Dates only break ties and, compared as '' when absent,
+    // sort last rather than first (the raw values put the string "null"
+    // above every real date, which floated the emptiest entries to the
+    // top of the list).
+    .sort((a, b) => (b.completed - a.completed)
+      || ((b.hours || 0) - (a.hours || 0))
+      || (b.playedDate || '').localeCompare(a.playedDate || ''));
 }
 
 // Writes the picks, then marks which imports have been dealt with.
