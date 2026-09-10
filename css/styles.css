@@ -4475,38 +4475,83 @@ a.gd-credit__name { text-decoration: none; }
 .psn-sheet__head { padding: 20px 20px 12px; flex: 0 0 auto; }
 .psn-sheet__title { margin: 0; font-size: 1.15rem; }
 .psn-sheet__hint { margin: 6px 0 0; font-size: 0.82rem; color: var(--text-dim); }
-.psn-sheet__body { flex: 1 1 auto; overflow-y: auto; padding: 0 20px 12px; }
+.psn-sheet__body { flex: 1 1 auto; overflow-y: auto; padding: 0 16px 12px; }
 .psn-sheet__group {
   display: flex; align-items: center; justify-content: space-between;
-  margin: 16px 0 8px; font-size: 0.78rem; letter-spacing: 0.04em;
+  margin: 18px 4px 8px; font-size: 0.76rem; letter-spacing: 0.05em;
   text-transform: uppercase; color: var(--text-dim);
 }
-.psn-sheet__group span { font-variant-numeric: tabular-nums; }
-.psn-sheet__note { margin: 0 0 10px; font-size: 0.78rem; color: var(--text-dim); }
+.psn-sheet__group span {
+  font-variant-numeric: tabular-nums; letter-spacing: 0;
+  background: rgba(255,255,255,0.08); color: var(--text-dim);
+  border-radius: 999px; padding: 2px 8px; font-size: 0.72rem;
+}
+.psn-sheet__note { margin: 0 4px 10px; font-size: 0.78rem; line-height: 1.45; color: var(--text-dim); }
 .psn-sheet__disclaimer {
-  margin: 18px 0 4px; font-size: 0.74rem; line-height: 1.45;
-  color: var(--text-dim); opacity: 0.8; text-align: center;
+  margin: 22px 4px 4px; font-size: 0.74rem; line-height: 1.5;
+  color: var(--text-dim); opacity: 0.75;
 }
 .psn-library-note { margin: -4px 0 10px; font-size: 0.76rem; line-height: 1.45; }
-.psn-sheet__list { display: flex; flex-direction: column; gap: 2px; }
+.psn-sheet__list { display: flex; flex-direction: column; gap: 4px; }
+
 .psn-pick {
   display: flex; align-items: center; gap: 12px;
-  padding: 8px; border-radius: var(--radius-m); cursor: pointer;
+  padding: 8px 10px; border-radius: 14px; cursor: pointer;
+  border: 1px solid transparent; background: rgba(255,255,255,0.03);
+  transition: background 140ms ease, border-color 140ms ease;
+  -webkit-tap-highlight-color: transparent;
 }
-.psn-pick:active { background: rgba(255,255,255,0.05); }
-.psn-pick__box { flex: 0 0 auto; width: 20px; height: 20px; accent-color: var(--accent); }
-.psn-pick__cover { flex: 0 0 auto; width: 38px; border-radius: 5px; overflow: hidden; }
-.psn-pick__meta { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.psn-pick.is-picked { background: color-mix(in srgb, var(--accent) 12%, transparent); border-color: color-mix(in srgb, var(--accent) 34%, transparent); }
+.psn-pick:active { transform: scale(0.995); }
+
+/* The tick: an empty rounded square that fills with the accent and
+   draws its check on, rather than a native checkbox glued to a row. */
+.psn-pick__tick {
+  flex: 0 0 auto; width: 23px; height: 23px; border-radius: 8px;
+  border: 2px solid rgba(255,255,255,0.28); background: transparent;
+  display: grid; place-items: center;
+  transition: background 150ms ease, border-color 150ms ease, transform 150ms ease;
+}
+.psn-pick__tick svg { width: 15px; height: 15px; }
+.psn-pick__tick svg path {
+  fill: none; stroke: var(--bg, #0b0b0f); stroke-width: 3;
+  stroke-linecap: round; stroke-linejoin: round;
+  stroke-dasharray: 22; stroke-dashoffset: 22;
+  transition: stroke-dashoffset 180ms ease 40ms;
+}
+.psn-pick.is-picked .psn-pick__tick {
+  background: var(--accent); border-color: var(--accent); transform: scale(1.04);
+}
+.psn-pick.is-picked .psn-pick__tick svg path { stroke-dashoffset: 0; }
+
+.psn-pick__cover { flex: 0 0 auto; width: 38px; border-radius: 6px; overflow: hidden; }
+.psn-pick__meta { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1 1 auto; }
 .psn-pick__title {
   font-size: 0.9rem; font-weight: 600; line-height: 1.25;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.psn-pick__sub { font-size: 0.76rem; color: var(--text-dim); font-variant-numeric: tabular-nums; }
+.psn-pick__sub {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  font-size: 0.74rem; color: var(--text-dim); font-variant-numeric: tabular-nums;
+}
+.psn-pick__sub i { font-style: normal; opacity: 0.45; }
+
+.psn-chip {
+  flex: 0 0 auto; border-radius: 999px; padding: 4px 10px;
+  font-size: 0.7rem; font-weight: 600; letter-spacing: 0.02em;
+  border: 1px solid rgba(255,255,255,0.14); background: rgba(255,255,255,0.06);
+  color: var(--text-dim); white-space: nowrap;
+}
+.psn-chip--done { border-color: color-mix(in srgb, var(--accent) 45%, transparent); color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.psn-chip--toggle { cursor: pointer; }
+.psn-chip--toggle:active { background: rgba(255,255,255,0.12); }
+
 .psn-sheet__foot {
   flex: 0 0 auto; display: flex; gap: 10px; padding: 12px 20px calc(16px + var(--safe-bottom));
   border-top: 1px solid rgba(255,255,255,0.08);
 }
 .psn-sheet__foot .btn { flex: 1; }
+.psn-sheet__foot .btn:disabled { opacity: 0.45; }
 
 .conn-connect .btn { flex-shrink: 0; padding: 10px 16px; font-size: 13.5px; }
 /* Group chat: the group's avatar, and the New-group compose UI. */

@@ -191,7 +191,7 @@ export async function renderProfileView(root, { username }) {
 
       ${importedGames.length ? `
         <h2 class="section-heading">PlayStation library</h2>
-        <p class="muted psn-library-note">Imported from PlayStation — can be imperfect, so a game may be missing or matched to the wrong version.</p>
+        <p class="muted psn-library-note">Read from PlayStation’s own records, so it’s only ever as complete as they are — the odd game goes missing, and a remaster can be mistaken for the original.</p>
         <div class="recent-played-row">
           ${importedGames.filter((g) => g.games).map((g) => `
             <a href="#/game/${g.games.id}" class="recent-played-item">

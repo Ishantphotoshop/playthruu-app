@@ -138,6 +138,20 @@ const SYSTEM_APPS = [
   "ps remote play", "remote play", "media player", "playstation store",
   "ps app", "web browser", "playstation video", "video editor",
 ];
+// PSN's category and trophy-platform strings are internal spellings
+// ("ps5_native_game", "PS5,PSPC"); this is the short label people
+// actually recognise on a shelf.
+function platformLabel(raw: string | undefined) {
+  const hay = String(raw || "").toLowerCase();
+  const found: string[] = [];
+  if (hay.includes("ps5")) found.push("PS5");
+  if (hay.includes("ps4")) found.push("PS4");
+  if (hay.includes("ps3")) found.push("PS3");
+  if (hay.includes("vita")) found.push("PS Vita");
+  if (hay.includes("pspc") || hay.includes("pc")) found.push("PC");
+  return found.join(" · ") || null;
+}
+
 function isSystemApp(name: string | undefined) {
   const n = String(name || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
   return SYSTEM_APPS.includes(n);
@@ -171,6 +185,7 @@ async function fetchLibrary(accountId: string) {
       // is a hard ceiling, since nobody played a game before it existed.
       category: g.category || null,
       firstPlayedAt: g.firstPlayedDateTime || null,
+      platform: platformLabel(g.category),
     })),
   };
 }
@@ -309,7 +324,7 @@ async function fetchCompletions(accountId: string) {
   const queue = titles.filter((t) => (t.progress ?? 0) > 0);
   for (const t of titles) {
     if ((t.progress ?? 0) === 0) {
-      results.push({ id: t.npCommunicationId, name: t.trophyTitleName, platform: t.trophyTitlePlatform, progress: t.progress, completed: false });
+      results.push({ id: t.npCommunicationId, name: t.trophyTitleName, platform: platformLabel(t.trophyTitlePlatform), progress: t.progress, completed: false });
     }
   }
 
@@ -326,7 +341,7 @@ async function fetchCompletions(accountId: string) {
     for (;;) {
       const t = queue.shift();
       if (!t) return;
-      const base = { id: t.npCommunicationId, name: t.trophyTitleName, platform: t.trophyTitlePlatform, progress: t.progress };
+      const base = { id: t.npCommunicationId, name: t.trophyTitleName, platform: platformLabel(t.trophyTitlePlatform), progress: t.progress };
       const opts = { npServiceName: t.npServiceName };
       try {
         const [defsRes, earnedRes] = await Promise.all([

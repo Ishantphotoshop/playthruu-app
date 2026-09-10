@@ -3145,6 +3145,14 @@ function collapseDuplicateImports(entries, matches) {
       return;
     }
     existing.playtimeMinutes += entry.playtimeMinutes || 0;
+    // Played on both consoles — the shelf should say so rather than
+    // silently keeping whichever import happened to land first.
+    if (entry.platform && existing.platform !== entry.platform) {
+      const both = new Set([...(existing.platform || '').split(' · '), ...entry.platform.split(' · ')]);
+      existing.platform = [...both].filter(Boolean).sort().join(' · ');
+    } else if (entry.platform && !existing.platform) {
+      existing.platform = entry.platform;
+    }
     if (entry.platformGameId < existing.platformGameId) {
       existing.platformGameId = entry.platformGameId;
       existing.name = entry.name;
@@ -3220,6 +3228,7 @@ export async function connectPsnAccount(userId, onlineId) {
     platformGameId: t.platformGameId, name: t.name,
     playtimeMinutes: t.playtimeMinutes, lastPlayedAt: t.lastPlayedAt,
     category: t.category || null, firstPlayedAt: t.firstPlayedAt || null,
+    platform: t.platform || null,
   }));
   const known = buildTitleIndex(entries, (e) => e.name);
   for (const t of trophyTitles) {
@@ -3240,6 +3249,7 @@ export async function connectPsnAccount(userId, onlineId) {
     account_id: account.id, user_id: userId,
     platform_game_id: t.platformGameId, name: t.name,
     playtime_minutes: t.playtimeMinutes, last_played_at: t.lastPlayedAt,
+    platform_label: t.platform || null,
     game_id: t.game?.id || null, match_state: t.game ? 'matched' : 'unmatched',
   }));
   if (rows.length) {
@@ -3325,12 +3335,20 @@ function buildTitleIndex(rows, nameOf) {
 // A game that ISN'T finished is never suggested as "played" — claiming
 // a completion the player didn't earn is the one thing this must never
 // do. It's offered as Playing or Backlog instead, and left unticked.
-const RECENTLY_PLAYED_DAYS = 60;
+// Backlog means "haven't got to it yet". Every one of these games has
+// demonstrably been played, so calling a 74-hour save file "Backlog"
+// was simply wrong. Anything with time on the clock is offered as
+// Playing; Backlog is kept for the handful PSN knows about but has no
+// playtime for at all, which is the only case where it's true.
+function suggestedStatus(row, finished) {
+  if (finished) return 'played';
+  return row.playtime_minutes > 0 ? 'playing' : 'backlog';
+}
 
 export async function psnDiaryCandidates(userId, trophyTitles) {
   const { data: rows, error } = await supabase
     .from('imported_games')
-    .select('id, name, game_id, playtime_minutes, last_played_at, games(id, title, cover_url)')
+    .select('id, name, game_id, playtime_minutes, last_played_at, platform_label, games(id, title, cover_url)')
     .eq('user_id', userId)
     .not('game_id', 'is', null)
     .is('auto_logged_at', null);
@@ -3353,13 +3371,11 @@ export async function psnDiaryCandidates(userId, trophyTitles) {
   if (exErr) throw exErr;
   const alreadyLogged = new Set((existing || []).map((l) => l.game_id));
 
-  const recentCutoff = Date.now() - RECENTLY_PLAYED_DAYS * 86400000;
   return rows
     .filter((r) => r.games && !alreadyLogged.has(r.game_id))
     .map((r) => {
       const done = completedByRow.get(r.id);
-      const lastPlayed = r.last_played_at ? Date.parse(r.last_played_at) : NaN;
-      const recent = !isNaN(lastPlayed) && lastPlayed > recentCutoff;
+      const status = suggestedStatus(r, !!done);
       return {
         importedGameId: r.id,
         gameId: r.game_id,
@@ -3369,12 +3385,22 @@ export async function psnDiaryCandidates(userId, trophyTitles) {
         // logs.hours_played is numeric(6,1) capped at 20000 by a check
         // constraint — a stray huge value would fail the whole insert.
         hours: r.playtime_minutes > 0 ? Math.min(20000, Math.round(r.playtime_minutes / 6) / 10) : null,
-        status: done ? 'played' : (recent ? 'playing' : 'backlog'),
+        platform: r.platform_label || null,
+        status,
+        // A finished game is dated by the trophy that proves it. One
+        // still being played is dated by when it was last touched, and
+        // a backlog entry carries no date at all.
         playedDate: done ? String(done.completedAt).slice(0, 10)
-          : (recent && r.last_played_at ? String(r.last_played_at).slice(0, 10) : null),
+          : (status === 'playing' && r.last_played_at ? String(r.last_played_at).slice(0, 10) : null),
       };
     })
-    .sort((a, b) => (b.completed - a.completed) || String(b.playedDate).localeCompare(String(a.playedDate)));
+    // Finished first, then most recently played. Entries with no date at
+    // all sort last rather than first — comparing the raw values put the
+    // string "null" above every real date, which floated the games with
+    // nothing to show to the top of the list.
+    .sort((a, b) => (b.completed - a.completed)
+      || (b.playedDate || '').localeCompare(a.playedDate || '')
+      || (b.hours || 0) - (a.hours || 0));
 }
 
 // Writes the picks, then marks which imports have been dealt with.
