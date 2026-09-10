@@ -20,9 +20,17 @@ export function posterFrame(coverUrl, title, extraClass = '', { tag = 'span', hr
   const blur = coverUrl ? igdbSized(coverUrl, 'cover_small') : src;
   const fallback = placeholderCover(title);
   const attrs = tag === 'a' ? `href="${esc(href)}"` : '';
+  // The ring is WhatsApp's trick: a spinner over the tile while the
+  // artwork is still coming down, so a slow image reads as loading
+  // rather than as a broken or empty card. It fades in only after a
+  // beat (see .poster-frame__spin), so an image already in cache never
+  // flashes one. `onload` marks the frame done; `onerror` swaps in the
+  // placeholder AND marks it done, or a failed image would spin forever.
+  const done = "this.closest('.poster-frame')?.classList.add('is-loaded')";
   return `<${tag} ${attrs} ${id ? `id="${esc(id)}"` : ''} class="poster-frame ${extraClass}">
     <img class="poster-frame__blur" src="${esc(blur)}" alt="" aria-hidden="true" loading="lazy">
-    <img class="poster-frame__img" src="${esc(sharp)}" alt="${esc(title)} cover" loading="lazy" decoding="async" onerror="this.src='${fallback}';this.previousElementSibling.src='${fallback}';">
+    <img class="poster-frame__img" src="${esc(sharp)}" alt="${esc(title)} cover" loading="lazy" decoding="async" onload="${done}" onerror="this.src='${fallback}';this.previousElementSibling.src='${fallback}';${done};">
+    <span class="poster-frame__spin" aria-hidden="true"></span>
   </${tag}>`;
 }
 
@@ -576,32 +584,32 @@ export function ratingHistogram(counts, { average = null, total = 0 } = {}) {
 
   return `
     <div class="rating-histogram">
-      <div class="rating-histogram__summary">
-        <div class="rating-histogram__avg">
-          <b>${average ? Number(average).toFixed(1) : '—'}</b>
-          ${average ? starRow(average, { size: 13 }) : ''}
+      <div class="rating-histogram__chart">
+        <span class="rating-histogram__anchor" aria-hidden="true">★</span>
+        <div class="rating-histogram__bars">
+          ${values.map((v) => {
+            const n = counts[v] || 0;
+            // An empty slot still draws — as a stub sitting on the
+            // baseline, not a full-height track. The row of stubs is what
+            // makes the one tall bar read as a distribution instead of a
+            // lone floating block.
+            const pct = n === 0 ? 0 : Math.max(10, Math.round((n / max) * 100));
+            return `
+              <button type="button" class="rating-histogram__bar${n === 0 ? ' is-zero' : ''}" data-value="${v}" data-count="${n}" style="--bar-pct:${pct}%" aria-label="${formatHalfStar(v)} stars, ${n} rating${n === 1 ? '' : 's'}">
+                <span class="rating-histogram__bar-count">${n}</span>
+                <span class="rating-histogram__bar-fill"></span>
+              </button>`;
+          }).join('')}
         </div>
-        <span class="rating-histogram__total">${total} rating${total === 1 ? '' : 's'}</span>
+        <div class="rating-histogram__score">
+          <b>${average ? Number(average).toFixed(1) : '—'}</b>
+          <span class="rating-histogram__score-stars" aria-hidden="true">★★★★★</span>
+        </div>
       </div>
-      <div class="rating-histogram__bars">
-        ${values.map((v) => {
-          const n = counts[v] || 0;
-          // Zero-count columns stay visibly empty rather than being
-          // floored to a stub, so the shape of the distribution is real.
-          const pct = n === 0 ? 0 : Math.max(8, Math.round((n / max) * 100));
-          return `
-            <button type="button" class="rating-histogram__bar${n === 0 ? ' is-zero' : ''}" data-value="${v}" data-count="${n}" style="--bar-pct:${pct}%" aria-label="${formatHalfStar(v)} stars, ${n} rating${n === 1 ? '' : 's'}">
-              <span class="rating-histogram__bar-count">${n}</span>
-              <span class="rating-histogram__bar-track"><span class="rating-histogram__bar-fill"></span></span>
-            </button>`;
-        }).join('')}
-      </div>
-      <div class="rating-histogram__axis">
-        <span>${'★'}</span>
-        <span>${'★★★★★'}</span>
-      </div>
+      <span class="sr-only">${total} rating${total === 1 ? '' : 's'}</span>
     </div>`;
 }
+
 
 // Press-and-hold a bar to reveal its exact count while held, hides
 // again on release — not a tap-toggle, and not a review filter.
@@ -807,7 +815,7 @@ export function openReportSheet({ targetType, targetId, subject = '', onSubmit }
     try {
       await onSubmit({ targetType, targetId, reason: detail ? `${reason} — ${detail}` : reason });
       close();
-      toast('Report sent. Thanks for flagging it.', 'success');
+      toast('Report sent — thanks for flagging it.', 'success');
     } catch (err) {
       toast(err.message || 'Could not send that report.', 'error');
       btn.disabled = false;

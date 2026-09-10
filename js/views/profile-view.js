@@ -191,18 +191,13 @@ export async function renderProfileView(root, { username }) {
 
       ${importedGames.length ? `
         <h2 class="section-heading">PlayStation library</h2>
-        <p class="muted psn-library-note">Read from PlayStation’s own records, so it’s only ever as complete as they are — the odd game goes missing, and a remaster can be mistaken for the original.</p>
         <div class="recent-played-row">
           ${importedGames.filter((g) => g.games).map((g) => `
             <a href="#/game/${g.games.id}" class="recent-played-item">
               ${posterFrame(g.games.cover_url, g.name, 'recent-played-item__cover')}
               <span class="recent-played-item__hours">${formatImportedHours(g.playtime_minutes)}</span>
             </a>`).join('')}
-        </div>
-        ${importedGames.some((g) => !g.games) ? `
-          <p class="muted playing-empty-hint">
-            +${importedGames.filter((g) => !g.games).length} more not linked to a game page yet
-          </p>` : ''}` : ''}
+        </div>` : ''}
 
       <div class="feed-section-head">
         <h2 class="section-heading">Currently playing</h2>
@@ -278,7 +273,7 @@ export async function renderProfileView(root, { username }) {
       ${lists.length ? `
         <div class="list-cards">
           ${lists.map(listCard).join('')}
-        </div>` : emptyState(isOwn ? 'No lists yet. Make one for your favorite roguelikes, cozy games, anything.' : `${username} hasn't made any public lists yet.`, { icon: iconStamp() })}
+        </div>` : emptyState(isOwn ? 'No lists yet. Make one for your favourite roguelikes, cozy games, anything.' : `${username} hasn't made any public lists yet.`, { icon: iconStamp() })}
     `;
 
     const tabRenderers = { profile: renderProfileTab, journal: renderJournalTab, wanttoplay: renderWantToPlayTab, lists: renderListsTab };

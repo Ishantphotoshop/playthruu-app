@@ -1175,7 +1175,7 @@ export async function renderMessageThreadView(root, { conversationId, otherUserI
       try {
         await api.addGroupMembers(threadId, [...selected.keys()]);
         close();
-        toast('Added to the group');
+        toast('Added to the group.');
         await refreshGroup();
       } catch (err) { toast(err.message || 'Could not add.', 'error'); confirmBtn.disabled = false; }
     });

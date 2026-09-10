@@ -257,7 +257,7 @@ export async function renderMessagesView(root) {
         await api.leaveGroup(c.id, uid);
         all = all.filter((x) => x.id !== c.id);
         paint();
-        toast('Left the group');
+        toast('Left the group.');
       } catch (err) { toast(err.message || 'Could not leave.', 'error'); }
     });
     qs('[data-act="restrict"]', overlay)?.addEventListener('click', () => setPref({ restricted: true }, 'Restricted — undo in Settings'));

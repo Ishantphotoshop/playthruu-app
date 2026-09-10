@@ -1230,8 +1230,8 @@ function openLogSheet({ game, ownLog, replayCount, ensureSavedGame, onChanged, o
     if (act === 'list') await onAddToList?.();
     if (act === 'share') {
       const url = `${location.origin}${location.pathname}#/game/${game.id}`;
-      try { await navigator.clipboard.writeText(url); toast('Link copied', 'success'); }
-      catch { toast('Could not copy that link', 'error'); }
+      try { await navigator.clipboard.writeText(url); toast('Link copied.', 'success'); }
+      catch { toast('Could not copy that link.', 'error'); }
     }
     if (act === 'delete' && current) {
       try {

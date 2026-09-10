@@ -3080,7 +3080,9 @@ function buildTitleAttempts(name) {
 // swallowed as "no match" — so games as ordinary as The Last of Us Part I
 // and Far Cry 6 silently ended up with no game page and never reached a
 // diary. Six at a time is slower in name only; nothing is being dropped
-// on the floor and retried any more.
+// on the floor and retried any more. Ten is the sweet spot found by
+// testing: fast, and still nowhere near the level that made the proxy
+// start shedding requests.
 async function mapWithLimit(items, limit, fn) {
   const out = new Array(items.length);
   let next = 0;
@@ -3210,14 +3212,32 @@ function collapseDuplicateImports(entries, matches) {
   return [...groups.values()];
 }
 
+// How many of the title shapes above are worth an IGDB search. The
+// catalogue is checked for ALL of them first — that's a cheap indexed
+// query — but IGDB is a shared proxy, and searching every shape of every
+// title turned a 90-game import into hundreds of requests, which the
+// proxy throttled until the whole connect stalled. First shape plus the
+// last few covers essentially every real recovery.
+const IGDB_ATTEMPT_LIMIT = 4;
+
 async function matchImportedTitle(entry, addedBy) {
-  for (const title of buildTitleAttempts(entry.name)) {
-    // Every same-named row, not just the first one the database happens
-    // to hand back — that arbitrary pick is what chose 2009's Demon's
-    // Souls over the 2020 remake.
+  const attempts = buildTitleAttempts(entry.name);
+
+  // Catalogue first, in order, most specific shape to loosest — so a
+  // game already known by its full name never gets resolved by a
+  // stripped-down one. Every same-named row is fetched, not just the
+  // first the database hands back: that arbitrary pick is what chose
+  // 2009's Demon's Souls over the 2020 remake.
+  for (const title of attempts) {
     const { data: local } = await supabase.from('games').select('*').ilike('title', title).limit(10);
     const localHit = local?.length ? bestCandidate(local, entry, title) : null;
     if (localHit) return localHit;
+  }
+
+  const searchable = attempts.length > IGDB_ATTEMPT_LIMIT
+    ? [attempts[0], ...attempts.slice(-(IGDB_ATTEMPT_LIMIT - 1))]
+    : attempts;
+  for (const title of searchable) {
     try {
       const results = await searchIgdb(title, 10, 1, { includeEditions: true });
       const hit = bestCandidate(results, entry, title);
@@ -3284,7 +3304,7 @@ export async function connectPsnAccount(userId, onlineId) {
     });
   }
 
-  const matches = await mapWithLimit(entries, 6, (e) => matchImportedTitle(e, userId).catch(() => null));
+  const matches = await mapWithLimit(entries, 8, (e) => matchImportedTitle(e, userId).catch(() => null));
 
   const rows = collapseDuplicateImports(entries, matches).map((t) => ({
     account_id: account.id, user_id: userId,
@@ -3379,15 +3399,12 @@ function buildTitleIndex(rows, nameOf) {
 // A game that ISN'T finished is never suggested as "played" — claiming
 // a completion the player didn't earn is the one thing this must never
 // do. It's offered as Playing or Backlog instead, and left unticked.
-// Backlog means "haven't got to it yet". Every one of these games has
-// demonstrably been played, so calling a 74-hour save file "Backlog"
-// was simply wrong. Anything with time on the clock is offered as
-// Playing; Backlog is kept for the handful PSN knows about but has no
-// playtime for at all, which is the only case where it's true.
-function suggestedStatus(row, finished) {
-  if (finished) return 'played';
-  return row.playtime_minutes > 0 ? 'playing' : 'backlog';
-}
+// Nothing is guessed at any more. The import used to decide a status for
+// you — played, playing, or backlog — and got it wrong often enough to be
+// worse than useless: it filled "Currently playing" with games nobody had
+// touched in years. Every pick is now simply `played`, and the sheet says
+// plainly that you should only tick what you actually finished. The app
+// stops guessing; the person decides.
 
 export async function psnDiaryCandidates(userId, trophyTitles) {
   const { data: rows, error } = await supabase
@@ -3419,7 +3436,6 @@ export async function psnDiaryCandidates(userId, trophyTitles) {
     .filter((r) => r.games && !alreadyLogged.has(r.game_id))
     .map((r) => {
       const done = completedByRow.get(r.id);
-      const status = suggestedStatus(r, !!done);
       return {
         importedGameId: r.id,
         gameId: r.game_id,
@@ -3430,12 +3446,10 @@ export async function psnDiaryCandidates(userId, trophyTitles) {
         // constraint — a stray huge value would fail the whole insert.
         hours: r.playtime_minutes > 0 ? Math.min(20000, Math.round(r.playtime_minutes / 6) / 10) : null,
         platform: r.platform_label || null,
-        status,
-        // A finished game is dated by the trophy that proves it. One
-        // still being played is dated by when it was last touched, and
-        // a backlog entry carries no date at all.
+        // A finished game is dated by the trophy that proves it; anything
+        // else by when PSN last saw it played.
         playedDate: done ? String(done.completedAt).slice(0, 10)
-          : (status === 'playing' && r.last_played_at ? String(r.last_played_at).slice(0, 10) : null),
+          : (r.last_played_at ? String(r.last_played_at).slice(0, 10) : null),
       };
     })
     // Finished first, then most recently played. Entries with no date at
@@ -3457,8 +3471,8 @@ export async function applyPsnDiaryPicks(userId, chosen, offered) {
     const { error } = await supabase.from('logs').insert(chosen.map((c) => ({
       game_id: c.gameId,
       user_id: userId,
-      status: c.status,
-      played_date: c.status === 'backlog' ? null : c.playedDate,
+      status: 'played',
+      played_date: c.playedDate,
       hours_played: c.hours,
       is_public: true,
     })));

@@ -839,6 +839,14 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .settings-section { margin-bottom: 30px; }
 .settings-section:last-of-type { margin-bottom: 10px; }
 
+/* Visually hidden, still read aloud. The ratings panel shows only the
+   average and the bars, but the total belongs in the accessibility tree
+   — there was no such utility in the sheet, so a span using it simply
+   rendered as visible text. */
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0;
+}
 .sr-only-file-input {
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
   overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
@@ -1589,40 +1597,47 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 
 .rating-histogram {
   background: var(--surface); border: 1px solid var(--line);
-  border-radius: var(--radius-m); padding: var(--space-4); margin-bottom: var(--space-2);
+  border-radius: var(--radius-m); padding: var(--space-4);
+  margin-bottom: var(--space-2);
 }
 .rating-histogram--empty { display: grid; place-items: center; min-height: 96px; }
 .rating-histogram__empty { color: var(--ink-faint); font-size: var(--text-meta); }
-.rating-histogram__summary {
-  display: flex; align-items: baseline; justify-content: space-between;
-  gap: var(--space-3); margin-bottom: var(--space-4);
+
+/* One row, baseline-aligned: a single star anchoring the low end, the
+   ten bars, then the average sitting to the right of them. The score
+   used to sit in its own header strip above the chart, which made the
+   panel read as two stacked things instead of one figure. */
+.rating-histogram__chart {
+  display: flex; align-items: flex-end; gap: var(--space-3);
+  height: 96px;
 }
-.rating-histogram__avg { display: flex; align-items: center; gap: var(--space-2); }
-/* The average is the headline number on this panel — large, light,
-   tightly tracked, the way a score reads on a console dashboard. */
-.rating-histogram__avg b {
-  font-family: var(--font-mono); font-size: 30px; font-weight: 500;
-  color: var(--ink); letter-spacing: -0.03em; line-height: 1;
+.rating-histogram__anchor {
+  flex: 0 0 auto; font-size: 13px; color: var(--ink);
+  line-height: 1; padding-bottom: 2px;
 }
-.rating-histogram__total { font-size: var(--text-meta); color: var(--ink-faint); }
-.rating-histogram__bars { display: flex; align-items: flex-end; gap: 3px; height: 76px; }
+.rating-histogram__bars {
+  flex: 1 1 auto; min-width: 0;
+  display: flex; align-items: flex-end; gap: 5px; height: 100%;
+}
 .rating-histogram__bar {
-  flex: 1; height: 100%; display: flex; flex-direction: column; align-items: center;
-  justify-content: flex-end; position: relative; padding: 0; background: none; border: none;
+  flex: 1; min-width: 0; height: 100%;
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+  position: relative; padding: 0; background: none; border: none;
 }
-/* A faint always-present track means the ten slots stay visible even
-   where nothing was rated, so the chart reads as a scale rather than
-   as a few floating bars. */
-.rating-histogram__bar-track {
-  display: flex; align-items: flex-end; width: 100%; height: 100%;
-  background: rgba(255,255,255,0.035); border-radius: var(--radius-s);
-  overflow: hidden;
-}
+/* No track behind the bar. An empty slot is drawn by the fill itself at
+   its minimum height, so the baseline reads as a row of stubs rather
+   than ten grey columns competing with the real bar. */
 .rating-histogram__bar-fill {
-  display: block; width: 100%; height: var(--bar-pct, 0%);
-  border-radius: var(--radius-s);
-  background: linear-gradient(180deg, var(--gold), color-mix(in srgb, var(--gold) 72%, var(--coral)));
-  transition: height var(--dur-slow) var(--ease);
+  display: block; width: 100%;
+  height: max(var(--bar-pct, 0%), 7px);
+  min-height: 7px;
+  border-radius: 5px;
+  background: var(--accent);
+  transition: height var(--dur-slow) var(--ease), background var(--dur) var(--ease);
+}
+.rating-histogram__bar.is-zero .rating-histogram__bar-fill {
+  height: 7px;
+  background: color-mix(in srgb, var(--accent) 62%, transparent);
 }
 .rating-histogram__bar-count {
   font-family: var(--font-mono); font-size: 10px; font-weight: 500; color: var(--ink);
@@ -1630,13 +1645,23 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
   transition: opacity var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
 }
 .rating-histogram__bar--active .rating-histogram__bar-count { opacity: 1; transform: translateY(0); }
-.rating-histogram__bar--active .rating-histogram__bar-track { background: rgba(255,255,255,0.09); }
-/* Two anchors instead of ten cramped labels — the scale runs low to
-   high and people already know what a star row means. */
-.rating-histogram__axis {
-  display: flex; justify-content: space-between; margin-top: var(--space-3);
+.rating-histogram__bar--active .rating-histogram__bar-fill {
+  background: color-mix(in srgb, var(--accent) 78%, #fff);
 }
-.rating-histogram__axis span { font-size: 10px; color: var(--ink-faint); letter-spacing: 0.12em; }
+
+/* The headline figure, sat on the same baseline as the bars with its
+   star row directly beneath it. */
+.rating-histogram__score {
+  flex: 0 0 auto; display: flex; flex-direction: column;
+  align-items: flex-end; gap: 2px; line-height: 1;
+}
+.rating-histogram__score b {
+  font-family: var(--font-mono); font-size: 34px; font-weight: 500;
+  color: var(--ink); letter-spacing: -0.03em; line-height: 1;
+}
+.rating-histogram__score-stars {
+  font-size: 12px; color: var(--ink); letter-spacing: 0.08em; line-height: 1;
+}
 
 /* ------------------------------------------------------------ log cards ("save slot") */
 .log-list { display: flex; flex-direction: column; gap: 14px; }
@@ -2277,6 +2302,29 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
   animation: skeleton-sweep 1.4s infinite;
 }
 @keyframes skeleton-sweep { to { transform: translateX(100%); } }
+
+/* WhatsApp-style download ring, shown over a tile whose artwork hasn't
+   arrived yet. Starts invisible and fades in only after 250ms, so an
+   image already in cache (the common case on a second visit) paints
+   without ever flashing a spinner. */
+.poster-frame__spin {
+  position: absolute; inset: 0; z-index: 2;
+  display: grid; place-items: center; pointer-events: none;
+  opacity: 0; animation: poster-spin-in var(--dur) var(--ease) 250ms forwards;
+}
+.poster-frame__spin::before {
+  content: ''; width: 24px; height: 24px; max-width: 46%; max-height: 46%;
+  border-radius: 50%;
+  border: 2.5px solid rgba(255,255,255,0.22);
+  border-top-color: rgba(255,255,255,0.85);
+  animation: poster-spin 0.75s linear infinite;
+}
+.poster-frame.is-loaded .poster-frame__spin { animation: none; opacity: 0; }
+@keyframes poster-spin-in { to { opacity: 1; } }
+@keyframes poster-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .poster-frame__spin::before { animation: none; }
+}
 .skeleton--poster { flex-shrink: 0; width: 132px; aspect-ratio: var(--ratio-card); border-radius: var(--radius-s); }
 .skeleton--thumb { width: 52px; aspect-ratio: var(--ratio-inline); flex-shrink: 0; border-radius: var(--radius-s); }
 .skeleton--line { height: 11px; border-radius: var(--radius-pill); }
@@ -2881,13 +2929,13 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 .gd-credit__name {
   display: block; margin-top: 2px;
   font-size: 18px; font-weight: 700;
-  /* The accent, not a hardcoded cream — the credit sits on the page's
-     OWN background (below the artwork strip, not overlaid on it), which
-     is dark in dark theme and cream in light theme. A literal light
-     colour meant to pop off black instead went invisible on that cream
-     ground; the accent is already proven to read on both (see "See
-     more" right above it, same token, same page). */
-  color: var(--accent-bright); line-height: 1.2; letter-spacing: 0.01em;
+  /* The page's own ink, so the director reads as the headline credit it
+     is rather than as a link. Deliberately NOT a hardcoded white: the
+     credit sits on the page background (below the artwork strip, not
+     overlaid on it), which is cream in light theme, and a literal white
+     went invisible there. --ink is white on dark and near-black on
+     cream, so it stays the strongest text on the line in both. */
+  color: var(--ink); line-height: 1.2; letter-spacing: 0.01em;
 }
 a.gd-credit__name { text-decoration: none; }
 
@@ -2959,14 +3007,15 @@ a.gd-credit__name { text-decoration: none; }
    a long description can't push the ratings and the action row off the
    first screen. The button is only unhidden when the text genuinely
    overflows — see the measurement in game-view.js. */
-.gd-synopsis-wrap { position: relative; }
+.gd-synopsis-wrap { position: relative; margin-top: calc(-1 * var(--space-2)); }
 /* Full ink colour, not dimmed — the synopsis is the first real copy on
    the page and it's meant to be read, not skimmed past as secondary
-   metadata the way a dimmed grey paragraph reads. Regular weight
-   though: bold across four full lines of running text read as shouting
-   rather than emphasis. */
+   metadata the way a dimmed grey paragraph reads. Weighted up so it
+   carries as the page's opening statement rather than sitting back like
+   caption text. It also sits tight under the credit above it, so the
+   header and the blurb read as one block instead of two. */
 .gd-synopsis {
-  font-size: 15.5px; line-height: 1.55; font-weight: 400;
+  font-size: 15.5px; line-height: 1.5; font-weight: 600;
   color: var(--ink); margin: 0; letter-spacing: -0.01em;
 }
 .gd-synopsis.is-clamped {
@@ -4491,7 +4540,7 @@ a.gd-credit__name { text-decoration: none; }
   margin: 22px 4px 4px; font-size: 0.74rem; line-height: 1.5;
   color: var(--text-dim); opacity: 0.75;
 }
-.psn-library-note { margin: -4px 0 10px; font-size: 0.76rem; line-height: 1.45; }
+.conn-note { margin: 10px 2px 0; line-height: 1.5; }
 .psn-sheet__list { display: flex; flex-direction: column; gap: 4px; }
 
 .psn-pick {

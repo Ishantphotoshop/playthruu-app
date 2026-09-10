@@ -161,7 +161,8 @@ export function renderSettingsView(root) {
         <div class="conn-row__meta"><b>PlayStation</b><span>${esc(account.handle)}</span></div>
         <button type="button" class="btn btn--ghost conn-row__btn" id="psn-resync-btn">Re-sync</button>
         <button type="button" class="btn btn--ghost conn-row__btn" id="psn-disconnect-btn">Disconnect</button>
-      </div>`;
+      </div>
+      <p class="set-hint conn-note">Your library is read from PlayStation’s own records, so it’s only ever as complete as they are — a game can go missing, and a remaster is sometimes mistaken for the original. Anything imported can be edited or deleted like any other entry.</p>`;
   }
   function disconnectedRowHtml() {
     return `
@@ -339,7 +340,7 @@ export function renderSettingsView(root) {
       favorites = rows.map((r) => r.games);
       paintFavorites();
     } catch (err) {
-      qs('#favorites-list', body).innerHTML = `<p class="muted">Couldn't load favorites: ${esc(err.message)}</p>`;
+      qs('#favorites-list', body).innerHTML = `<p class="muted">Couldn't load favourites: ${esc(err.message)}</p>`;
     }
   }
 
@@ -356,7 +357,7 @@ export function renderSettingsView(root) {
           <button type="button" class="favorite-row__remove" data-remove-index="${i}" aria-label="Remove">${iconClose()}</button>
         </div>` : `
         <button type="button" class="favorite-row favorite-row--empty" data-add-index="${i}">
-          ${iconPlus()} <span>Add a favorite</span>
+          ${iconPlus()} <span>Add a favourite</span>
         </button>`);
     }
     list.innerHTML = rows.join('');
@@ -423,7 +424,7 @@ export function renderSettingsView(root) {
     overlay.innerHTML = `
       <div class="modal modal--tall">
         <header class="modal__header">
-          <h2>Add a favorite</h2>
+          <h2>Add a favourite</h2>
           <button class="modal__close" data-close>${iconClose()}</button>
         </header>
         <div class="modal__body">
@@ -469,12 +470,12 @@ export function renderSettingsView(root) {
     btn.textContent = 'Saving…';
     try {
       await api.setFavorites(state.user.id, favorites.map((g) => g.id));
-      toast('Favorites saved.', 'success');
+      toast('Favourites saved.', 'success');
     } catch (err) {
-      toast(err.message || 'Could not save favorites.', 'error');
+      toast(err.message || 'Could not save favourites.', 'error');
     } finally {
       btn.disabled = false;
-      btn.textContent = 'Save favorites';
+      btn.textContent = 'Save favourites';
     }
   });
 

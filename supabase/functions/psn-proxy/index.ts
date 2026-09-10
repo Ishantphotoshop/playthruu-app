@@ -341,7 +341,7 @@ async function fetchCompletions(accountId: string) {
   // only in the other, so each title costs two requests; bounded
   // concurrency keeps a big library quick without hammering PSN through
   // the one shared service account.
-  await Promise.all(Array.from({ length: 8 }, async () => {
+  await Promise.all(Array.from({ length: 14 }, async () => {
     for (;;) {
       const t = queue.shift();
       if (!t) return;
