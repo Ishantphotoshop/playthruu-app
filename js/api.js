@@ -386,7 +386,14 @@ function filterOutEditions(games) {
 // purpose: search must reflect the catalogue as it is right now, so a
 // repeated query re-runs rather than replaying an earlier result set.
 
-export async function searchIgdb(query, limit = 12, page = 1) {
+// `includeEditions` exists for ONE caller: matching an imported console
+// library. Everywhere else, hiding "…: Definitive Edition" is right —
+// nobody searching "Lies of P" wants four store SKUs back. But when PSN
+// says the played title IS "Grand Theft Auto III – The Definitive
+// Edition", filtering that away leaves only the 2001 original to match
+// against, and the import silently records the wrong game. Same for
+// `version_parent`, which is exactly what IGDB hangs editions off.
+export async function searchIgdb(query, limit = 12, page = 1, { includeEditions = false } = {}) {
   if (!query?.trim()) return [];
   // Wider than what we show, since ranking happens client-side — but
   // not TOO wide, since a bigger request is a slower one.
@@ -402,12 +409,14 @@ export async function searchIgdb(query, limit = 12, page = 1) {
   // treated as "keep"), and unreleased games are allowed to surface in
   // SEARCH — browse/trending still exclude them.
   const offset = (page - 1) * limit;
-  const q = `search "${escapeApicalypse(query)}"; fields ${IGDB_SEARCH_FIELDS}; where version_parent = null; limit ${fetchLimit}; offset ${offset};`;
+  const where = includeEditions ? '' : ' where version_parent = null;';
+  const q = `search "${escapeApicalypse(query)}"; fields ${IGDB_SEARCH_FIELDS};${where} limit ${fetchLimit}; offset ${offset};`;
   const results = await igdb('games', q);
   // IGDB category: 3 = bundle, 13 = pack. Anything else — including an
   // absent category — is kept, so a missing field never costs a result.
   const noBundles = results.filter((g) => g.category !== 3 && g.category !== 13);
-  const mapped = filterOutEditions(noBundles.map(mapIgdbGame));
+  const asGames = noBundles.map(mapIgdbGame);
+  const mapped = includeEditions ? asGames : filterOutEditions(asGames);
   return rankSearchResults(query, mapped).slice(0, limit);
 }
 
@@ -3042,16 +3051,127 @@ async function mapWithLimit(items, limit, fn) {
   return out;
 }
 
-async function matchImportedTitle(rawTitle, addedBy) {
-  const attempts = [rawTitle, simplifyImportedTitle(rawTitle)]
+// ---- picking the RIGHT game, not just a same-named one ----
+//
+// Three real failures drove this, all from taking the first title that
+// happened to match:
+//   "Grand Theft Auto III – The Definitive Edition" -> the 2001 original
+//   "Demon's Souls" on PS5                          -> the 2009 PS3 game
+//   "Destroy All Humans!" on PS4                    -> the 2005 original
+// So candidates are gathered and scored rather than raced, using the two
+// signals PSN hands over for free: which console the title is for, and
+// when it was first played.
+
+// Edition/remaster words as a comparable SET, so "GTA III – The
+// Definitive Edition" and "Grand Theft Auto III: The Definitive Edition"
+// agree while the plain 2001 original does not.
+const EDITION_MARKERS = [
+  'definitive', 'remastered', 'remaster', 'remake', 'redux', 'reforged',
+  'anniversary', 'enhanced', 'complete', 'deluxe', 'ultimate', 'legendary',
+  'goty', 'game of the year', 'directors cut', 'ultra deluxe', 'hd',
+];
+function editionSignature(title) {
+  const t = normalizeTitle(title);
+  return EDITION_MARKERS.filter((m) => t.includes(m)).sort().join('|');
+}
+
+// A console can't play a game that didn't exist yet, so a title's
+// platform puts a floor under which release years are plausible. This is
+// only ever a TIE-BREAKER between same-named candidates — never a filter
+// — because PS4 and PS5 both happily run re-releases of much older games
+// (Sly 2 on PS4 really is the 2004 game, and should stay that way).
+const PLATFORM_FLOOR = { ps5: 2020, ps4: 2013, ps3: 2006, psvita: 2011 };
+function platformFloor(entry) {
+  const hay = `${entry.category || ''} ${entry.platform || ''}`.toLowerCase();
+  if (hay.includes('ps5')) return PLATFORM_FLOOR.ps5;
+  if (hay.includes('ps4')) return PLATFORM_FLOOR.ps4;
+  if (hay.includes('vita')) return PLATFORM_FLOOR.psvita;
+  if (hay.includes('ps3')) return PLATFORM_FLOOR.ps3;
+  return 0;
+}
+
+function candidateYear(g) {
+  return Number(g.release_year) || (g.release_date ? new Date(g.release_date).getFullYear() : 0);
+}
+
+function scoreCandidate(game, entry, searchedTitle) {
+  const wantEdition = editionSignature(entry.name);
+  const gotEdition = editionSignature(game.title);
+  const year = candidateYear(game);
+
+  // Nobody played a game before it came out. A year of slack absorbs
+  // regional release dates and PSN's own coarse timestamps.
+  const playedYear = entry.firstPlayedAt ? new Date(entry.firstPlayedAt).getFullYear() : 0;
+  if (playedYear && year && year > playedYear + 1) return null;
+
+  let score = 0;
+  if (normalizeTitle(game.title) === normalizeTitle(entry.name)) score += 100;
+  else if (normalizeTitle(game.title) === normalizeTitle(searchedTitle)) score += 60;
+  // Getting the edition right matters more than anything below it: the
+  // Definitive Edition and the original are genuinely different entries.
+  if (wantEdition === gotEdition) score += 50;
+  else if (wantEdition && !gotEdition) score -= 40;
+  else if (!wantEdition && gotEdition) score -= 25;
+  if (year >= platformFloor(entry)) score += 20;
+  return { game, score, year };
+}
+
+function bestCandidate(games, entry, searchedTitle) {
+  const scored = games.map((g) => scoreCandidate(g, entry, searchedTitle)).filter(Boolean);
+  if (!scored.length) return null;
+  // Newest wins ties, so a remake beats the original it's named after
+  // once both are equally plausible for the console in hand.
+  scored.sort((a, b) => (b.score - a.score) || (b.year - a.year));
+  return scored[0].score > 0 ? scored[0].game : null;
+}
+
+// PSN ships a separate entry per console SKU, so one game can arrive two
+// or three times under the exact same name — "The Last of Us™ Part II"
+// appeared three times on one real account, and the library showed it
+// three times. Once they've resolved to the same game page they're the
+// same game, so they're folded into one: hours added together (you did
+// play it on both), earliest first-played, latest last-played. Entries
+// that matched nothing can't be compared this way and are folded by name
+// instead. The surviving platform_game_id is the lowest one, so a
+// re-sync keeps landing on the same row rather than making a new one.
+function collapseDuplicateImports(entries, matches) {
+  const groups = new Map();
+  entries.forEach((entry, i) => {
+    const game = matches[i] || null;
+    const key = game ? `game:${game.id}` : `name:${normalizeTitle(entry.name)}`;
+    const existing = groups.get(key);
+    if (!existing) {
+      groups.set(key, { ...entry, game });
+      return;
+    }
+    existing.playtimeMinutes += entry.playtimeMinutes || 0;
+    if (entry.platformGameId < existing.platformGameId) {
+      existing.platformGameId = entry.platformGameId;
+      existing.name = entry.name;
+    }
+    if (entry.lastPlayedAt && (!existing.lastPlayedAt || entry.lastPlayedAt > existing.lastPlayedAt)) {
+      existing.lastPlayedAt = entry.lastPlayedAt;
+    }
+    if (entry.firstPlayedAt && (!existing.firstPlayedAt || entry.firstPlayedAt < existing.firstPlayedAt)) {
+      existing.firstPlayedAt = entry.firstPlayedAt;
+    }
+  });
+  return [...groups.values()];
+}
+
+async function matchImportedTitle(entry, addedBy) {
+  const attempts = [entry.name, simplifyImportedTitle(entry.name)]
     .filter((t, i, all) => t && all.indexOf(t) === i);
   for (const title of attempts) {
-    const { data: local } = await supabase.from('games').select('*').ilike('title', title).limit(1);
-    if (local?.length) return local[0];
+    // Every same-named row, not just the first one the database happens
+    // to hand back — that arbitrary pick is what chose 2009's Demon's
+    // Souls over the 2020 remake.
+    const { data: local } = await supabase.from('games').select('*').ilike('title', title).limit(10);
+    const localHit = local?.length ? bestCandidate(local, entry, title) : null;
+    if (localHit) return localHit;
     try {
-      const results = await searchIgdb(title, 5);
-      const norm = normalizeTitle(title);
-      const hit = results.find((r) => normalizeTitle(r.title) === norm);
+      const results = await searchIgdb(title, 10, 1, { includeEditions: true });
+      const hit = bestCandidate(results, entry, title);
       if (hit) return await addGame(hit, addedBy);
     } catch { /* IGDB down or no match — try the next shape, then give up */ }
   }
@@ -3099,6 +3219,7 @@ export async function connectPsnAccount(userId, onlineId) {
   const entries = played.map((t) => ({
     platformGameId: t.platformGameId, name: t.name,
     playtimeMinutes: t.playtimeMinutes, lastPlayedAt: t.lastPlayedAt,
+    category: t.category || null, firstPlayedAt: t.firstPlayedAt || null,
   }));
   const known = buildTitleIndex(entries, (e) => e.name);
   for (const t of trophyTitles) {
@@ -3109,20 +3230,32 @@ export async function connectPsnAccount(userId, onlineId) {
     entries.push({
       platformGameId: `trophy:${t.id}`, name: t.name,
       playtimeMinutes: 0, lastPlayedAt: t.completedAt || null,
+      category: null, platform: t.platform || null, firstPlayedAt: null,
     });
   }
 
-  const matches = await mapWithLimit(entries, 6, (e) => matchImportedTitle(e.name, userId).catch(() => null));
+  const matches = await mapWithLimit(entries, 6, (e) => matchImportedTitle(e, userId).catch(() => null));
 
-  const rows = entries.map((t, i) => ({
+  const rows = collapseDuplicateImports(entries, matches).map((t) => ({
     account_id: account.id, user_id: userId,
     platform_game_id: t.platformGameId, name: t.name,
     playtime_minutes: t.playtimeMinutes, last_played_at: t.lastPlayedAt,
-    game_id: matches[i]?.id || null, match_state: matches[i] ? 'matched' : 'unmatched',
+    game_id: t.game?.id || null, match_state: t.game ? 'matched' : 'unmatched',
   }));
   if (rows.length) {
     const { error: rowsErr } = await supabase.from('imported_games').upsert(rows, { onConflict: 'account_id,platform_game_id' });
     if (rowsErr) throw rowsErr;
+
+    // A sync should leave the library mirroring PSN, so anything that
+    // didn't come back this time is dropped. Without this, the duplicate
+    // console SKUs that are now folded together would sit there forever
+    // on accounts that synced before the folding existed — upserting new
+    // rows never removes the old ones.
+    const keep = new Set(rows.map((r) => r.platform_game_id));
+    const { data: present } = await supabase
+      .from('imported_games').select('id, platform_game_id').eq('account_id', account.id);
+    const stale = (present || []).filter((r) => !keep.has(r.platform_game_id)).map((r) => r.id);
+    if (stale.length) await supabase.from('imported_games').delete().in('id', stale);
   }
 
   // Working out what to put in the diary is a bonus pass, not part of

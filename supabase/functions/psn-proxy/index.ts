@@ -104,7 +104,7 @@ async function resolveOnlineId(onlineId: string) {
 
 type PlayedGame = {
   titleId?: string; npTitleId?: string; concept?: { id?: string };
-  name?: string; titleName?: string;
+  name?: string; titleName?: string; category?: string;
   playDuration?: unknown; playTime?: unknown;
   lastPlayedDateTime?: string; firstPlayedDateTime?: string;
 };
@@ -136,6 +136,12 @@ async function fetchLibrary(accountId: string) {
       name: g.name || g.titleName || "Untitled",
       playtimeMinutes: durationToMinutes(g.playDuration ?? g.playTime),
       lastPlayedAt: g.lastPlayedDateTime || g.firstPlayedDateTime || null,
+      // Both feed title matching. category tells a PS5 release apart
+      // from a PS4 one, which is how "Demon's Souls" on PS5 is known to
+      // be the 2020 remake rather than the 2009 original; firstPlayedAt
+      // is a hard ceiling, since nobody played a game before it existed.
+      category: g.category || null,
+      firstPlayedAt: g.firstPlayedDateTime || null,
     })),
   };
 }
