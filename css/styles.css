@@ -3135,11 +3135,19 @@ a.gd-credit__name { text-decoration: none; }
   font-family: var(--font-display); font-size: 17px; font-weight: 700;
   letter-spacing: -0.01em; color: var(--ink); margin: 0;
 }
-/* Chart and average sit side by side: the distribution takes the room
-   it needs and the average is pinned to its right, reading as the
-   summary of the bars beside it rather than a separate stat. */
+/* One row now, not two: the single low-end star used to sit on its own
+   line below the bars (a separate .gd-dist__axis row); it's the first
+   thing in this row instead, on the same baseline as the bars' own
+   bottom edge — matching a reference where the star, the bars and the
+   average all read as one strip rather than a chart with a caption
+   underneath it. */
 .gd-dist__plot { display: flex; align-items: flex-end; gap: var(--space-3); }
 .gd-dist__plot .gd-dist__bars { flex: 1; min-width: 0; }
+.gd-dist__end {
+  display: flex; align-items: center; flex-shrink: 0;
+  height: 84px; padding-bottom: 3px;
+}
+.gd-dist__end svg { width: 15px; height: 15px; color: var(--ink); }
 /* Tall enough for the shape of the distribution to actually be
    legible — at 42px every bar but the mode used to collapse into the
    baseline and the chart said nothing — but no taller than it needs to
@@ -3170,9 +3178,15 @@ a.gd-credit__name { text-decoration: none; }
    only bar that ever lights up brighter is the one a finger is
    currently on (--held, set live by the hold-to-scrub handlers), so
    the highlight always tracks touch and nothing else. */
+/* Full pill radius, not just rounded on top — the reference draws every
+   column, from the tallest bar down to the near-empty stubs, as a
+   rounded-capsule shape, so even a 4px stub reads as a small pill sitting
+   on the baseline rather than a flat-topped sliver. min-height raised
+   from 4px to 7px so that capsule shape is actually visible at rest —
+   a pill shorter than its own width just looks like a rounded square. */
 .gd-dist__bar {
-  width: 100%; min-height: 4px; border-radius: 3px 3px 0 0;
-  background: var(--accent-deep);
+  width: 100%; min-height: 7px; border-radius: 999px;
+  background: var(--accent);
   transition: background var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
   pointer-events: none; /* clicks belong to the button, not the bar */
 }
@@ -3181,17 +3195,6 @@ a.gd-credit__name { text-decoration: none; }
 .gd-dist__col:focus-visible {
   outline: 2px solid var(--accent-bright); outline-offset: 2px;
 }
-.gd-dist__axis {
-  display: flex; justify-content: flex-start; align-items: center;
-  margin-top: var(--space-2);
-}
-.gd-dist__end {
-  display: inline-flex; align-items: center; gap: 4px;
-  font-size: 11.5px; color: var(--ink-faint); font-variant-numeric: tabular-nums;
-}
-/* The single star at the low end of the axis — it marks which end is
-   which without spelling out "0.5 stars", which the bars already say. */
-.gd-dist__end svg { width: 14px; height: 14px; color: var(--star-fill); }
 
 /* The average, pinned to the right of the chart: the big figure over
    its own star row — the summary the bars can't state on their own,

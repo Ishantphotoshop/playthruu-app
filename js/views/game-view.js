@@ -566,6 +566,7 @@ export async function renderGameView(root, { id, igdbId }) {
                 <h2 class="gd-dist__title">Ratings</h2>
               </div>
               <div class="gd-dist__plot">
+                <span class="gd-dist__end">${iconStarSmall()}</span>
                 <div class="gd-dist__bars" id="rating-bars">
                   ${halfSteps.map((star, i) => {
                     const count = stepCounts[i];
@@ -588,9 +589,6 @@ export async function renderGameView(root, { id, igdbId }) {
                     <span class="gd-avg__num" id="rating-avg-num">${avg.toFixed(1)}</span>
                     <span class="gd-avg__stars" id="rating-avg-stars">${starRow(avg, { size: 13, count: 5 })}</span>
                   </div>` : ''}
-              </div>
-              <div class="gd-dist__axis">
-                <span class="gd-dist__end">${iconStarSmall()}</span>
               </div>
             </section>`
             : `<p class="gd-empty">No ratings yet — be the first.</p>`}
