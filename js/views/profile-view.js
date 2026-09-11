@@ -57,62 +57,13 @@ function profileBundle(profile) {
 }
 
 // imported_games stores minutes (see the migration's own reasoning —
-// rounding to hours at import time would throw away detail).
-//
-// Hours alone stop meaning anything once they run into four figures: a
-// PSN library import routinely comes back with more than a thousand, and
-// "1,247h logged" is a number nobody can picture. So this carries up to
-// the two largest units that actually apply — months and days, then days
-// and hours, then hours and minutes — the way TV trackers like Serializd
-// report time watched. Two units and no more: the third is always noise
-// next to the first two, and the figure needs to stay short enough for a
-// badge whatever size it grows to.
-//
-// A month here is a flat 30 days rather than the calendar's 30.44. This
-// is a readout of elapsed play, not a date calculation, and a total that
-// ticks over to "2 months" on a round 60 days is easier to trust than
-// one that does it four hours early.
-const MINS_PER_HOUR = 60;
-const MINS_PER_DAY = 24 * MINS_PER_HOUR;
-const MINS_PER_MONTH = 30 * MINS_PER_DAY;
-const MINS_PER_YEAR = 12 * MINS_PER_MONTH;
-
-function playtimeParts(minutes) {
-  const total = Math.max(0, Math.round(Number(minutes) || 0));
-  if (total < MINS_PER_HOUR) return [[total, 'minute', 'm']];
-  if (total < MINS_PER_DAY) {
-    const h = Math.floor(total / MINS_PER_HOUR);
-    const m = total % MINS_PER_HOUR;
-    return m ? [[h, 'hour', 'h'], [m, 'minute', 'm']] : [[h, 'hour', 'h']];
-  }
-  if (total < MINS_PER_MONTH) {
-    const d = Math.floor(total / MINS_PER_DAY);
-    const h = Math.floor((total % MINS_PER_DAY) / MINS_PER_HOUR);
-    return h ? [[d, 'day', 'd'], [h, 'hour', 'h']] : [[d, 'day', 'd']];
-  }
-  if (total < MINS_PER_YEAR) {
-    const mo = Math.floor(total / MINS_PER_MONTH);
-    const d = Math.floor((total % MINS_PER_MONTH) / MINS_PER_DAY);
-    return d ? [[mo, 'month', 'mo'], [d, 'day', 'd']] : [[mo, 'month', 'mo']];
-  }
-  // A whole PSN library going back to a launch-day PS3 really can total
-  // more than a year of play. Without this tier the same rule keeps
-  // counting in months and reports "37mo", which is both harder to read
-  // and less of a boast than the year it actually is.
-  const y = Math.floor(total / MINS_PER_YEAR);
-  const mo = Math.floor((total % MINS_PER_YEAR) / MINS_PER_MONTH);
-  return mo ? [[y, 'year', 'y'], [mo, 'month', 'mo']] : [[y, 'year', 'y']];
-}
-
-// `long` spells the units out, for the one place this is a headline
-// figure about a person rather than a label on a poster. The compact
-// form is the same numbers with no room to spare.
-function formatPlaytime(minutes, { long = false } = {}) {
-  return playtimeParts(minutes)
-    .map(([value, word, short]) => long
-      ? `${value.toLocaleString('en-US')} ${word}${value === 1 ? '' : 's'}`
-      : `${value.toLocaleString('en-US')}${short}`)
-    .join(' ');
+// rounding to hours at import time would throw away detail). Rounded to
+// one decimal past 1h so a badge reads "84.5h" rather than a false-
+// precise "84.48333...h"; under an hour reads in minutes outright,
+// since "0.1h" says less than "6m" does.
+function formatImportedHours(minutes) {
+  if (minutes < 60) return `${minutes}m`;
+  return `${(minutes / 60).toFixed(1).replace(/\.0$/, '')}h`;
 }
 
 // Called from app.js once a session is up, so tapping through to your own
@@ -195,7 +146,7 @@ export async function renderProfileView(root, { username }) {
         ${profile.bio ? `<p class="profile-header__bio">${esc(profile.bio)}</p>` : ''}
         ${stats.totalHours > 0 || stats.streak >= 2 ? `
           <div class="profile-header__badges">
-            ${stats.totalHours > 0 ? `<span class="profile-header__hours">${formatPlaytime(stats.totalHours * 60, { long: true })} logged</span>` : ''}
+            ${stats.totalHours > 0 ? `<span class="profile-header__hours">${stats.totalHours.toLocaleString('en-US')}h logged</span>` : ''}
             ${stats.streak >= 2 ? `<span class="profile-header__streak">${iconFlame()}${stats.streak} day streak</span>` : ''}
           </div>` : ''}
         ${!isOwn && state.user
@@ -244,7 +195,7 @@ export async function renderProfileView(root, { username }) {
           ${importedGames.filter((g) => g.games).map((g) => `
             <a href="#/game/${g.games.id}" class="recent-played-item">
               ${posterFrame(g.games.cover_url, g.name, 'recent-played-item__cover')}
-              <span class="recent-played-item__hours">${formatPlaytime(g.playtime_minutes)}</span>
+              <span class="recent-played-item__hours">${formatImportedHours(g.playtime_minutes)}</span>
             </a>`).join('')}
         </div>` : ''}
 
