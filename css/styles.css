@@ -2978,7 +2978,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
      item's margin also feeds into the row's own cross-axis centring
      math, which would have nudged the text column right along with it
      — exactly what this isn't supposed to touch. */
-  position: relative; top: -22px;
+  position: relative; top: -27px;
 }
 /* This one frame fills rather than fits: the header art is a fixed
    crop by design, so `cover` is correct here even though posters
@@ -2995,11 +2995,14 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
   flex: 1; min-width: 0;
   display: flex; flex-direction: column; align-items: flex-start; gap: 8px;
   text-align: left;
-  position: relative; top: -22px;
+  position: relative; top: -27px;
 }
+/* Smaller than before (25px) so an ordinary-length title reads on one
+   line instead of wrapping — a long one still wraps naturally to 2-3
+   lines, there's no clamp forcing it shorter than that. */
 .gd-head__title {
-  font-family: var(--font-display); font-size: 25px; line-height: 1.15;
-  font-weight: 800; letter-spacing: -0.02em;
+  font-family: var(--font-display); font-size: 19px; line-height: 1.2;
+  font-weight: 800; letter-spacing: -0.01em;
 }
 
 /* "2020 · Directed By" over the name it belongs to. */
@@ -3126,8 +3129,10 @@ a.gd-credit__name { text-decoration: none; }
    what lets the chart read as part of the page. */
 .gd-dist { display: flex; flex-direction: column; gap: var(--space-2); }
 .gd-dist__head { display: flex; align-items: baseline; justify-content: space-between; }
+/* Smaller than before (22px) — matches the reference sizing, where
+   "Ratings" reads as a plain section label rather than a headline. */
 .gd-dist__title {
-  font-family: var(--font-display); font-size: 22px; font-weight: 700;
+  font-family: var(--font-display); font-size: 17px; font-weight: 700;
   letter-spacing: -0.01em; color: var(--ink); margin: 0;
 }
 /* Chart and average sit side by side: the distribution takes the room
