@@ -116,17 +116,6 @@
   /* The wordmark's font (see the <link> in index.html). */
   --font-brand: 'Unbounded', system-ui, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Consolas, monospace;
-  /* The editorial serif, for the few places a rating is presented as a
-     considered verdict rather than a UI number — currently the game
-     page's Ratings panel and nothing else. Fraunces is the closest
-     freely-licensed face to the flared, warm display serifs that genre
-     of type is built on (Canela and its relatives): the same wedge
-     serifs and high-but-not-brittle contrast, but with a real weight
-     range and a large enough x-height to still read at 18px on a dark
-     ground, which the hairline Didones it is often grouped with do not.
-     Its optical-size axis is why the <link> requests opsz 9..144 — the
-     browser picks the cut made for the size it is drawing. */
-  --font-serif: 'Fraunces', 'Iowan Old Style', Georgia, 'Times New Roman', serif;
 
   --text-display: 34px;
   --text-title: 24px;
@@ -2977,7 +2966,20 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 /* Top-aligned: the logo sits right beside the poster's own top edge,
    with the credit line and Trailer pill flowing down below it rather
    than the whole column floating at the poster's vertical middle. */
-.gd-head { position: relative; z-index: 1; display: flex; gap: var(--space-4); align-items: flex-start; }
+/* The poster and the text column are both painted 27px higher than
+   they sit in the layout (relative offsets — see the notes on each
+   below), which left 27px of dead space under the header: the flow
+   still reserved the room the poster had visually vacated, so the
+   synopsis began well below the poster's real bottom edge rather than
+   just under it. The negative bottom margin gives that room back, so
+   everything after the header rises with it and the copy starts where
+   the poster actually ends. It has to be this exact value rather than a
+   guess — it cancels the same offset the two children use. */
+.gd-head {
+  position: relative; z-index: 1; display: flex;
+  gap: var(--space-4); align-items: flex-start;
+  margin-bottom: -27px;
+}
 .gd-head__cover {
   width: 130px; flex-shrink: 0; aspect-ratio: 3/4;
   border-radius: 5px; overflow: hidden; background: var(--surface);
@@ -3011,8 +3013,12 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 /* Smaller than before (25px) so an ordinary-length title reads on one
    line instead of wrapping — a long one still wraps naturally to 2-3
    lines, there's no clamp forcing it shorter than that. */
+/* 22px: up a little from 19, still well short of the 25px it started
+   at, so an ordinary title keeps to one line and only a long one wraps.
+   800 is the whole of Manrope's weight range — the <link> requests it
+   and there is nothing heavier to move up to. */
 .gd-head__title {
-  font-family: var(--font-display); font-size: 19px; line-height: 1.2;
+  font-family: var(--font-display); font-size: 22px; line-height: 1.2;
   font-weight: 800; letter-spacing: -0.01em;
 }
 
@@ -3138,20 +3144,21 @@ a.gd-credit__name { text-decoration: none; }
 /* ---- 2. rating distribution ---- */
 /* Bars sit ON the baseline rule rather than inside a panel, which is
    what lets the chart read as part of the page. */
-.gd-dist { display: flex; flex-direction: column; gap: var(--space-2); }
+/* --star-fill is overridden here and nowhere else, so the green is the
+   Ratings panel's own colour rather than a global restyle of every star
+   in the app (the feed, profile and log rows keep the white ones). Both
+   star rows in this panel — the single low-end marker and the average's
+   five — inherit it, since both sit inside .gd-dist. */
+.gd-dist {
+  display: flex; flex-direction: column; gap: var(--space-2);
+  --star-fill: #22c55e;
+}
 .gd-dist__head { display: flex; align-items: baseline; justify-content: space-between; }
-/* The one heading in the app set in the serif. A rating is the page's
-   verdict on the game, and the rest of the panel is now monochrome, so
-   the word carries that weight typographically instead of through size
-   — it stays small (it was 22px before, and shrinking it was the point)
-   but no longer reads as just another sans section label. 18px, not the
-   17px the sans sat at: Fraunces runs a touch smaller on the body at
-   the same nominal size, so this matches it optically rather than
-   numerically. Positive tracking because a serif at small size on a
-   dark ground closes up otherwise. */
+/* Smaller than before (22px) — matches the reference sizing, where
+   "Ratings" reads as a plain section label rather than a headline. */
 .gd-dist__title {
-  font-family: var(--font-serif); font-size: 18px; font-weight: 600;
-  letter-spacing: 0.01em; color: var(--ink); margin: 0;
+  font-family: var(--font-display); font-size: 17px; font-weight: 700;
+  letter-spacing: -0.01em; color: var(--ink); margin: 0;
 }
 /* One row now, not two: the single low-end star used to sit on its own
    line below the bars (a separate .gd-dist__axis row); it's the first
@@ -3191,7 +3198,7 @@ a.gd-credit__name { text-decoration: none; }
   flex: 1; height: 100%; min-width: 0; padding: 0;
   display: flex; align-items: flex-end;
   background: none; border: none; cursor: pointer;
-  border-radius: 4px 4px 0 0;
+  border-radius: 0;
   -webkit-tap-highlight-color: transparent;
 }
 /* Every bar is the same colour at rest — no permanently-brighter "peak"
@@ -3205,9 +3212,11 @@ a.gd-credit__name { text-decoration: none; }
    on the baseline rather than a flat-topped sliver. min-height raised
    from 4px to 7px so that capsule shape is actually visible at rest —
    a pill shorter than its own width just looks like a rounded square. */
+/* Square on every corner — no radius anywhere, so each column is a
+   plain rectangle sitting on the baseline. */
 .gd-dist__bar {
-  width: 100%; min-height: 7px; border-radius: 999px;
-  background: rgba(255, 255, 255, 0.82);
+  width: 100%; min-height: 7px; border-radius: 0;
+  background: #1f1f1f;
   transition: background var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
   pointer-events: none; /* clicks belong to the button, not the bar */
 }
@@ -3217,18 +3226,12 @@ a.gd-credit__name { text-decoration: none; }
    floating disconnected above the row (game-view.js marks it via
    count === stepMax, since that's mode data this rule has no way to
    know from CSS alone). */
-/* 2px, not the 10px it started at: near-square, so the top edge cuts
-   rather than curves. The stubs stay full pills — the contrast between
-   a soft baseline row and one hard-edged column is what makes the bar
-   carrying the data look deliberate. */
-.gd-dist__bar--peak { border-radius: 2px 2px 0 0; }
-/* Held is the only state that moves, and it moves in brightness alone
-   now that the panel is monochrome: 0.82 white at rest to pure white
-   under a finger. Enough of a step to track on a dark ground without
-   reintroducing a second hue into a panel whose whole point is that it
-   has none. */
+/* The bars sit only a little above the page's own background, so the
+   held bar has to make a big jump to register at all — this is the one
+   piece of feedback that says which column a finger has landed on, and
+   a couple of percent of lightness would not read on a dark screen. */
 .gd-dist__col:hover .gd-dist__bar,
-.gd-dist__col--held .gd-dist__bar { background: #ffffff; }
+.gd-dist__col--held .gd-dist__bar { background: #4a4a4a; }
 .gd-dist__col:focus-visible {
   outline: 2px solid rgba(255, 255, 255, 0.7); outline-offset: 2px;
 }
@@ -3248,14 +3251,9 @@ a.gd-credit__name { text-decoration: none; }
      stars at 11px, so nothing here ever changes size while scrubbing. */
   width: 68px;
 }
-/* The figure is set in the serif alongside the heading, so the panel
-   reads as one editorial object rather than a serif label bolted onto a
-   sans chart. Letter-spacing back to 0 — the negative tracking was
-   there to tighten Manrope's digits and only smears a serif's. */
 .gd-avg__num {
-  font-family: var(--font-serif);
-  font-size: 30px; font-weight: 600;
-  line-height: 1; color: var(--ink);
+  font-size: 30px; font-weight: 700;
+  line-height: 1; letter-spacing: -0.02em; color: var(--ink);
   font-variant-numeric: tabular-nums;
 }
 /* display:flex, so the star row is a flex item rather than inline

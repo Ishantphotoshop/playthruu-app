@@ -498,6 +498,10 @@ export async function renderGameView(root, { id, igdbId }) {
       // Ten bars, one per half-star step, matching how ratings are
       // actually stored — folding them into five whole stars threw away
       // the distinction between a 3.5 and a 4.
+      // An em dash, not "0.0": nobody has rated this, and a zero would
+      // read as a rating of zero rather than as none. starRow() turns
+      // the null average into five empty stars on its own.
+      const avgLabel = avg ? avg.toFixed(1) : '—';
       const halfSteps = [];
       for (let v = 0.5; v <= 5; v += 0.5) halfSteps.push(Number(v.toFixed(1)));
       const stepCounts = halfSteps.map((v) => breakdown[v.toFixed(1)] || 0);
@@ -560,7 +564,7 @@ export async function renderGameView(root, { id, igdbId }) {
 
           <div class="gd-rule"></div>
 
-          ${rated.length ? `
+          ${`
             <section class="gd-dist" id="rating-chart-slot">
               <div class="gd-dist__head">
                 <h2 class="gd-dist__title">Ratings</h2>
@@ -571,32 +575,28 @@ export async function renderGameView(root, { id, igdbId }) {
                   ${halfSteps.map((star, i) => {
                     const count = stepCounts[i];
                     const label = `${count} log${count === 1 ? '' : 's'} rated ${star} star${star === 1 ? '' : 's'}`;
-                    // No permanent COLOUR highlight on the tallest bar —
-                    // every bar is the same shade at rest, and the only
-                    // one that ever brightens is whichever one a finger
-                    // is actually on right now (see the pointer handlers
-                    // below). SHAPE, unlike colour, does mark the peak:
-                    // the bar(s) at the mode get a flat bottom, rounded
-                    // top only, so they read as rising out of the
-                    // baseline the stub pills sit on rather than as a
-                    // capsule floating disconnected above it.
-                    const isPeak = count > 0 && count === stepMax;
+                    // Every bar is the same shade at rest, whatever its
+                    // height: the only one that ever lifts is whichever
+                    // one a finger is on right now (see the pointer
+                    // handlers below). With no ratings at all, stepMax
+                    // falls back to 1 and every count is 0, so this runs
+                    // unchanged and draws ten empty stubs — the chart's
+                    // own resting state rather than a separate empty
+                    // message replacing it.
                     return `
                     <button type="button" class="gd-dist__col"
                             data-rating="${star}" data-count="${count}"
                             aria-label="${label}" title="${label}">
-                      <span class="gd-dist__bar${isPeak ? ' gd-dist__bar--peak' : ''}" style="height:${Math.max(4, Math.round((count / stepMax) * 100))}%"></span>
+                      <span class="gd-dist__bar" style="height:${Math.max(4, Math.round((count / stepMax) * 100))}%"></span>
                     </button>`;
                   }).join('')}
                 </div>
-                ${avg ? `
-                  <div class="gd-avg">
-                    <span class="gd-avg__num" id="rating-avg-num">${avg.toFixed(1)}</span>
-                    <span class="gd-avg__stars" id="rating-avg-stars">${starRow(avg, { size: 13, count: 5 })}</span>
-                  </div>` : ''}
+                <div class="gd-avg">
+                  <span class="gd-avg__num" id="rating-avg-num">${avgLabel}</span>
+                  <span class="gd-avg__stars" id="rating-avg-stars">${starRow(avg, { size: 13, count: 5 })}</span>
+                </div>
               </div>
-            </section>`
-            : `<p class="gd-empty">No ratings yet — be the first.</p>`}
+            </section>`}
 
           <div class="gd-rule"></div>
 
@@ -844,7 +844,7 @@ export async function renderGameView(root, { id, igdbId }) {
           heldCol = col || null;
         };
         const showAverage = () => {
-          avgNumEl.textContent = avg.toFixed(1);
+          avgNumEl.textContent = avgLabel;
           if (avgStarsEl) avgStarsEl.innerHTML = starRow(avg, { size: 13, count: 5 });
           setHeld(null);
         };
