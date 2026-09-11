@@ -1106,8 +1106,14 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .game-grid--modal { grid-template-columns: repeat(2, 1fr); max-height: 340px; overflow-y: auto; }
 .game-grid--3col { grid-template-columns: repeat(3, 1fr); gap: 8px; }
 
+/* Pulled up under its heading. The gap was 16px — the heading's own
+   12px bottom margin plus this strip's 4px top padding — which read as
+   the posters floating loose rather than belonging to the heading above
+   them. Taken off the STRIP rather than the heading's margin, so
+   headings and every non-poster section keep their existing rhythm. */
 .trending-strip {
-  display: flex; gap: var(--space-3); overflow-x: auto; padding: var(--space-1) 2px var(--space-4);
+  display: flex; gap: var(--space-3); overflow-x: auto;
+  padding: 0 2px var(--space-4); margin-top: -6px;
   scrollbar-width: none; -ms-overflow-style: none;
 }
 .trending-strip::-webkit-scrollbar { display: none; }
@@ -1577,8 +1583,11 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 
 /* "Recently played" strip — this one keeps the old horizontally-scrolling
    behavior the showcase grid used to have. */
+/* Same pull-up as the feed's strips, for the same reason — the 2px top
+   padding stays so the posters' shadow isn't clipped. */
 .recent-played-row {
   display: flex; gap: 10px; overflow-x: auto; padding: 2px 2px 6px;
+  margin-top: -8px;
   scrollbar-width: none; -ms-overflow-style: none;
 }
 .recent-played-row::-webkit-scrollbar { display: none; }
