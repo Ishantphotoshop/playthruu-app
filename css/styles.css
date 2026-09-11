@@ -1286,30 +1286,32 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 /* Font matches the rest of the game-info text (--font-body, Manrope) —
    this used to be set in the mono face, which read wrong next to
    everything around it. Colour is the app's own accent now too, not the
-   generic "online" green — a radiating ring pulses out from the dot
-   rather than the dot itself just fading, the way a live/streaming
-   indicator reads elsewhere (Discord, Twitch). */
+   generic "online" green shared with every other presence dot in the
+   app. The live signal itself lives on the AVATAR now (a ring at rest,
+   .card-who__avatar-wrap--playing below) — a dot-plus-ring on the text
+   was tried first and didn't read well, so the word stands alone here.
+   Both changes chosen from a set of live comparisons the user reviewed
+   side by side rather than picked blind. */
 .card-who__playing {
-  display: flex; align-items: center; gap: 6px;
   font-family: var(--font-body); font-weight: 700; font-size: 11px;
   color: var(--accent-bright); line-height: 11px;
 }
-.card-who__playing-dot {
+
+/* A static ring around the avatar — no animation, no pulse. Same
+   language as an Instagram story ring at rest: the ring alone says
+   "something live is happening here" without needing motion to say it
+   twice over (the word "Playing" right next to it already does). inset
+   -3px keeps the ring from touching the avatar image itself, echoing
+   the ~2-3px gap real story rings use. */
+.card-who__avatar-wrap {
+  display: inline-flex; border-radius: 50%;
+}
+.card-who__avatar-wrap--playing {
   position: relative;
-  width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
-  background: var(--accent);
 }
-.card-who__playing-dot::before {
-  content: ''; position: absolute; inset: -5px; border-radius: 50%;
-  border: 1px solid var(--accent);
-  animation: card-who-ring 1.8s ease-out infinite;
-}
-@keyframes card-who-ring {
-  0% { transform: scale(0.4); opacity: 0.9; }
-  100% { transform: scale(1.8); opacity: 0; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .card-who__playing-dot::before { animation: none; opacity: 0.6; }
+.card-who__avatar-wrap--playing::before {
+  content: ''; position: absolute; inset: -3px; border-radius: 50%;
+  border: 2px solid var(--accent);
 }
 
 /* ---- a single review on its own page -------------------------------- */

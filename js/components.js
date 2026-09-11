@@ -383,7 +383,11 @@ export function wireTrendingStrip(container, games, { onSelect }) {
 function cardWho(profile, rating, { playing = false, loved = false, hasReview = false } = {}) {
   const bits = [];
   if (playing) {
-    bits.push(`<span class="card-who__playing"><span class="card-who__playing-dot"></span>Playing</span>`);
+    // The dot-and-ring on the TEXT didn't land — moved the signal onto
+    // the avatar instead, a static ring at rest (no pulse, no
+    // animation), the way a story ring reads. The word alone carries
+    // the rest.
+    bits.push(`<span class="card-who__playing">Playing</span>`);
   } else {
     if (rating) bits.push(starRow(rating, { size: 12 }));
     if (loved) bits.push(`<span class="card-who__icon card-who__icon--loved">${iconHeartFilled()}</span>`);
@@ -391,7 +395,7 @@ function cardWho(profile, rating, { playing = false, loved = false, hasReview = 
   }
   return `
     <a href="#/profile/${esc(profile.username)}" class="card-who">
-      ${avatarImg(profile, 24)}
+      <span class="card-who__avatar-wrap${playing ? ' card-who__avatar-wrap--playing' : ''}">${avatarImg(profile, 24)}</span>
       <span class="card-who__meta">
         <span class="card-who__name">${esc(profile.display_name || profile.username)}</span>
         <span class="card-who__stars">${bits.join('')}</span>
