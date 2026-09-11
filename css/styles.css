@@ -1297,12 +1297,17 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   color: var(--accent-bright); line-height: 11px;
 }
 
-/* A static ring around the avatar — no animation, no pulse. Same
-   language as an Instagram story ring at rest: the ring alone says
-   "something live is happening here" without needing motion to say it
-   twice over (the word "Playing" right next to it already does). inset
-   -3px keeps the ring from touching the avatar image itself, echoing
-   the ~2-3px gap real story rings use. */
+/* A ring around the avatar. Same language as an Instagram story ring:
+   the ring alone says "something live is happening here" without
+   needing motion to say it twice over (the word "Playing" right next
+   to it already does). inset -3px keeps the ring off the avatar image
+   itself, echoing the ~2-3px gap real story rings use.
+
+   It's not fully static any more — the ring dips from the app's accent
+   to a near-white and back every 2s, a visible-but-not-loud "still
+   live" pulse rather than a flat outline. Chosen from a set of colour
+   pairs the user reviewed side by side; this one keeps the app's own
+   orange rather than switching to a generic status colour. */
 .card-who__avatar-wrap {
   display: inline-flex; border-radius: 50%;
 }
@@ -1312,6 +1317,14 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .card-who__avatar-wrap--playing::before {
   content: ''; position: absolute; inset: -3px; border-radius: 50%;
   border: 2px solid var(--accent);
+  animation: card-who-ring-dip 2s ease-in-out infinite;
+}
+@keyframes card-who-ring-dip {
+  0%, 100% { border-color: var(--accent); }
+  50% { border-color: #ffffff; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .card-who__avatar-wrap--playing::before { animation: none; }
 }
 
 /* ---- a single review on its own page -------------------------------- */
