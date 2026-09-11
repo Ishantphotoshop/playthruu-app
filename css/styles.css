@@ -1569,10 +1569,13 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
    stops a profile with two favourites rendering two posters plus a row
    of empty gaps — with two games it's a two-column grid, and each
    poster grows to fill its share of the width. */
+/* Same pull-up as the other profile poster rows — see .recent-played-row
+   — so Top/Recently completed doesn't sit noticeably looser under its
+   heading than the strips right below it. */
 .showcase-grid {
   display: grid;
   grid-template-columns: repeat(var(--showcase-count, 4), 1fr);
-  gap: 8px; padding: 2px 2px 6px;
+  gap: 8px; padding: 2px 2px 6px; margin-top: -8px;
 }
 .showcase-slot { display: block; position: relative; min-width: 0; transition: transform 0.12s ease; }
 .showcase-slot:active { transform: scale(0.95); }
@@ -1616,11 +1619,23 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
   padding: 2px 6px; border-radius: var(--radius-pill);
 }
 /* Currently-playing posters share the recently-played strip's size and
-   sit in the same horizontal row, so the two read as one aligned band. */
-.recent-played-row .playing-slot { flex-shrink: 0; width: calc((100% - 30px) / 3.2); }
+   sit in the same horizontal row, so the two read as one aligned band.
+   The sizing formula lives on THIS slot, since it's the direct flex
+   child here — Currently playing wraps its poster in .playing-slot for
+   the remove button, unlike the other rows. Without the override below,
+   .recent-played-item's OWN width formula (meant for when it's the
+   direct flex child, as in every other row) was resolving against this
+   already-3-across slot and applying the same shrink a second time,
+   squeezing the poster down to a fraction of its real size. */
+.recent-played-row .playing-slot {
+  flex-shrink: 0; width: calc((100% - 30px) / 3.2);
+}
+.recent-played-row .playing-slot .recent-played-item { width: 100%; }
 
 /* Want-to-play: cover-only grid, three across (discover-screen style). */
-.poster-grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-2); }
+/* Same pull-up as the other profile poster grids — the Want to Play
+   list is the one poster grid on the profile that hadn't gotten it. */
+.poster-grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-2); margin-top: -8px; }
 .poster-grid3__item { display: block; min-width: 0; transition: transform 0.12s ease; }
 .poster-grid3__item:active { transform: scale(0.96); }
 .poster-grid3__cover { width: 100%; aspect-ratio: var(--ratio-card); object-fit: cover; border-radius: 8px; background: var(--surface); box-shadow: var(--shadow-card); }
