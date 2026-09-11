@@ -3154,10 +3154,13 @@ a.gd-credit__name { text-decoration: none; }
   --star-fill: #22c55e;
 }
 .gd-dist__head { display: flex; align-items: baseline; justify-content: space-between; }
-/* Smaller than before (22px) — matches the reference sizing, where
-   "Ratings" reads as a plain section label rather than a headline. */
+/* Measured Letterboxd's own heading at 12px/400/uppercase/muted and
+   found it too quiet next to the rest of this app's headings — variant D
+   from the sizing review split the difference: still down from the old
+   17px/700, but sentence case, semibold and full ink rather than caps
+   and grey, so it keeps some presence instead of receding entirely. */
 .gd-dist__title {
-  font-family: var(--font-display); font-size: 17px; font-weight: 700;
+  font-family: var(--font-display); font-size: 14px; font-weight: 600;
   letter-spacing: -0.01em; color: var(--ink); margin: 0;
 }
 /* One row now, not two: the single low-end star used to sit on its own
@@ -3193,10 +3196,15 @@ a.gd-credit__name { text-decoration: none; }
    ate 27px of a 260px track and every bar lost a tenth of its width for
    it. The bars are flex:1, so every pixel taken out of the gutters goes
    straight back into them. */
+/* 60px, not 84 — measured against Letterboxd's own chart (44px at this
+   same 390px width) and landed on the midpoint of the sizing review's
+   variant D: most of the dead space above the bars is gone, but the
+   chart keeps more presence than Letterboxd's, which read as too thin
+   once it was sitting in this app's own denser layout. */
 .gd-dist__bars {
   display: flex; align-items: flex-end; gap: 1px;
-  height: 84px; padding-top: 10px;
-  margin-top: var(--space-2);
+  height: 60px; padding-top: 4px;
+  margin-top: 6px;
   touch-action: none;
 }
 /* Each bar is a real <button>, so it is focusable and clickable on its
@@ -3223,9 +3231,12 @@ a.gd-credit__name { text-decoration: none; }
    from 4px to 7px so that capsule shape is actually visible at rest —
    a pill shorter than its own width just looks like a rounded square. */
 /* Square on every corner — no radius anywhere, so each column is a
-   plain rectangle sitting on the baseline. */
+   plain rectangle sitting on the baseline. min-height back down to 4px
+   (from 7) now that the track itself is 60px rather than 84 — at 7px an
+   empty stub was over a tenth of the whole chart's height, out of
+   proportion once the chart shrank under it. */
 .gd-dist__bar {
-  width: 100%; min-height: 7px; border-radius: 0;
+  width: 100%; min-height: 4px; border-radius: 0;
   background: #1f1f1f;
   transition: background var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
   pointer-events: none; /* clicks belong to the button, not the bar */
@@ -3263,12 +3274,13 @@ a.gd-credit__name { text-decoration: none; }
      Letterboxd gives its own average column 49px at this viewport. */
   width: 54px;
 }
-/* 22px rather than 30. Letterboxd sets its average at 20px and in a
-   LIGHT weight, on the reasoning that the bars are the content and the
-   figure is the summary; this keeps the app's bolder weight but stops
-   the number from being the largest thing in the panel. */
+/* 20px/600, down from 22px/700 — variant D from the sizing review.
+   Letterboxd sets its own average at 20px too, but in a LIGHT 300 that
+   read as too faint once tried here; semibold keeps it legible as the
+   panel's headline figure without matching the old bold weight's
+   heaviness. */
 .gd-avg__num {
-  font-size: 22px; font-weight: 700;
+  font-size: 20px; font-weight: 600;
   line-height: 1; letter-spacing: -0.02em; color: var(--ink);
   font-variant-numeric: tabular-nums;
 }
