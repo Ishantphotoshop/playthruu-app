@@ -116,6 +116,17 @@
   /* The wordmark's font (see the <link> in index.html). */
   --font-brand: 'Unbounded', system-ui, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Consolas, monospace;
+  /* The editorial serif, for the few places a rating is presented as a
+     considered verdict rather than a UI number — currently the game
+     page's Ratings panel and nothing else. Fraunces is the closest
+     freely-licensed face to the flared, warm display serifs that genre
+     of type is built on (Canela and its relatives): the same wedge
+     serifs and high-but-not-brittle contrast, but with a real weight
+     range and a large enough x-height to still read at 18px on a dark
+     ground, which the hairline Didones it is often grouped with do not.
+     Its optical-size axis is why the <link> requests opsz 9..144 — the
+     browser picks the cut made for the size it is drawing. */
+  --font-serif: 'Fraunces', 'Iowan Old Style', Georgia, 'Times New Roman', serif;
 
   --text-display: 34px;
   --text-title: 24px;
@@ -3129,11 +3140,18 @@ a.gd-credit__name { text-decoration: none; }
    what lets the chart read as part of the page. */
 .gd-dist { display: flex; flex-direction: column; gap: var(--space-2); }
 .gd-dist__head { display: flex; align-items: baseline; justify-content: space-between; }
-/* Smaller than before (22px) — matches the reference sizing, where
-   "Ratings" reads as a plain section label rather than a headline. */
+/* The one heading in the app set in the serif. A rating is the page's
+   verdict on the game, and the rest of the panel is now monochrome, so
+   the word carries that weight typographically instead of through size
+   — it stays small (it was 22px before, and shrinking it was the point)
+   but no longer reads as just another sans section label. 18px, not the
+   17px the sans sat at: Fraunces runs a touch smaller on the body at
+   the same nominal size, so this matches it optically rather than
+   numerically. Positive tracking because a serif at small size on a
+   dark ground closes up otherwise. */
 .gd-dist__title {
-  font-family: var(--font-display); font-size: 17px; font-weight: 700;
-  letter-spacing: -0.01em; color: var(--ink); margin: 0;
+  font-family: var(--font-serif); font-size: 18px; font-weight: 600;
+  letter-spacing: 0.01em; color: var(--ink); margin: 0;
 }
 /* One row now, not two: the single low-end star used to sit on its own
    line below the bars (a separate .gd-dist__axis row); it's the first
@@ -3149,8 +3167,7 @@ a.gd-credit__name { text-decoration: none; }
    separate hand-drawn SVG that happened to look similar but wasn't
    actually the same shape. */
 .gd-dist__end {
-  display: flex; align-items: center; flex-shrink: 0;
-  height: 84px; padding-bottom: 3px;
+  display: flex; align-items: flex-end; flex-shrink: 0;
 }
 /* Tall enough for the shape of the distribution to actually be
    legible — at 42px every bar but the mode used to collapse into the
@@ -3190,7 +3207,7 @@ a.gd-credit__name { text-decoration: none; }
    a pill shorter than its own width just looks like a rounded square. */
 .gd-dist__bar {
   width: 100%; min-height: 7px; border-radius: 999px;
-  background: var(--accent);
+  background: rgba(255, 255, 255, 0.82);
   transition: background var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
   pointer-events: none; /* clicks belong to the button, not the bar */
 }
@@ -3200,11 +3217,20 @@ a.gd-credit__name { text-decoration: none; }
    floating disconnected above the row (game-view.js marks it via
    count === stepMax, since that's mode data this rule has no way to
    know from CSS alone). */
-.gd-dist__bar--peak { border-radius: 10px 10px 0 0; }
+/* 2px, not the 10px it started at: near-square, so the top edge cuts
+   rather than curves. The stubs stay full pills — the contrast between
+   a soft baseline row and one hard-edged column is what makes the bar
+   carrying the data look deliberate. */
+.gd-dist__bar--peak { border-radius: 2px 2px 0 0; }
+/* Held is the only state that moves, and it moves in brightness alone
+   now that the panel is monochrome: 0.82 white at rest to pure white
+   under a finger. Enough of a step to track on a dark ground without
+   reintroducing a second hue into a panel whose whole point is that it
+   has none. */
 .gd-dist__col:hover .gd-dist__bar,
-.gd-dist__col--held .gd-dist__bar { background: var(--accent-bright); }
+.gd-dist__col--held .gd-dist__bar { background: #ffffff; }
 .gd-dist__col:focus-visible {
-  outline: 2px solid var(--accent-bright); outline-offset: 2px;
+  outline: 2px solid rgba(255, 255, 255, 0.7); outline-offset: 2px;
 }
 
 /* The average, pinned to the right of the chart: the big figure over
@@ -3213,7 +3239,7 @@ a.gd-credit__name { text-decoration: none; }
    held bar's own count and rating swap into. */
 .gd-avg {
   display: flex; flex-direction: column; align-items: center; gap: 1px;
-  flex-shrink: 0; padding-bottom: 2px;
+  flex-shrink: 0;
   /* Fixed, not just flex-shrink:0 — that alone stops THIS block from
      shrinking, but its own width still grows/shrinks with its content
      (a held bar's count is 1-3 digits, the average is always "N.N"),
@@ -3222,13 +3248,25 @@ a.gd-credit__name { text-decoration: none; }
      stars at 11px, so nothing here ever changes size while scrubbing. */
   width: 68px;
 }
+/* The figure is set in the serif alongside the heading, so the panel
+   reads as one editorial object rather than a serif label bolted onto a
+   sans chart. Letter-spacing back to 0 — the negative tracking was
+   there to tighten Manrope's digits and only smears a serif's. */
 .gd-avg__num {
-  font-size: 30px; font-weight: 700;
-  line-height: 1; letter-spacing: -0.02em; color: var(--ink);
+  font-family: var(--font-serif);
+  font-size: 30px; font-weight: 600;
+  line-height: 1; color: var(--ink);
   font-variant-numeric: tabular-nums;
 }
-/* gap:0 — starRow's default 2px between glyphs read as visible daylight
+/* display:flex, so the star row is a flex item rather than inline
+   content: an inline .stars sits in a line box whose leading would
+   leave a few px of dead space beneath it, floating these stars above
+   the baseline while the single star on the left — a flex item, no line
+   box — sat exactly on it. Blockifying both is what makes the two rows
+   land on the same line.
+   gap:0 — starRow's default 2px between glyphs read as visible daylight
    at this size; touching stars is what looks like one continuous row. */
+.gd-avg__stars { display: flex; }
 .gd-avg__stars .stars { --star-size: 11px; gap: 0; }
 
 /* Active rating filter above the review list. */

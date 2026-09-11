@@ -566,7 +566,7 @@ export async function renderGameView(root, { id, igdbId }) {
                 <h2 class="gd-dist__title">Ratings</h2>
               </div>
               <div class="gd-dist__plot">
-                <span class="gd-dist__end">${starRow(0, { size: 15, count: 1 })}</span>
+                <span class="gd-dist__end">${starRow(1, { size: 13, count: 1 })}</span>
                 <div class="gd-dist__bars" id="rating-bars">
                   ${halfSteps.map((star, i) => {
                     const count = stepCounts[i];
