@@ -498,6 +498,11 @@ export async function renderGameView(root, { id, igdbId }) {
       // Ten bars, one per half-star step, matching how ratings are
       // actually stored — folding them into five whole stars threw away
       // the distinction between a 3.5 and a 4.
+      // One size for every star in this panel, shared by the low-end
+      // marker, the average's row, and the row a held bar swaps in — the
+      // user asked for the single star and the five to be identical, and
+      // three separate literals is how that quietly drifts apart.
+      const AVG_STAR = 10;
       // An em dash, not "0.0": nobody has rated this, and a zero would
       // read as a rating of zero rather than as none. starRow() turns
       // the null average into five empty stars on its own.
@@ -570,7 +575,7 @@ export async function renderGameView(root, { id, igdbId }) {
                 <h2 class="gd-dist__title">Ratings</h2>
               </div>
               <div class="gd-dist__plot">
-                <span class="gd-dist__end">${starRow(1, { size: 13, count: 1 })}</span>
+                <span class="gd-dist__end">${starRow(1, { size: AVG_STAR, count: 1 })}</span>
                 <div class="gd-dist__bars" id="rating-bars">
                   ${halfSteps.map((star, i) => {
                     const count = stepCounts[i];
@@ -593,7 +598,7 @@ export async function renderGameView(root, { id, igdbId }) {
                 </div>
                 <div class="gd-avg">
                   <span class="gd-avg__num" id="rating-avg-num">${avgLabel}</span>
-                  <span class="gd-avg__stars" id="rating-avg-stars">${starRow(avg, { size: 13, count: 5 })}</span>
+                  <span class="gd-avg__stars" id="rating-avg-stars">${starRow(avg, { size: AVG_STAR, count: 5 })}</span>
                 </div>
               </div>
             </section>`}
@@ -845,12 +850,12 @@ export async function renderGameView(root, { id, igdbId }) {
         };
         const showAverage = () => {
           avgNumEl.textContent = avgLabel;
-          if (avgStarsEl) avgStarsEl.innerHTML = starRow(avg, { size: 13, count: 5 });
+          if (avgStarsEl) avgStarsEl.innerHTML = starRow(avg, { size: AVG_STAR, count: 5 });
           setHeld(null);
         };
         const showCol = (col) => {
           avgNumEl.textContent = col.dataset.count;
-          if (avgStarsEl) avgStarsEl.innerHTML = starRow(Number(col.dataset.rating), { size: 13, count: 5 });
+          if (avgStarsEl) avgStarsEl.innerHTML = starRow(Number(col.dataset.rating), { size: AVG_STAR, count: 5 });
           setHeld(col);
         };
         // A fixed Y (the row's own vertical centre) is enough to find

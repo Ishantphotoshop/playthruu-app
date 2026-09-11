@@ -3166,7 +3166,11 @@ a.gd-credit__name { text-decoration: none; }
    bottom edge — matching a reference where the star, the bars and the
    average all read as one strip rather than a chart with a caption
    underneath it. */
-.gd-dist__plot { display: flex; align-items: flex-end; gap: var(--space-3); }
+/* 9px, matching the column gap Letterboxd's own histogram grid uses at
+   phone width (measured: a 9px star column, a 281px bar track and a 49px
+   average column, 9.3px apart). The page's --space-3 (14px) was spending
+   10px of a 350px row on two gutters the chart did not need. */
+.gd-dist__plot { display: flex; align-items: flex-end; gap: 9px; }
 .gd-dist__plot .gd-dist__bars { flex: 1; min-width: 0; }
 /* The single low-end star now IS a real .stars star (empty, fixed at
    one glyph) — the same component and glyph the average's row uses on
@@ -3183,8 +3187,14 @@ a.gd-credit__name { text-decoration: none; }
    whole reason to exist. touch-action:none hands the whole gesture to
    the hold-to-scrub handlers in game-view.js instead of letting a
    finger's vertical wobble scroll the page mid-hold. */
+/* gap:1px, not 3. Letterboxd draws 27px bars separated by a single
+   pixel, and that ratio is the whole reason its histogram reads as a
+   solid block of data rather than a row of sticks; at 3px, nine gutters
+   ate 27px of a 260px track and every bar lost a tenth of its width for
+   it. The bars are flex:1, so every pixel taken out of the gutters goes
+   straight back into them. */
 .gd-dist__bars {
-  display: flex; align-items: flex-end; gap: 3px;
+  display: flex; align-items: flex-end; gap: 1px;
   height: 84px; padding-top: 10px;
   margin-top: var(--space-2);
   touch-action: none;
@@ -3241,18 +3251,24 @@ a.gd-credit__name { text-decoration: none; }
    and (see the hold-to-scrub wiring in game-view.js) the same spot a
    held bar's own count and rating swap into. */
 .gd-avg {
-  display: flex; flex-direction: column; align-items: center; gap: 1px;
+  display: flex; flex-direction: column; align-items: flex-end; gap: 1px;
   flex-shrink: 0;
   /* Fixed, not just flex-shrink:0 — that alone stops THIS block from
      shrinking, but its own width still grows/shrinks with its content
      (a held bar's count is 1-3 digits, the average is always "N.N"),
      and every change reflows the bars beside it (flex:1) narrower or
-     wider along with it. Wide enough for "100" over 5 fixed-count
-     stars at 11px, so nothing here ever changes size while scrubbing. */
-  width: 68px;
+     wider along with it. 54px is what the 5 stars need at 10px, and
+     comfortably clears "100" at 22px, so nothing here changes size
+     while scrubbing. It was 68px, and those 14px are now bar width:
+     Letterboxd gives its own average column 49px at this viewport. */
+  width: 54px;
 }
+/* 22px rather than 30. Letterboxd sets its average at 20px and in a
+   LIGHT weight, on the reasoning that the bars are the content and the
+   figure is the summary; this keeps the app's bolder weight but stops
+   the number from being the largest thing in the panel. */
 .gd-avg__num {
-  font-size: 30px; font-weight: 700;
+  font-size: 22px; font-weight: 700;
   line-height: 1; letter-spacing: -0.02em; color: var(--ink);
   font-variant-numeric: tabular-nums;
 }
@@ -3265,7 +3281,7 @@ a.gd-credit__name { text-decoration: none; }
    gap:0 — starRow's default 2px between glyphs read as visible daylight
    at this size; touching stars is what looks like one continuous row. */
 .gd-avg__stars { display: flex; }
-.gd-avg__stars .stars { --star-size: 11px; gap: 0; }
+.gd-avg__stars .stars { --star-size: 10px; gap: 0; }
 
 /* Active rating filter above the review list. */
 .gd-filter {
