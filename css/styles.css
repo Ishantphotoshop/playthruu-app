@@ -1604,7 +1604,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 .showcase-grid {
   display: grid;
   grid-template-columns: repeat(var(--showcase-count, 4), 1fr);
-  gap: 8px; padding: 2px 2px 6px; margin-top: -8px;
+  gap: 8px; padding: 2px 2px 6px; margin-top: -3px;
 }
 .showcase-slot { display: block; position: relative; min-width: 0; transition: transform 0.12s ease; }
 .showcase-slot:active { transform: scale(0.95); }
@@ -1619,7 +1619,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
    padding stays so the posters' shadow isn't clipped. */
 .recent-played-row {
   display: flex; gap: 10px; overflow-x: auto; padding: 2px 2px 6px;
-  margin-top: -8px;
+  margin-top: -3px;
   scrollbar-width: none; -ms-overflow-style: none;
 }
 .recent-played-row::-webkit-scrollbar { display: none; }
@@ -1664,7 +1664,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 /* Want-to-play: cover-only grid, three across (discover-screen style). */
 /* Same pull-up as the other profile poster grids — the Want to Play
    list is the one poster grid on the profile that hadn't gotten it. */
-.poster-grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-2); margin-top: -8px; }
+.poster-grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-2); margin-top: -3px; }
 .poster-grid3__item { display: block; min-width: 0; transition: transform 0.12s ease; }
 .poster-grid3__item:active { transform: scale(0.96); }
 .poster-grid3__cover { width: 100%; aspect-ratio: var(--ratio-card); object-fit: cover; border-radius: 8px; background: var(--surface); box-shadow: var(--shadow-card); }
