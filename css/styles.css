@@ -3143,11 +3143,15 @@ a.gd-credit__name { text-decoration: none; }
    underneath it. */
 .gd-dist__plot { display: flex; align-items: flex-end; gap: var(--space-3); }
 .gd-dist__plot .gd-dist__bars { flex: 1; min-width: 0; }
+/* The single low-end star now IS a real .stars star (empty, fixed at
+   one glyph) — the same component and glyph the average's row uses on
+   the right, sized via starRow()'s own --star-size, rather than a
+   separate hand-drawn SVG that happened to look similar but wasn't
+   actually the same shape. */
 .gd-dist__end {
   display: flex; align-items: center; flex-shrink: 0;
   height: 84px; padding-bottom: 3px;
 }
-.gd-dist__end svg { width: 15px; height: 15px; color: var(--ink); }
 /* Tall enough for the shape of the distribution to actually be
    legible — at 42px every bar but the mode used to collapse into the
    baseline and the chart said nothing — but no taller than it needs to
@@ -3190,6 +3194,13 @@ a.gd-credit__name { text-decoration: none; }
   transition: background var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
   pointer-events: none; /* clicks belong to the button, not the bar */
 }
+/* The bar(s) at the mode: flat bottom, rounded top only, so the one
+   that actually carries the data reads as rising straight out of the
+   baseline the stub pills sit on, in line with them — not a capsule
+   floating disconnected above the row (game-view.js marks it via
+   count === stepMax, since that's mode data this rule has no way to
+   know from CSS alone). */
+.gd-dist__bar--peak { border-radius: 10px 10px 0 0; }
 .gd-dist__col:hover .gd-dist__bar,
 .gd-dist__col--held .gd-dist__bar { background: var(--accent-bright); }
 .gd-dist__col:focus-visible {

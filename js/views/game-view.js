@@ -566,21 +566,26 @@ export async function renderGameView(root, { id, igdbId }) {
                 <h2 class="gd-dist__title">Ratings</h2>
               </div>
               <div class="gd-dist__plot">
-                <span class="gd-dist__end">${iconStarSmall()}</span>
+                <span class="gd-dist__end">${starRow(0, { size: 15, count: 1 })}</span>
                 <div class="gd-dist__bars" id="rating-bars">
                   ${halfSteps.map((star, i) => {
                     const count = stepCounts[i];
                     const label = `${count} log${count === 1 ? '' : 's'} rated ${star} star${star === 1 ? '' : 's'}`;
-                    // No permanent highlight on the tallest bar or the
-                    // active filter anymore — every bar is the same
-                    // colour at rest, and the only one that ever lights
-                    // up brighter is whichever one a finger is actually
-                    // on right now (see the pointer handlers below).
+                    // No permanent COLOUR highlight on the tallest bar —
+                    // every bar is the same shade at rest, and the only
+                    // one that ever brightens is whichever one a finger
+                    // is actually on right now (see the pointer handlers
+                    // below). SHAPE, unlike colour, does mark the peak:
+                    // the bar(s) at the mode get a flat bottom, rounded
+                    // top only, so they read as rising out of the
+                    // baseline the stub pills sit on rather than as a
+                    // capsule floating disconnected above it.
+                    const isPeak = count > 0 && count === stepMax;
                     return `
                     <button type="button" class="gd-dist__col"
                             data-rating="${star}" data-count="${count}"
                             aria-label="${label}" title="${label}">
-                      <span class="gd-dist__bar" style="height:${Math.max(4, Math.round((count / stepMax) * 100))}%"></span>
+                      <span class="gd-dist__bar${isPeak ? ' gd-dist__bar--peak' : ''}" style="height:${Math.max(4, Math.round((count / stepMax) * 100))}%"></span>
                     </button>`;
                   }).join('')}
                 </div>
@@ -1029,7 +1034,6 @@ function openTrailer(embedUrl) {
 }
 
 function iconCloseSmall() { return `<svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>`; }
-function iconStarSmall() { return `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3.6l2.6 5.3 5.8.8-4.2 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8L3.6 9.7l5.8-.8z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>`; }
 function iconLogAgain() { return `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.4-5.7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M20 3.6V9h-5.4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`; }
 function iconPencil() { return `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15.6 4.6l3.8 3.8M5 19h3.6L19.4 8.2a1.6 1.6 0 0 0 0-2.3l-1.3-1.3a1.6 1.6 0 0 0-2.3 0L5 15.4z" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round"/></svg>`; }
 function iconDots() { return `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5.5" cy="12" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="18.5" cy="12" r="1.9"/></svg>`; }
