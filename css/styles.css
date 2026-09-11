@@ -1113,7 +1113,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    headings and every non-poster section keep their existing rhythm. */
 .trending-strip {
   display: flex; gap: var(--space-3); overflow-x: auto;
-  padding: 0 2px var(--space-4); margin-top: -6px;
+  padding: 0 2px var(--space-4); margin-top: -1px;
   scrollbar-width: none; -ms-overflow-style: none;
 }
 .trending-strip::-webkit-scrollbar { display: none; }
