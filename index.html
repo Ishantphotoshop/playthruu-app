@@ -45,7 +45,12 @@
   // worker left over from a previous visit is torn down along with its
   // caches. Everywhere else it registers exactly as before.
   if ('serviceWorker' in navigator) {
-    var isLocalDev = ['localhost', '127.0.0.1', '::1', ''].indexOf(location.hostname) !== -1
+    // appassets.androidplatform.net is the native build (android-native/):
+    // every file is already inside the APK and served locally, so a cache
+    // layer in front of that adds nothing and a fetch handler in front of
+    // the asset loader is just something else that can go wrong.
+    var isLocalDev = ['localhost', '127.0.0.1', '::1', '', 'appassets.androidplatform.net']
+      .indexOf(location.hostname) !== -1
       || location.protocol === 'file:';
 
     if (isLocalDev) {

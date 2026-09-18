@@ -9,6 +9,19 @@ android-admin/keystore.properties
 android-admin/*.jks
 android-admin/*.keystore
 
+# The native APK's bundled copy of the site is BUILD OUTPUT — regenerate
+# it with scripts/bundle-native.py. Committing it would put a second copy
+# of every file in the repo, free to drift from the real one.
+android-native/app/src/main/assets/www/
+
+android-native/.gradle/
+android-native/build/
+android-native/app/build/
+android-native/local.properties
+android-native/keystore.properties
+android-native/*.jks
+android-native/*.keystore
+
 android-app/.gradle/
 android-app/build/
 android-app/app/build/

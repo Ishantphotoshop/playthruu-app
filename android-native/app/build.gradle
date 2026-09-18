@@ -1,0 +1,67 @@
+plugins {
+    id 'com.android.application'
+}
+
+// Signing details live in keystore.properties, which is NOT in git. The
+// SAME key as the TWA build next door, deliberately: both carry the
+// package name com.playthruu.app, so a shared key is what lets one
+// install straight over the other instead of Android refusing it.
+def keystorePropsFile = rootProject.file('keystore.properties')
+def keystoreProps = new Properties()
+if (keystorePropsFile.exists()) {
+    keystoreProps.load(new FileInputStream(keystorePropsFile))
+}
+
+android {
+    namespace 'com.playthruu.app'
+    compileSdk 36
+
+    defaultConfig {
+        applicationId "com.playthruu.app"
+        minSdk 26
+        targetSdk 36
+        // Ahead of the TWA build (2) so this installs over it.
+        versionCode 3
+        versionName "1.2"
+    }
+
+    signingConfigs {
+        release {
+            if (keystorePropsFile.exists()) {
+                storeFile rootProject.file(keystoreProps['storeFile'])
+                storePassword keystoreProps['storePassword']
+                keyAlias keystoreProps['keyAlias']
+                keyPassword keystoreProps['keyPassword']
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig keystorePropsFile.exists() ? signingConfigs.release : null
+        }
+    }
+
+    // The bundled app is already minified-ish text and its images are
+    // already JPEG; letting aapt re-compress them costs build time and
+    // saves nothing, and a compressed asset cannot be served as a
+    // memory-mapped stream.
+    androidResources {
+        noCompress 'jpg', 'jpeg', 'png', 'webp', 'svg'
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+// androidx.webkit is here for WebViewAssetLoader alone, and it is the
+// piece that makes this build viable: it serves assets/www over a real
+// https origin instead of file://, which is the difference between
+// Supabase keeping you signed in and the app logging you out on every
+// launch.
+dependencies {
+    implementation 'androidx.webkit:webkit:1.12.1'
+}
