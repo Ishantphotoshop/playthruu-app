@@ -2621,7 +2621,7 @@ export async function deleteAccount() {
 
 const CONVO_SELECT = `
   id, user_one_id, user_two_id, status, requested_by,
-  is_group, title, created_by, avatar_url,
+  is_group, title, created_by, avatar_url, description,
   last_message_at, last_message_body, last_message_kind, last_message_sender_id,
   user_one_last_read_at, user_two_last_read_at, created_at,
   user_one:profiles!conversations_user_one_id_fkey(id, username, display_name, avatar_url),
@@ -3929,12 +3929,15 @@ export async function getActivityFeed(userId, {
 // an UPDATE policy on conversations is all-or-nothing about columns and
 // would also hand the creator the read markers and the participant ids.
 // See migrations/2026-09-18_chat_upgrades.sql.
-export async function updateGroupDetails(conversationId, { title, avatarUrl, clearAvatar } = {}) {
+export async function updateGroupDetails(conversationId, { title, avatarUrl, clearAvatar, description } = {}) {
   const { error } = await supabase.rpc('update_group_details', {
     p_conversation_id: conversationId,
     p_title: title ?? null,
     p_avatar_url: avatarUrl ?? null,
     p_clear_avatar: !!clearAvatar,
+    // null means "leave it alone"; an empty string is how an admin
+    // clears the rules again, so it has to survive the round trip.
+    p_description: description ?? null,
   });
   if (error) throw error;
 }

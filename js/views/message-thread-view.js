@@ -1500,6 +1500,7 @@ export async function renderMessageThreadView(root, { conversationId, otherUserI
             ${groupAvatar(convo, members.filter((m) => m.id !== state.user.id), 48)}
             <div><h3 class="group-info__title">${esc(convo.title || 'Group')}</h3><p class="group-info__sub">${esc(`${members.length} member${members.length === 1 ? '' : 's'}`)}</p></div>
           </div>
+          ${convo.description ? `<p class="group-info__rules">${esc(convo.description)}</p>` : ''}
           <div class="group-info__members">
             ${members.map((m) => {
               const isMe = m.id === state.user.id;
@@ -1508,13 +1509,14 @@ export async function renderMessageThreadView(root, { conversationId, otherUserI
               // consequences, and it already has its own button below.
               const canRemove = isCreator && !isMe;
               return `<div class="group-info__member-row">
-                <a href="#/profile/${esc(m.username)}" class="group-info__member">${avatarImg(m, 38)}<span class="group-info__m-meta"><b>${esc(m.display_name || m.username)}${isMe ? ' <span class="group-info__you">you</span>' : ''}${m.id === convo.created_by ? ' <span class="group-info__you">admin</span>' : ''}</b><span>@${esc(m.username)}</span></span></a>
+                <a href="#/profile/${esc(m.username)}" class="group-info__member">${avatarImg(m, 38)}<span class="group-info__m-meta"><b>${esc(m.display_name || m.username)}${isMe ? ' <span class="group-info__you">you</span>' : ''}${m.id === convo.created_by ? `${isMe ? '<span class="group-info__dot">·</span>' : ' '}<span class="group-info__you">admin</span>` : ''}</b><span>@${esc(m.username)}</span></span></a>
                 ${canRemove ? `<button type="button" class="group-info__remove" data-remove="${esc(m.id)}" data-name="${esc(m.display_name || m.username)}" aria-label="Remove ${esc(m.display_name || m.username)}">${iconClose()}</button>` : ''}
               </div>`;
             }).join('')}
           </div>
           <div class="group-info__actions">
             ${isCreator ? `<button type="button" class="convo-menu__item" id="gi-rename">${iconNote()}<span>Rename group</span></button>` : ''}
+            ${isCreator ? `<button type="button" class="convo-menu__item" id="gi-rules">${iconList()}<span>${convo.description ? 'Edit' : 'Set'} group rules</span></button>` : ''}
             ${isCreator ? `<button type="button" class="convo-menu__item" id="gi-photo">${iconCamera()}<span>${convo.avatar_url ? 'Change' : 'Set'} group photo</span></button>` : ''}
             ${isCreator && convo.avatar_url ? `<button type="button" class="convo-menu__item" id="gi-photo-clear">${iconTrash()}<span>Remove photo</span></button>` : ''}
             ${isCreator ? `<button type="button" class="convo-menu__item" id="gi-add">${iconPlus()}<span>Add people</span></button>` : ''}
@@ -1542,6 +1544,19 @@ export async function renderMessageThreadView(root, { conversationId, otherUserI
         toast('Group renamed');
       } catch (err) {
         toast(err.message || 'Could not rename the group.', 'error');
+      }
+    });
+
+    qs('#gi-rules', overlay)?.addEventListener('click', async () => {
+      const next = prompt('Group rules — what this chat is for, and anything members should know', convo.description || '');
+      if (next === null) return;
+      try {
+        await api.updateGroupDetails(threadId, { description: next });
+        convo.description = next.trim().slice(0, 500) || null;
+        close();
+        toast(convo.description ? 'Rules saved' : 'Rules cleared');
+      } catch (err) {
+        toast(err.message || 'Could not save those.', 'error');
       }
     });
 
