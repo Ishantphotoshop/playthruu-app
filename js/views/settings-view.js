@@ -1,12 +1,11 @@
 import * as api from '../api.js';
 import { state } from '../state.js';
-import { topBar, navBar, avatarImg, combinedGameResults, wireCombinedGameResults, iconCamera, iconDrag, iconClose, iconPlus } from '../components.js';
+import { topBar, navBar, avatarImg, combinedGameResults, wireCombinedGameResults, iconCamera, iconDrag, iconClose, iconPlus, iconChevronDown } from '../components.js';
 import { esc, toast, qs, qsa, debounce, placeholderCover, igdbSized, enableSwipeToDismiss } from '../utils.js';
 import { changePassword, changeEmail, signOut } from '../auth.js';
 import { openAvatarCropModal } from './avatar-crop.js';
 import { invalidateProfileBundleCache } from './profile-view.js';
 import { openPsnImportSheet } from './psn-import-sheet.js';
-import { playCoin, unlockAudio } from '../sound.js';
 import { VAPID_PUBLIC_KEY } from '../config.js';
 
 const PRONOUN_OPTIONS = ['he/his', 'she/her', 'they/their', 'custom'];
@@ -64,34 +63,41 @@ export function renderSettingsView(root) {
         <div id="connected-accounts-list"><div class="spinner"></div></div>
       </div>
 
-      <p class="set-group__title">Notifications</p>
-      <div class="set-card" id="notif-prefs">
-        <div class="set-toggle">
-          <span class="set-toggle__label"><b>Follows</b><span>When someone follows you</span></span>
-          <label class="set-switch"><input type="checkbox" data-pref="follow"><span class="set-switch__track"></span></label>
-        </div>
-        <div class="set-toggle">
-          <span class="set-toggle__label"><b>Likes</b><span>When someone likes your review</span></span>
-          <label class="set-switch"><input type="checkbox" data-pref="like"><span class="set-switch__track"></span></label>
-        </div>
-        <div class="set-toggle">
-          <span class="set-toggle__label"><b>Comments</b><span>When someone comments on your review</span></span>
-          <label class="set-switch"><input type="checkbox" data-pref="comment"><span class="set-switch__track"></span></label>
-        </div>
-        <div class="set-toggle">
-          <span class="set-toggle__label"><b>Messages</b><span>When someone sends you a message</span></span>
-          <label class="set-switch"><input type="checkbox" data-pref="message"><span class="set-switch__track"></span></label>
-        </div>
-        <div class="set-toggle">
-          <span class="set-toggle__label"><b>Sound</b><span>An arcade coin when something lands <button type="button" class="set-inline-link" id="test-sound">Play it</button></span></span>
-          <label class="set-switch"><input type="checkbox" data-pref="sound"><span class="set-switch__track"></span></label>
-        </div>
-        <div class="set-toggle">
-          <span class="set-toggle__label"><b>Push notifications</b><span id="push-hint">Get notified on this device</span></span>
-          <label class="set-switch"><input type="checkbox" data-pref="push" id="push-toggle"><span class="set-switch__track"></span></label>
+      <button type="button" class="set-group__toggle" id="notif-group" aria-expanded="false" aria-controls="notif-collapse">
+        <span>Notifications</span>
+        <span class="set-group__chev">${iconChevronDown()}</span>
+      </button>
+      <div class="set-collapse" id="notif-collapse" data-open="false">
+        <div class="set-collapse__inner">
+          <div class="set-card" id="notif-prefs">
+            <div class="set-toggle">
+              <span class="set-toggle__label"><b>Follows</b><span>When someone follows you</span></span>
+              <label class="set-switch"><input type="checkbox" data-pref="follow"><span class="set-switch__track"></span></label>
+            </div>
+            <div class="set-toggle">
+              <span class="set-toggle__label"><b>Likes</b><span>When someone likes your review</span></span>
+              <label class="set-switch"><input type="checkbox" data-pref="like"><span class="set-switch__track"></span></label>
+            </div>
+            <div class="set-toggle">
+              <span class="set-toggle__label"><b>Comments</b><span>When someone comments on your review</span></span>
+              <label class="set-switch"><input type="checkbox" data-pref="comment"><span class="set-switch__track"></span></label>
+            </div>
+            <div class="set-toggle">
+              <span class="set-toggle__label"><b>Messages</b><span>When someone sends you a message</span></span>
+              <label class="set-switch"><input type="checkbox" data-pref="message"><span class="set-switch__track"></span></label>
+            </div>
+            <div class="set-toggle">
+              <span class="set-toggle__label"><b>Sound</b><span>Ring with your phone's own notification tone</span></span>
+              <label class="set-switch"><input type="checkbox" data-pref="sound"><span class="set-switch__track"></span></label>
+            </div>
+            <div class="set-toggle">
+              <span class="set-toggle__label"><b>Push notifications</b><span id="push-hint">Get notified on this device</span></span>
+              <label class="set-switch"><input type="checkbox" data-pref="push" id="push-toggle"><span class="set-switch__track"></span></label>
+            </div>
+          </div>
+          <p class="set-hint">Switching one off stops it being recorded at all, so it won't ring, badge or show up in your notifications.</p>
         </div>
       </div>
-      <p class="set-hint">Switching one off stops it being recorded at all, so it won't ring, badge or show up in your notifications.</p>
 
       <p class="set-group__title">Privacy</p>
       <div class="set-card">
@@ -250,14 +256,23 @@ export function renderSettingsView(root) {
     }
 
     prefs[key] = want;
-    // Turning the sound ON should prove it works, and the change event
-    // is a real gesture, so the audio context is allowed to start here.
-    if (key === 'sound' && want) { unlockAudio(); playCoin(); }
     await savePrefs();
     paintPrefs();
   });
 
-  qs('#test-sound', body)?.addEventListener('click', () => { unlockAudio(); playCoin(); });
+  // Six switches is a lot of vertical space for something most people
+  // set once, and it sat between Connected accounts and Privacy pushing
+  // both far down the page. Folded away by default; the group header is
+  // the control. Animated by grid rows rather than max-height so the
+  // open height is the content's real height and never a guess that
+  // clips the last switch.
+  const notifGroup = qs('#notif-group', body);
+  const notifCollapse = qs('#notif-collapse', body);
+  notifGroup?.addEventListener('click', () => {
+    const open = notifCollapse.dataset.open !== 'true';
+    notifCollapse.dataset.open = String(open);
+    notifGroup.setAttribute('aria-expanded', String(open));
+  });
 
   loadPrefs();
 

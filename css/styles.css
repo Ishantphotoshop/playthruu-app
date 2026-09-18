@@ -384,7 +384,13 @@ ul { list-style: none; margin: 0; padding: 0; }
   width: 38px; height: 38px; display: grid; place-items: center;
   background: var(--surface-raised); border: 1px solid var(--line);
   border-radius: 50%; color: var(--ink); z-index: 5;
+  transition: opacity var(--dur) var(--ease);
 }
+/* On a cold load this button is painted in the same pass as the spinner,
+   which left one lit control sitting over an empty screen until the
+   profile landed. It waits here instead and fades in with the content
+   it belongs to; a warm cache never gets this class at all. */
+.view-body__corner-action--pending { opacity: 0; pointer-events: none; }
 /* A page's real content is only ever hidden BEHIND this, never inside
    it — it has to sit outside whatever gets faded to opacity:0 while
    data loads (see .feed-body--loading), or it would vanish along with
@@ -4001,7 +4007,18 @@ a.gd-credit__name { text-decoration: none; }
 .suspended-card .btn { margin-top: var(--space-3); }
 
 /* ---- settings: grouped-list redesign -------------------------------- */
-.settings2 { max-width: 640px; margin: 0 auto; padding-bottom: calc(100px + var(--safe-bottom)); }
+/* `width: 100%` is load-bearing, not belt-and-braces. This element is
+   also the .view-body, which is a flex item in a column flex container,
+   and a flex item with an AUTO margin on the cross axis does not get
+   stretched to the container — it is sized to its own max-content and
+   the auto margins then centre that. Without the explicit width it
+   measured 408px wide inside a 320px phone, so every card ran off the
+   right edge of the screen. With it, the width resolves against the
+   container first and max-width only ever narrows it on a big screen. */
+.settings2 {
+  width: 100%; max-width: 640px; margin-inline: auto;
+  padding-bottom: calc(100px + var(--safe-bottom));
+}
 
 .set-account {
   display: flex; align-items: center; gap: var(--space-3);
@@ -5256,52 +5273,91 @@ a.gd-credit__name { text-decoration: none; }
 }
 .topbar__action:active { opacity: 0.6; }
 
-.notif-list { display: flex; flex-direction: column; }
+/* ---- activity stream ---- */
 
-/* Rows are separated by a hairline rather than spaced apart as cards:
-   a notification list is scanned top to bottom in one pass, and gaps
-   between every row turn that into a series of stops. */
-.notif {
-  display: flex; align-items: center; gap: var(--space-3);
-  width: 100%; padding: 12px 2px; text-align: left;
+/* The tab strip and its filter share one line. The filter belongs to the
+   Friends tab specifically (it only says what ELSE to fold into that
+   stream), so it reads as part of the tabs rather than as a page-level
+   control up in the header. */
+.act-tabs {
+  display: flex; align-items: flex-start; gap: var(--space-2);
+  padding: 0 var(--space-4);
+}
+.act-tabs .segmented { flex: 1; min-width: 0; }
+/* The list is the point of this screen, so it starts right under the
+   tabs. .segmented--wide's own bottom margin plus .view-body's top
+   padding stacked up to ~56px of nothing between the two. */
+.act-tabs .segmented--wide { margin-bottom: 0; }
+
+.act-filter-btn {
+  position: relative; flex-shrink: 0;
+  width: 42px; height: 42px; display: grid; place-items: center;
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius-pill); color: var(--ink-dim); cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.act-filter-btn svg { width: 18px; height: 18px; }
+.act-filter-btn:active { transform: scale(0.94); }
+.act-filter-btn--active { color: var(--accent-bright); border-color: var(--accent-bright); }
+.act-filter-btn__count {
+  position: absolute; top: -3px; right: -3px;
+  min-width: 15px; height: 15px; padding: 0 4px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: var(--radius-pill);
+  background: var(--accent-bright); color: var(--bg);
+  font-family: var(--font-mono); font-size: 9.5px; font-weight: 700; line-height: 1;
+  box-shadow: 0 0 0 2px var(--bg);
+}
+
+.act-list { display: flex; flex-direction: column; }
+
+/* Rows are separated by a hairline rather than spaced apart as cards: an
+   activity list is scanned top to bottom in one pass, and a gap between
+   every row turns that into a series of stops. */
+.act {
+  display: flex; align-items: flex-start; gap: var(--space-3);
+  width: 100%; padding: 11px 2px; text-align: left;
   background: none; border: none; border-bottom: 1px solid var(--line);
   color: var(--ink); cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
-.notif:last-child { border-bottom: none; }
-.notif:active { background: rgba(255, 255, 255, 0.04); }
+.act:last-child { border-bottom: none; }
+.act:active { background: rgba(255, 255, 255, 0.04); }
 
-.notif__avatar { flex-shrink: 0; display: flex; }
-.notif__avatar img { border-radius: 50%; }
+.act__avatar { flex-shrink: 0; display: flex; padding-top: 1px; }
+.act__avatar img { border-radius: 50%; }
 
-.notif__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-/* Regular weight with the name bolded inside it, so the person is what
-   the eye catches and the verb reads as ordinary sentence text. */
-.notif__text {
-  font-size: 14px; line-height: 1.35; color: var(--ink); font-weight: 400;
+.act__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+/* Regular weight with only the names bolded inside it, so the person is
+   what the eye catches and the verb reads as ordinary sentence text. */
+.act__text { font-size: 14px; line-height: 1.4; color: var(--ink); font-weight: 400; }
+.act__text b { font-weight: 700; }
+/* Inline stars sit on the text baseline rather than on their own line,
+   which is what keeps "watched Hades ★★★★" reading as one sentence. */
+.act__text .stars { display: inline-flex; vertical-align: -1px; margin-left: 2px; }
+/* A quoted review or comment is dimmed so it reads as somebody's words
+   inside the row rather than as more of the app talking. */
+.act__quote {
+  font-size: 13px; line-height: 1.4; color: var(--ink-dim);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
-.notif__text b { font-weight: 700; }
-/* The quoted comment is dimmed so it reads as somebody else's words
-   inside the sentence rather than as part of it. */
-.notif__quote { color: var(--ink-dim); }
-.notif__time { font-size: 11.5px; color: var(--ink-faint); }
-
-/* "3" on a bundled run of messages from one conversation. */
-.notif__count {
-  flex-shrink: 0; min-width: 20px; height: 20px; padding: 0 6px;
-  display: flex; align-items: center; justify-content: center;
-  border-radius: var(--radius-pill);
-  background: var(--surface-high); color: var(--ink-dim);
-  font-family: var(--font-mono); font-size: 10.5px; font-weight: 700;
+/* Right-aligned and never wrapping: the time is a column the eye tracks
+   straight down, so it has to stay put no matter how long the text is. */
+.act__time {
+  flex-shrink: 0; padding-top: 2px;
+  font-size: 11.5px; color: var(--ink-faint); white-space: nowrap;
 }
 
 /* Unread marker. A dot and nothing else — a tinted row background was
-   the alternative and it made a full inbox look like an error state. */
-.notif__dot {
-  flex-shrink: 0; width: 8px; height: 8px; border-radius: 50%;
+   the alternative and it made a busy list look like an error state. */
+.act__dot {
+  flex-shrink: 0; align-self: center;
+  width: 8px; height: 8px; border-radius: 50%;
   background: var(--accent-bright);
 }
-.notif--unread .notif__text { font-weight: 500; }
+.act--unread .act__text { font-weight: 500; }
+
+.act-more { margin-top: var(--space-4); }
 
 /* ---- notification settings ---- */
 
@@ -5354,4 +5410,34 @@ a.gd-credit__name { text-decoration: none; }
   background: none; border: none; padding: 0; margin-left: 2px;
   color: var(--accent-bright); font: inherit; font-weight: 600;
   text-decoration: underline; cursor: pointer;
+}
+
+/* A settings group that folds away. The header IS the control — a
+   separate chevron button beside a static title would give the same row
+   two tap targets for one action. */
+.set-group__toggle {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-2);
+  width: 100%; margin: var(--space-4) 6px var(--space-2); padding: 0;
+  background: none; border: none; cursor: pointer;
+  font-family: inherit; font-size: var(--text-label); font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-faint);
+  -webkit-tap-highlight-color: transparent;
+}
+.set-group__toggle:active { opacity: 0.6; }
+.set-group__chev { display: flex; transition: transform var(--dur) var(--ease); }
+.set-group__chev svg { width: 16px; height: 16px; }
+.set-group__toggle[aria-expanded="true"] .set-group__chev { transform: rotate(180deg); }
+
+/* Animated by grid rows rather than max-height: 0fr → 1fr resolves to
+   the content's REAL height, so there is no magic number to guess and
+   nothing gets clipped when a row is added later. */
+.set-collapse {
+  display: grid; grid-template-rows: 0fr;
+  transition: grid-template-rows var(--dur) var(--ease);
+}
+.set-collapse[data-open="true"] { grid-template-rows: 1fr; }
+.set-collapse__inner { overflow: hidden; min-height: 0; }
+@media (prefers-reduced-motion: reduce) {
+  .set-collapse { transition: none; }
+  .set-group__chev { transition: none; }
 }

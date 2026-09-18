@@ -29,7 +29,6 @@ import { openLogModal } from './views/log-modal.js';
 import { toast, qs } from './utils.js';
 import { clearViewCache, setCached, getCached, CACHE_KEYS } from './cache.js';
 import { iconClose, iconLock } from './components.js';
-import { playCoin, unlockAudio } from './sound.js';
 
 const appEl = document.getElementById('app');
 let routesRegistered = false;
@@ -95,16 +94,23 @@ async function refreshMessageBadge() {
 let unreadNotifCount = 0;
 let unsubscribeNotifications = null;
 // Preferences are read once per session and cached here so the realtime
-// handler can decide whether to play a sound without a round trip on
+// handler can decide how to announce something without a round trip on
 // every single notification.
 let notifPrefs = api.NOTIFICATION_PREF_DEFAULTS;
 
-// Raises a real system notification, but only when the tab is not the
-// thing you are looking at - an OS banner for something already on
-// screen is just a second copy of it. This is what the push toggle buys
-// you today: with no VAPID key configured there is no push service
-// subscription, so nothing can reach a fully closed app, but a
-// backgrounded tab can still speak for itself.
+// Announces something in the phone's own notification shade rather than
+// in the page, and only when the app is not the thing you are looking at
+// - a banner for something already on screen is just a second copy of it.
+//
+// There is deliberately no app-specific sound any more. A notification
+// tone is a setting people have already made on their phone, often
+// carefully (silent at work, one particular tone they recognise), and an
+// app that substitutes its own is overriding a decision that was never
+// its to make. Both paths below therefore ask for the SYSTEM default:
+// `silent: false` on the web Notification, and the default sound on the
+// Android channel. The Sound switch in Settings chooses between that
+// default and no sound at all, which is the only part of this the app
+// has any business deciding.
 const NOTIF_TEXT = {
   follow: 'started following you',
   like: 'liked your review',
@@ -113,15 +119,34 @@ const NOTIF_TEXT = {
 };
 
 function maybeSystemNotify(row) {
-  if (!notifPrefs.push) return;
-  if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
   if (document.visibilityState === 'visible') return;
+  const body = NOTIF_TEXT[row?.kind] || 'Something happened';
+  const tag = `playthruu-${row?.kind || 'x'}`;
+
+  // Inside the Android shell a WebView cannot post to the notification
+  // shade itself, so the native side does it - a real notification on a
+  // real channel, which is what makes it appear in the status bar and
+  // ring with the phone's own tone. Web Notification is the fallback
+  // everywhere else (desktop, and the site in a normal browser).
+  const native = window.PlaythruuNative;
+  if (native?.notify) {
+    try {
+      native.notify('Playthruu', body, tag, !!notifPrefs.sound);
+      return;
+    } catch {
+      // Fall through to the web path rather than going silent.
+    }
+  }
+
+  if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
   try {
     const n = new Notification('Playthruu', {
-      body: NOTIF_TEXT[row?.kind] || 'Something happened',
+      body,
       icon: 'icons/icon-192.png',
       // One banner per kind rather than a stack of five identical ones.
-      tag: `playthruu-${row?.kind || 'x'}`,
+      tag,
+      // false asks for whatever tone the phone is already set to.
+      silent: !notifPrefs.sound,
     });
     n.onclick = () => {
       window.focus();
@@ -369,12 +394,6 @@ async function loadSession(user) {
   unsubscribeNotifications = api.subscribeToNotifications(user.id, (row) => {
     unreadNotifCount += 1;
     applyNotifBadge();
-    // The coin only sounds for something that arrived while you were
-    // looking at something else. Landing on the hub itself and hearing a
-    // coin for a row you are already reading is noise, not feedback.
-    if (notifPrefs.sound && !location.hash.startsWith('#/notifications')) {
-      playCoin();
-    }
     // A message notification also moves the Messages tab's own count,
     // which is driven by a different subscription that does not fire for
     // conversation_prefs changes - nudge it so both badges agree.
@@ -538,14 +557,6 @@ async function boot() {
   window.addEventListener('notifications:prefs', (e) => {
     if (e.detail) notifPrefs = e.detail;
   });
-  // Every browser refuses to start an AudioContext outside a user
-  // gesture, so the very first notification of a session would be silent
-  // without claiming one here. once:true - after the first tap the
-  // context stays alive for the rest of the session.
-  ['pointerdown', 'keydown'].forEach((evt) => {
-    window.addEventListener(evt, unlockAudio, { once: true, passive: true });
-  });
-
   const { data: { session } } = await supabase.auth.getSession();
   if (session?.user) {
     await loadSession(session.user);

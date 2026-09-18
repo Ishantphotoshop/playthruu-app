@@ -3626,3 +3626,228 @@ export async function deletePushSubscription(endpoint) {
   const { error } = await supabase.from('push_subscriptions').delete().eq('endpoint', endpoint);
   if (error) throw error;
 }
+
+// ============================================================
+// ACTIVITY FEED
+// ============================================================
+// The hub is an activity stream, not only an inbox. Letterboxd's
+// activity page is the model: one chronological list of what the people
+// you follow have been doing — logged a game, liked a review, followed
+// somebody — with the things aimed at you (new followers, likes on your
+// own reviews) mixed in on request.
+//
+// Four sources merged newest-first in the client rather than one SQL
+// view. Each of logs/log_likes/follows/comments already carries its own
+// RLS policy, and a view would have to restate all four correctly to
+// stay as safe; this way the database keeps one answer for who may read
+// what, and the merge is only presentation. The cost is fetching a page
+// from each instead of one — cheap at these limits.
+//
+// Messages are deliberately absent. A DM is a conversation, not
+// something that belongs in a public-shaped activity list, and it has
+// its own screen with its own unread state.
+
+const ACT_ACTOR = 'id, username, display_name, avatar_url';
+const ACT_GAME = 'id, title, cover_url';
+
+// Every row carries a `key` that identifies the EVENT rather than the
+// table it came from, because the same event legitimately arrives twice:
+// somebody you follow liking your review is both friend activity and
+// incoming. Same key, one row.
+function actKeyFollow(actorId, targetId) { return `follow:${actorId}:${targetId}`; }
+function actKeyLike(actorId, logId) { return `like:${actorId}:${logId}`; }
+function actKeyComment(commentId) { return `comment:${commentId}`; }
+
+async function actLogs(actorIds, limit, before) {
+  if (!actorIds.length) return [];
+  let q = supabase
+    .from('logs')
+    .select(`id, rating, review, status, played_date, created_at, user_id,
+      actor:profiles!logs_user_id_fkey(${ACT_ACTOR}),
+      games!logs_game_id_fkey(${ACT_GAME})`)
+    .in('user_id', actorIds)
+    .eq('is_public', true);
+  if (before) q = q.lt('created_at', before);
+  const { data, error } = await q.order('created_at', { ascending: false }).limit(limit);
+  if (error) throw error;
+  return (data || []).filter((l) => l.games).map((l) => ({
+    key: `log:${l.id}`,
+    kind: 'log',
+    created_at: l.created_at,
+    actor_id: l.user_id,
+    actor: l.actor,
+    game: l.games,
+    log: l,
+  }));
+}
+
+async function actLikes(actorIds, limit, before) {
+  if (!actorIds.length) return [];
+  let q = supabase
+    .from('log_likes')
+    .select(`user_id, log_id, created_at,
+      actor:profiles!log_likes_user_id_fkey(${ACT_ACTOR}),
+      log:logs!log_likes_log_id_fkey(id, rating, review, user_id, is_public,
+        games!logs_game_id_fkey(${ACT_GAME}),
+        owner:profiles!logs_user_id_fkey(${ACT_ACTOR}))`)
+    .in('user_id', actorIds);
+  if (before) q = q.lt('created_at', before);
+  const { data, error } = await q.order('created_at', { ascending: false }).limit(limit);
+  if (error) throw error;
+  // A like on a log that has since been made private stays hidden: the
+  // embed still returns the row, so the visibility check happens here.
+  return (data || []).filter((r) => r.log?.is_public && r.log.games).map((r) => ({
+    key: actKeyLike(r.user_id, r.log_id),
+    kind: 'like',
+    created_at: r.created_at,
+    actor_id: r.user_id,
+    actor: r.actor,
+    game: r.log.games,
+    log: r.log,
+    target: r.log.owner,
+  }));
+}
+
+async function actFollows(actorIds, limit, before) {
+  if (!actorIds.length) return [];
+  let q = supabase
+    .from('follows')
+    .select(`follower_id, following_id, created_at,
+      actor:profiles!follows_follower_id_fkey(${ACT_ACTOR}),
+      target:profiles!follows_following_id_fkey(${ACT_ACTOR})`)
+    .in('follower_id', actorIds);
+  if (before) q = q.lt('created_at', before);
+  const { data, error } = await q.order('created_at', { ascending: false }).limit(limit);
+  if (error) throw error;
+  return (data || []).map((r) => ({
+    key: actKeyFollow(r.follower_id, r.following_id),
+    kind: 'follow',
+    created_at: r.created_at,
+    actor_id: r.follower_id,
+    actor: r.actor,
+    target: r.target,
+  }));
+}
+
+async function actComments(actorIds, limit, before) {
+  if (!actorIds.length) return [];
+  let q = supabase
+    .from('comments')
+    .select(`id, body, created_at, user_id, log_id,
+      actor:profiles!comments_user_id_fkey(${ACT_ACTOR}),
+      log:logs!comments_log_id_fkey(id, user_id, is_public,
+        games!logs_game_id_fkey(${ACT_GAME}),
+        owner:profiles!logs_user_id_fkey(${ACT_ACTOR}))`)
+    .in('user_id', actorIds);
+  if (before) q = q.lt('created_at', before);
+  const { data, error } = await q.order('created_at', { ascending: false }).limit(limit);
+  if (error) throw error;
+  return (data || []).filter((r) => r.log?.is_public && r.log.games).map((r) => ({
+    key: actKeyComment(r.id),
+    kind: 'comment',
+    created_at: r.created_at,
+    actor_id: r.user_id,
+    actor: r.actor,
+    game: r.log.games,
+    log: r.log,
+    target: r.log.owner,
+    comment: { id: r.id, body: r.body },
+  }));
+}
+
+// Incoming reuses the notifications table rather than re-querying the
+// four sources with the viewer as the target. That table already holds
+// exactly "things that happened to you", already honours the per-kind
+// mute switches, and — the part worth keeping — already tracks what has
+// been read, which nothing reconstructed from logs/likes/follows could.
+async function actIncoming(userId, limit, before) {
+  let q = supabase
+    .from('notifications')
+    .select(`
+      id, kind, read_at, created_at, actor_id, log_id, comment_id,
+      actor:profiles!notifications_actor_id_fkey(${ACT_ACTOR}),
+      log:logs!notifications_log_id_fkey(id, rating, review, games!logs_game_id_fkey(${ACT_GAME})),
+      comment:comments!notifications_comment_id_fkey(id, body)`)
+    .eq('user_id', userId)
+    .neq('kind', 'message');
+  if (before) q = q.lt('created_at', before);
+  const { data, error } = await q.order('created_at', { ascending: false }).limit(limit);
+  if (error) throw error;
+  return (data || []).map((n) => {
+    const key = n.kind === 'follow' ? actKeyFollow(n.actor_id, userId)
+      : n.kind === 'like' ? actKeyLike(n.actor_id, n.log_id)
+        : actKeyComment(n.comment_id);
+    return {
+      key,
+      kind: n.kind,
+      created_at: n.created_at,
+      actor_id: n.actor_id,
+      actor: n.actor,
+      game: n.log?.games || null,
+      log: n.log || null,
+      comment: n.comment || null,
+      incoming: true,
+      notification_id: n.id,
+      unread: !n.read_at,
+      // "followed you" / "liked YOUR review" — the target is always the
+      // viewer here, which is what lets the row phrase itself in the
+      // second person instead of naming them.
+      targetIsViewer: true,
+    };
+  });
+}
+
+// scope: 'friends' | 'you' | 'incoming'
+export async function getActivityFeed(userId, {
+  scope = 'friends', includeYou = false, includeIncoming = false, limit = 40, before = null,
+} = {}) {
+  let actorIds = [];
+  if (scope === 'you') {
+    actorIds = [userId];
+  } else if (scope === 'friends') {
+    actorIds = [...(await getFollowingIdSet(userId))];
+    // Your own actions are not news to you, so they stay out of the
+    // friends stream unless the filter asks for them.
+    if (includeYou) actorIds.push(userId);
+  }
+
+  const wantIncoming = scope === 'incoming' || (scope === 'friends' && includeIncoming);
+
+  const jobs = [];
+  if (actorIds.length) {
+    jobs.push(
+      actLogs(actorIds, limit, before),
+      actLikes(actorIds, limit, before),
+      actFollows(actorIds, limit, before),
+      actComments(actorIds, limit, before),
+    );
+  }
+  if (wantIncoming) jobs.push(actIncoming(userId, limit, before));
+
+  // One source failing should thin the stream, never empty it — a
+  // dropped likes query still leaves a usable list of everything else.
+  const chunks = await Promise.all(jobs.map((p) => p.catch(() => [])));
+
+  const byKey = new Map();
+  for (const row of chunks.flat()) {
+    const prior = byKey.get(row.key);
+    // The incoming copy wins on a tie because it is the one carrying
+    // unread state; everything else about the two rows is the same event.
+    if (!prior) byKey.set(row.key, row);
+    else if (row.incoming && !prior.incoming) byKey.set(row.key, { ...prior, ...row });
+  }
+
+  let rows = [...byKey.values()];
+  const blocked = await getBlockedIds().catch(() => new Set());
+  if (blocked.size) rows = rows.filter((r) => !blocked.has(r.actor_id));
+  rows.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+  const page = rows.slice(0, limit);
+  return {
+    rows: page,
+    // Only claim there is more when more than a page came back —
+    // otherwise every source was exhausted and the cursor would spin.
+    hasMore: rows.length > limit,
+    cursor: page.length ? page[page.length - 1].created_at : null,
+  };
+}

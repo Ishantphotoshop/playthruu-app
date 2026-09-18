@@ -98,13 +98,25 @@ export async function renderProfileView(root, { username }) {
   // position:relative and doesn't itself scroll, so position:absolute
   // here still anchors correctly and stays put regardless of what
   // #profile-body's own content does.
+  // The gear is painted in the same pass as the spinner, so on a cold
+  // load it used to sit there alone against an empty screen for as long
+  // as the fetch took — one lit control floating over nothing. It starts
+  // faded instead and arrives WITH the profile it belongs to. A warm
+  // cache paints real content immediately, so there is nothing to wait
+  // for and it is shown straight away.
   root.innerHTML = (isOwn ? '' : topBar(username, { back: true })) +
-    (isOwn ? `<a class="view-body__corner-action" href="#/settings" aria-label="Settings">${iconSettings()}</a>` : '') +
+    (isOwn ? `<a class="view-body__corner-action${cachedProfile ? '' : ' view-body__corner-action--pending'}" href="#/settings" aria-label="Settings">${iconSettings()}</a>` : '') +
     `<div class="view-body${isOwn ? ' view-body--no-topbar' : ''}" id="profile-body">
        ${cachedProfile || spinner()}
      </div>` + navBar(isOwn ? '/me' : '');
   const body = qs('#profile-body', root);
   wirePullToRefresh(body);
+
+  // Whatever happens next — real data or an error — the gear becomes
+  // usable. Kept in one place so no later branch can strand it faded.
+  const revealCornerAction = () => {
+    qs('.view-body__corner-action', root)?.classList.remove('view-body__corner-action--pending');
+  };
 
   try {
     const profile = isOwn ? state.profile : await api.getProfileByUsername(username);
@@ -364,11 +376,13 @@ export async function renderProfileView(root, { username }) {
     });
 
     setCached(cacheKey, body.innerHTML);
+    revealCornerAction();
   } catch (err) {
     // A cached version of this profile is already showing — leave it up
     // rather than replacing it with an error over a background refresh
     // hiccup (the pull-to-refresh above still works if they want to retry).
     if (!cachedProfile) body.innerHTML = `<p class="muted" style="padding:24px">Couldn't load this profile: ${esc(err.message)}</p>`;
+    revealCornerAction();
   }
 }
 
