@@ -1,4 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Playthruu</string>
+
+    <!-- The in-APK half of the Digital Asset Links pair. The other half
+         is /.well-known/assetlinks.json on the site, which carries this
+         package's signing fingerprint. Chrome checks both directions;
+         if either is missing the TWA still runs but shows a URL bar. -->
+    <string name="asset_statements" translatable="false">
+        [{
+          \"relation\": [\"delegate_permission/common.handle_all_urls\"],
+          \"target\": {
+            \"namespace\": \"web\",
+            \"site\": \"https://app.playthruu.com\"
+          }
+        }]
+    </string>
 </resources>

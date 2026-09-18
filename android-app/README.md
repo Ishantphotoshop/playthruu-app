@@ -1,73 +1,67 @@
-# Playthruu — Android shell
+# Playthruu — Android app
 
-A ~16 KB Android app whose entire job is to open
-`https://app.playthruu.com/` in a WebView and give the page one thing it
-cannot have on its own: **the notification shade**.
+A ~400 KB Android app that runs `https://app.playthruu.com/` as a
+**Trusted Web Activity**: full-screen, no browser chrome, its own icon in
+the launcher, and — the reason it exists — real notifications in the
+notification shade.
 
-A website can badge itself and it can make a sound while you are looking
-at it, but nothing it does reaches the status bar. That is why
-notifications never showed up on the phone. This shell exposes
-`window.PlaythruuNative.notify(...)`, and the web app calls it instead of
-`new Notification(...)` whenever it is running inside the APK — so a
-follow, like, comment or message lands in the shade as a real Android
-notification, on a real channel, with the phone's own tone.
+## Why a TWA and not a WebView
 
-Like the admin shell beside it, it deliberately does **not** bundle a
-copy of the site. Ordinary fixes still go live with a `git push` and this
-APK never needs rebuilding or reinstalling for them. It only needs a
-rebuild when something in `MainActivity.java` changes.
+It started as a WebView shell with a JS bridge (`PlaythruuNative.notify`)
+so the page could ask the native side to post a notification. That worked
+while the app was open or backgrounded, and **only** then: a WebView has
+no Push API, so once the app was swiped out of recents there was nothing
+left to tell it anything. The realtime subscription is a WebSocket inside
+the page, and a killed process has no WebSocket.
+
+A TWA runs the site in Chrome, which means the site's own Web Push
+subscription works exactly as it does in the browser. A push subscription
+belongs to the browser's push service, not to the page, so it outlives
+the app being closed entirely — Chrome wakes the service worker, the
+service worker posts the notification, and the `DelegationService`
+declared in the manifest is what makes it appear as **Playthruu** rather
+than as Chrome.
+
+The WebView version is still in git history (`f5b5b8e`) if it is ever
+wanted back; `app.js` also still checks for the bridge, so it would work
+again with no changes on the web side.
+
+## What has to be true for it to work
+
+| Piece | Where | Note |
+| --- | --- | --- |
+| `assetlinks.json` | `/.well-known/assetlinks.json` in the site root | Carries this APK's signing fingerprint. Chrome fetches it to verify the app owns the domain. **Without it the app still runs but shows a URL bar.** |
+| `.nojekyll` | site root | GitHub Pages runs Jekyll by default, which skips dot-directories — so `.well-known/` would 404 and verification would silently fail. |
+| `asset_statements` | `res/values/strings.xml` | The APK's half of the same pair. |
+| `VAPID_PUBLIC_KEY` | `js/config.js` | Must match the `VAPID_PRIVATE_KEY` Supabase secret. |
+| `send-push` function + trigger | `supabase/functions/send-push`, `migrations/2026-09-18_web_push.sql` | What actually sends a push when a notification row is written. |
+| `POST_NOTIFICATIONS` | manifest | Android 13+ refuses to post anything without it; Chrome asks for it on the app's behalf. |
+
+The signing key and `assetlinks.json` are a matched pair. Regenerating
+the keystore means regenerating that file with the new fingerprint, or
+verification breaks and the URL bar comes back.
 
 ## Installing
 
-The built APK is committed at the site root as `playthruu.apk`, so the
-easiest install is straight from the phone:
-
-1. Open **https://app.playthruu.com/playthruu.apk** in Chrome on the
-   phone.
-2. Chrome warns about installing a file from outside the Play Store —
-   expected for any self-signed app. Allow it, and allow "install unknown
-   apps" for Chrome if asked.
-3. Open **Playthruu** and sign in.
-4. Say yes when it asks to send notifications. On Android 13+ that prompt
-   is the whole ballgame: decline it and the shade stays empty no matter
-   what the app does.
-
-Or over USB with debugging on:
-
 ```
-adb install -r playthruu.apk
+adb install -r ../playthruu.apk
 ```
 
-## What it adds over the PWA
+Or from the phone: open **https://app.playthruu.com/playthruu.apk** in
+Chrome, allow the "install unknown apps" prompt, open **Playthruu**, sign
+in, and say yes when it asks about notifications — on Android 13+ that
+prompt is the whole ballgame.
 
-| Setting | Reason |
-| --- | --- |
-| `PlaythruuNative.notify()` | The point of the whole shell — real notifications in the status bar. |
-| `POST_NOTIFICATIONS` | Android 13+ refuses to post anything without it. |
-| Two notification channels | From Android O the channel owns the tone, and a notification can't talk it out of one — so silence needs its own `IMPORTANCE_LOW` channel rather than a flag. The Sound switch in Settings picks between them. |
-| `onShowFileChooser` | Without it `<input type="file">` does nothing at all, silently — that's the avatar picker in Settings. |
-| `onPermissionRequest` | A WebView refuses `getUserMedia` even when Android has already granted the app the microphone. Needed for voice notes. |
-| No `webView.onPause()` | Pausing a WebView stops its JS timers, which would kill the Supabase realtime subscription the moment the app was backgrounded — i.e. exactly when a notification matters. |
-| `domStorageEnabled` | Supabase keeps the auth session in `localStorage`. Off, the app signs you out on every launch. |
-| Window-inset padding | `targetSdk 36` is edge-to-edge whether or not you ask, so without it the header sits under the status bar. |
-| `minSdk 26` | Lets the launcher icon be adaptive-only, no legacy PNG densities. Covers Android 8 (2017) onward. |
+Then turn **Push notifications** on in Settings → Notifications. That is
+what creates the subscription; nothing arrives until it exists.
 
-### What it still does not do
-
-A notification only fires while the app is running — in the foreground or
-backgrounded. Once it is swiped out of recents, nothing arrives, because
-there is no push service involved: the realtime subscription is a
-WebSocket inside the WebView, and a killed process has no WebSocket.
-
-Reaching a fully closed phone needs a push service (Web Push via VAPID,
-or FCM) plus something server-side to send. `VAPID_PUBLIC_KEY` in
-`js/config.js` is the hook for the first of those and is still empty; see
-the note there.
+Upgrading over the old WebView build works because the signing key is the
+same and `versionCode` moved to 2.
 
 ## Rebuilding
 
 Nothing is on `PATH` on this machine, so point the build at the JDK
-inside Android Studio and the Gradle already in the wrapper cache:
+inside Android Studio and the Gradle in the wrapper cache:
 
 ```bash
 cd android-app
@@ -75,19 +69,21 @@ export JAVA_HOME="/c/Program Files/Android/Android Studio/jbr"
 export ANDROID_HOME="C:/Users/ishan/AppData/Local/Android/Sdk"
 GRADLE="$USERPROFILE/.gradle/wrapper/dists/gradle-8.14.3-all/10utluxaxniiv4wxiphsi49nj/gradle-8.14.3/bin/gradle"
 "$GRADLE" assembleRelease --no-daemon
+cp app/build/outputs/apk/release/app-release.apk ../playthruu.apk
 ```
 
-Output lands at `app/build/outputs/apk/release/app-release.apk`. Copy it
-over `../playthruu.apk` to update the download link.
+Bump `versionCode`/`versionName` in `app/build.gradle` first, or Android
+refuses to install over the existing copy.
 
-Bump `versionCode`/`versionName` in `app/build.gradle` when you rebuild,
-or Android may refuse to install over the existing copy.
+Note that ordinary app changes need **no** rebuild: the APK holds no copy
+of the site, so a `git push` is the whole deploy. Only changes to the
+manifest, resources or the TWA config need a new APK.
 
 ## Signing
 
 `playthruu-app.jks` and `keystore.properties` are gitignored, since a
-keystore is a credential. There is no Play Store listing to keep signing
-continuity for, so if they ever go missing just regenerate and reinstall:
+keystore is a credential — both are recorded in
+`Downloads/Questlog_Keys_Current.txt` alongside the fingerprint.
 
 ```bash
 "/c/Program Files/Android/Android Studio/jbr/bin/keytool.exe" -genkeypair -v \
@@ -97,15 +93,7 @@ continuity for, so if they ever go missing just regenerate and reinstall:
   -dname "CN=Playthruu, O=Playthruu, L=Delhi, C=IN"
 ```
 
-Then recreate `keystore.properties` beside it:
-
-```
-storeFile=playthruu-app.jks
-storePassword=playthruu-app
-keyAlias=playthruu-app
-keyPassword=playthruu-app
-```
-
 Reinstalling after regenerating the key needs the old copy uninstalled
 first — Android refuses to replace an app with one signed by a different
-key.
+key — **and** `.well-known/assetlinks.json` updated to the new
+fingerprint.

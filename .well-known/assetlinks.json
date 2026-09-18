@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.playthruu.app",
+      "sha256_cert_fingerprints": [
+        "8C:2B:26:4B:06:11:EC:F3:F9:38:43:FA:5F:C5:1D:AC:F0:EA:81:26:22:BA:8C:C7:09:4D:53:B8:F6:2B:A1:E1"
+      ]
+    }
+  }
+]

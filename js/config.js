@@ -47,17 +47,19 @@ export const RAWG_API_KEY = "b0c4599765444b5e9207260042c05ed1";
 export const GIPHY_API_KEY = "K9tBeFhMg4uYiafTHTgaxW9Luipq6kIP";
 
 // Web Push. The PUBLIC half of a VAPID key pair — safe to ship, the
-// same way SUPABASE_ANON_KEY above is; the private half lives in a
-// Supabase secret and never leaves the server.
+// same way SUPABASE_ANON_KEY above is.
 //
-// Left empty on purpose until a pair is generated. With it empty, the
-// Notifications toggle in Settings still works, it just falls back to
-// permission-based system notifications, which fire while Playthruu is
-// open or backgrounded but NOT once it's fully closed. Filling this in
-// (plus deploying a function that signs and sends) is what makes a
-// notification reach a phone with the app shut.
+// The private half is the VAPID_PRIVATE_KEY Supabase secret, used by
+// supabase/functions/send-push, which a trigger on the notifications
+// table calls on every insert. Together those are what let a
+// notification reach a phone with the app fully closed: a push
+// subscription belongs to the browser's push service rather than to the
+// page, so it outlives the tab being gone.
 //
-// To generate a pair:  npx web-push generate-vapid-keys
+// Regenerating the pair invalidates every existing subscription: the
+// endpoint is bound to the key it was created with, so every device has
+// to re-subscribe (they do, silently, next time Settings is opened).
+//   npx web-push generate-vapid-keys
 //   public  → here
 //   private → supabase secrets set VAPID_PRIVATE_KEY=...
-export const VAPID_PUBLIC_KEY = "";
+export const VAPID_PUBLIC_KEY = "BC3Rag_ehGUNwBxY64oggTk0-6__lusChtIe7keeyyZUAwXmtMze1hLdn9rlQOY0uB9pXvurZYM7OdTZBDMabvo";

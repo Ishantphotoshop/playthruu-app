@@ -3,12 +3,9 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <!-- The reason this shell exists: without it nothing the web app does
-         can reach the status bar on Android 13 and up. -->
+    <!-- The reason this shell exists: without it nothing can reach the
+         status bar on Android 13 and up. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <!-- Voice notes record through getUserMedia inside the WebView. -->
-    <uses-permission android:name="android.permission.RECORD_AUDIO" />
-    <uses-feature android:name="android.hardware.microphone" android:required="false" />
 
     <application
         android:allowBackup="false"
@@ -19,18 +16,76 @@
         android:usesCleartextTraffic="false"
         android:theme="@style/AppTheme">
 
+        <!-- A Trusted Web Activity, not a WebView. This is the whole
+             point of the rewrite: a WebView has no Push API, so an app
+             built on one can never be told about anything while it is
+             closed. A TWA runs the site in Chrome, full-screen and with
+             no browser chrome, which means the site's own Web Push
+             subscription works exactly as it does in the browser.
+
+             Verification is by Digital Asset Links: Chrome fetches
+             https://app.playthruu.com/.well-known/assetlinks.json and
+             checks this package's signing fingerprint against it. If
+             that ever fails, the app still works but shows a URL bar. -->
         <activity
-            android:name=".MainActivity"
+            android:name="com.google.androidbrowserhelper.trusted.LauncherActivity"
             android:exported="true"
-            android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout|uiMode"
-            android:launchMode="singleTask"
-            android:windowSoftInputMode="adjustResize"
-            android:screenOrientation="portrait">
+            android:label="@string/app_name"
+            android:theme="@style/Theme.LauncherActivity">
+
+            <meta-data
+                android:name="android.support.customtabs.trusted.DEFAULT_URL"
+                android:value="https://app.playthruu.com/" />
+            <meta-data
+                android:name="android.support.customtabs.trusted.STATUS_BAR_COLOR"
+                android:resource="@color/window_bg" />
+            <meta-data
+                android:name="android.support.customtabs.trusted.NAVIGATION_BAR_COLOR"
+                android:resource="@color/window_bg" />
+            <!-- The splash screen Chrome shows while it starts up, so
+                 launching does not flash a white page first. -->
+            <meta-data
+                android:name="android.support.customtabs.trusted.SPLASH_IMAGE_DRAWABLE"
+                android:resource="@drawable/splash" />
+            <meta-data
+                android:name="android.support.customtabs.trusted.SPLASH_SCREEN_BACKGROUND_COLOR"
+                android:resource="@color/window_bg" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
+            <!-- autoVerify is what lets a playthruu.com link open in the
+                 app instead of the browser, and it is the same asset-link
+                 check the TWA itself relies on. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="app.playthruu.com" />
+            </intent-filter>
         </activity>
+
+        <!-- Without this, a web notification in a TWA is posted BY Chrome
+             and shows up attributed to Chrome. Declaring the delegation
+             service is what makes it arrive as Playthruu, with
+             Playthruu's icon, under Playthruu's notification settings. -->
+        <service
+            android:name="com.google.androidbrowserhelper.trusted.DelegationService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.support.customtabs.trusted.TRUSTED_WEB_ACTIVITY_SERVICE" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </service>
+
+        <!-- The APK's half of the Digital Asset Links pair: it declares
+             which site this app claims. The site's half is
+             /.well-known/assetlinks.json, which names this package and
+             its signing fingerprint. Chrome checks both. -->
+        <meta-data
+            android:name="asset_statements"
+            android:resource="@string/asset_statements" />
 
     </application>
 

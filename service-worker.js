@@ -5,7 +5,7 @@
 // also has the side effect of dropping every old "questlog-*" cache on
 // people's phones, which is exactly right: those held Questlog-branded
 // assets that no longer exist.
-const CACHE_VERSION = 'playthruu-v3';
+const CACHE_VERSION = 'playthruu-v4';
 const PRECACHE = [
   './',
   './index.html',
@@ -112,7 +112,13 @@ self.addEventListener('push', (event) => {
       // entry in the tray instead of stacking five of them.
       tag: payload.tag || 'playthruu',
       renotify: !!payload.tag,
-      data: { url: payload.url || '#/notifications' },
+      // The Sound switch in Settings is the one part of the tone the app
+      // decides; the tone itself is the phone's own, deliberately.
+      silent: payload.silent === true,
+      // `route` is what supabase/functions/send-push sends; `url` is the
+      // older name, kept so a notification already queued by a previous
+      // version of that function still lands somewhere sensible.
+      data: { url: payload.route || payload.url || '#/notifications' },
     })
   );
 });

@@ -123,11 +123,13 @@ function maybeSystemNotify(row) {
   const body = NOTIF_TEXT[row?.kind] || 'Something happened';
   const tag = `playthruu-${row?.kind || 'x'}`;
 
-  // Inside the Android shell a WebView cannot post to the notification
-  // shade itself, so the native side does it - a real notification on a
-  // real channel, which is what makes it appear in the status bar and
-  // ring with the phone's own tone. Web Notification is the fallback
-  // everywhere else (desktop, and the site in a normal browser).
+  // The Android shell is a Trusted Web Activity now, so the page runs in
+  // Chrome and the plain Web Notification below is already a real system
+  // notification there - delegated to Playthruu, with its icon and its
+  // own entry in Android's notification settings. This bridge check is
+  // what the earlier WebView build needed instead (a WebView cannot post
+  // to the shade at all); it is kept because it costs nothing and is the
+  // only thing that would have to come back if the shell ever did.
   const native = window.PlaythruuNative;
   if (native?.notify) {
     try {

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The mark on its own, same geometry as icons/mark-blue.svg. Its
+     source art is a 120-unit square, drawn here at that size so the
+     splash layer can scale it. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="120dp"
+    android:viewportWidth="120"
+    android:viewportHeight="120">
+    <path
+        android:fillColor="#F2F5FA"
+        android:pathData="M 113.4045,52 A 54,54 0 1,0 113.4045,68 L 64,68 A 8,8 0 0,1 64,52 Z" />
+</vector>

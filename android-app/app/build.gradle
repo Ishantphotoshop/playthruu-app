@@ -20,8 +20,8 @@ android {
         applicationId "com.playthruu.app"
         minSdk 26
         targetSdk 36
-        versionCode 1
-        versionName "1.0"
+        versionCode 2
+        versionName "1.1"
     }
 
     signingConfigs {
@@ -50,7 +50,13 @@ android {
     }
 }
 
-// No dependencies at all — not even AndroidX. One Activity holding one
-// WebView, and every library it could pull in would be another thing to
-// download and keep current for no gain.
-dependencies { }
+// The one dependency, and it is load-bearing: a WebView has no Push API
+// at all, so the shell could never receive a notification for an app
+// that was fully closed. A Trusted Web Activity runs the site in Chrome
+// instead, which means Chrome's push machinery — and therefore Web Push
+// — works. androidbrowserhelper supplies the launcher activity and the
+// DelegationService that makes those notifications appear as Playthruu's
+// own rather than as Chrome's.
+dependencies {
+    implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.5.0'
+}

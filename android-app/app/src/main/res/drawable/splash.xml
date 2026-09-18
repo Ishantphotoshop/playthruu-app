@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Shown by Chrome for the moment between tapping the icon and the site
+     painting. A layer-list rather than a bitmap so it stays sharp at any
+     density and adds nothing to the APK. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/window_bg" />
+    <item
+        android:gravity="center"
+        android:width="96dp"
+        android:height="96dp"
+        android:drawable="@drawable/ic_splash_mark" />
+</layer-list>
