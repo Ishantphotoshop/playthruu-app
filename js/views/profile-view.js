@@ -159,7 +159,10 @@ export async function renderProfileView(root, { username }) {
           <button class="icon-btn" id="show-qr" aria-label="Show QR code">${iconQr()}</button>
         </div>
         <button class="profile-header__avatar-btn" id="avatar-enlarge" aria-label="View profile photo">
-          ${avatarImg(profile, 96)}
+          ${/* 64, not 96: avatarImg writes an inline width/height, which
+               beats any stylesheet rule, so the compact header's size has
+               to be set here rather than in CSS. Tap it to see it large. */ ''}
+          ${avatarImg(profile, 64)}
         </button>
         <h1>${esc(profile.display_name || profile.username)}</h1>
         <p class="profile-header__username">@${esc(profile.username)}${pronounLabel ? ` · ${esc(pronounLabel)}` : ''}</p>
@@ -236,7 +239,16 @@ export async function renderProfileView(root, { username }) {
           : ''}
 
       <h2 class="section-heading">Ratings</h2>
-      ${ratingHistogram(breakdown)}
+      ${/* `total` and `average` are not optional extras here: with total
+           left at its default of 0, ratingHistogram returns its "No
+           ratings yet" empty state unconditionally — which is why this
+           panel showed nothing on every profile, however many games the
+           person had actually rated. stats.avgRating is already computed
+           over exactly the same rows the breakdown counts. */ ''}
+      ${ratingHistogram(breakdown, {
+        average: stats.avgRating,
+        total: Object.values(breakdown).reduce((sum, n) => sum + n, 0),
+      })}
 
       <div class="stat-links stat-links--vertical">
         <a href="#/profile/${esc(profile.username)}/log-list/completed" class="stat-link">
