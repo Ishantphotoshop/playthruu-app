@@ -62,4 +62,16 @@ export const GIPHY_API_KEY = "K9tBeFhMg4uYiafTHTgaxW9Luipq6kIP";
 //   npx web-push generate-vapid-keys
 //   public  → here
 //   private → supabase secrets set VAPID_PRIVATE_KEY=...
+// ============================================================
+// FEATURE FLAGS
+// ============================================================
+// The messenger — archived, not deleted. Every file, table, API
+// function and route is exactly as it was; this single flag is what
+// makes it unreachable from the UI (no tab, no "Message" button on a
+// profile). Flip it back to true and the whole feature returns with no
+// other changes needed anywhere. See js/components.js (the nav item),
+// js/app.js (the badge subscription) and js/views/profile-view.js (the
+// Message button) for the three places that check it.
+export const MESSENGER_ARCHIVED = true;
+
 export const VAPID_PUBLIC_KEY = "BC3Rag_ehGUNwBxY64oggTk0-6__lusChtIe7keeyyZUAwXmtMze1hLdn9rlQOY0uB9pXvurZYM7OdTZBDMabvo";

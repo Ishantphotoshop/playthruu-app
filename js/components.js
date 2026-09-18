@@ -1,5 +1,6 @@
 import { esc, starRow, statusStamp, formatDate, timeAgo, placeholderCover, igdbSized, initials, qs, qsa, toast, enableSwipeToDismiss, tapFeedback } from './utils.js';
 import { state } from './state.js';
+import { MESSENGER_ARCHIVED } from './config.js';
 
 // Renders a cover image inside the blur-fill poster mechanism (see
 // .poster-frame in styles.css). `extraClass` carries the per-context
@@ -67,11 +68,16 @@ export function navBar(activeBase = '/feed') {
   // same width. The two-group flex trick used while News made this 6
   // (even) is gone; it's no longer needed and was giving the outer
   // edges a different gap than the inner ones once padding was tightened.
+  // The messenger is archived (see MESSENGER_ARCHIVED in config.js) —
+  // its tab slot is a notification bell instead for as long as that
+  // stays true. Nothing about the other four items changed.
   const items = [
     { route: '/feed', icon: iconHomeFilled(), label: 'Feed' },
     { route: '/search', icon: iconSearchFilled(), label: 'Search' },
     { route: '/log', icon: iconBrandMark(), label: 'Log', primary: true },
-    { route: '/messages', icon: iconMessageFilled(), label: 'Messages' },
+    MESSENGER_ARCHIVED
+      ? { route: '/notifications', icon: iconBell(), label: 'Notifications' }
+      : { route: '/messages', icon: iconMessageFilled(), label: 'Messages' },
     { route: '/me', icon: iconUserFilled(), label: 'Profile' },
   ];
   // Icon-only now, no label underneath — same convention the signed-out

@@ -9,6 +9,7 @@ import { renderSearchView } from './views/search-view.js';
 import { renderDiscoverView, warmDiscover } from './views/discover-view.js';
 import { renderListDetailView } from './views/lists-view.js';
 import { renderMessagesView } from './views/messages-view.js';
+import { MESSENGER_ARCHIVED } from './config.js';
 import { renderMessageThreadView } from './views/message-thread-view.js';
 import { renderProfileView, warmOwnProfile } from './views/profile-view.js';
 import { renderConnectionsView } from './views/connections-view.js';
@@ -163,7 +164,13 @@ function maybeSystemNotify(row) {
 
 function applyNotifBadge() {
   document.querySelectorAll('[data-route="/notifications"]').forEach((el) => {
-    el.classList.toggle('topbar__bell--badge', unreadNotifCount > 0);
+    // Two different homes for this element now that the messenger's old
+    // tab slot is also a notifications bell: the tab bar has its own
+    // badge class, already tuned for that exact 58x50 icon spot (it was
+    // built for the messages badge this replaced); the topbar bell on
+    // Feed keeps its own.
+    const badgeClass = el.closest('.tabbar') ? 'tabbar__item--badge' : 'topbar__bell--badge';
+    el.classList.toggle(badgeClass, unreadNotifCount > 0);
     if (unreadNotifCount > 0) el.setAttribute('data-badge-count', unreadNotifCount > 99 ? '99+' : String(unreadNotifCount));
     else el.removeAttribute('data-badge-count');
   });
@@ -386,9 +393,14 @@ async function loadSession(user) {
   promptUsernameIfPlaceholder();
   startPresenceHeartbeat(user.id);
 
-  refreshMessageBadge();
-  unsubscribeConversations?.();
-  unsubscribeConversations = api.subscribeToConversations(user.id, refreshMessageBadge);
+  // Archived (see MESSENGER_ARCHIVED, config.js): no nav tab points at
+  // /messages any more, so a badge on it and a live subscription for it
+  // would just be background work with nothing to show for it.
+  if (!MESSENGER_ARCHIVED) {
+    refreshMessageBadge();
+    unsubscribeConversations?.();
+    unsubscribeConversations = api.subscribeToConversations(user.id, refreshMessageBadge);
+  }
 
   refreshNotifBadge();
   api.getNotificationPrefs(user.id).then((p) => { notifPrefs = p; }).catch(() => {});

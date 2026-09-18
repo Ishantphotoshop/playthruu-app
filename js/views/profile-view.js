@@ -1,5 +1,6 @@
 import * as api from '../api.js';
 import { state } from '../state.js';
+import { MESSENGER_ARCHIVED } from '../config.js';
 import {
   topBar, navBar, spinner, avatarImg, gameCard, showcaseGrid, SHOWCASE_MAX, ratingHistogram, wireRatingHistogram, posterFrame,
   emptyState, iconStamp, iconSettings, iconShare, iconQr, iconClose, iconSearch, iconPlus, listCard, iconFlame, iconMessage,
@@ -164,7 +165,7 @@ export async function renderProfileView(root, { username }) {
         ${!isOwn && state.user
           ? `<div class="profile-header__actions">
                <button class="btn ${following ? 'btn--ghost' : 'btn--accent'}" id="follow-btn" data-following="${following}">${following ? 'Following' : 'Follow'}</button>
-               <button class="icon-btn" id="message-user" aria-label="Message ${esc(profile.username)}" title="Message">${iconMessage()}</button>
+               ${MESSENGER_ARCHIVED ? '' : `<button class="icon-btn" id="message-user" aria-label="Message ${esc(profile.username)}" title="Message">${iconMessage()}</button>`}
                <button class="icon-btn" id="block-user" aria-label="Block ${esc(profile.username)}" title="Block">${iconBlock()}</button>
                <button class="icon-btn" id="report-user" aria-label="Report ${esc(profile.username)}" title="Report">${iconFlag()}</button>
              </div>`
@@ -345,7 +346,9 @@ export async function renderProfileView(root, { username }) {
     qs('#show-qr', body).addEventListener('click', () => openQrModal(shareUrl, profile));
     qs('#avatar-enlarge', body).addEventListener('click', () => openAvatarLightbox(profile));
 
-    qs('#message-user', body)?.addEventListener('click', () => navigate(`/messages/new/${profile.id}`));
+    if (!MESSENGER_ARCHIVED) {
+      qs('#message-user', body)?.addEventListener('click', () => navigate(`/messages/new/${profile.id}`));
+    }
 
     qs('#report-user', body)?.addEventListener('click', () => {
       openReportSheet({
