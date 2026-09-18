@@ -6,6 +6,7 @@ import {
   iconGamepad, iconChevronRight, iconCamera, iconList, iconNote, iconStamp, profileRow,
 } from '../components.js';
 import { esc, qs, qsa, toast, timeAgo, formatDate, debounce, enableSwipeToDismiss, recordRecentEmoji, getRecentEmoji, igdbSized } from '../utils.js';
+import { openAvatarCropModal } from './avatar-crop.js';
 import { navigate } from '../router.js';
 import { TOP_EMOJI, EMOJI_LIST, searchEmoji } from '../emoji-data.js';
 
@@ -15,7 +16,21 @@ const DOUBLE_TAP_MS = 300;
 const LONG_PRESS_MS = 420;
 const HEART_REACTION = '❤️';
 const GROUP_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M2.5 20c0-3.4 2.9-5.6 6.5-5.6s6.5 2.2 6.5 5.6"/><circle cx="17.5" cy="8.7" r="2.3"/><path d="M17.5 14.2c2.9.1 4.8 2.3 4.8 5.1"/></svg>`;
+const MIC_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v4"/></svg>`;
+const STOP_ICON = `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>`;
+const PLAY_ICON = `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>`;
+const PAUSE_ICON = `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="7" y="5" width="4" height="14" rx="1"/><rect x="13" y="5" width="4" height="14" rx="1"/></svg>`;
 const LEAVE_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>`;
+// A group that has had a photo set shows the photo; one that hasn't
+// falls back to the stacked member avatars, which is a better default
+// than a generic icon because it still says WHO the group is.
+function groupAvatar(convo, members, size) {
+  if (convo?.avatar_url) {
+    return `<span class="avatar avatar--group-photo" style="width:${size}px;height:${size}px"><img src="${esc(convo.avatar_url)}" alt="" loading="lazy"></span>`;
+  }
+  return groupStackAvatar(members, size);
+}
+
 function groupStackAvatar(members, size) {
   const two = (members || []).slice(0, 2);
   if (two.length < 2) return `<span class="avatar avatar--group" style="width:${size}px;height:${size}px">${GROUP_ICON}</span>`;
@@ -38,7 +53,9 @@ function groupStackAvatar(members, size) {
 // drop the tab bar for the same reason: this is a focused,
 // one-thing-at-a-time screen, not a tab of the main app.
 export async function renderMessageThreadView(root, { conversationId, otherUserId }) {
-  root.innerHTML = topBar('', { back: true, right: `<button class="icon-btn" id="thread-menu-btn" aria-label="Conversation options">${iconDotsMenu()}</button>` }) +
+  root.innerHTML = topBar('', { back: true, right: `
+      <button class="icon-btn" id="thread-search-btn" aria-label="Search this conversation">${iconSearch()}</button>
+      <button class="icon-btn" id="thread-menu-btn" aria-label="Conversation options">${iconDotsMenu()}</button>` }) +
     `<div class="view-body thread-body" id="thread-body"><div class="spinner" role="status" aria-label="Loading"></div></div>
      <div class="thread-composer" id="thread-composer" hidden>
        <div class="thread-replying" id="thread-replying" hidden></div>
@@ -46,8 +63,16 @@ export async function renderMessageThreadView(root, { conversationId, otherUserI
          <button type="button" class="thread-composer__icon" id="thread-attach-btn" aria-label="Share a game, photo, or GIF">${iconPlus()}</button>
          <input type="file" id="thread-media-input" accept="image/*,video/*" class="sr-only-file-input">
          <input type="text" id="thread-input" placeholder="Message…" autocomplete="off" maxlength="2000">
-         <button type="submit" class="thread-composer__send" id="thread-send" aria-label="Send">${iconSend()}</button>
+         <button type="button" class="thread-composer__icon thread-composer__mic" id="thread-mic" aria-label="Record a voice note">${MIC_ICON}</button>
+         <button type="submit" class="thread-composer__send" id="thread-send" aria-label="Send" hidden>${iconSend()}</button>
        </form>
+       <div class="thread-recording" id="thread-recording" hidden>
+         <button type="button" class="thread-recording__cancel" id="rec-cancel" aria-label="Discard recording">${iconTrash()}</button>
+         <span class="thread-recording__dot" aria-hidden="true"></span>
+         <span class="thread-recording__time" id="rec-time">0:00</span>
+         <span class="thread-recording__hint">Recording…</span>
+         <button type="button" class="thread-composer__send" id="rec-send" aria-label="Send voice note">${iconSend()}</button>
+       </div>
      </div>`;
 
   const body = qs('#thread-body', root);
@@ -65,10 +90,21 @@ export async function renderMessageThreadView(root, { conversationId, otherUserI
   let unsubscribe = null;
   let unsubscribeReactions = null;
   let refreshTimer = null;
+  let typingChannel = null;   // broadcast channel, opened once the thread exists
+  let typingNames = [];       // who is typing right now, by display name
+  let readers = [];           // [{ user_id, last_read_at, profile }] — everyone but me
+  let recorder = null;        // the live MediaRecorder while a voice note is being taken
+  let audioEl = null;         // the single <audio> every voice bubble shares
 
   const teardown = () => {
     unsubscribe?.();
     unsubscribeReactions?.();
+    typingChannel?.close();
+    typingChannel = null;
+    // A recording left running would hold the microphone open after the
+    // screen is gone, which on a phone shows as a permanent mic light.
+    cancelRecording();
+    if (audioEl) { audioEl.pause(); audioEl = null; }
     if (refreshTimer) clearInterval(refreshTimer);
   };
   window.addEventListener('hashchange', teardown, { once: true });
@@ -129,7 +165,8 @@ export async function renderMessageThreadView(root, { conversationId, otherUserI
   // would stack a duplicate handler per message sent.
   body.innerHTML = `
     <div id="thread-note-slot"></div>
-    <div class="thread-messages" id="thread-messages"></div>`;
+    <div class="thread-messages" id="thread-messages"></div>
+    <div class="msg-typing" id="msg-typing" hidden><span class="msg-typing__dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="msg-typing__who"></span></div>`;
   composer.hidden = false;
 
   qs('#thread-composer-form', root).addEventListener('submit', (e) => { e.preventDefault(); onSend(); });
@@ -143,6 +180,21 @@ export async function renderMessageThreadView(root, { conversationId, otherUserI
   // as the "+" button, rather than needing a dedicated sticker picker of
   // our own to cover the same ground.
   qs('#thread-input', root).addEventListener('paste', onPasteImage);
+  qs('#thread-search-btn', root).addEventListener('click', openThreadSearch);
+  qs('#thread-mic', root).addEventListener('click', startRecording);
+  qs('#rec-cancel', root).addEventListener('click', cancelRecording);
+  qs('#rec-send', root).addEventListener('click', finishRecording);
+
+  // Mic when there is nothing to send, send button when there is — one
+  // slot, so the composer never shows two competing primary actions.
+  const inputEl = qs('#thread-input', root);
+  inputEl.addEventListener('input', () => {
+    const hasText = inputEl.value.trim().length > 0;
+    qs('#thread-send', root).hidden = !hasText;
+    qs('#thread-mic', root).hidden = hasText;
+    if (hasText) typingChannel?.typing();
+    else typingChannel?.stopped();
+  });
 
   updateRequestBanner();
   if (threadId) {
@@ -165,17 +217,35 @@ export async function renderMessageThreadView(root, { conversationId, otherUserI
     const before = body.scrollTop;
     paintMessages();
     body.scrollTop = before;
+    // "Seen" is only true until the moment somebody opens the thread, so
+    // it goes stale exactly as fast as a relative timestamp does.
+    loadReaders();
   }, REFRESH_MS);
 
   function startListening() {
+    // Typing is a broadcast on a channel both ends name the same way, so
+    // unlike the message subscription it cannot be made unique per call —
+    // teardown() closes it before the next thread opens one.
+    typingChannel = api.openTypingChannel(threadId, state.profile, (names) => {
+      typingNames = names;
+      paintTyping();
+    });
+    loadReaders();
+
     unsubscribe = api.subscribeToMessages(threadId, {
       onInsert: (msg) => {
         if (messages.some((m) => m.id === msg.id)) return; // our own send, already appended optimistically below
         messages.push(msg);
+        // Somebody who just sent something is self-evidently no longer
+        // typing, and their "stopped" broadcast may not beat the row here.
+        typingNames = [];
+        paintTyping();
         paintMessages();
         if (msg.kind === 'game') hydrateGames();
         scrollToBottom(true);
         if (msg.sender_id !== state.user.id) api.markConversationRead(threadId).catch(() => {});
+        // Their arrival marked the thread read on their side too, often.
+        loadReaders();
       },
       onDelete: (msg) => {
         messages = messages.filter((m) => m.id !== msg.id);
@@ -220,7 +290,7 @@ export async function renderMessageThreadView(root, { conversationId, otherUserI
       const count = (convo.members || []).length;
       titleEl.innerHTML = `
         <span class="thread-hd thread-hd--tap" id="group-info-btn" role="button" tabindex="0">
-          ${groupStackAvatar(others, 34)}
+          ${groupAvatar(convo, others, 34)}
           <span class="thread-hd__meta">
             <span class="thread-hd__name">${esc(gname)}</span>
             <span class="thread-hd__pres">${esc(`${count} member${count === 1 ? '' : 's'}`)} · tap for info</span>
@@ -270,6 +340,7 @@ export async function renderMessageThreadView(root, { conversationId, otherUserI
     if (m.kind === 'gif') return 'GIF';
     if (m.kind === 'image') return 'Photo';
     if (m.kind === 'video') return 'Video';
+    if (m.kind === 'voice') return `🎤 Voice note (${fmtDuration(m.duration_ms)})`;
     if (m.kind === 'game') { const g = gamesById[parseCard(m).g]; return g?.title ? `🎮 ${g.title}` : 'Game'; }
     if (m.kind === 'review') return '📝 Review';
     if (m.kind === 'list') return `≣ ${parseCard(m).n || 'List'}`;
@@ -277,6 +348,7 @@ export async function renderMessageThreadView(root, { conversationId, otherUserI
   }
 
   function bubbleContent(m) {
+    if (m.kind === 'voice') return voiceBubbleHtml(m);
     if (m.kind === 'gif') return `<img class="msg-gif" src="${esc(m.body)}" alt="GIF" loading="lazy">`;
     if (m.kind === 'image') return `<img class="msg-gif msg-image" src="${esc(m.body)}" alt="" loading="lazy">`;
     if (m.kind === 'video') return `<video class="msg-video" src="${esc(m.body)}" controls playsinline preload="metadata"></video>`;
@@ -394,12 +466,13 @@ export async function renderMessageThreadView(root, { conversationId, otherUserI
   }
   // One timestamp per cluster (its last message), with a Seen marker on
   // my own clusters. Returns trusted HTML (time string + a static word).
-  function clusterStampHtml(last, mine) {
+  // The receipt goes on your own LAST message only. One on every bubble
+  // is noise, and one on somebody else's message tells them something
+  // they already know.
+  function clusterStampHtml(last, mine, isLastCluster) {
     const t = new Date(last.created_at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-    if (!mine) return t;
-    const otherLastRead = convo.user_one_id === state.user.id ? convo.user_two_last_read_at : convo.user_one_last_read_at;
-    const seen = otherLastRead && new Date(otherLastRead) >= new Date(last.created_at);
-    return `${t}${seen ? ' · <b>Seen</b>' : ''}`;
+    if (!mine || !isLastCluster) return t;
+    return `${t}${seenHtml(last)}`;
   }
 
   function paintMessages() {
@@ -443,7 +516,7 @@ export async function renderMessageThreadView(root, { conversationId, otherUserI
             ${reactionsHtml(cm)}
           </div>`;
       });
-      html += `<span class="msg-stamp">${clusterStampHtml(cluster[cluster.length - 1], mine)}</span>`;
+      html += `<span class="msg-stamp">${clusterStampHtml(cluster[cluster.length - 1], mine, j >= messages.length)}</span>`;
       html += `</div>`;
       i = j;
     }
@@ -458,6 +531,12 @@ export async function renderMessageThreadView(root, { conversationId, otherUserI
     });
     qsa('.msg-image', el).forEach((img) => {
       img.addEventListener('click', () => openImageViewer(img.src));
+    });
+    wireVoiceBubbles(el);
+    qs('#msg-seen-by', el)?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const mine = messages.filter((m) => m.sender_id === state.user.id);
+      if (mine.length) openSeenBy(mine[mine.length - 1]);
     });
     wireRowGestures(el);
   }
@@ -652,6 +731,316 @@ export async function renderMessageThreadView(root, { conversationId, otherUserI
       <button type="button" data-cancel-reply aria-label="Cancel reply">${iconClose()}</button>`;
   }
 
+  // ---- typing indicators ----------------------------------------------
+
+  function paintTyping() {
+    const el = qs('#msg-typing', body);
+    if (!el) return;
+    if (!typingNames.length) { el.hidden = true; return; }
+    const who = typingNames.length === 1
+      ? `${typingNames[0]} is typing`
+      : typingNames.length === 2
+        ? `${typingNames[0]} and ${typingNames[1]} are typing`
+        : `${typingNames[0]} and ${typingNames.length - 1} others are typing`;
+    // In a one-to-one chat naming the person is redundant — there is only
+    // one other person it could be.
+    qs('.msg-typing__who', el).textContent = convo?.isGroup ? who : 'typing';
+    el.hidden = false;
+  }
+
+  // ---- read receipts ---------------------------------------------------
+
+  async function loadReaders() {
+    if (!threadId) return;
+    try {
+      readers = await api.getConversationReadState(threadId, state.user.id);
+      paintMessages();
+    } catch {
+      // A receipt is the least important thing on this screen — failing to
+      // load one should never take the messages down with it.
+    }
+  }
+
+  // Who, of the people in this conversation, has read as far as this
+  // message. Only ever asked about your OWN last message: a receipt on
+  // every bubble is noise, and a receipt on someone else's message is
+  // information they already have.
+  function readersOf(msg) {
+    const sentAt = new Date(msg.created_at);
+    return readers.filter((r) => r.last_read_at && new Date(r.last_read_at) >= sentAt);
+  }
+
+  function seenHtml(lastMine) {
+    if (!lastMine) return '';
+    const seen = readersOf(lastMine);
+    if (!seen.length) return '';
+    if (!convo.isGroup) return ' · <b>Seen</b>';
+    // A group says WHO with their pictures — a count alone ("Seen by 3")
+    // makes you open a menu to find out the one thing you wanted to know.
+    const shown = seen.slice(0, 5);
+    const rest = seen.length - shown.length;
+    return `<span class="msg-seen" id="msg-seen-by" role="button" tabindex="0" aria-label="Seen by ${esc(String(seen.length))}">`
+      + shown.map((r) => `<span class="msg-seen__a">${avatarImg(r.profile, 16)}</span>`).join('')
+      + (rest > 0 ? `<span class="msg-seen__more">+${rest}</span>` : '')
+      + '</span>';
+  }
+
+  function openSeenBy(msg) {
+    const seen = readersOf(msg);
+    const unseen = readers.filter((r) => !seen.some((s) => s.user_id === r.user_id));
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML = `
+      <div class="modal modal--sheet">
+        <header class="msg-actions__grab"></header>
+        <div class="group-info">
+          <h3 class="group-info__title">Message info</h3>
+          <p class="group-info__sub">${esc(`Seen by ${seen.length} of ${readers.length}`)}</p>
+          <div class="group-info__members">
+            ${seen.map((r) => `<div class="group-info__member">${avatarImg(r.profile, 38)}<span class="group-info__m-meta"><b>${esc(r.profile.display_name || r.profile.username)}</b><span>Seen ${esc(timeAgo(r.last_read_at))} ago</span></span></div>`).join('')}
+            ${unseen.map((r) => `<div class="group-info__member group-info__member--dim">${avatarImg(r.profile, 38)}<span class="group-info__m-meta"><b>${esc(r.profile.display_name || r.profile.username)}</b><span>Not seen yet</span></span></div>`).join('')}
+          </div>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    const close = () => overlay.remove();
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+    enableSwipeToDismiss(qs('.modal', overlay), close);
+  }
+
+  // ---- voice notes -----------------------------------------------------
+
+  function fmtDuration(ms) {
+    const total = Math.max(0, Math.round((ms || 0) / 1000));
+    return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
+  }
+
+  let recStart = 0;
+  let recTimer = null;
+  let recChunks = [];
+
+  async function startRecording() {
+    if (recorder) return;
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+      toast('This browser cannot record audio.', 'error');
+      return;
+    }
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch {
+      toast('Microphone access is needed to record a voice note.', 'error');
+      return;
+    }
+    recChunks = [];
+    try {
+      recorder = new MediaRecorder(stream);
+    } catch {
+      stream.getTracks().forEach((t) => t.stop());
+      toast('This browser cannot record audio.', 'error');
+      return;
+    }
+    recorder.ondataavailable = (e) => { if (e.data?.size) recChunks.push(e.data); };
+    recorder.start();
+    recStart = Date.now();
+
+    qs('#thread-composer-form', root).hidden = true;
+    qs('#thread-recording', root).hidden = false;
+    const timeEl = qs('#rec-time', root);
+    recTimer = setInterval(() => {
+      const elapsed = Date.now() - recStart;
+      if (timeEl) timeEl.textContent = fmtDuration(elapsed);
+      // Ten minutes is the column's own ceiling; stopping here means a
+      // recording can never be rejected by the database after the fact.
+      if (elapsed >= 600000) finishRecording();
+    }, 200);
+  }
+
+  function stopTracks() {
+    try { recorder?.stream?.getTracks().forEach((t) => t.stop()); } catch { /* already gone */ }
+  }
+
+  function resetRecordingUi() {
+    if (recTimer) { clearInterval(recTimer); recTimer = null; }
+    const form = qs('#thread-composer-form', root);
+    const bar = qs('#thread-recording', root);
+    if (form) form.hidden = false;
+    if (bar) bar.hidden = true;
+    const timeEl = qs('#rec-time', root);
+    if (timeEl) timeEl.textContent = '0:00';
+  }
+
+  function cancelRecording() {
+    if (!recorder) { resetRecordingUi(); return; }
+    // Drop the handler before stopping, so the final dataavailable does
+    // not queue a chunk for a recording nobody wants.
+    recorder.ondataavailable = null;
+    recorder.onstop = null;
+    try { recorder.stop(); } catch { /* already stopped */ }
+    stopTracks();
+    recorder = null;
+    recChunks = [];
+    resetRecordingUi();
+  }
+
+  async function finishRecording() {
+    if (!recorder) return;
+    const durationMs = Date.now() - recStart;
+    const mime = recorder.mimeType || 'audio/webm';
+    const done = new Promise((resolve) => { recorder.onstop = resolve; });
+    try { recorder.stop(); } catch { /* already stopped */ }
+    await done;
+    stopTracks();
+    recorder = null;
+    resetRecordingUi();
+
+    const blob = new Blob(recChunks, { type: mime });
+    recChunks = [];
+    // Under a second is almost always a mis-tap on the mic rather than
+    // something somebody meant to send.
+    if (!blob.size || durationMs < 900) { toast('Too short — hold on a moment longer.'); return; }
+
+    try {
+      const id = await ensureThread();
+      const url = await api.uploadVoiceNote(id, blob);
+      const msg = await api.sendVoiceNote(id, state.user.id, url, durationMs, { replyToId: replyingTo?.id || null });
+      replyingTo = null;
+      paintReplyingBar();
+      messages.push(msg);
+      paintMessages();
+      scrollToBottom(true);
+    } catch (err) {
+      toast(err.message || 'Could not send that voice note.', 'error');
+    }
+  }
+
+  function voiceBubbleHtml(m) {
+    return `
+      <span class="msg-voice" data-voice="${esc(m.body)}">
+        <button type="button" class="msg-voice__play" aria-label="Play voice note">${PLAY_ICON}</button>
+        <span class="msg-voice__track"><span class="msg-voice__fill"></span></span>
+        <span class="msg-voice__time">${esc(fmtDuration(m.duration_ms))}</span>
+      </span>`;
+  }
+
+  // One <audio> shared by every bubble, so starting a second voice note
+  // stops the first instead of playing both over each other.
+  function wireVoiceBubbles(el) {
+    qsa('.msg-voice', el).forEach((bubble) => {
+      const btn = qs('.msg-voice__play', bubble);
+      const fill = qs('.msg-voice__fill', bubble);
+      const timeEl = qs('.msg-voice__time', bubble);
+      const src = bubble.dataset.voice;
+      const reset = () => { btn.innerHTML = PLAY_ICON; fill.style.width = '0%'; };
+
+      btn.addEventListener('click', () => {
+        if (audioEl && audioEl.dataset.src === src && !audioEl.paused) {
+          audioEl.pause();
+          btn.innerHTML = PLAY_ICON;
+          return;
+        }
+        if (audioEl) {
+          audioEl.pause();
+          qsa('.msg-voice__play', el).forEach((b) => { b.innerHTML = PLAY_ICON; });
+          qsa('.msg-voice__fill', el).forEach((f) => { f.style.width = '0%'; });
+        }
+        audioEl = new Audio(src);
+        audioEl.dataset.src = src;
+        audioEl.addEventListener('timeupdate', () => {
+          if (!audioEl.duration || !isFinite(audioEl.duration)) return;
+          fill.style.width = `${(audioEl.currentTime / audioEl.duration) * 100}%`;
+          timeEl.textContent = fmtDuration((audioEl.duration - audioEl.currentTime) * 1000);
+        });
+        audioEl.addEventListener('ended', () => {
+          reset();
+          timeEl.textContent = fmtDuration(audioEl.duration * 1000);
+        });
+        audioEl.play().then(() => { btn.innerHTML = PAUSE_ICON; }).catch(() => {
+          toast('Could not play that voice note.', 'error');
+          reset();
+        });
+      });
+    });
+  }
+
+  // ---- search inside this conversation ---------------------------------
+
+  function openThreadSearch() {
+    if (!threadId) { toast('Nothing to search yet.'); return; }
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML = `
+      <div class="modal modal--tall">
+        <header class="modal__header"><h2>Search this chat</h2><button class="modal__close" data-close aria-label="Close">${iconClose()}</button></header>
+        <div class="modal__body">
+          <label class="field"><span class="sr-only">Search</span><input type="search" id="thread-search-input" autocomplete="off" placeholder="Find a message…"></label>
+          <div id="thread-search-results"><p class="muted">Type at least two letters.</p></div>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    const close = () => overlay.remove();
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+    qs('[data-close]', overlay).addEventListener('click', close);
+    enableSwipeToDismiss(qs('.modal', overlay), close);
+
+    const input = qs('#thread-search-input', overlay);
+    const results = qs('#thread-search-results', overlay);
+    input.focus();
+
+    // Highlights every occurrence of the term in a result line, so it is
+    // obvious WHY a message matched when the match is mid-sentence.
+    const mark = (text, term) => {
+      const lower = text.toLowerCase();
+      const needle = term.toLowerCase();
+      let out = '';
+      let from = 0;
+      for (;;) {
+        const at = lower.indexOf(needle, from);
+        if (at === -1) { out += esc(text.slice(from)); break; }
+        out += esc(text.slice(from, at)) + '<mark>' + esc(text.slice(at, at + needle.length)) + '</mark>';
+        from = at + needle.length;
+      }
+      return out;
+    };
+
+    const run = debounce(async () => {
+      const term = input.value.trim();
+      if (term.length < 2) { results.innerHTML = '<p class="muted">Type at least two letters.</p>'; return; }
+      results.innerHTML = '<div class="spinner" role="status" aria-label="Searching"></div>';
+      try {
+        const found = await api.searchMessagesInConversation(threadId, term);
+        if (!found.length) {
+          results.innerHTML = `<p class="muted">Nothing matching “${esc(term)}”.</p>`;
+          return;
+        }
+        results.innerHTML = `<div class="thread-search-list">${found.map((m) => `
+          <button type="button" class="thread-search-hit" data-mid="${esc(m.id)}">
+            <span class="thread-search-hit__who">${esc(m.sender?.display_name || m.sender?.username || 'Someone')}</span>
+            <span class="thread-search-hit__body">${mark(m.body, term)}</span>
+            <span class="thread-search-hit__when">${esc(formatDate(m.created_at))}</span>
+          </button>`).join('')}</div>`;
+        qsa('.thread-search-hit', results).forEach((hit) => {
+          hit.addEventListener('click', () => { close(); jumpToMessage(hit.dataset.mid); });
+        });
+      } catch (err) {
+        results.innerHTML = `<p class="muted">Couldn't search: ${esc(err.message)}</p>`;
+      }
+    }, 220);
+
+    input.addEventListener('input', run);
+  }
+
+  // A hit may be far enough back that it is not in `messages` yet — the
+  // thread loads everything it has in one go today, so in practice it
+  // always is, but falling back to a toast beats scrolling to nothing.
+  function jumpToMessage(messageId) {
+    const row = qs(`.msg-row[data-mid="${CSS.escape(messageId)}"]`, body);
+    if (!row) { toast('That message is further back than this thread has loaded.'); return; }
+    row.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    row.classList.add('msg-row--found');
+    setTimeout(() => row.classList.remove('msg-row--found'), 1600);
+  }
+
   // ---- sending ------------------------------------------------------
 
   async function ensureThread() {
@@ -678,16 +1067,33 @@ export async function renderMessageThreadView(root, { conversationId, otherUserI
     }
   }
 
+  // After anything is sent the composer is empty again, so the mic takes
+  // the slot back and the other side stops being told you are typing.
+  function resetComposerAffordances() {
+    const el = qs('#thread-input', root);
+    if (el) el.value = '';
+    const send = qs('#thread-send', root);
+    const mic = qs('#thread-mic', root);
+    if (send) send.hidden = true;
+    if (mic) mic.hidden = false;
+    typingChannel?.stopped();
+  }
+
   async function onSend() {
     const input = qs('#thread-input', root);
     const text = input.value.trim();
     if (!text) return;
-    input.value = '';
+    resetComposerAffordances();
     try {
       await sendOne(text, 'text');
     } catch (err) {
       toast(err.message || 'Could not send that.', 'error');
+      // Put the text back where they can fix or retry it, and with it the
+      // send button — an empty-looking composer holding a failed message
+      // is how a message quietly disappears.
       input.value = text;
+      qs('#thread-send', root).hidden = false;
+      qs('#thread-mic', root).hidden = true;
     }
   }
 
@@ -1091,16 +1497,30 @@ export async function renderMessageThreadView(root, { conversationId, otherUserI
         <header class="msg-actions__grab"></header>
         <div class="group-info">
           <div class="group-info__head">
-            ${groupStackAvatar(members.filter((m) => m.id !== state.user.id), 48)}
+            ${groupAvatar(convo, members.filter((m) => m.id !== state.user.id), 48)}
             <div><h3 class="group-info__title">${esc(convo.title || 'Group')}</h3><p class="group-info__sub">${esc(`${members.length} member${members.length === 1 ? '' : 's'}`)}</p></div>
           </div>
           <div class="group-info__members">
-            ${members.map((m) => `<a href="#/profile/${esc(m.username)}" class="group-info__member">${avatarImg(m, 38)}<span class="group-info__m-meta"><b>${esc(m.display_name || m.username)}${m.id === state.user.id ? ' <span class="group-info__you">you</span>' : ''}</b><span>@${esc(m.username)}</span></span></a>`).join('')}
+            ${members.map((m) => {
+              const isMe = m.id === state.user.id;
+              // The admin gets a remove control on everyone but
+              // themselves — leaving is a different action with different
+              // consequences, and it already has its own button below.
+              const canRemove = isCreator && !isMe;
+              return `<div class="group-info__member-row">
+                <a href="#/profile/${esc(m.username)}" class="group-info__member">${avatarImg(m, 38)}<span class="group-info__m-meta"><b>${esc(m.display_name || m.username)}${isMe ? ' <span class="group-info__you">you</span>' : ''}${m.id === convo.created_by ? ' <span class="group-info__you">admin</span>' : ''}</b><span>@${esc(m.username)}</span></span></a>
+                ${canRemove ? `<button type="button" class="group-info__remove" data-remove="${esc(m.id)}" data-name="${esc(m.display_name || m.username)}" aria-label="Remove ${esc(m.display_name || m.username)}">${iconClose()}</button>` : ''}
+              </div>`;
+            }).join('')}
           </div>
           <div class="group-info__actions">
+            ${isCreator ? `<button type="button" class="convo-menu__item" id="gi-rename">${iconNote()}<span>Rename group</span></button>` : ''}
+            ${isCreator ? `<button type="button" class="convo-menu__item" id="gi-photo">${iconCamera()}<span>${convo.avatar_url ? 'Change' : 'Set'} group photo</span></button>` : ''}
+            ${isCreator && convo.avatar_url ? `<button type="button" class="convo-menu__item" id="gi-photo-clear">${iconTrash()}<span>Remove photo</span></button>` : ''}
             ${isCreator ? `<button type="button" class="convo-menu__item" id="gi-add">${iconPlus()}<span>Add people</span></button>` : ''}
             <button type="button" class="convo-menu__item convo-menu__item--danger" id="gi-leave">${LEAVE_ICON}<span>Leave group</span></button>
           </div>
+          <input type="file" id="gi-photo-input" accept="image/*" class="sr-only-file-input">
         </div>
       </div>`;
     document.body.appendChild(overlay);
@@ -1108,6 +1528,75 @@ export async function renderMessageThreadView(root, { conversationId, otherUserI
     overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
     enableSwipeToDismiss(qs('.modal', overlay), close);
     qs('#gi-add', overlay)?.addEventListener('click', () => { close(); openAddPeople(); });
+
+    qs('#gi-rename', overlay)?.addEventListener('click', async () => {
+      const next = prompt('Group name', convo.title || '');
+      // Cancel returns null; an empty string is a real answer, and the
+      // RPC treats it as "leave the name alone" rather than blanking it.
+      if (next === null) return;
+      try {
+        await api.updateGroupDetails(threadId, { title: next });
+        convo.title = next.trim().slice(0, 60) || convo.title;
+        renderHeader();
+        close();
+        toast('Group renamed');
+      } catch (err) {
+        toast(err.message || 'Could not rename the group.', 'error');
+      }
+    });
+
+    const photoInput = qs('#gi-photo-input', overlay);
+    qs('#gi-photo', overlay)?.addEventListener('click', () => photoInput.click());
+    photoInput?.addEventListener('change', async (e) => {
+      const file = e.target.files?.[0];
+      e.target.value = '';
+      if (!file) return;
+      // Same crop step as a profile picture, so a group photo is square
+      // and sensibly sized rather than whatever came out of the camera.
+      const cropped = await openAvatarCropModal(file);
+      if (!cropped) return;
+      try {
+        const url = await api.uploadGroupPhoto(threadId, cropped);
+        await api.updateGroupDetails(threadId, { avatarUrl: url });
+        convo.avatar_url = url;
+        renderHeader();
+        close();
+        toast('Group photo updated');
+      } catch (err) {
+        toast(err.message || 'Could not set that photo.', 'error');
+      }
+    });
+
+    qs('#gi-photo-clear', overlay)?.addEventListener('click', async () => {
+      try {
+        await api.updateGroupDetails(threadId, { clearAvatar: true });
+        convo.avatar_url = null;
+        renderHeader();
+        close();
+        toast('Group photo removed');
+      } catch (err) {
+        toast(err.message || 'Could not remove the photo.', 'error');
+      }
+    });
+
+    qsa('[data-remove]', overlay).forEach((btn) => {
+      btn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const id = btn.dataset.remove;
+        if (!confirm(`Remove ${btn.dataset.name} from this group?`)) return;
+        try {
+          await api.removeGroupMember(threadId, id);
+          convo.members = (convo.members || []).filter((m) => m.id !== id);
+          delete groupMembers[id];
+          renderHeader();
+          close();
+          toast('Removed');
+        } catch (err) {
+          toast(err.message || 'Could not remove them.', 'error');
+        }
+      });
+    });
     qs('#gi-leave', overlay).addEventListener('click', async () => {
       close();
       if (!confirm('Leave this group? You will stop receiving its messages.')) return;

@@ -2621,7 +2621,7 @@ export async function deleteAccount() {
 
 const CONVO_SELECT = `
   id, user_one_id, user_two_id, status, requested_by,
-  is_group, title, created_by,
+  is_group, title, created_by, avatar_url,
   last_message_at, last_message_body, last_message_kind, last_message_sender_id,
   user_one_last_read_at, user_two_last_read_at, created_at,
   user_one:profiles!conversations_user_one_id_fkey(id, username, display_name, avatar_url),
@@ -3919,4 +3919,230 @@ export async function getActivityFeed(userId, {
     hasMore: rows.length > limit,
     cursor: page.length ? page[page.length - 1].created_at : null,
   };
+}
+
+// ============================================================
+// GROUP ADMIN
+// ============================================================
+
+// Title and photo go through an RPC rather than a plain update, because
+// an UPDATE policy on conversations is all-or-nothing about columns and
+// would also hand the creator the read markers and the participant ids.
+// See migrations/2026-09-18_chat_upgrades.sql.
+export async function updateGroupDetails(conversationId, { title, avatarUrl, clearAvatar } = {}) {
+  const { error } = await supabase.rpc('update_group_details', {
+    p_conversation_id: conversationId,
+    p_title: title ?? null,
+    p_avatar_url: avatarUrl ?? null,
+    p_clear_avatar: !!clearAvatar,
+  });
+  if (error) throw error;
+}
+
+// The group photo lives in the same bucket as everything else sent in
+// the thread, under the conversation's own folder — which is exactly
+// what the existing storage policy already grants participants.
+export async function uploadGroupPhoto(conversationId, file) {
+  const ext = (file.name?.split('.').pop() || 'jpg').toLowerCase();
+  const path = `${conversationId}/group-${crypto.randomUUID()}.${ext}`;
+  const { error } = await supabase.storage.from('message-media').upload(path, file, { cacheControl: '3600' });
+  if (error) throw error;
+  const { data } = supabase.storage.from('message-media').getPublicUrl(path);
+  return data.publicUrl;
+}
+
+// Removing somebody and leaving are the same delete — RLS is what tells
+// them apart (you may always delete your own row; the creator may delete
+// anyone's), so there is no separate permission check to make here.
+export async function removeGroupMember(conversationId, userId) {
+  const { error } = await supabase
+    .from('conversation_participants')
+    .delete()
+    .eq('conversation_id', conversationId)
+    .eq('user_id', userId);
+  if (error) throw error;
+}
+
+export async function getGroupMembers(conversationId) {
+  const { data, error } = await supabase
+    .from('conversation_participants')
+    .select(`user_id, joined_at, last_read_at,
+      profile:profiles!conversation_participants_user_id_fkey(id, username, display_name, avatar_url)`)
+    .eq('conversation_id', conversationId)
+    .order('joined_at', { ascending: true });
+  if (error) throw error;
+  return (data || []).filter((r) => r.profile);
+}
+
+// ============================================================
+// READ RECEIPTS
+// ============================================================
+
+// Who has read up to when. Groups keep a marker per participant; a DM
+// keeps two columns on the conversation itself. Both are already written
+// by mark_conversation_read() on every open, so this is only a question
+// of reading them back in one shape.
+//
+// Returns [{ user_id, last_read_at, profile }] for everyone EXCEPT the
+// viewer — your own read marker is not a receipt, it is just where you
+// are.
+export async function getConversationReadState(conversationId, viewerId) {
+  const { data: convo, error } = await supabase
+    .from('conversations')
+    .select(`id, is_group, user_one_id, user_two_id, user_one_last_read_at, user_two_last_read_at,
+      one:profiles!conversations_user_one_id_fkey(id, username, display_name, avatar_url),
+      two:profiles!conversations_user_two_id_fkey(id, username, display_name, avatar_url)`)
+    .eq('id', conversationId)
+    .single();
+  if (error) throw error;
+
+  if (convo.is_group) {
+    const members = await getGroupMembers(conversationId);
+    return members
+      .filter((m) => m.user_id !== viewerId)
+      .map((m) => ({ user_id: m.user_id, last_read_at: m.last_read_at, profile: m.profile }));
+  }
+
+  const other = convo.user_one_id === viewerId
+    ? { user_id: convo.user_two_id, last_read_at: convo.user_two_last_read_at, profile: convo.two }
+    : { user_id: convo.user_one_id, last_read_at: convo.user_one_last_read_at, profile: convo.one };
+  return other.user_id ? [other] : [];
+}
+
+// ============================================================
+// TYPING INDICATORS
+// ============================================================
+
+// Broadcast, not rows. A keystroke is worthless three seconds later, so
+// writing one to a table would be a durable record of something
+// inherently disposable — and a write per keystroke per person besides.
+//
+// Both ends have to agree on the channel NAME for broadcast to reach
+// anyone, so unlike subscribeToMessages this one cannot be made unique
+// per call. The caller must therefore close the previous thread's
+// channel before opening the next one; every view here does that in its
+// own teardown.
+const TYPING_TTL_MS = 4500;
+const TYPING_THROTTLE_MS = 2000;
+
+export function openTypingChannel(conversationId, me, onChange) {
+  const typers = new Map();
+  let lastSent = 0;
+  let sweep = null;
+
+  const emit = () => {
+    const now = Date.now();
+    let changed = false;
+    for (const [id, entry] of typers) {
+      if (entry.expires <= now) { typers.delete(id); changed = true; }
+    }
+    onChange([...typers.values()].map((t) => t.name));
+    return changed;
+  };
+
+  const channel = supabase.channel(`typing:${conversationId}`, {
+    // No echo: you already know you are typing.
+    config: { broadcast: { self: false } },
+  });
+
+  channel.on('broadcast', { event: 'typing' }, ({ payload }) => {
+    if (!payload?.id || payload.id === me?.id) return;
+    if (payload.stopped) typers.delete(payload.id);
+    else typers.set(payload.id, { name: payload.name || 'Someone', expires: Date.now() + TYPING_TTL_MS });
+    emit();
+  });
+  channel.subscribe();
+
+  // Nobody sends a "stopped" when they close the tab or lose signal, so
+  // the indicator has to be able to time out on its own rather than
+  // relying on a message that may never arrive.
+  sweep = setInterval(emit, 1000);
+
+  return {
+    typing() {
+      const now = Date.now();
+      if (now - lastSent < TYPING_THROTTLE_MS) return;
+      lastSent = now;
+      channel.send({
+        type: 'broadcast',
+        event: 'typing',
+        payload: { id: me?.id, name: me?.display_name || me?.username || 'Someone' },
+      });
+    },
+    stopped() {
+      lastSent = 0;
+      channel.send({ type: 'broadcast', event: 'typing', payload: { id: me?.id, stopped: true } });
+    },
+    close() {
+      clearInterval(sweep);
+      typers.clear();
+      supabase.removeChannel(channel);
+    },
+  };
+}
+
+// ============================================================
+// SEARCH INSIDE A CONVERSATION
+// ============================================================
+
+// Plain ilike rather than the tsvector index the migration adds, and
+// deliberately: full-text search matches whole words after stemming, so
+// "sil" would not find "Silent Hill" and neither would "hill f". People
+// searching their own chat are looking for a fragment they half
+// remember. The index still earns its keep on the long threads because
+// Postgres can use it to narrow before the ilike runs.
+export async function searchMessagesInConversation(conversationId, term, { limit = 60 } = {}) {
+  const q = (term || '').trim();
+  if (q.length < 2) return [];
+  // % and _ are wildcards in LIKE; someone searching for a literal one
+  // should get the literal one.
+  const escaped = q.replace(/[\\%_]/g, (c) => `\\${c}`);
+  const { data, error } = await supabase
+    .from('messages')
+    .select(`id, body, kind, created_at, sender_id,
+      sender:profiles!messages_sender_id_fkey(id, username, display_name, avatar_url)`)
+    .eq('conversation_id', conversationId)
+    .eq('kind', 'text')
+    .ilike('body', `%${escaped}%`)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return data || [];
+}
+
+// ============================================================
+// VOICE NOTES
+// ============================================================
+
+// A recording arrives as a Blob with no filename, so this cannot go
+// through uploadMessageMedia (which reads file.name for the extension
+// and infers the kind from the MIME type).
+export async function uploadVoiceNote(conversationId, blob) {
+  // MediaRecorder's mimeType carries codec parameters — "audio/webm;
+  // codecs=opus" — and only the subtype is useful as a file extension.
+  const subtype = (blob.type.split('/')[1] || 'webm').split(';')[0];
+  const path = `${conversationId}/voice-${crypto.randomUUID()}.${subtype}`;
+  const { error } = await supabase.storage
+    .from('message-media')
+    .upload(path, blob, { cacheControl: '3600', contentType: blob.type || 'audio/webm' });
+  if (error) throw error;
+  const { data } = supabase.storage.from('message-media').getPublicUrl(path);
+  return data.publicUrl;
+}
+
+export async function sendVoiceNote(conversationId, senderId, url, durationMs, { replyToId = null } = {}) {
+  const { data, error } = await supabase
+    .from('messages')
+    .insert({
+      conversation_id: conversationId,
+      sender_id: senderId,
+      body: url,
+      kind: 'voice',
+      reply_to_id: replyToId,
+      duration_ms: Math.min(Math.max(Math.round(durationMs || 0), 0), 600000),
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
 }

@@ -5441,3 +5441,119 @@ a.gd-credit__name { text-decoration: none; }
   .set-collapse { transition: none; }
   .set-group__chev { transition: none; }
 }
+
+/* ==== chat: typing, receipts, voice notes, in-thread search ========== */
+
+/* Typing sits below the last message rather than inside the list, so an
+   incoming message never has to push past it and the list itself stays
+   a pure render of what was actually said. */
+.msg-typing {
+  display: flex; align-items: center; gap: 8px;
+  padding: 2px 4px 8px; color: var(--ink-faint); font-size: 12px;
+}
+.msg-typing__dots { display: inline-flex; gap: 3px; align-items: center; }
+.msg-typing__dots i {
+  width: 5px; height: 5px; border-radius: 50%; background: var(--ink-faint);
+  animation: msg-typing-bounce 1.2s infinite ease-in-out;
+}
+.msg-typing__dots i:nth-child(2) { animation-delay: 0.15s; }
+.msg-typing__dots i:nth-child(3) { animation-delay: 0.3s; }
+@keyframes msg-typing-bounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.45; }
+  30% { transform: translateY(-3px); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .msg-typing__dots i { animation: none; opacity: 0.7; }
+}
+
+/* Read receipts. A DM gets the word "Seen"; a group gets the faces,
+   because "Seen by 3" makes you open something to learn the one thing
+   you actually wanted to know. */
+.msg-seen { display: inline-flex; align-items: center; gap: 2px; margin-left: 5px; vertical-align: -3px; }
+.msg-seen__a { display: inline-flex; }
+.msg-seen__a img { width: 16px; height: 16px; border-radius: 50%; display: block; box-shadow: 0 0 0 1.5px var(--bg); }
+.msg-seen__more { font-family: var(--font-mono); font-size: 9px; color: var(--ink-faint); margin-left: 2px; }
+.group-info__member-row { display: flex; align-items: center; gap: 4px; }
+.group-info__member-row .group-info__member { flex: 1; min-width: 0; }
+.group-info__member--dim { opacity: 0.5; }
+.group-info__remove {
+  flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%;
+  display: grid; place-items: center; border: none; background: none; color: var(--ink-faint);
+}
+.group-info__remove svg { width: 15px; height: 15px; }
+.group-info__remove:active { background: var(--surface-raised); color: var(--danger); }
+
+/* A group photo replaces the stacked member avatars once one is set. */
+.avatar--group-photo { display: block; border-radius: 50%; overflow: hidden; flex-shrink: 0; }
+.avatar--group-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* Voice notes. The track fills as it plays and the time counts DOWN,
+   which is what tells you at a glance how much is left rather than how
+   much you have already heard. */
+.msg-voice { display: flex; align-items: center; gap: 10px; min-width: 168px; }
+.msg-voice__play {
+  flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%;
+  display: grid; place-items: center; border: none;
+  background: var(--accent-bright); color: var(--bg);
+}
+.msg-voice__play svg { width: 15px; height: 15px; }
+.msg-voice__track {
+  flex: 1; min-width: 0; height: 3px; border-radius: 2px;
+  background: color-mix(in srgb, var(--ink) 22%, transparent); overflow: hidden;
+}
+.msg-voice__fill { display: block; height: 100%; width: 0; background: var(--accent-bright); }
+.msg-voice__time { flex-shrink: 0; font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-dim); }
+
+/* The recording bar takes the composer's place rather than sitting above
+   it — while recording, sending a typed message is not a thing you can
+   do, so leaving that row visible would offer an action that isn't real. */
+.thread-recording { display: flex; align-items: center; gap: 10px; }
+.thread-recording__cancel {
+  flex-shrink: 0; width: 34px; height: 34px; border-radius: 50%;
+  display: grid; place-items: center; border: none; background: none; color: var(--ink-dim);
+}
+.thread-recording__cancel svg { width: 18px; height: 18px; }
+.thread-recording__cancel:active { color: var(--danger); background: var(--surface-raised); }
+.thread-recording__dot {
+  flex-shrink: 0; width: 9px; height: 9px; border-radius: 50%; background: var(--danger);
+  animation: rec-pulse 1.4s infinite ease-in-out;
+}
+@keyframes rec-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+@media (prefers-reduced-motion: reduce) { .thread-recording__dot { animation: none; } }
+.thread-recording__time { font-family: var(--font-mono); font-size: 13px; color: var(--ink); }
+.thread-recording__hint { flex: 1; min-width: 0; font-size: 13px; color: var(--ink-dim); }
+
+/* In-thread search */
+.thread-search-list { display: flex; flex-direction: column; }
+.thread-search-hit {
+  display: flex; flex-direction: column; gap: 2px; width: 100%; text-align: left;
+  padding: 11px 4px; background: none; border: none; border-bottom: 1px solid var(--line);
+  color: var(--ink); cursor: pointer;
+}
+.thread-search-hit:active { background: var(--surface-raised); }
+.thread-search-hit__who { font-size: 12.5px; font-weight: 700; color: var(--ink-dim); }
+.thread-search-hit__body {
+  font-size: 14px; line-height: 1.4;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.thread-search-hit__body mark { background: color-mix(in srgb, var(--accent-bright) 35%, transparent); color: var(--ink); border-radius: 3px; }
+.thread-search-hit__when { font-family: var(--font-mono); font-size: 10px; color: var(--ink-faint); }
+
+/* Where a search result lands. Bright for a moment, then out of the way —
+   a permanent highlight would leave the thread looking edited. */
+.msg-row--found .msg-bubble {
+  box-shadow: 0 0 0 2px var(--accent-bright);
+  transition: box-shadow 600ms var(--ease);
+}
+
+/* An author-set `display` always beats the UA stylesheet's own
+   `[hidden] { display: none }`, so every one of these needs saying
+   explicitly or the attribute silently does nothing — which showed up as
+   the recording bar and the composer row on screen at the same time,
+   with two send buttons stacked on top of each other. Same fix the
+   .view-loading and .crew-row rules above already carry. */
+.thread-composer__row[hidden],
+.thread-composer__icon[hidden],
+.thread-composer__send[hidden],
+.thread-recording[hidden],
+.msg-typing[hidden] { display: none; }
