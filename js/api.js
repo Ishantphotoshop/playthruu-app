@@ -45,17 +45,23 @@ async function fetchWithTimeout(url, options = {}, ms = FETCH_TIMEOUT_MS) {
   }
 }
 
-async function igdb(endpoint, query) {
+async function igdb(endpoint, query, { timeout = FETCH_TIMEOUT_MS, retry = true } = {}) {
   try {
     const res = await fetchWithTimeout(IGDB_FUNCTION_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${SUPABASE_ANON_KEY}` },
       body: JSON.stringify({ endpoint, query }),
-    });
+    }, timeout);
     if (!res.ok) return [];
     const data = await res.json();
     return Array.isArray(data) ? data : [];
   } catch {
+    // A cold-started edge function routinely takes longer than the
+    // normal 3.5s budget, and the first Discover load of a session is
+    // exactly when that happens — which showed up as an empty browse
+    // screen with no error and no way to tell it apart from "nothing
+    // matched". One retry with real headroom instead.
+    if (retry) return igdb(endpoint, query, { timeout: 9000, retry: false });
     return [];
   }
 }
@@ -1154,15 +1160,46 @@ export async function getLogById(logId) {
 // Resolves a free-typed developer/publisher name to the IGDB company id
 // its filter clause actually needs — the games endpoint won't accept
 // plain text for this, only ids.
+// IGDB's `search` verb stopped returning anything on the companies
+// endpoint, which is what silently disabled the Developer and Publisher
+// filters completely: this returned null every time, the clause was
+// dropped, and the results came back identical to no filter at all —
+// the filter looked applied and did nothing. Matched on the name field
+// instead: exact first, so "Nintendo" doesn't lose to "Nintendo R&D4",
+// then a contains match so a partial name still finds something.
 async function resolveIgdbCompanyId(name) {
-  if (!name?.trim()) return null;
+  const term = name?.trim();
+  if (!term) return null;
   try {
-    const q = `search "${escapeApicalypse(name)}"; fields id; limit 1;`;
-    const results = await igdb('companies', q);
-    return results[0]?.id || null;
+    const safe = escapeApicalypse(term);
+    const exact = await igdb('companies', `fields id,name; where name = "${safe}"; limit 1;`);
+    if (exact[0]?.id) return exact[0].id;
+    const like = await igdb('companies', `fields id,name; where name ~ *"${safe}"*; limit 25;`);
+    if (!like.length) return null;
+    // Shortest name wins as the closest thing to what was typed — a
+    // search for "Rockstar" should land on Rockstar Games, not
+    // Rockstar Leeds.
+    like.sort((a, b) => (a.name?.length || 999) - (b.name?.length || 999));
+    return like[0].id;
   } catch {
     return null;
   }
+}
+
+// The games a company worked on, as an explicit id list.
+//
+// The obvious `where involved_companies.company = (X) & involved_companies.developer = true`
+// does not mean what it reads like and returns nothing at all, so the
+// relationship is resolved on its own endpoint and the games are then
+// fetched by id. Returns [] for "this company has nothing matching",
+// which is a real answer and must not be confused with "no filter".
+async function gameIdsForCompany(companyId, role) {
+  if (!companyId) return [];
+  const rows = await igdb(
+    'involved_companies',
+    `fields game; where company = ${companyId} & ${role} = true; limit 500;`,
+  );
+  return [...new Set(rows.map((r) => r.game).filter(Boolean))];
 }
 
 // Filterable/sortable browse, backing the Discover screen.
@@ -1171,7 +1208,15 @@ export async function browseGames({ genre, platform, dateFrom, dateTo, sort = 'p
     const limit = 20;
     const offset = (page - 1) * limit;
     const now = Math.floor(Date.now() / 1000);
-    const clauses = ['version_parent = null', `(first_release_date <= ${now} | first_release_date = null)`];
+    const clauses = ['version_parent = null'];
+    // "Anticipated" is the one sort that is ABOUT unreleased games, so
+    // the released-only floor every other sort wants directly
+    // contradicts it: together they asked for a release date that is
+    // both before and after right now, which nothing satisfies, and the
+    // tab came back permanently empty.
+    if (sort !== 'anticipated') {
+      clauses.push(`(first_release_date <= ${now} | first_release_date = null)`);
+    }
 
     if (genre) {
       const [kind, id] = genre.split(':');
@@ -1188,9 +1233,33 @@ export async function browseGames({ genre, platform, dateFrom, dateTo, sort = 'p
     if (multiplayer === 'singleplayer') clauses.push('game_modes = (1)');
     if (multiplayer === 'multiplayer') clauses.push('game_modes = (2)');
 
-    const [devId, pubId] = await Promise.all([resolveIgdbCompanyId(developer), resolveIgdbCompanyId(publisher)]);
-    if (devId) clauses.push(`involved_companies.company = (${devId}) & involved_companies.developer = true`);
-    if (pubId) clauses.push(`involved_companies.company = (${pubId}) & involved_companies.publisher = true`);
+    const wantsDev = !!developer?.trim();
+    const wantsPub = !!publisher?.trim();
+    if (wantsDev || wantsPub) {
+      const [devId, pubId] = await Promise.all([
+        wantsDev ? resolveIgdbCompanyId(developer) : null,
+        wantsPub ? resolveIgdbCompanyId(publisher) : null,
+      ]);
+      // A name that matches no company is not the same as no filter —
+      // showing the unfiltered top 20 instead would quietly answer a
+      // question nobody asked.
+      if ((wantsDev && !devId) || (wantsPub && !pubId)) return { games: [], hasMore: false };
+
+      const [devGames, pubGames] = await Promise.all([
+        wantsDev ? gameIdsForCompany(devId, 'developer') : null,
+        wantsPub ? gameIdsForCompany(pubId, 'publisher') : null,
+      ]);
+      let pool = devGames;
+      if (pubGames) {
+        const pubSet = new Set(pubGames);
+        pool = pool ? pool.filter((id) => pubSet.has(id)) : pubGames;
+      }
+      if (!pool.length) return { games: [], hasMore: false };
+      // Apicalypse caps how much a single where-clause can carry, and
+      // the list is already ordered by IGDB's own relevance, so the head
+      // of it is the right thing to keep when a studio is prolific.
+      clauses.push(`id = (${pool.slice(0, 400).join(',')})`);
+    }
 
     const nowSec = Math.floor(Date.now() / 1000);
     if (sort === 'anticipated') {
