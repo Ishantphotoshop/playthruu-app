@@ -14,6 +14,14 @@ android-admin/*.keystore
 # of every file in the repo, free to drift from the real one.
 android-native/app/src/main/assets/www/
 
+android-kotlin/.gradle/
+android-kotlin/build/
+android-kotlin/app/build/
+android-kotlin/local.properties
+android-kotlin/keystore.properties
+android-kotlin/*.jks
+android-kotlin/*.keystore
+
 android-native/.gradle/
 android-native/build/
 android-native/app/build/
