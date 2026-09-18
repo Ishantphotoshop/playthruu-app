@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The status-bar icon. Android draws these as a silhouette — it keeps
+     the alpha channel and throws the colour away — so this is the mark
+     alone at 24dp, solid white, with no background. Using the launcher
+     icon here instead would render as a white-filled square.
+
+     Same geometry as the mark, scaled from its 120-unit square into 24:
+     24 / 120 = 0.2, then inset slightly (0.175) and centred so the glyph
+     has the small margin the status bar expects. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="#FFFFFF">
+    <group
+        android:scaleX="0.175"
+        android:scaleY="0.175"
+        android:translateX="1.5"
+        android:translateY="1.5">
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M 113.4045,52 A 54,54 0 1,0 113.4045,68 L 64,68 A 8,8 0 0,1 64,52 Z" />
+    </group>
+</vector>

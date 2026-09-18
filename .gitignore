@@ -9,5 +9,13 @@ android-admin/keystore.properties
 android-admin/*.jks
 android-admin/*.keystore
 
+android-app/.gradle/
+android-app/build/
+android-app/app/build/
+android-app/local.properties
+android-app/keystore.properties
+android-app/*.jks
+android-app/*.keystore
+
 # Supabase CLI scratch state
 supabase/.temp/
