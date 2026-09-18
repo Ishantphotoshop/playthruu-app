@@ -24,10 +24,12 @@ import { renderPersonView } from './views/person-view.js';
 import { renderDirectorView } from './views/director-view.js';
 import { renderStudioView } from './views/studio-view.js';
 import { renderSettingsView } from './views/settings-view.js';
+import { renderNotificationsView } from './views/notifications-view.js';
 import { openLogModal } from './views/log-modal.js';
 import { toast, qs } from './utils.js';
 import { clearViewCache, setCached, getCached, CACHE_KEYS } from './cache.js';
 import { iconClose, iconLock } from './components.js';
+import { playCoin, unlockAudio } from './sound.js';
 
 const appEl = document.getElementById('app');
 let routesRegistered = false;
@@ -85,6 +87,72 @@ async function refreshMessageBadge() {
   applyMessageBadge();
 }
 
+// The bell's own unread count, kept exactly the way the Messages badge
+// above is and for the same reason: navBar() and topBar() are both
+// synchronous template strings that every view re-renders, so the count
+// lives here and is re-applied to whatever bell element currently exists
+// on each navigation.
+let unreadNotifCount = 0;
+let unsubscribeNotifications = null;
+// Preferences are read once per session and cached here so the realtime
+// handler can decide whether to play a sound without a round trip on
+// every single notification.
+let notifPrefs = api.NOTIFICATION_PREF_DEFAULTS;
+
+// Raises a real system notification, but only when the tab is not the
+// thing you are looking at - an OS banner for something already on
+// screen is just a second copy of it. This is what the push toggle buys
+// you today: with no VAPID key configured there is no push service
+// subscription, so nothing can reach a fully closed app, but a
+// backgrounded tab can still speak for itself.
+const NOTIF_TEXT = {
+  follow: 'started following you',
+  like: 'liked your review',
+  comment: 'commented on your review',
+  message: 'sent you a message',
+};
+
+function maybeSystemNotify(row) {
+  if (!notifPrefs.push) return;
+  if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+  if (document.visibilityState === 'visible') return;
+  try {
+    const n = new Notification('Playthruu', {
+      body: NOTIF_TEXT[row?.kind] || 'Something happened',
+      icon: 'icons/icon-192.png',
+      // One banner per kind rather than a stack of five identical ones.
+      tag: `playthruu-${row?.kind || 'x'}`,
+    });
+    n.onclick = () => {
+      window.focus();
+      location.hash = '#/notifications';
+      n.close();
+    };
+  } catch {
+    // Some browsers throw on the Notification constructor when the page
+    // is controlled by a service worker; the badge already covers it.
+  }
+}
+
+function applyNotifBadge() {
+  document.querySelectorAll('[data-route="/notifications"]').forEach((el) => {
+    el.classList.toggle('topbar__bell--badge', unreadNotifCount > 0);
+    if (unreadNotifCount > 0) el.setAttribute('data-badge-count', unreadNotifCount > 99 ? '99+' : String(unreadNotifCount));
+    else el.removeAttribute('data-badge-count');
+  });
+}
+
+async function refreshNotifBadge() {
+  if (!state.user) return;
+  try {
+    unreadNotifCount = await api.getUnreadNotificationCount(state.user.id);
+  } catch {
+    // Same call as the message badge makes: keep the last known count
+    // rather than flickering to zero over one dropped request.
+  }
+  applyNotifBadge();
+}
+
 // A signed-out visitor can genuinely browse game pages, search, and
 // Discover's filters (see landing-view.js) — these are the only routes
 // that work without a session, registered separately from the protected
@@ -128,6 +196,7 @@ function registerRoutes() {
   route('/director/:slug', (p) => renderDirectorView(appEl, p));
   route('/studio/:companyId', (p) => renderStudioView(appEl, p));
   route('/settings', () => renderSettingsView(appEl));
+  route('/notifications', () => renderNotificationsView(appEl));
   route('/log', () => {
     history.replaceState(null, '', '#/feed');
     renderFeedView(appEl).then(() => openLogModal({ onSaved: refreshCurrentView }));
@@ -293,6 +362,25 @@ async function loadSession(user) {
   refreshMessageBadge();
   unsubscribeConversations?.();
   unsubscribeConversations = api.subscribeToConversations(user.id, refreshMessageBadge);
+
+  refreshNotifBadge();
+  api.getNotificationPrefs(user.id).then((p) => { notifPrefs = p; }).catch(() => {});
+  unsubscribeNotifications?.();
+  unsubscribeNotifications = api.subscribeToNotifications(user.id, (row) => {
+    unreadNotifCount += 1;
+    applyNotifBadge();
+    // The coin only sounds for something that arrived while you were
+    // looking at something else. Landing on the hub itself and hearing a
+    // coin for a row you are already reading is noise, not feedback.
+    if (notifPrefs.sound && !location.hash.startsWith('#/notifications')) {
+      playCoin();
+    }
+    // A message notification also moves the Messages tab's own count,
+    // which is driven by a different subscription that does not fire for
+    // conversation_prefs changes - nudge it so both badges agree.
+    if (row?.kind === 'message') refreshMessageBadge();
+    maybeSystemNotify(row);
+  });
   warmOtherTabs();
 }
 
@@ -409,6 +497,11 @@ function handleSignedOut() {
   unsubscribeConversations = null;
   unreadMessageCount = 0;
   applyMessageBadge();
+  unsubscribeNotifications?.();
+  unsubscribeNotifications = null;
+  unreadNotifCount = 0;
+  notifPrefs = api.NOTIFICATION_PREF_DEFAULTS;
+  applyNotifBadge();
   clearViewCache();
   state.user = null;
   state.profile = null;
@@ -432,7 +525,26 @@ async function boot() {
   wireHardwareBack();
   wireAuthDeepLink();
   window.addEventListener('hashchange', applyMessageBadge);
+  window.addEventListener('hashchange', applyNotifBadge);
   window.addEventListener('hashchange', closeStrayOverlays);
+  // The hub clears the inbox server-side when it opens; this is how the
+  // bell hears about it without polling.
+  window.addEventListener('notifications:read', () => {
+    unreadNotifCount = 0;
+    applyNotifBadge();
+  });
+  // Settings writes straight to the DB, so the cached copy the realtime
+  // handler reads has to be told when it changed.
+  window.addEventListener('notifications:prefs', (e) => {
+    if (e.detail) notifPrefs = e.detail;
+  });
+  // Every browser refuses to start an AudioContext outside a user
+  // gesture, so the very first notification of a session would be silent
+  // without claiming one here. once:true - after the first tap the
+  // context stays alive for the rest of the session.
+  ['pointerdown', 'keydown'].forEach((evt) => {
+    window.addEventListener(evt, unlockAudio, { once: true, passive: true });
+  });
 
   const { data: { session } } = await supabase.auth.getSession();
   if (session?.user) {

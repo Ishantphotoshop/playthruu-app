@@ -45,3 +45,19 @@ export const RAWG_API_KEY = "b0c4599765444b5e9207260042c05ed1";
 // Google discontinued it in mid-2026, so this is GIPHY's direct
 // replacement instead.
 export const GIPHY_API_KEY = "K9tBeFhMg4uYiafTHTgaxW9Luipq6kIP";
+
+// Web Push. The PUBLIC half of a VAPID key pair — safe to ship, the
+// same way SUPABASE_ANON_KEY above is; the private half lives in a
+// Supabase secret and never leaves the server.
+//
+// Left empty on purpose until a pair is generated. With it empty, the
+// Notifications toggle in Settings still works, it just falls back to
+// permission-based system notifications, which fire while Playthruu is
+// open or backgrounded but NOT once it's fully closed. Filling this in
+// (plus deploying a function that signs and sends) is what makes a
+// notification reach a phone with the app shut.
+//
+// To generate a pair:  npx web-push generate-vapid-keys
+//   public  → here
+//   private → supabase secrets set VAPID_PRIVATE_KEY=...
+export const VAPID_PUBLIC_KEY = "";

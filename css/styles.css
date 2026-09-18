@@ -5215,3 +5215,143 @@ a.gd-credit__name { text-decoration: none; }
   transition: all var(--dur-fast) var(--ease);
 }
 .gd-pilltab--on { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+
+/* ------------------------------------------------------------ notifications */
+
+/* The bell, in the home header's right slot. Sized and coloured like the
+   tab bar's own icons so the two headers read as one system, even though
+   this one is not part of the tab bar. */
+.topbar__bell {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; position: relative;
+  color: var(--ink); border-radius: var(--radius-pill);
+  -webkit-tap-highlight-color: transparent;
+}
+.topbar__bell svg { width: 22px; height: 22px; }
+.topbar__bell:active { transform: scale(0.92); }
+/* Same pill, same attr(), same reasoning as .tabbar__item--badge: the
+   count is a data attribute so navBar()/topBar() can stay synchronous
+   template strings with no markup to update. The ring is painted in the
+   header's own background rather than --bg because this one sits on
+   .topbar--home, which is a different surface than the tab bar's. */
+.topbar__bell--badge::after {
+  content: attr(data-badge-count);
+  position: absolute; top: -1px; right: -2px;
+  min-width: 16px; height: 16px; padding: 0 4px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: var(--radius-pill);
+  background: var(--accent-bright); color: var(--bg);
+  font-family: var(--font-mono); font-size: 10px; font-weight: 700; line-height: 1;
+  box-shadow: 0 0 0 2px var(--bg);
+}
+
+/* A text action in a title bar — "Mark all read". Deliberately quiet:
+   it sits opposite a back button and should not compete with the title
+   between them. */
+.topbar__action {
+  background: none; border: none; padding: 4px 2px;
+  color: var(--accent-bright); font-family: var(--font-body);
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.topbar__action:active { opacity: 0.6; }
+
+.notif-list { display: flex; flex-direction: column; }
+
+/* Rows are separated by a hairline rather than spaced apart as cards:
+   a notification list is scanned top to bottom in one pass, and gaps
+   between every row turn that into a series of stops. */
+.notif {
+  display: flex; align-items: center; gap: var(--space-3);
+  width: 100%; padding: 12px 2px; text-align: left;
+  background: none; border: none; border-bottom: 1px solid var(--line);
+  color: var(--ink); cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.notif:last-child { border-bottom: none; }
+.notif:active { background: rgba(255, 255, 255, 0.04); }
+
+.notif__avatar { flex-shrink: 0; display: flex; }
+.notif__avatar img { border-radius: 50%; }
+
+.notif__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+/* Regular weight with the name bolded inside it, so the person is what
+   the eye catches and the verb reads as ordinary sentence text. */
+.notif__text {
+  font-size: 14px; line-height: 1.35; color: var(--ink); font-weight: 400;
+}
+.notif__text b { font-weight: 700; }
+/* The quoted comment is dimmed so it reads as somebody else's words
+   inside the sentence rather than as part of it. */
+.notif__quote { color: var(--ink-dim); }
+.notif__time { font-size: 11.5px; color: var(--ink-faint); }
+
+/* "3" on a bundled run of messages from one conversation. */
+.notif__count {
+  flex-shrink: 0; min-width: 20px; height: 20px; padding: 0 6px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: var(--radius-pill);
+  background: var(--surface-high); color: var(--ink-dim);
+  font-family: var(--font-mono); font-size: 10.5px; font-weight: 700;
+}
+
+/* Unread marker. A dot and nothing else — a tinted row background was
+   the alternative and it made a full inbox look like an error state. */
+.notif__dot {
+  flex-shrink: 0; width: 8px; height: 8px; border-radius: 50%;
+  background: var(--accent-bright);
+}
+.notif--unread .notif__text { font-weight: 500; }
+
+/* ---- notification settings ---- */
+
+/* A row of label + switch, stacked inside a .set-card. Uses the same
+   padding rhythm as .set-form so the notification group lines up with
+   every other group on the settings page. */
+.set-toggle {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--space-3); padding: 13px var(--space-4);
+  border-bottom: 1px solid var(--line);
+}
+.set-toggle:last-of-type { border-bottom: none; }
+.set-toggle__label { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.set-toggle__label b { font-size: 14px; font-weight: 600; color: var(--ink); }
+.set-toggle__label span { font-size: 12px; color: var(--ink-dim); line-height: 1.35; }
+
+/* The switch itself is a real checkbox with the box hidden, so it keeps
+   the native focus ring, keyboard behaviour and label association, and
+   the track/knob are drawn off :checked. */
+.set-switch { position: relative; flex-shrink: 0; width: 46px; height: 27px; }
+.set-switch input {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  margin: 0; opacity: 0; cursor: pointer; z-index: 1;
+}
+.set-switch__track {
+  display: block; width: 100%; height: 100%; border-radius: var(--radius-pill);
+  background: var(--surface-high); border: 1px solid var(--line-strong);
+  transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+.set-switch__track::after {
+  content: ''; position: absolute; top: 3px; left: 3px;
+  width: 21px; height: 21px; border-radius: 50%;
+  background: var(--ink); transition: transform var(--dur-fast) var(--ease);
+}
+.set-switch input:checked + .set-switch__track {
+  background: var(--accent); border-color: var(--accent);
+}
+.set-switch input:checked + .set-switch__track::after {
+  transform: translateX(19px); background: var(--bg);
+}
+.set-switch input:focus-visible + .set-switch__track {
+  outline: 2px solid var(--accent-bright); outline-offset: 2px;
+}
+.set-switch input:disabled { cursor: not-allowed; }
+.set-switch input:disabled + .set-switch__track { opacity: 0.45; }
+/* "Play it" inside the Sound row's description — a link-looking button
+   rather than a real link, since it triggers a sound instead of going
+   anywhere. */
+.set-inline-link {
+  background: none; border: none; padding: 0; margin-left: 2px;
+  color: var(--accent-bright); font: inherit; font-weight: 600;
+  text-decoration: underline; cursor: pointer;
+}

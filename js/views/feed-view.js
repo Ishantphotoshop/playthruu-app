@@ -2,7 +2,7 @@ import * as api from '../api.js';
 import { state } from '../state.js';
 import {
   topBar, navBar, homeTabs, feedSectionHead, activityCard, emptyState, spinner, skeletonRow, iconStamp, iconUser, iconFilter,
-  trendingStrip, wireTrendingStrip, friendsPlayingCard, posterFrame, openReportSheet, iconChevronRight,
+  trendingStrip, wireTrendingStrip, friendsPlayingCard, posterFrame, openReportSheet, iconChevronRight, iconBell,
 } from '../components.js';
 import { toast, qs, qsa, esc, timeAgo, enableSwipeToDismiss, promptSignIn, tapFeedback, pulseLogTab } from '../utils.js';
 import { openLogModal } from './log-modal.js';
@@ -19,7 +19,13 @@ const NEWS_CACHE_KEY = 'news';
 // here with News pre-selected instead of rendering its own separate page.
 export async function renderFeedView(root, { initialTab = 'feed' } = {}) {
   let activeTab = initialTab;
-  root.innerHTML = topBar('', { home: true }) + homeTabs(activeTab) + `<div class="view-body" id="feed-body"></div>` + navBar('/feed');
+  // The bell lives here rather than in the tab bar: that bar is already
+  // five destinations wide and a sixth would crowd it, and home is where
+  // people look for "what happened while I was away" anyway. app.js's
+  // applyNotifBadge() finds it by [data-route="/notifications"] and hangs
+  // the unread count off it, the same way it does the Messages tab.
+  const bell = `<a href="#/notifications" class="topbar__bell" data-route="/notifications" aria-label="Notifications">${iconBell()}</a>`;
+  root.innerHTML = topBar('', { home: true, right: bell }) + homeTabs(activeTab) + `<div class="view-body" id="feed-body"></div>` + navBar('/feed');
   wireStamp(root);
   const body = qs('#feed-body', root);
   wirePullToRefresh(body);

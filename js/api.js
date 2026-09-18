@@ -3500,3 +3500,129 @@ export async function disconnectPsnAccount(userId) {
   const { error } = await supabase.from('connected_accounts').delete().eq('user_id', userId).eq('platform', 'psn');
   if (error) throw error;
 }
+
+// ------------------------------------------------------------
+// NOTIFICATIONS (see migrations/2026-09-18_notifications.sql)
+// ------------------------------------------------------------
+
+// Everything that happened TO you, newest first, with the actor and (for
+// likes and comments) the thing it happened to already joined on — the
+// hub renders a row per notification and would otherwise need a second
+// round trip per row to learn whose review was liked.
+export async function getNotifications(userId, { limit = 60 } = {}) {
+  const { data, error } = await supabase
+    .from('notifications')
+    .select(`
+      id, kind, read_at, created_at, actor_id, log_id, comment_id, conversation_id,
+      actor:profiles!notifications_actor_id_fkey(id, username, display_name, avatar_url),
+      log:logs!notifications_log_id_fkey(id, rating, review, game_id, games!logs_game_id_fkey(id, title, cover_url)),
+      comment:comments!notifications_comment_id_fkey(id, body)
+    `)
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+
+  // Blocking is enforced at read time rather than in the trigger. A block
+  // can happen long after the notification was written, and the person
+  // doing the blocking expects that to hide what is already sitting in
+  // their hub too — not just anything new.
+  let blocked = new Set();
+  try { blocked = await getBlockedIds(); } catch { /* a failed block list must not empty the hub */ }
+  return (data || []).filter((n) => !n.actor_id || !blocked.has(n.actor_id));
+}
+
+export async function getUnreadNotificationCount(userId) {
+  const { count, error } = await supabase
+    .from('notifications')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .is('read_at', null);
+  if (error) throw error;
+  return count || 0;
+}
+
+// Marks the whole inbox read. Scoped by user_id as well as the null
+// check even though RLS already pins it — a policy is the backstop, not
+// the place to express what the query means.
+export async function markAllNotificationsRead(userId) {
+  const { error } = await supabase
+    .from('notifications')
+    .update({ read_at: new Date().toISOString() })
+    .eq('user_id', userId)
+    .is('read_at', null);
+  if (error) throw error;
+}
+
+export async function markNotificationsRead(ids) {
+  if (!ids?.length) return;
+  const { error } = await supabase
+    .from('notifications')
+    .update({ read_at: new Date().toISOString() })
+    .in('id', ids)
+    .is('read_at', null);
+  if (error) throw error;
+}
+
+export async function clearNotifications(userId) {
+  const { error } = await supabase.from('notifications').delete().eq('user_id', userId);
+  if (error) throw error;
+}
+
+// Live badge + sound. Insert-only: an update here is something being
+// marked read, which the client that did it already knows about, and
+// waking every other tab for it would just cost a re-render.
+export function subscribeToNotifications(userId, onInsert) {
+  const channel = supabase
+    // Unique per call for the same reason subscribeToConversations is —
+    // two subscriptions sharing a channel name silently stop delivering.
+    .channel(`notifications:${userId}:${crypto.randomUUID()}`)
+    .on('postgres_changes', {
+      event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}`,
+    }, (payload) => onInsert(payload.new))
+    .subscribe();
+  return () => supabase.removeChannel(channel);
+}
+
+// ---- preferences ----
+
+// Anything absent from the stored object falls back to on (except push,
+// which is an explicit opt-in), so a profile row written before a switch
+// existed still behaves the way someone would expect.
+export const NOTIFICATION_PREF_DEFAULTS = {
+  follow: true, like: true, comment: true, message: true, sound: true, push: false,
+};
+
+export async function getNotificationPrefs(userId) {
+  const { data, error } = await supabase
+    .from('profiles').select('notification_prefs').eq('id', userId).single();
+  if (error) throw error;
+  return { ...NOTIFICATION_PREF_DEFAULTS, ...(data?.notification_prefs || {}) };
+}
+
+export async function saveNotificationPrefs(userId, prefs) {
+  const merged = { ...NOTIFICATION_PREF_DEFAULTS, ...prefs };
+  const { error } = await supabase
+    .from('profiles').update({ notification_prefs: merged }).eq('id', userId);
+  if (error) throw error;
+  return merged;
+}
+
+// ---- web push ----
+
+export async function savePushSubscription(userId, sub) {
+  const json = sub.toJSON();
+  const { error } = await supabase.from('push_subscriptions').upsert({
+    endpoint: json.endpoint,
+    user_id: userId,
+    p256dh: json.keys?.p256dh,
+    auth: json.keys?.auth,
+    user_agent: navigator.userAgent.slice(0, 300),
+  }, { onConflict: 'endpoint' });
+  if (error) throw error;
+}
+
+export async function deletePushSubscription(endpoint) {
+  const { error } = await supabase.from('push_subscriptions').delete().eq('endpoint', endpoint);
+  if (error) throw error;
+}

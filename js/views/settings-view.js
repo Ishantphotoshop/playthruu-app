@@ -6,6 +6,8 @@ import { changePassword, changeEmail, signOut } from '../auth.js';
 import { openAvatarCropModal } from './avatar-crop.js';
 import { invalidateProfileBundleCache } from './profile-view.js';
 import { openPsnImportSheet } from './psn-import-sheet.js';
+import { playCoin, unlockAudio } from '../sound.js';
+import { VAPID_PUBLIC_KEY } from '../config.js';
 
 const PRONOUN_OPTIONS = ['he/his', 'she/her', 'they/their', 'custom'];
 
@@ -62,6 +64,35 @@ export function renderSettingsView(root) {
         <div id="connected-accounts-list"><div class="spinner"></div></div>
       </div>
 
+      <p class="set-group__title">Notifications</p>
+      <div class="set-card" id="notif-prefs">
+        <div class="set-toggle">
+          <span class="set-toggle__label"><b>Follows</b><span>When someone follows you</span></span>
+          <label class="set-switch"><input type="checkbox" data-pref="follow"><span class="set-switch__track"></span></label>
+        </div>
+        <div class="set-toggle">
+          <span class="set-toggle__label"><b>Likes</b><span>When someone likes your review</span></span>
+          <label class="set-switch"><input type="checkbox" data-pref="like"><span class="set-switch__track"></span></label>
+        </div>
+        <div class="set-toggle">
+          <span class="set-toggle__label"><b>Comments</b><span>When someone comments on your review</span></span>
+          <label class="set-switch"><input type="checkbox" data-pref="comment"><span class="set-switch__track"></span></label>
+        </div>
+        <div class="set-toggle">
+          <span class="set-toggle__label"><b>Messages</b><span>When someone sends you a message</span></span>
+          <label class="set-switch"><input type="checkbox" data-pref="message"><span class="set-switch__track"></span></label>
+        </div>
+        <div class="set-toggle">
+          <span class="set-toggle__label"><b>Sound</b><span>An arcade coin when something lands <button type="button" class="set-inline-link" id="test-sound">Play it</button></span></span>
+          <label class="set-switch"><input type="checkbox" data-pref="sound"><span class="set-switch__track"></span></label>
+        </div>
+        <div class="set-toggle">
+          <span class="set-toggle__label"><b>Push notifications</b><span id="push-hint">Get notified on this device</span></span>
+          <label class="set-switch"><input type="checkbox" data-pref="push" id="push-toggle"><span class="set-switch__track"></span></label>
+        </div>
+      </div>
+      <p class="set-hint">Switching one off stops it being recorded at all, so it won't ring, badge or show up in your notifications.</p>
+
       <p class="set-group__title">Privacy</p>
       <div class="set-card">
         <form class="set-form" id="privacy-form">
@@ -104,6 +135,131 @@ export function renderSettingsView(root) {
     </div>` + navBar('');
 
   const body = qs('#settings-body', root);
+
+  // ---- notifications ----
+  // The switches are painted from the saved prefs, then every change
+  // writes the WHOLE object back. A per-key patch would be nicer over
+  // the wire but jsonb has no partial update through PostgREST, and the
+  // object is six booleans - reading it back and re-sending it is both
+  // simpler and immune to a stale key silently surviving.
+  let prefs = { ...api.NOTIFICATION_PREF_DEFAULTS };
+
+  function paintPrefs() {
+    qsa('#notif-prefs input[data-pref]', body).forEach((input) => {
+      input.checked = !!prefs[input.dataset.pref];
+    });
+    const hint = qs('#push-hint', body);
+    if (!hint) return;
+    if (!('Notification' in window)) {
+      hint.textContent = "This browser can't show notifications";
+      const t = qs('#push-toggle', body);
+      if (t) t.disabled = true;
+    } else if (Notification.permission === 'denied') {
+      hint.textContent = 'Blocked in your browser settings';
+    } else if (!VAPID_PUBLIC_KEY) {
+      // Honest about the limit rather than promising delivery the app
+      // cannot make: without a VAPID key there is no push service
+      // subscription, so these only arrive while Playthruu is running.
+      hint.textContent = 'While Playthruu is open or in the background';
+    } else {
+      hint.textContent = 'Get notified on this device';
+    }
+  }
+
+  async function loadPrefs() {
+    try {
+      prefs = await api.getNotificationPrefs(state.user.id);
+    } catch {
+      // Fall back to the defaults already in `prefs` rather than
+      // leaving every switch visually off, which would read as "you
+      // have turned everything off" instead of "this did not load".
+    }
+    paintPrefs();
+  }
+
+  async function savePrefs() {
+    try {
+      prefs = await api.saveNotificationPrefs(state.user.id, prefs);
+      // app.js caches these for the realtime handler that decides
+      // whether to play the coin - tell it what changed.
+      window.dispatchEvent(new CustomEvent('notifications:prefs', { detail: prefs }));
+    } catch (err) {
+      toast("Couldn't save that: " + err.message);
+      await loadPrefs();
+    }
+  }
+
+  // The push service wants the key as raw bytes, and ships it as
+  // base64url - which atob does not accept, hence the padding and the
+  // two character swaps.
+  function urlBase64ToUint8Array(base64) {
+    const padded = (base64 + '='.repeat((4 - (base64.length % 4)) % 4))
+      .replace(/-/g, '+').replace(/_/g, '/');
+    const raw = atob(padded);
+    return Uint8Array.from([...raw].map((c) => c.charCodeAt(0)));
+  }
+
+  async function enablePush() {
+    if (!('Notification' in window)) throw new Error('This browser has no notification support');
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') throw new Error('Permission was not granted');
+    // Without a VAPID key there is nothing to subscribe TO; permission
+    // alone is still worth having, since it lets the running app raise a
+    // system notification instead of only a badge.
+    if (!VAPID_PUBLIC_KEY || !('serviceWorker' in navigator)) return;
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+    });
+    await api.savePushSubscription(state.user.id, sub);
+  }
+
+  async function disablePush() {
+    if (!('serviceWorker' in navigator)) return;
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.getSubscription();
+      if (sub) {
+        await api.deletePushSubscription(sub.endpoint);
+        await sub.unsubscribe();
+      }
+    } catch {
+      // Losing the local subscription is not worth failing the toggle
+      // over - the pref is off either way, and a stale row is harmless.
+    }
+  }
+
+  body.addEventListener('change', async (e) => {
+    const input = e.target.closest('#notif-prefs input[data-pref]');
+    if (!input) return;
+    const key = input.dataset.pref;
+    const want = input.checked;
+
+    if (key === 'push' && want) {
+      try {
+        await enablePush();
+      } catch (err) {
+        input.checked = false;
+        toast('Notifications not enabled: ' + err.message);
+        paintPrefs();
+        return;
+      }
+    } else if (key === 'push' && !want) {
+      await disablePush();
+    }
+
+    prefs[key] = want;
+    // Turning the sound ON should prove it works, and the change event
+    // is a real gesture, so the audio context is allowed to start here.
+    if (key === 'sound' && want) { unlockAudio(); playCoin(); }
+    await savePrefs();
+    paintPrefs();
+  });
+
+  qs('#test-sound', body)?.addEventListener('click', () => { unlockAudio(); playCoin(); });
+
+  loadPrefs();
 
   // ---- blocked & restricted accounts ----
   const modRow = (pr, action, convoId) => `
