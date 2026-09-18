@@ -17,7 +17,7 @@ export async function renderCurrentlyPlayingView(root) {
       ? `<div class="card-grid">${logs.map((l) => activityCard(l)).join('')}</div>`
       : (isFallback
           ? emptyState("Nobody's currently playing anything yet. Be the first to log one.", { icon: iconStamp(), actionLabel: 'Log your first game', actionRoute: '/log' })
-          : emptyState("The people you follow aren't currently playing anything.", { icon: iconUser(), actionLabel: 'Find more people to follow', actionRoute: '/search' }));
+          : emptyState("The people you follow aren't currently playing anything.", { icon: iconUser(), actionLabel: 'Find people to follow', actionRoute: '/people' }));
   } catch (err) {
     body.innerHTML = `<p class="muted" style="padding:24px">Couldn't load this right now: ${err.message}</p>`;
   }

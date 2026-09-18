@@ -1,6 +1,6 @@
 import * as api from '../api.js';
 import { state } from '../state.js';
-import { navBar, spinner, emptyState, avatarImg, iconCompose, iconClose, iconMessage, iconTrash, iconSearch, iconDotsMenu, profileRow } from '../components.js';
+import { navBar, spinner, emptyState, avatarImg, iconCompose, iconClose, iconMessage, iconTrash, iconSearch, iconDotsMenu, profileRow, confirmSheet } from '../components.js';
 import { esc, qs, qsa, toast, timeAgo, debounce, enableSwipeToDismiss } from '../utils.js';
 import { navigate } from '../router.js';
 import { wirePullToRefresh } from './feed-view.js';
@@ -174,30 +174,6 @@ export async function renderMessagesView(root) {
         const c = all.find((x) => x.id === btn.dataset.menuId);
         if (c) openConvoMenu(c);
       });
-    });
-  }
-
-  // An in-app confirmation sheet (styled like the rest of the app) in place
-  // of the browser's native confirm() dialog, which looks out of place and
-  // can be suppressed inside an installed PWA. Resolves true/false.
-  function confirmSheet({ title, message = '', confirmLabel = 'Confirm', danger = false }) {
-    return new Promise((resolve) => {
-      const overlay = document.createElement('div');
-      overlay.className = 'modal-overlay';
-      overlay.innerHTML = `
-        <div class="modal modal--sheet confirm-sheet">
-          <header class="msg-actions__grab"></header>
-          <h3 class="confirm-sheet__title">${esc(title)}</h3>
-          ${message ? `<p class="confirm-sheet__msg">${esc(message)}</p>` : ''}
-          <button type="button" class="confirm-sheet__btn ${danger ? 'confirm-sheet__btn--danger' : 'confirm-sheet__btn--go'}" data-yes>${esc(confirmLabel)}</button>
-          <button type="button" class="confirm-sheet__btn confirm-sheet__btn--cancel" data-no>Cancel</button>
-        </div>`;
-      document.body.appendChild(overlay);
-      const done = (val) => { overlay.remove(); resolve(val); };
-      overlay.addEventListener('click', (e) => { if (e.target === overlay) done(false); });
-      qs('[data-yes]', overlay).addEventListener('click', () => done(true));
-      qs('[data-no]', overlay).addEventListener('click', () => done(false));
-      enableSwipeToDismiss(qs('.modal', overlay), () => done(false));
     });
   }
 

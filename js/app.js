@@ -9,6 +9,7 @@ import { renderSearchView } from './views/search-view.js';
 import { renderDiscoverView, warmDiscover } from './views/discover-view.js';
 import { renderListDetailView } from './views/lists-view.js';
 import { renderMessagesView } from './views/messages-view.js';
+import { renderPeopleView } from './views/people-view.js';
 import { MESSENGER_ARCHIVED } from './config.js';
 import { renderMessageThreadView } from './views/message-thread-view.js';
 import { renderProfileView, warmOwnProfile } from './views/profile-view.js';
@@ -231,6 +232,7 @@ function registerRoutes() {
   route('/studio/:companyId', (p) => renderStudioView(appEl, p));
   route('/settings', () => renderSettingsView(appEl));
   route('/notifications', () => renderNotificationsView(appEl));
+  route('/people', () => renderPeopleView(appEl));
   route('/log', () => {
     history.replaceState(null, '', '#/feed');
     renderFeedView(appEl).then(() => openLogModal({ onSaved: refreshCurrentView }));
@@ -253,6 +255,19 @@ function wireGlobalChrome() {
     if (account) { e.preventDefault(); renderLandingView(appEl); }
     const browse = e.target.closest('[data-action="browse"]');
     if (browse) { e.preventDefault(); renderLandingView(appEl, { startScreen: 'browse' }); }
+
+    // Tapping Search again while already on it: an <a href="#/search">
+    // only fires hashchange when the hash actually CHANGES, so a second
+    // tap while you're already there does nothing on its own — the
+    // typed query and results just sit there. This is the one nav
+    // destination worth resetting on a repeat tap (an open text search
+    // is state a "start over" gesture should actually clear), so it's
+    // handled explicitly rather than generalized to every tab.
+    const searchTab = e.target.closest('.tabbar [data-route="/search"]');
+    if (searchTab && location.hash.slice(1).split('?')[0] === '/search') {
+      e.preventDefault();
+      refreshCurrentView();
+    }
   });
 }
 

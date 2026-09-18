@@ -125,13 +125,16 @@ function gameTitleHtml(title) {
 function logRowLabel(ownLog) {
   if (!state.user) return 'Rate, log, review + more';
   if (!ownLog) return 'Rate, log, review + more';
-  if (ownLog.status === 'backlog') return 'In your backlog';
-  if (ownLog.status === 'playing') return `You're playing this`;
-  // The verb tracks the status, the way the other two do — "logged" is
-  // what the app calls the act, not what you did to the game.
   const stars = ownLog.rating ? ` ${starRow(ownLog.rating, { size: 13 })}` : '';
-  if (ownLog.status === 'played') return `You played this${stars}`;
-  return `You logged this${stars}`;
+  // Every one of these says "this game" rather than a bare "this", and
+  // the tense matches what actually happened: finishing it is a thing
+  // you HAVE done (present perfect), playing it is a thing you ARE
+  // doing, and the backlog is a state rather than an action.
+  if (ownLog.status === 'backlog') return `This game is in your backlog`;
+  if (ownLog.status === 'playing') return `You're playing this game`;
+  if (ownLog.status === 'played') return `You've played this game${stars}`;
+  if (ownLog.status === 'dropped') return `You dropped this game${stars}`;
+  return `You've logged this game${stars}`;
 }
 
 function crowdSectionHtml(label, entries) {
@@ -484,14 +487,24 @@ export async function renderGameView(root, { id, igdbId }) {
       const friendsReviews = reviewedLogs.filter((l) => followingIds.has(l.user_id));
       const poster = game.cover_url;
 
-      // People this game has been logged against, split by status —
-      // feeds the Played by / Playing / Want to play rows just under
-      // the action bar. Built from `logs`, already fetched, so this is
-      // free: no extra query.
+      // Who among the people you FOLLOW has this game, split by status.
+      //
+      // Two deliberate exclusions. Your own face never appears here: the
+      // slim bar directly above already says where you stand with this
+      // game, so repeating you as a face in "played by" is the same fact
+      // twice and reads like the app has mistaken you for somebody else.
+      // And it is people you follow rather than everyone who has ever
+      // logged it — a wall of strangers' avatars says nothing, where
+      // "three people you follow finished this" is the reason to look.
+      // Built from `logs`, already fetched, so this costs no extra query.
+      const crowdOf = (status) => logs.filter((l) =>
+        l.status === status
+        && l.user_id !== state.user?.id
+        && followingIds.has(l.user_id));
       const crowdHtml = [
-        crowdSectionHtml('Played by', logs.filter((l) => l.status === 'played')),
-        crowdSectionHtml('Playing', logs.filter((l) => l.status === 'playing')),
-        crowdSectionHtml('Want to play', logs.filter((l) => l.status === 'backlog')),
+        crowdSectionHtml('Friends who played it', crowdOf('played')),
+        crowdSectionHtml('Friends playing it now', crowdOf('playing')),
+        crowdSectionHtml('Friends who want to play it', crowdOf('backlog')),
       ].join('');
 
       // --- derived stats for the strip -----------------------------

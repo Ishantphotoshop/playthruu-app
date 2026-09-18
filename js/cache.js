@@ -40,3 +40,18 @@ export function setCached(key, value) {
 export function clearViewCache() {
   store.clear();
 }
+
+// Dropped whenever a diary entry is created, changed or deleted.
+//
+// Both of these cache RENDERED MARKUP that has a game's status baked
+// into it — the feed's "Currently playing" strip, the profile's
+// Diary/Playing/Backlog tabs. Without this, marking a game played left
+// every one of those painting the previous answer from cache on the way
+// back, so the same game read as "playing" on one screen and "played"
+// on another. Nothing was wrong with the data; each screen was just
+// showing a different snapshot of it.
+export function invalidateLogViews() {
+  for (const key of [...store.keys()]) {
+    if (key === 'feed' || key.startsWith('profile:')) store.delete(key);
+  }
+}

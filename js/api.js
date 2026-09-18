@@ -1,4 +1,5 @@
 import { supabase } from './supabase-client.js';
+import { invalidateLogViews } from './cache.js';
 import { SUPABASE_URL, SUPABASE_ANON_KEY, RAWG_API_KEY, GIPHY_API_KEY } from './config.js';
 
 // All IGDB traffic goes through a Supabase Edge Function (see
@@ -168,6 +169,83 @@ export async function searchUsers(query, limit = 15) {
     .limit(limit);
   if (error) throw error;
   return data;
+}
+
+/**
+ * People worth following: the most-followed accounts on the app that
+ * you are not already following, shuffled.
+ *
+ * Ranked by follower count rather than "newest" or "most games logged"
+ * — the whole point of a suggestion is that it is somebody other people
+ * already found worth reading, and the other two measures reward
+ * whoever signed up most recently or logs most compulsively instead.
+ *
+ * Shuffled within that ranking so the list is not the same five faces
+ * every single time, which is what makes a suggestions row feel dead.
+ * Deliberately NOT a "random user" — a genuinely random account is
+ * usually an empty one, and following it teaches you the feature is
+ * useless.
+ *
+ * Counted client-side over the follows table because Postgres cannot
+ * GROUP BY through PostgREST without an RPC, and this is one small
+ * query against a table that is tiny at this scale.
+ */
+export async function getSuggestedPeople(userId, limit = 20) {
+  const [{ data: follows }, alreadyFollowing] = await Promise.all([
+    supabase.from('follows').select('following_id'),
+    userId ? getFollowingIdSet(userId) : Promise.resolve(new Set()),
+  ]);
+
+  const counts = new Map();
+  for (const row of (follows || [])) {
+    counts.set(row.following_id, (counts.get(row.following_id) || 0) + 1);
+  }
+
+  const blocked = await getBlockedIds().catch(() => new Set());
+  const ranked = [...counts.entries()]
+    .filter(([id]) => id !== userId && !alreadyFollowing.has(id) && !blocked.has(id))
+    .sort((a, b) => b[1] - a[1]);
+
+  // Take a generous slice of the top, then shuffle THAT — so every
+  // suggestion is still a well-followed account, but which of them you
+  // see changes between visits.
+  const pool = ranked.slice(0, Math.max(limit * 3, 30)).map(([id]) => id);
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  const ids = pool.slice(0, limit);
+
+  // Nobody has any followers yet (a young app) — fall back to real
+  // accounts that have actually logged something, so this never comes
+  // back empty just because the follow graph is still bare.
+  if (!ids.length) {
+    const { data: active } = await supabase
+      .from('logs')
+      .select('user_id, profiles!logs_user_id_fkey(*)')
+      .eq('is_public', true)
+      .order('created_at', { ascending: false })
+      .limit(120);
+    const seen = new Set();
+    const people = [];
+    for (const row of (active || [])) {
+      const p = row.profiles;
+      if (!p || p.id === userId || seen.has(p.id)) continue;
+      if (alreadyFollowing.has(p.id) || blocked.has(p.id)) continue;
+      seen.add(p.id);
+      people.push(p);
+      if (people.length >= limit) break;
+    }
+    return people;
+  }
+
+  const { data: profiles, error } = await supabase
+    .from('profiles').select('*').in('id', ids);
+  if (error) throw error;
+  // .in() comes back in whatever order Postgres likes; restore the
+  // shuffled ranking the work above actually produced.
+  const byId = new Map((profiles || []).map((p) => [p.id, p]));
+  return ids.map((id) => byId.get(id)).filter(Boolean);
 }
 
 // ------------------------------------------------------------
@@ -818,21 +896,61 @@ export const BROWSE_PLATFORMS = [
 // just a preset bundle of browseGames() params, so this adds no new
 // API surface — it's the Discover screen's own filtering, packaged as
 // one-tap moods. All genre/theme ids are the verified ones above.
+// Vote-count bands, shared by the collections below so the numbers are
+// defined once and mean the same thing everywhere.
+//
+// CREDIBLE is the floor under anything sorted by rating. IGDB's
+// total_rating carries no vote threshold, so "top rated" without this
+// is a list of games three people scored 100 — which is exactly what
+// the Story masterpieces row used to be: Ghost Town, Shipwrecked 64,
+// Dawnfolk, nobody-games above every actual masterpiece.
+//
+// FAMOUS is the ceiling that makes "underrated" mean something. A game
+// everyone has already played cannot be a hidden gem, so the rows that
+// are about discovery cut off above this — it is what keeps Red Dead 2,
+// The Witcher 3 and GTA V out of them.
+const CREDIBLE_VOTES = 60;
+const FAMOUS_VOTES = 900;
+
+/**
+ * Which slice of a rotating collection to show right now.
+ *
+ * A "hidden gems" row that shows the same twelve games forever stops
+ * being worth opening after the first look. This walks deeper into the
+ * same ranked result set as time passes, so the row genuinely turns
+ * over — while every game in it is still one the filters already
+ * vouched for, rather than a random pick.
+ *
+ * Derived from the date rather than stored anywhere: no cron job, no
+ * table, no "last rotated" column to go stale, and every device shows
+ * the same set on the same day. A fortnight is the period — long
+ * enough that something you meant to come back to is still there, short
+ * enough that the row is new again by your next proper browse.
+ */
+const ROTATION_DAYS = 14;
+const ROTATION_SLICES = 5; // how deep into the ranking it will walk before wrapping
+
+export function rotationPage(date = new Date()) {
+  const fortnights = Math.floor(date.getTime() / (ROTATION_DAYS * 86400000));
+  return (fortnights % ROTATION_SLICES) + 1;
+}
+
 export const DISCOVERY_COLLECTIONS = [
-  // Default: acclaimed single-player story games — the masterpiece,
-  // "sit down and get lost in it" kind, filtered away from online titles.
-  { id: 'masterpieces', label: 'Story masterpieces', params: { genre: 'genre:31', multiplayer: 'singleplayer', minRating: 80, sort: 'top_rated' } },
-  { id: 'indie', label: 'Indie darlings', params: { genre: 'genre:32', multiplayer: 'singleplayer', sort: 'popular' } },
+  // Default: acclaimed single-player story games that are NOT the same
+  // handful everyone has finished. Highly rated, rated by enough people
+  // to trust the score, but short of household-name recognition.
+  { id: 'masterpieces', label: 'Story masterpieces', rotates: true, params: { genre: 'genre:31', multiplayer: 'singleplayer', minRating: 80, minVotes: CREDIBLE_VOTES, maxVotes: FAMOUS_VOTES, sort: 'top_rated' } },
+  { id: 'indie', label: 'Indie darlings', rotates: true, params: { genre: 'genre:32', multiplayer: 'singleplayer', minRating: 75, minVotes: CREDIBLE_VOTES, maxVotes: FAMOUS_VOTES, sort: 'top_rated' } },
   { id: 'popular', label: 'Hot right now', params: { sort: 'popular' } },
-  { id: 'all_time', label: 'All-time greats', params: { sort: 'all_time' } },
-  { id: 'story', label: 'For the story', params: { genre: 'genre:31', sort: 'top_rated' } },
-  { id: 'underrated', label: 'Hidden gems', params: { genre: 'genre:32', sort: 'top_rated' } },
-  { id: 'rpg', label: 'Deep RPGs', params: { genre: 'genre:12', sort: 'top_rated' } },
-  { id: 'short', label: 'Short & sweet', params: { genre: 'genre:9', sort: 'top_rated' } },
+  { id: 'all_time', label: 'All-time greats', params: { sort: 'all_time', minVotes: CREDIBLE_VOTES } },
+  { id: 'story', label: 'For the story', rotates: true, params: { genre: 'genre:31', minRating: 78, minVotes: CREDIBLE_VOTES, sort: 'top_rated' } },
+  { id: 'underrated', label: 'Hidden gems', rotates: true, params: { minRating: 80, minVotes: CREDIBLE_VOTES, maxVotes: 300, sort: 'top_rated' } },
+  { id: 'rpg', label: 'Deep RPGs', rotates: true, params: { genre: 'genre:12', minRating: 78, minVotes: CREDIBLE_VOTES, sort: 'top_rated' } },
+  { id: 'short', label: 'Short & sweet', rotates: true, params: { genre: 'genre:9', minRating: 75, minVotes: CREDIBLE_VOTES, sort: 'top_rated' } },
   { id: 'chaos', label: 'Pure chaos', params: { genre: 'genre:5', sort: 'popular' } },
   { id: 'couch', label: 'Grab a friend', params: { multiplayer: 'multiplayer', sort: 'popular' } },
-  { id: 'online', label: 'Online multiplayer', params: { multiplayer: 'multiplayer', sort: 'all_time' } },
-  { id: 'classics', label: 'Retro classics', params: { sort: 'all_time', dateTo: '2012-12-31' } },
+  { id: 'online', label: 'Online multiplayer', params: { multiplayer: 'multiplayer', sort: 'all_time', minVotes: CREDIBLE_VOTES } },
+  { id: 'classics', label: 'Retro classics', rotates: true, params: { sort: 'all_time', dateTo: '2012-12-31', minVotes: CREDIBLE_VOTES } },
   // No `params` — this one isn't a browseGames() filter at all, it's a
   // fixed curated list (see GOTY_WINNERS/resolveGotyWinners below).
   // feed-view.js's paintDiscovery special-cases id === 'goty' to use
@@ -1203,7 +1321,20 @@ async function gameIdsForCompany(companyId, role) {
 }
 
 // Filterable/sortable browse, backing the Discover screen.
-export async function browseGames({ genre, platform, dateFrom, dateTo, sort = 'popular', minRating, multiplayer, developer, publisher, page = 1 } = {}) {
+export async function browseGames({
+  genre, platform, dateFrom, dateTo, sort = 'popular', minRating, multiplayer,
+  developer, publisher, page = 1,
+  // How many people rated it, as a floor and a ceiling.
+  //
+  // The floor is what stops "top rated" meaning "one person gave this a
+  // 100": IGDB's total_rating has no vote threshold of its own, so
+  // sorting by it alone surfaces games with three ratings above games
+  // everyone agrees are great. The ceiling is the opposite end — it is
+  // how a "hidden gem" is expressible at all, since the thing that
+  // makes Red Dead 2 not a hidden gem is precisely that a hundred
+  // thousand people have already rated it.
+  minVotes, maxVotes,
+} = {}) {
   try {
     const limit = 20;
     const offset = (page - 1) * limit;
@@ -1230,6 +1361,8 @@ export async function browseGames({ genre, platform, dateFrom, dateTo, sort = 'p
     // sort keeps the strict floor (a rated-but-mediocre game shouldn't
     // sneak into "top rated"), but newest also allows the not-yet-rated.
     if (minRating) clauses.push(sort === 'newest' ? `(total_rating >= ${Number(minRating)} | total_rating = null)` : `total_rating >= ${Number(minRating)}`);
+    if (minVotes) clauses.push(`total_rating_count >= ${Number(minVotes)}`);
+    if (maxVotes) clauses.push(`total_rating_count <= ${Number(maxVotes)}`);
     if (multiplayer === 'singleplayer') clauses.push('game_modes = (1)');
     if (multiplayer === 'multiplayer') clauses.push('game_modes = (2)');
 
@@ -2131,21 +2264,70 @@ export async function recentGames(limit = 20) {
 // ------------------------------------------------------------
 // LOGS (diary entries / reviews)
 // ------------------------------------------------------------
+// One entry per game per person — except replays, which are the whole
+// reason the schema allows more than one.
+//
+// This used to be a bare insert, and that was the bug behind a game
+// showing up in two places at once: adding Alan Wake to the backlog and
+// later marking it played wrote a SECOND row, so the profile listed it
+// under Backlog and under Diary simultaneously, the game page's own
+// status bar picked whichever row it happened to read first, and
+// "currently playing" never cleared when you finally logged the thing.
+// Every screen was reporting honestly; there really were two rows.
+//
+// Fixed here rather than at each call site on purpose. There are five
+// places that create a log (the log sheet, the game page's status and
+// rating controls, the feed's double-tap-to-backlog, the profile's
+// "start playing"), and a rule enforced in five places is a rule that
+// holds in four of them a month from now.
+// Fired after anything that changes a diary entry. Two listeners, for
+// two different kinds of staleness: the view cache holds rendered
+// markup with a game's status baked into it, and profile-view keeps its
+// own bundle of fetched rows. An event rather than a direct call for
+// the second one — api.js importing a view would be a circular import,
+// since every view already imports api.js.
+function noteLogChanged() {
+  invalidateLogViews();
+  try { window.dispatchEvent(new CustomEvent('logs:changed')); } catch { /* not in a browser */ }
+}
+
 export async function createLog(log) {
+  // A replay is explicitly a new row: playing something a second time
+  // is a separate entry in the diary, which is what is_replay means.
+  if (!log.is_replay && log.user_id && log.game_id) {
+    const { data: existing } = await supabase
+      .from('logs')
+      .select('id')
+      .eq('user_id', log.user_id)
+      .eq('game_id', log.game_id)
+      // is_replay is nullable, and PostgREST's neq drops NULLs the way
+      // SQL does (NULL != true is NULL, not true) — which would miss
+      // exactly the older rows most likely to be duplicated.
+      .or('is_replay.is.null,is_replay.eq.false')
+      .order('created_at', { ascending: true })
+      .limit(1);
+    const prior = existing?.[0];
+    // Update the row that is already there, so the game MOVES between
+    // backlog / playing / played instead of accumulating.
+    if (prior) return updateLog(prior.id, log);
+  }
   const { data, error } = await supabase.from('logs').insert(log).select('*, games!logs_game_id_fkey(*), profiles!logs_user_id_fkey(*)').single();
   if (error) throw error;
+  noteLogChanged();
   return data;
 }
 
 export async function updateLog(logId, updates) {
   const { data, error } = await supabase.from('logs').update(updates).eq('id', logId).select('*, games!logs_game_id_fkey(*), profiles!logs_user_id_fkey(*)').single();
   if (error) throw error;
+  noteLogChanged();
   return data;
 }
 
 export async function deleteLog(logId) {
   const { error } = await supabase.from('logs').delete().eq('id', logId);
   if (error) throw error;
+  noteLogChanged();
 }
 
 export async function getLog(logId) {

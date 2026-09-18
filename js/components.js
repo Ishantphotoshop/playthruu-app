@@ -18,20 +18,27 @@ import { MESSENGER_ARCHIVED } from './config.js';
 export function posterFrame(coverUrl, title, extraClass = '', { tag = 'span', href = '', id = '', full = false } = {}) {
   const src = coverUrl || placeholderCover(title);
   const sharp = coverUrl ? igdbSized(coverUrl, full ? '1080p' : 'cover_big') : src;
-  const blur = coverUrl ? igdbSized(coverUrl, 'cover_small') : src;
   const fallback = placeholderCover(title);
   const attrs = tag === 'a' ? `href="${esc(href)}"` : '';
-  // The ring is WhatsApp's trick: a spinner over the tile while the
-  // artwork is still coming down, so a slow image reads as loading
-  // rather than as a broken or empty card. It fades in only after a
-  // beat (see .poster-frame__spin), so an image already in cache never
-  // flashes one. `onload` marks the frame done; `onerror` swaps in the
-  // placeholder AND marks it done, or a failed image would spin forever.
-  const done = "this.closest('.poster-frame')?.classList.add('is-loaded')";
+  // ONE image, and no spinner on top of it.
+  //
+  // This used to load a second, tiny copy underneath as a blurred
+  // backdrop, plus fade in a spinner ring over the tile. Both were for
+  // the moment before the artwork arrives — and both made that moment
+  // longer and uglier than it needed to be: every poster cost two
+  // network requests instead of one, and what you actually saw while
+  // scrolling was a blurry thumbnail with a spinner on top of it rather
+  // than the cover. The backdrop was never visible once loading
+  // finished either, since the real image is object-fit:cover and
+  // completely hides it. Halving the requests is the thing that
+  // actually makes a grid of these appear faster.
+  //
+  // The skeleton shimmer behind the image (.poster-frame::after) stays:
+  // it costs no request, sits BEHIND both layers, and is covered the
+  // instant the cover paints.
+  const fail = `this.onerror=null;this.src='${fallback}'`;
   return `<${tag} ${attrs} ${id ? `id="${esc(id)}"` : ''} class="poster-frame ${extraClass}">
-    <img class="poster-frame__blur" src="${esc(blur)}" alt="" aria-hidden="true" loading="lazy">
-    <img class="poster-frame__img" src="${esc(sharp)}" alt="${esc(title)} cover" loading="lazy" decoding="async" onload="${done}" onerror="this.src='${fallback}';this.previousElementSibling.src='${fallback}';${done};">
-    <span class="poster-frame__spin" aria-hidden="true"></span>
+    <img class="poster-frame__img" src="${esc(sharp)}" alt="${esc(title)} cover" loading="lazy" decoding="async" onerror="${fail}">
   </${tag}>`;
 }
 
@@ -74,7 +81,11 @@ export function navBar(activeBase = '/feed') {
   const items = [
     { route: '/feed', icon: iconHomeFilled(), label: 'Feed' },
     { route: '/search', icon: iconSearchFilled(), label: 'Search' },
-    { route: '/log', icon: iconBrandMark(), label: 'Log', primary: true },
+    // A plus, not the brand mark. The mark is the app's identity and
+    // reads as a logo sitting in the middle of the bar rather than as
+    // something to press; a plus says "add" the way it does in every
+    // other app, which is exactly what this button does.
+    { route: '/log', icon: iconPlus(), label: 'Log', primary: true },
     MESSENGER_ARCHIVED
       ? { route: '/notifications', icon: iconBell(), label: 'Notifications' }
       : { route: '/messages', icon: iconMessageFilled(), label: 'Messages' },
@@ -389,11 +400,12 @@ export function wireTrendingStrip(container, games, { onSelect }) {
 function cardWho(profile, rating, { playing = false, loved = false, hasReview = false } = {}) {
   const bits = [];
   if (playing) {
-    // The dot-and-ring on the TEXT didn't land — moved the signal onto
-    // the avatar instead, a static ring at rest (no pulse, no
-    // animation), the way a story ring reads. The word alone carries
-    // the rest.
-    bits.push(`<span class="card-who__playing">Playing</span>`);
+    // No "Playing" label on the card itself. Both places these appear
+    // (the feed strip and its see-more page) already sit under a
+    // "Currently playing" heading, so the word was the same fact
+    // printed twice on every tile — and it was the thing making that
+    // row taller and busier than the ones around it. The ring on the
+    // avatar still carries the signal on its own.
   } else {
     if (rating) bits.push(starRow(rating, { size: 12 }));
     if (loved) bits.push(`<span class="card-who__icon card-who__icon--loved">${iconHeartFilled()}</span>`);
@@ -778,6 +790,33 @@ const REPORT_REASONS = [
   'Wrong or misleading game info',
   'Something else',
 ];
+
+// An in-app confirmation sheet, styled like the rest of the app, in
+// place of the browser's native confirm() — which looks out of place
+// here and can be silently suppressed inside an installed PWA. Resolves
+// true (the main button, e.g. "Clear") or false (Cancel, or a tap
+// outside the sheet). Shared by every screen that needs a real "are you
+// sure" rather than a destructive action just firing immediately.
+export function confirmSheet({ title, message = '', confirmLabel = 'Confirm', danger = false }) {
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML = `
+      <div class="modal modal--sheet confirm-sheet">
+        <header class="msg-actions__grab"></header>
+        <h3 class="confirm-sheet__title">${esc(title)}</h3>
+        ${message ? `<p class="confirm-sheet__msg">${esc(message)}</p>` : ''}
+        <button type="button" class="confirm-sheet__btn ${danger ? 'confirm-sheet__btn--danger' : 'confirm-sheet__btn--go'}" data-yes>${esc(confirmLabel)}</button>
+        <button type="button" class="confirm-sheet__btn confirm-sheet__btn--cancel" data-no>Cancel</button>
+      </div>`;
+    document.body.appendChild(overlay);
+    const done = (val) => { overlay.remove(); resolve(val); };
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) done(false); });
+    qs('[data-yes]', overlay).addEventListener('click', () => done(true));
+    qs('[data-no]', overlay).addEventListener('click', () => done(false));
+    enableSwipeToDismiss(qs('.modal', overlay), () => done(false));
+  });
+}
 
 // `targetType` must be one of the values the reports table's CHECK
 // constraint allows: log | game | profile | list.

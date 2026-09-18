@@ -382,9 +382,16 @@ async function paintDiscovery(slot) {
       // here — one full page, then hasMore is simply false, no real
       // pagination needed.
       const isGoty = activeCollection().id === 'goty';
+      const collection = activeCollection();
+      // A rotating collection starts further into its own ranking
+      // depending on the fortnight (see rotationPage in api.js), so the
+      // row genuinely turns over instead of showing the same twelve
+      // games until the end of time. Scrolling for more still walks
+      // forward from wherever that landed.
+      const startPage = collection.rotates ? api.rotationPage() : 1;
       const res = isGoty
         ? { games: page === 1 ? await api.resolveGotyWinners() : [], hasMore: false }
-        : await api.browseGames({ ...activeCollection().params, page });
+        : await api.browseGames({ ...collection.params, page: page + startPage - 1 });
       const listEl = qs('#discovery-list', slot);
       const offset = games.length;
       // Only games WITH cover art — the grid is poster-only, so a
@@ -535,7 +542,7 @@ async function paintCurrentlyPlaying(slot) {
         <h2 class="section-heading">Currently playing</h2>
         ${isFallback
           ? emptyState('Nobody\'s currently playing anything yet. Be the first to log one.', { icon: iconStamp(), actionLabel: 'Log your first game', actionRoute: '/log' })
-          : emptyState('The people you follow aren\'t currently playing anything.', { icon: iconUser(), actionLabel: 'Find more people to follow', actionRoute: '/search' })}`;
+          : emptyState('The people you follow aren\'t currently playing anything.', { icon: iconUser(), actionLabel: 'Find people to follow', actionRoute: '/people' })}`;
       return;
     }
 
@@ -544,7 +551,7 @@ async function paintCurrentlyPlaying(slot) {
     // correctly whenever there's more than the 12 on display.
     slot.innerHTML = `
       ${feedSectionHead('Currently playing', { seeMoreHref: '/currently-playing', count: logs.length })}
-      ${isFallback ? `<div class="banner">You're not following anyone yet — here's what's happening across Playthruu. <a href="#/search">Find people to follow</a></div>` : ''}
+      ${isFallback ? `<div class="banner">You're not following anyone yet — here's what's happening across Playthruu. <a href="#/people">Find people to follow</a></div>` : ''}
       <div class="trending-strip">
         ${logs.slice(0, 12).map((l) => activityCard(l)).join('')}
       </div>`;

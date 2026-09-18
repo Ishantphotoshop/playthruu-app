@@ -1,6 +1,6 @@
 import * as api from '../api.js';
 import { state } from '../state.js';
-import { navBar, combinedGameResultsList, wireCombinedGameResults, profileRow, wireFollowButtons, spinner, skeletonList, emptyState, iconSearch, iconFilter, iconUser, posterFrame } from '../components.js';
+import { navBar, combinedGameResultsList, wireCombinedGameResults, profileRow, wireFollowButtons, spinner, skeletonList, emptyState, iconSearch, iconFilter, iconUser, posterFrame, confirmSheet } from '../components.js';
 import { qs, qsa, esc, toast, promptSignIn, getRecentlyViewed, recordRecentSearch, getRecentSearches, removeRecentSearch, clearRecentSearches } from '../utils.js';
 import { navigate } from '../router.js';
 import { getCached, setCached, CACHE_KEYS } from '../cache.js';
@@ -177,7 +177,15 @@ export function renderSearchView(root) {
     });
     qsa('.recent-search-row', results).forEach(wireSwipeToReveal);
     const clearBtn = qs('#clear-recent-searches', results);
-    if (clearBtn) clearBtn.addEventListener('click', () => { clearRecentSearches(); showPrompt(); });
+    if (clearBtn) clearBtn.addEventListener('click', async () => {
+      const ok = await confirmSheet({
+        title: 'Clear search history?',
+        message: 'This removes every recent search on this device. It can’t be undone.',
+        confirmLabel: 'Clear search history',
+        danger: true,
+      });
+      if (ok) { clearRecentSearches(); showPrompt(); }
+    });
   }
 
   // Left-swipe-to-delete, the same gesture a phone's call log uses: drag
@@ -345,11 +353,14 @@ export function renderSearchView(root) {
     }
   }
 
-  // Runs live as you type (debounced from the input handler below) as
-  // well as on Enter. It does NOT write to the recent-search history —
-  // if it did, every partial keystroke ("g", "go", "god"…) would pile up
-  // there. History is recorded only on a deliberate act: submitting, re-
-  // tapping a past search, or opening a result (see the handlers below).
+  // Runs live as you type (debounced 300ms from the input handler below,
+  // so this only ever fires once typing has genuinely paused — not on
+  // every keystroke) as well as on Enter. A query that comes back with
+  // real results is recorded into history right here, for both tabs
+  // equally — that used to only happen for games on submit/tap, which
+  // read as players just not saving at all most of the time. A query
+  // with no results doesn't get saved either way; there's nothing useful
+  // to revisit.
   async function doSearch() {
     const q = input.value.trim();
     if (!q) { showPrompt(); return; }
@@ -382,6 +393,7 @@ export function renderSearchView(root) {
         if (ticket !== searchTicket) return;
         searchPage = 1; searchHasMore = !!hasMore; searchLoading = false;
         paintGameResults(found);
+        if (found.length) recordRecentSearch(q, tab);
       } else {
         results.innerHTML = skeletonList(4);
         const people = await api.searchUsers(q);
@@ -389,6 +401,7 @@ export function renderSearchView(root) {
         if (!people.length) {
           results.innerHTML = emptyState(`No one found for "${q}".`, { icon: iconSearch() });
         } else {
+          recordRecentSearch(q, tab);
           const followingSet = await api.getFollowingIdSet(state.user?.id);
           results.innerHTML = `<div class="profile-list">${people.map(p =>
             profileRow(p, p.id === state.user?.id ? {} : { following: followingSet.has(p.id) })

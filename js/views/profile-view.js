@@ -32,6 +32,13 @@ export function invalidateProfileBundleCache(profileId) {
   }
 }
 
+// Saving, editing or deleting a diary entry changes the diary, the
+// backlog, the currently-playing row and every stat on this page at
+// once — so the whole bundle goes, whoever's profile it belongs to (a
+// like or a follow can change somebody else's too). api.js fires this
+// from createLog/updateLog/deleteLog; see noteLogChanged() there.
+window.addEventListener('logs:changed', () => { profileBundleCache = null; });
+
 function profileBundle(profile) {
   const fresh = profileBundleCache
     && profileBundleCache.id === profile.id
