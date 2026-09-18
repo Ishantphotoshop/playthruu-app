@@ -4146,3 +4146,272 @@ export async function sendVoiceNote(conversationId, senderId, url, durationMs, {
   if (error) throw error;
   return data;
 }
+
+// ============================================================
+// STORIES
+// ============================================================
+// Short-lived "what I'm playing right now" posts, built on the games
+// people are already logging rather than as a free-form photo feed —
+// this is a gaming diary, and "20 hours into Silent Hill f" is the thing
+// worth surfacing for a day.
+//
+// Expiry is a read filter rather than a scheduled delete: no cron job to
+// own, no window where a late job leaves stale stories visible, and the
+// row survives long enough for its author to see who watched after it
+// has stopped being public.
+
+const STORY_SELECT = `
+  id, user_id, game_id, log_id, caption, image_url, created_at, expires_at,
+  author:profiles!stories_user_id_fkey(id, username, display_name, avatar_url),
+  game:games!stories_game_id_fkey(id, title, cover_url, genre)
+`;
+
+export async function createStory(userId, { gameId = null, logId = null, caption = null, imageUrl = null } = {}) {
+  if (!gameId && !imageUrl) throw new Error('A story needs a game or a picture.');
+  const { data, error } = await supabase
+    .from('stories')
+    .insert({
+      user_id: userId,
+      game_id: gameId,
+      log_id: logId,
+      caption: caption?.trim()?.slice(0, 200) || null,
+      image_url: imageUrl,
+    })
+    .select(STORY_SELECT)
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteStory(storyId) {
+  const { error } = await supabase.from('stories').delete().eq('id', storyId);
+  if (error) throw error;
+}
+
+// The rail at the top of the feed: you first, then everyone you follow
+// who has something live, most recently posted first.
+//
+// Returns [{ author, stories, unseen }] — grouped, because a rail shows
+// one ring per PERSON and a person may have posted three times.
+export async function getStoryRail(userId) {
+  const followingIds = [...(await getFollowingIdSet(userId))];
+  const authorIds = [userId, ...followingIds];
+
+  const { data, error } = await supabase
+    .from('stories')
+    .select(STORY_SELECT)
+    .in('user_id', authorIds)
+    .gt('expires_at', new Date().toISOString())
+    .order('created_at', { ascending: true });
+  if (error) throw error;
+
+  let rows = data || [];
+  const blocked = await getBlockedIds().catch(() => new Set());
+  if (blocked.size) rows = rows.filter((s) => !blocked.has(s.user_id));
+  if (!rows.length) return [];
+
+  // Which of these you have already watched, so the ring can say whether
+  // there is anything new behind it.
+  let seen = new Set();
+  try {
+    const { data: views } = await supabase
+      .from('story_views')
+      .select('story_id')
+      .eq('viewer_id', userId)
+      .in('story_id', rows.map((s) => s.id));
+    seen = new Set((views || []).map((v) => v.story_id));
+  } catch {
+    // Everything reads as unseen, which is the harmless direction to be
+    // wrong in — it shows a ring rather than hiding one.
+  }
+
+  const byAuthor = new Map();
+  for (const s of rows) {
+    if (!byAuthor.has(s.user_id)) {
+      byAuthor.set(s.user_id, { author: s.author, stories: [], unseen: 0, latest: s.created_at });
+    }
+    const group = byAuthor.get(s.user_id);
+    group.stories.push({ ...s, seen: seen.has(s.id) });
+    if (!seen.has(s.id)) group.unseen += 1;
+    if (s.created_at > group.latest) group.latest = s.created_at;
+  }
+
+  // Your own ring is never "new": you wrote it. RLS refuses a self-view
+  // row on purpose, so without this your own story counts as unwatched
+  // forever and the rail keeps an accent ring lit for nothing.
+  const own = byAuthor.get(userId);
+  if (own) own.unseen = 0;
+
+  const groups = [...byAuthor.values()].filter((g) => g.author);
+  // You always sit first — your own story is the one you want to check
+  // the views on, and it is never "new" to you.
+  groups.sort((a, b) => {
+    if (a.author.id === userId) return -1;
+    if (b.author.id === userId) return 1;
+    // Then anyone with something unwatched, newest first within each half.
+    if ((a.unseen > 0) !== (b.unseen > 0)) return a.unseen > 0 ? -1 : 1;
+    return new Date(b.latest) - new Date(a.latest);
+  });
+  return groups;
+}
+
+export async function markStoryViewed(storyId, viewerId) {
+  // Ignore the conflict rather than checking first: re-watching is
+  // normal, and the first view's timestamp is the interesting one.
+  const { error } = await supabase
+    .from('story_views')
+    .upsert({ story_id: storyId, viewer_id: viewerId }, { onConflict: 'story_id,viewer_id', ignoreDuplicates: true });
+  // RLS refuses a view on your own story on purpose (see the migration),
+  // and that refusal is not something the viewer should ever be told.
+  if (error && error.code !== '42501') throw error;
+}
+
+export async function getStoryViewers(storyId) {
+  const { data, error } = await supabase
+    .from('story_views')
+    .select(`viewed_at, viewer:profiles!story_views_viewer_id_fkey(id, username, display_name, avatar_url)`)
+    .eq('story_id', storyId)
+    .order('viewed_at', { ascending: false });
+  if (error) throw error;
+  return (data || []).filter((v) => v.viewer);
+}
+
+// ============================================================
+// RECOMMENDATIONS
+// ============================================================
+// Personalised, and able to say WHY — a recommendation with no reason
+// attached is indistinguishable from a list of popular games, which is
+// what Discover already has plenty of.
+//
+// Two signals, in order of how much they are worth:
+//
+//   1. What the people you follow rated highly and you have not played.
+//      This is far and away the strongest one: it is a real person's
+//      opinion, from someone you chose to follow.
+//   2. More of what you already rate highly yourself, by genre, pulled
+//      from IGDB so the pool is not limited to games somebody here has
+//      already added.
+//
+// Anything already in your diary — played, playing, backlog or dropped —
+// is excluded from both. Recommending a game somebody has already
+// finished is the fastest way to look like you are not paying attention.
+
+function tasteProfile(myLogs) {
+  const genres = new Map();
+  for (const log of myLogs) {
+    const rating = Number(log.rating);
+    if (!rating || rating < 3.5) continue;
+    const raw = log.games?.genre;
+    if (!raw) continue;
+    // games.genre is a comma-separated label list from IGDB.
+    for (const g of String(raw).split(',').map((s) => s.trim()).filter(Boolean)) {
+      // A 5 counts for more than a 3.5, so a genre someone loves beats
+      // one they merely tolerate even if they have played fewer of them.
+      genres.set(g, (genres.get(g) || 0) + (rating - 3));
+    }
+  }
+  return [...genres.entries()].sort((a, b) => b[1] - a[1]).map(([label]) => label);
+}
+
+export async function getRecommendations(userId, { limit = 18 } = {}) {
+  const [{ data: myLogs }, followingSet] = await Promise.all([
+    supabase.from('logs').select('game_id, rating, status, games!logs_game_id_fkey(id, title, genre, igdb_id)').eq('user_id', userId),
+    getFollowingIdSet(userId),
+  ]);
+
+  const mine = myLogs || [];
+  const topGenres = tasteProfile(mine);
+  const out = [];
+  const taken = new Set();
+
+  // Two sets, because the two sources identify a game differently: a
+  // friend's log carries the LOCAL row (a uuid), while an IGDB browse
+  // result has only an igdb_id and no local row at all until somebody
+  // adds it. Checking just one of them would let a game already sitting
+  // in the diary come back as a recommendation through the other path.
+  const playedLocal = new Set(mine.map((l) => l.game_id).filter(Boolean));
+  const playedIgdb = new Set(mine.map((l) => l.games?.igdb_id).filter(Boolean));
+
+  const push = (game, reason) => {
+    if (!game) return;
+    const local = !!game.id;
+    if (local && (playedLocal.has(game.id) || taken.has(game.id))) return;
+    if (!local) {
+      if (!game.igdb_id) return;
+      const key = `igdb:${game.igdb_id}`;
+      if (playedIgdb.has(game.igdb_id) || taken.has(key)) return;
+      taken.add(key);
+    } else {
+      taken.add(game.id);
+    }
+    // `local` tells the caller whether tapping through can navigate
+    // straight to a game page or has to add the row first.
+    out.push({ game, reason, local });
+  };
+
+  // ---- 1. what your people rated highly ----
+  const followingIds = [...followingSet];
+  if (followingIds.length) {
+    try {
+      const { data: theirs } = await supabase
+        .from('logs')
+        .select(`game_id, rating, user_id,
+          games!logs_game_id_fkey(id, title, cover_url, genre, release_year),
+          profiles!logs_user_id_fkey(id, username, display_name)`)
+        .in('user_id', followingIds)
+        .gte('rating', 4)
+        .eq('is_public', true)
+        .order('rating', { ascending: false })
+        .limit(200);
+
+      // Several friends rating the same game is a much stronger signal
+      // than one, so they are grouped and the count goes in the reason.
+      const byGame = new Map();
+      for (const row of (theirs || [])) {
+        if (!row.games || playedLocal.has(row.game_id)) continue;
+        if (!byGame.has(row.game_id)) byGame.set(row.game_id, { game: row.games, fans: [], total: 0 });
+        const entry = byGame.get(row.game_id);
+        entry.fans.push(row.profiles?.display_name || row.profiles?.username || 'someone');
+        entry.total += Number(row.rating);
+      }
+      const ranked = [...byGame.values()].sort((a, b) => {
+        if (b.fans.length !== a.fans.length) return b.fans.length - a.fans.length;
+        return (b.total / b.fans.length) - (a.total / a.fans.length);
+      });
+      for (const entry of ranked) {
+        const avg = (entry.total / entry.fans.length).toFixed(1);
+        const reason = entry.fans.length === 1
+          ? `${entry.fans[0]} rated this ${avg}`
+          : `${entry.fans.length} people you follow rated this ${avg}`;
+        push(entry.game, reason);
+      }
+    } catch {
+      // Fall through to the genre pass rather than returning nothing.
+    }
+  }
+
+  // ---- 2. more of what you already like ----
+  for (const label of topGenres.slice(0, 3)) {
+    if (out.length >= limit) break;
+    const match = BROWSE_GENRES.find((g) => g.label.toLowerCase() === label.toLowerCase()
+      || label.toLowerCase().includes(g.label.toLowerCase()));
+    if (!match) continue;
+    try {
+      const { games } = await browseGames({ genre: match.value, sort: 'top_rated', minRating: '75' });
+      for (const g of games) {
+        if (out.length >= limit) break;
+        push(g, `Because you rate ${label} highly`);
+      }
+    } catch { /* one genre failing should not empty the list */ }
+  }
+
+  // ---- 3. nothing to go on yet ----
+  if (!out.length) {
+    try {
+      const { games } = await browseGames({ sort: 'top_rated', minRating: '85' });
+      for (const g of games.slice(0, limit)) push(g, 'Highly rated right now');
+    } catch { /* an empty list is handled by the caller */ }
+  }
+
+  return out.slice(0, limit);
+}

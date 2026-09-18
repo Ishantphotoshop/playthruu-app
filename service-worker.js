@@ -33,6 +33,7 @@ const PRECACHE = [
   './js/views/lists-view.js',
   './js/views/settings-view.js',
   './js/views/notifications-view.js',
+  './js/views/stories.js',
   './js/views/log-modal.js',
   './icons/icon-192.png',
   './icons/icon-512.png',

@@ -5557,3 +5557,180 @@ a.gd-credit__name { text-decoration: none; }
 .thread-composer__send[hidden],
 .thread-recording[hidden],
 .msg-typing[hidden] { display: none; }
+
+/* ==== stories =========================================================== */
+
+/* The rail scrolls sideways and bleeds to both edges, so a half-visible
+   ring is the affordance that says there is more. The negative margin
+   cancels .view-body's side padding for this one strip only. */
+.story-rail {
+  display: flex; gap: 14px; overflow-x: auto;
+  padding: 2px var(--space-4) var(--space-4);
+  margin: 0 calc(var(--space-4) * -1);
+  scrollbar-width: none; -ms-overflow-style: none;
+}
+.story-rail::-webkit-scrollbar { display: none; }
+
+.story-ring {
+  flex-shrink: 0; width: 68px;
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
+  background: none; border: none; padding: 0; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.story-ring:active { transform: scale(0.95); }
+/* The ring is a gradient drawn as a padded frame rather than an outline,
+   so the gap between ring and artwork stays even at any size. */
+.story-ring__frame {
+  position: relative; width: 66px; height: 66px; border-radius: 50%;
+  padding: 2.5px; background: var(--line-strong);
+  display: grid; place-items: center;
+}
+.story-ring--unseen .story-ring__frame {
+  background: linear-gradient(135deg, var(--accent-bright), var(--accent-deep));
+}
+.story-ring__inner {
+  width: 100%; height: 100%; border-radius: 50%; overflow: hidden;
+  background: var(--surface-raised); display: grid; place-items: center;
+  box-shadow: inset 0 0 0 2.5px var(--bg);
+}
+.story-ring__inner img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.story-ring__name {
+  max-width: 68px; font-size: 11px; color: var(--ink-dim);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.story-ring__plus {
+  position: absolute; right: -2px; bottom: -2px;
+  width: 22px; height: 22px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--accent-bright); color: var(--bg);
+  box-shadow: 0 0 0 2.5px var(--bg);
+}
+.story-ring__plus svg { width: 13px; height: 13px; }
+.story-ring--add .story-ring__frame { background: var(--line); }
+
+/* ---- the viewer ---- */
+.story-viewer {
+  position: fixed; inset: 0; z-index: 120;
+  background: #08080a; color: #fff;
+  display: flex; flex-direction: column;
+  padding: calc(var(--safe-top) + 10px) 14px calc(var(--safe-bottom) + 18px);
+}
+/* The cover, blown up and blurred, is the backdrop — it gives each story
+   the colour of the game it is about without needing separate artwork. */
+.story-viewer__bg { position: absolute; inset: 0; overflow: hidden; }
+.story-viewer__bg img {
+  width: 100%; height: 100%; object-fit: cover;
+  filter: blur(34px) saturate(1.25) brightness(0.45); transform: scale(1.25);
+}
+.story-viewer__bg::after {
+  content: "";
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(8,8,10,0.75), rgba(8,8,10,0.35) 40%, rgba(8,8,10,0.9));
+}
+
+.story-viewer__bars { position: relative; z-index: 2; display: flex; gap: 3px; }
+.story-viewer__bar { flex: 1; height: 2.5px; border-radius: 2px; background: rgba(255,255,255,0.28); overflow: hidden; }
+.story-viewer__fill { display: block; height: 100%; width: 0; background: #fff; }
+.story-viewer__fill--done { width: 100%; }
+.story-viewer__fill--live { animation: story-fill linear forwards; }
+@keyframes story-fill { from { width: 0; } to { width: 100%; } }
+@media (prefers-reduced-motion: reduce) {
+  .story-viewer__fill--live { animation: none; width: 100%; }
+}
+
+.story-viewer__head {
+  position: relative; z-index: 2;
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 12px 0 0;
+}
+.story-viewer__who { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.story-viewer__who img { border-radius: 50%; }
+.story-viewer__meta { display: flex; flex-direction: column; min-width: 0; }
+.story-viewer__meta b { font-size: 13.5px; font-weight: 700; }
+.story-viewer__meta > span { font-size: 11px; color: rgba(255,255,255,0.65); }
+.story-viewer__tools { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
+.story-viewer__icon {
+  width: 34px; height: 34px; border-radius: 50%;
+  display: grid; place-items: center; border: none; background: none; color: #fff;
+}
+.story-viewer__icon svg { width: 19px; height: 19px; }
+.story-viewer__icon:active { background: rgba(255,255,255,0.14); }
+
+/* The card sits centred rather than pinned to the bottom: a story is one
+   game, and centring it is what makes the screen read as being ABOUT
+   that game rather than as a caption over a background. */
+.story-viewer__card {
+  position: relative; z-index: 2; flex: 1;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 18px; text-align: center;
+}
+.story-viewer__game {
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  background: none; border: none; color: #fff; cursor: pointer; padding: 0;
+}
+.story-viewer__poster { width: 170px; max-width: 46vw; border-radius: 12px; overflow: hidden; box-shadow: 0 18px 44px rgba(0,0,0,0.55); }
+.story-viewer__poster img { width: 100%; display: block; }
+.story-viewer__game-meta { display: flex; flex-direction: column; gap: 3px; }
+.story-viewer__game-meta b { font-family: var(--font-brand); font-size: 17px; font-weight: 700; letter-spacing: -0.01em; }
+.story-viewer__game-meta > span { font-size: 12px; color: rgba(255,255,255,0.6); }
+.story-viewer__caption {
+  max-width: 30ch; font-size: 15px; line-height: 1.45; color: rgba(255,255,255,0.92);
+}
+
+/* Tap targets, under the chrome but over the backdrop. Invisible on
+   purpose — a visible half-screen button would dominate the design. */
+.story-viewer__half {
+  position: absolute; top: 0; bottom: 0; width: 34%;
+  z-index: 1; background: none; border: none; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.story-viewer__half--prev { left: 0; }
+.story-viewer__half--next { right: 0; width: 66%; }
+
+/* ---- the picker ---- */
+.story-pick { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.story-pick__item {
+  display: flex; flex-direction: column; gap: 6px; padding: 0;
+  background: none; border: none; color: var(--ink); cursor: pointer; text-align: left;
+}
+.story-pick__item img {
+  width: 100%; aspect-ratio: 3 / 4; object-fit: cover;
+  border-radius: 10px; border: 2px solid transparent; display: block;
+}
+.story-pick__item span {
+  font-size: 11.5px; line-height: 1.3; color: var(--ink-dim);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.story-pick__item--on img { border-color: var(--accent-bright); }
+.story-pick__item--on span { color: var(--ink); font-weight: 600; }
+
+/* ==== recommendations =================================================== */
+
+/* A horizontal strip rather than the poster grid the collections below
+   use: each card has to carry a line of reasoning, and a reason is
+   unreadable at four-across. */
+.foryou-strip {
+  display: flex; gap: 12px; overflow-x: auto;
+  padding: 0 var(--space-4) var(--space-2);
+  margin: 0 calc(var(--space-4) * -1);
+  scrollbar-width: none; -ms-overflow-style: none;
+}
+.foryou-strip::-webkit-scrollbar { display: none; }
+.foryou-card {
+  flex-shrink: 0; width: 124px;
+  display: flex; flex-direction: column; gap: 7px; padding: 0;
+  background: none; border: none; color: var(--ink); text-align: left; cursor: pointer;
+}
+.foryou-card:active { transform: scale(0.97); }
+.foryou-card__cover { width: 100%; border-radius: 10px; overflow: hidden; }
+.foryou-card__cover img { width: 100%; display: block; }
+.foryou-card__title {
+  font-size: 13px; font-weight: 600; line-height: 1.3;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+/* The reason is the whole point of the card, so it gets the accent
+   rather than being greyed out as secondary metadata. */
+.foryou-card__reason {
+  font-size: 11px; line-height: 1.35; color: var(--accent-bright);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}

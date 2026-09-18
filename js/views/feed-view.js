@@ -7,6 +7,7 @@ import {
 import { toast, qs, qsa, esc, timeAgo, enableSwipeToDismiss, promptSignIn, tapFeedback, pulseLogTab } from '../utils.js';
 import { openLogModal } from './log-modal.js';
 import { refreshCurrentView, navigate } from '../router.js';
+import { paintStoryRail } from './stories.js';
 import { getCached, setCached } from '../cache.js';
 
 const FEED_CACHE_KEY = 'feed';
@@ -64,12 +65,14 @@ async function paintFeedTab(body) {
   // else it's there to stand in for.
   body.innerHTML = `
     <div id="announce-slot"></div>
+    <div id="story-slot"></div>
     <div class="view-loading" id="feed-loading" hidden>${spinner()}</div>
     <div id="feed-sections" class="${cachedSections ? '' : 'feed-body--loading'}">
       ${cachedSections || `
         <div id="trending-section"></div>
         <div id="friends-section"></div>
         <div id="activity-section"><h2 class="section-heading">Currently playing</h2>${skeletonRow()}</div>
+        <div id="foryou-section"></div>
         <div id="discovery-section"></div>
       `}
     </div>
@@ -80,6 +83,10 @@ async function paintFeedTab(body) {
   // off would otherwise keep reappearing from that cache. This slot is
   // always painted from a live read instead.
   paintAnnouncement(qs('#announce-slot', body));
+  // Also outside #feed-sections, and for the same reason: stories expire
+  // after 24 hours, so a cached-and-replayed rail would show rings for
+  // things that are already gone.
+  paintStoryRail(qs('#story-slot', body));
 
   // The sections used to be painted independently and each one revealed
   // itself the moment its own request came back, so opening the feed
@@ -99,6 +106,7 @@ async function paintFeedTab(body) {
     paintTrending(qs('#trending-section', body)),
     paintFriendsPlaying(qs('#friends-section', body)),
     paintCurrentlyPlaying(qs('#activity-section', body)),
+    paintForYou(qs('#foryou-section', body)),
     paintDiscovery(qs('#discovery-section', body)),
   ]);
   if (showLoadingTimer) clearTimeout(showLoadingTimer);
@@ -184,6 +192,56 @@ const DISCOVERY_CACHE_KEY = 'discovery';
 // manual button as a fallback for browsers without IntersectionObserver.
 //
 // Unlike Trending/Friends/Currently-playing above, this section is
+// Recommendations that can say WHY. A suggestion with no reason attached
+// is indistinguishable from a list of popular games, which the
+// collections strip below already is — so the reason line is the whole
+// point of this section existing separately from it.
+//
+// Renders nothing at all when there is nothing personal to say, rather
+// than falling back to something generic under a "picked for you"
+// heading, which would be a lie about where it came from.
+async function paintForYou(slot) {
+  if (!slot || !state.user) return;
+  let picks = [];
+  try {
+    picks = await api.getRecommendations(state.user.id, { limit: 12 });
+  } catch {
+    slot.innerHTML = '';
+    return;
+  }
+  if (!picks.length) { slot.innerHTML = ''; return; }
+
+  slot.innerHTML = `
+    <h2 class="section-heading">Picked for you</h2>
+    <div class="foryou-strip" id="foryou-strip">
+      ${picks.map((p, i) => `
+        <button type="button" class="foryou-card" data-idx="${i}">
+          ${posterFrame(p.game.cover_url, p.game.title, 'foryou-card__cover')}
+          <span class="foryou-card__title">${esc(p.game.title)}</span>
+          <span class="foryou-card__reason">${esc(p.reason)}</span>
+        </button>`).join('')}
+    </div>`;
+
+  qsa('.foryou-card', slot).forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const pick = picks[Number(btn.dataset.idx)];
+      if (!pick) return;
+      // A friend's recommendation already points at a real row; an IGDB
+      // one has to be added before there is a page to open.
+      if (pick.local) { navigate(`/game/${pick.game.id}`); return; }
+      btn.disabled = true;
+      try {
+        const saved = await api.addGame(pick.game, state.user.id);
+        navigate(`/game/${saved.id}`);
+      } catch (err) {
+        toast(err.message || 'Could not open that game.', 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  });
+}
+
 // stateful (page, scroll position through a paginated list, which mood
 // is active) — the outer feed-level cache only ever snapshotted its
 // rendered HTML, so switching tabs and back always threw that state
