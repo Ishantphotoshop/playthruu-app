@@ -1807,53 +1807,25 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 .profile-header__actions { display: flex; flex-direction: column; gap: 6px; }
 .profile-header__bio { font-size: 14px; color: var(--ink-dim); line-height: 1.5; margin-bottom: 18px; }
 
-/* The profile header, compact.
-   It used to be a centered column with a 96px avatar stacked above the
-   name, bio, badges and buttons — well over 300px before the tabs, so
-   Journal / Want to Play / Lists all started below the fold and you had
-   to scroll past your own face every time to reach your own diary.
-   Now the avatar sits BESIDE the name instead of above it, which puts
-   the tabs near the top of the screen without dropping anything: every
-   element the column had is still here, in the same DOM order, just
-   arranged into a grid rather than a stack. */
+/* Letterboxd-style profile hero: everything centered in a single column,
+   large circular avatar on top, name + @handle, bio, then actions. */
 .profile-header--hero {
   position: relative;
-  display: grid;
-  grid-template-columns: auto 1fr;
-  grid-template-areas:
-    "avatar name"
-    "avatar handle"
-    "bio    bio"
-    "badges badges"
-    "actions actions";
-  align-items: center;
-  column-gap: 14px;
-  row-gap: 2px;
-  text-align: left;
-  padding: 4px 0 14px;
+  flex-direction: column;
+  text-align: center;
+  gap: 4px;
+  padding: 8px 0 22px;
 }
-.profile-header--hero .profile-header__avatar-btn { grid-area: avatar; }
-/* Size comes from avatarImg's inline style (see profile-view.js) — an
-   inline width beats a class rule, so only the ring is set here. */
-.profile-header--hero .avatar { margin-bottom: 0; box-shadow: 0 0 0 3px var(--surface); }
-.profile-header--hero h1 {
-  grid-area: name; align-self: end;
-  font-family: var(--font-display); font-weight: var(--weight-heading);
-  font-size: var(--text-title); letter-spacing: -0.02em;
-  /* The share/QR buttons sit absolutely in the top-right corner, so a
-     long name has to stop before it runs underneath them. */
-  padding-right: 84px;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.profile-header--hero .profile-header__username { grid-area: handle; align-self: start; margin-top: 0; }
+.profile-header--hero .avatar { width: 96px; height: 96px; margin-bottom: 10px; box-shadow: 0 0 0 3px var(--surface); }
+.profile-header--hero h1 { font-family: var(--font-display); font-weight: var(--weight-heading); font-size: var(--text-display); letter-spacing: -0.02em; }
+.profile-header--hero .profile-header__username { margin-top: 0; }
 .profile-header--hero .profile-header__bio {
-  grid-area: bio; max-width: none; margin: 8px 0 0; text-align: left;
+  max-width: 420px; margin: 10px auto 0; text-align: center;
 }
 /* Total hours + current streak — numbers that feel earned rather than
    administrative, so they get their own quiet badges instead of blending
    into the stat-link list below. */
 .profile-header__badges { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
-.profile-header--hero .profile-header__badges { grid-area: badges; justify-content: flex-start; margin-top: 10px; }
 .profile-header__hours, .profile-header__streak {
   display: inline-flex; align-items: center; gap: 5px;
   padding: 5px 14px; border-radius: var(--radius-pill);
@@ -1871,8 +1843,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 }
 .profile-header__streak svg { width: 13px; height: 13px; }
 .profile-header--hero .profile-header__actions {
-  grid-area: actions;
-  flex-direction: row; align-items: center; justify-content: flex-start; margin-top: 12px;
+  flex-direction: row; align-items: center; justify-content: center; margin-top: 14px;
 }
 .profile-header__avatar-btn { background: none; border: none; padding: 0; cursor: pointer; }
 .profile-header__share-row { display: flex; gap: 8px; justify-content: center; margin-top: 10px; }
@@ -5770,12 +5741,3 @@ a.gd-credit__name { text-decoration: none; }
 #feed-body .feed-section-head { margin-top: var(--space-5); }
 #feed-body #trending-section .feed-section-head { margin-top: 0; }
 #feed-body .trending-strip { padding-bottom: var(--space-3); }
-
-/* A four-item segmented control is tight on a phone, and "Want to Play"
-   was wrapping onto a second line — which made that one control taller
-   than every other segmented row in the app. Slightly smaller type and
-   no wrapping keeps all four on one line at 360px. */
-#profile-tabs .segmented__item {
-  font-size: 11.5px; white-space: nowrap;
-  padding-left: var(--space-1); padding-right: var(--space-1);
-}

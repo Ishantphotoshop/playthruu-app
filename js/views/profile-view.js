@@ -159,10 +159,7 @@ export async function renderProfileView(root, { username }) {
           <button class="icon-btn" id="show-qr" aria-label="Show QR code">${iconQr()}</button>
         </div>
         <button class="profile-header__avatar-btn" id="avatar-enlarge" aria-label="View profile photo">
-          ${/* 64, not 96: avatarImg writes an inline width/height, which
-               beats any stylesheet rule, so the compact header's size has
-               to be set here rather than in CSS. Tap it to see it large. */ ''}
-          ${avatarImg(profile, 64)}
+          ${avatarImg(profile, 96)}
         </button>
         <h1>${esc(profile.display_name || profile.username)}</h1>
         <p class="profile-header__username">@${esc(profile.username)}${pronounLabel ? ` · ${esc(pronounLabel)}` : ''}</p>
