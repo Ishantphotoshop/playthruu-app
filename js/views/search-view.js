@@ -1,6 +1,7 @@
 import * as api from '../api.js';
 import { state } from '../state.js';
-import { navBar, combinedGameResultsList, wireCombinedGameResults, profileRow, wireFollowButtons, spinner, skeletonList, emptyState, iconSearch, iconFilter, iconUser, posterFrame, confirmSheet } from '../components.js';
+import { navBar, combinedGameResultsList, wireCombinedGameResults, profileRow, wireFollowButtons, spinner, skeletonList, emptyState, iconSearch, iconFilter, iconUser, posterFrame, confirmSheet, gameHref,
+} from '../components.js';
 import { qs, qsa, esc, toast, promptSignIn, getRecentlyViewed, recordRecentSearch, getRecentSearches, removeRecentSearch, clearRecentSearches } from '../utils.js';
 import { navigate } from '../router.js';
 import { getCached, setCached, CACHE_KEYS } from '../cache.js';
@@ -98,7 +99,7 @@ export function renderSearchView(root, { initialTab = 'games' } = {}) {
         <p class="search-recent__heading">${esc(heading)}</p>
         <div class="discovery-grid">
           ${games.map((g) => `
-            <a href="#/game/${g.id}" class="discovery-tile" aria-label="${esc(g.title)}">
+            <a href="${gameHref(g)}" class="discovery-tile" aria-label="${esc(g.title)}">
               ${posterFrame(g.cover_url, g.title, 'discovery-tile__cover')}
             </a>`).join('')}
         </div>`

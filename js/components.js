@@ -15,6 +15,23 @@ import { MESSENGER_ARCHIVED } from './config.js';
 // The blur layer goes smaller still — it's rendered blurred, so detail in
 // it is thrown away by definition, and it would otherwise silently double
 // every poster's download.
+/**
+ * Where a game poster should link to.
+ *
+ * A game that is already in the catalogue has a local id. One that came
+ * straight out of an IGDB browse or trending call does NOT — it only
+ * has an igdb_id, and the app has a route for exactly that case, which
+ * adds it on arrival. Interpolating `game.id` blindly produced
+ * "#/game/undefined", which is what every trending poster on the Search
+ * screen was pointing at: a tap that navigated nowhere.
+ */
+export function gameHref(game) {
+  if (!game) return '';
+  if (game.id) return `#/game/${game.id}`;
+  if (game.igdb_id) return `#/game/igdb/${game.igdb_id}`;
+  return '';
+}
+
 export function posterFrame(coverUrl, title, extraClass = '', { tag = 'span', href = '', id = '', full = false } = {}) {
   const src = coverUrl || placeholderCover(title);
   const sharp = coverUrl ? igdbSized(coverUrl, full ? '1080p' : 'cover_big') : src;
