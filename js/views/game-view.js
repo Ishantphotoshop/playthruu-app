@@ -122,7 +122,23 @@ function gameTitleHtml(title) {
 // this game — that's the point of it. Signed out it's an invitation;
 // with a log it reports the log back, rating included, so the row is
 // worth reading rather than just worth pressing.
-function logRowLabel(ownLog) {
+// "twice", "three times" — written out at the low counts the way it is
+// said out loud, and switching to digits once that stops being natural.
+// Letterboxd stops at "three times" for the same reason: nobody says
+// "you've logged this film seven times" as a word.
+const TIMES_WORD = [null, null, 'twice', 'three times', 'four times', 'five times'];
+function timesPhrase(count) {
+  if (!count || count <= 1) return '';
+  return ` ${TIMES_WORD[count] || `${count} times`}`;
+}
+
+// What the slim bar says, modelled on Letterboxd's: one sentence
+// reporting exactly where you stand with this game, the rating inline
+// after it, and the count when you have been back more than once.
+//
+// `count` is how many entries you have for this game — one per play,
+// since a replay is its own row (see createLog in api.js).
+function logRowLabel(ownLog, count = 1) {
   if (!state.user) return 'Rate, log, review + more';
   if (!ownLog) return 'Rate, log, review + more';
   const stars = ownLog.rating ? ` ${starRow(ownLog.rating, { size: 13 })}` : '';
@@ -130,11 +146,15 @@ function logRowLabel(ownLog) {
   // the tense matches what actually happened: finishing it is a thing
   // you HAVE done (present perfect), playing it is a thing you ARE
   // doing, and the backlog is a state rather than an action.
+  //
+  // The backlog line carries no stars on purpose: a game you have not
+  // played yet cannot have your rating on it, and Letterboxd's
+  // watchlist row is bare for the same reason.
   if (ownLog.status === 'backlog') return `This game is in your backlog`;
-  if (ownLog.status === 'playing') return `You're playing this game`;
-  if (ownLog.status === 'played') return `You've played this game${stars}`;
-  if (ownLog.status === 'dropped') return `You dropped this game${stars}`;
-  return `You've logged this game${stars}`;
+  if (ownLog.status === 'playing') return `You're playing this game${stars}`;
+  if (ownLog.status === 'dropped') return `You dropped this game${timesPhrase(count)}${stars}`;
+  if (ownLog.status === 'played') return `You've played this game${timesPhrase(count)}${stars}`;
+  return `You've logged this game${timesPhrase(count)}${stars}`;
 }
 
 function crowdSectionHtml(label, entries) {
@@ -626,7 +646,7 @@ export async function renderGameView(root, { id, igdbId }) {
                where the actual choices live. -->
           <button type="button" class="gd-log" id="open-log-sheet">
             <span class="gd-log__mark">${state.profile ? avatarImg(state.profile, 30) : iconUser()}</span>
-            <span class="gd-log__text">${logRowLabel(ownLog)}</span>
+            <span class="gd-log__text">${logRowLabel(ownLog, ownLogs.length)}</span>
             <span class="gd-log__more" aria-hidden="true">${iconDots()}</span>
           </button>
 
@@ -1145,7 +1165,9 @@ function openLogSheet({ game, ownLog, replayCount, ensureSavedGame, onChanged, o
     // the sheet never shows a stale sentence for the moment it takes
     // the reconcile to land.
     const rowText = document.querySelector('#open-log-sheet .gd-log__text');
-    if (rowText) rowText.innerHTML = logRowLabel(log);
+    // One entry plus however many replays sit behind it — the same
+    // total the initial render counts from ownLogs.
+    if (rowText) rowText.innerHTML = logRowLabel(log, log ? replayCount + 1 : 0);
   }
 
   render();

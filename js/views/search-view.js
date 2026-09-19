@@ -26,8 +26,8 @@ async function importAndOpen(g) {
   }
 }
 
-export function renderSearchView(root) {
-  let tab = 'games';
+export function renderSearchView(root, { initialTab = 'games' } = {}) {
+  let tab = initialTab === 'people' ? 'people' : 'games';
   // Bumped by every state change (idle browse / search history / a real
   // search). renderIdleBrowse's trending fetch is the one async render in
   // this file that can resolve AFTER the user has already moved on (tapped
@@ -41,11 +41,11 @@ export function renderSearchView(root) {
         <h1 class="msg-inbox-title">Search</h1>
       </div>
       <div class="segmented segmented--wide" id="search-tabs">
-        <button class="segmented__item segmented__item--active" data-tab="games">Games</button>
-        <button class="segmented__item" data-tab="people">Players</button>
+        <button class="segmented__item${tab === 'games' ? ' segmented__item--active' : ''}" data-tab="games">Games</button>
+        <button class="segmented__item${tab === 'people' ? ' segmented__item--active' : ''}" data-tab="people">Players</button>
       </div>
       <form class="search-bar-row" id="search-form">
-        <input type="search" id="search-input" class="search-input" placeholder="Search games…" autocomplete="off" enterkeyhint="search">
+        <input type="search" id="search-input" class="search-input" placeholder="${tab === 'people' ? 'Search players…' : 'Search games…'}" autocomplete="off" enterkeyhint="search">
         <a href="#/discover" class="filter-btn" id="filter-btn" aria-label="Browse and filter all games">${iconFilter()}</a>
       </form>
       <div id="search-results" class="search-results"></div>
@@ -105,11 +105,59 @@ export function renderSearchView(root) {
       : emptyState('Search for a game to log, rate, or review.', { icon: iconSearch() });
   }
 
+  // Suggestions, cached for the life of this view so flipping between
+  // the two tabs does not refetch (and reshuffle) them every time.
+  let suggestedCache = null;
+
+  /**
+   * The Players tab with an empty box: who to follow, not a prompt to
+   * go and think of a name.
+   *
+   * "Find people to follow" used to open a page of its own, which is a
+   * strange place to land — what you want there is the list the Players
+   * tab is already for. Putting it here makes the tab useful the moment
+   * it opens, and means one screen owns finding people instead of two.
+   */
+  const paintSuggestedPeople = async (ticket) => {
+    if (!state.user) {
+      results.innerHTML = emptyState('Sign in to find players to follow.', { icon: iconUser() });
+      return;
+    }
+    if (!suggestedCache) results.innerHTML = skeletonList(4);
+    let people = suggestedCache;
+    if (!people) {
+      try { people = await api.getSuggestedPeople(state.user.id, 20); }
+      catch { people = []; }
+      suggestedCache = people;
+    }
+    if (ticket !== promptTicket) return;
+    if (!people.length) {
+      results.innerHTML = emptyState('No one to suggest yet — search for a player by name.', { icon: iconSearch() });
+      return;
+    }
+    const followingSet = await api.getFollowingIdSet(state.user.id);
+    if (ticket !== promptTicket) return;
+    results.innerHTML = `
+      <p class="search-recent__heading">Popular on Playthruu</p>
+      <div class="profile-list">${people.map((pr) => profileRow(pr, { following: followingSet.has(pr.id) })).join('')}</div>`;
+    wireFollowButtons(results, {
+      onToggle: async (userId, wasFollowing) => {
+        if (!state.user) { promptSignIn('Sign in to follow players.'); throw new Error('not signed in'); }
+        try {
+          if (wasFollowing) await api.unfollow(state.user.id, userId);
+          else await api.follow(state.user.id, userId);
+        } catch (err) {
+          toast(err.message || 'Could not update follow status.', 'error');
+          throw err;
+        }
+      },
+    });
+  };
   const renderIdleBrowse = async (ticket) => {
     filterBtn.style.display = tab === 'games' ? '' : 'none';
     if (tab === 'people') {
       if (ticket !== promptTicket) return;
-      results.innerHTML = emptyState('Search for players to follow and see what they\'re playing.', { icon: iconSearch() });
+      await paintSuggestedPeople(ticket);
       return;
     }
     const viewed = getRecentlyViewed();
@@ -145,8 +193,14 @@ export function renderSearchView(root) {
   const renderSearchHistory = () => {
     filterBtn.style.display = tab === 'games' ? '' : 'none';
     const recentSearches = recentSearchesBlock();
+    if (!recentSearches && tab === 'people') {
+      // Nothing searched yet, and the Players tab has something far
+      // better than an instruction to offer here.
+      paintSuggestedPeople(promptTicket);
+      return;
+    }
     results.innerHTML = recentSearches
-      || emptyState(tab === 'people' ? 'Search for players to follow and see what they\'re playing.' : 'Search for a game to log, rate, or review.', { icon: iconSearch() });
+      || emptyState('Search for a game to log, rate, or review.', { icon: iconSearch() });
     wireRecentSearches();
   };
 
@@ -154,6 +208,12 @@ export function renderSearchView(root) {
   // used by delete/clear so they re-render the same view they're acting
   // on rather than always assuming the history one.
   let showingHistory = false;
+  // Set while a sheet of our own is covering the screen. Opening one
+  // blurs the search box, and the blur handler below reverts the history
+  // list back to the idle poster grid — so without this, tapping "Clear"
+  // visibly reset the whole screen behind the confirmation, as if the
+  // Search tab had just been opened fresh.
+  let overlayOpen = false;
   const showPrompt = () => { showingHistory = true; promptTicket++; renderSearchHistory(); };
   const showIdle = () => { showingHistory = false; renderIdleBrowse(++promptTicket); };
 
@@ -178,13 +238,17 @@ export function renderSearchView(root) {
     qsa('.recent-search-row', results).forEach(wireSwipeToReveal);
     const clearBtn = qs('#clear-recent-searches', results);
     if (clearBtn) clearBtn.addEventListener('click', async () => {
-      const ok = await confirmSheet({
-        title: 'Clear search history?',
-        message: 'This removes every recent search on this device. It can’t be undone.',
-        confirmLabel: 'Clear search history',
-        danger: true,
-      });
-      if (ok) { clearRecentSearches(); showPrompt(); }
+      // Title and two buttons, nothing else — this is a one-second
+      // decision about a list of search terms, and a paragraph of
+      // consequences made it read like something serious was at stake.
+      overlayOpen = true;
+      const ok = await confirmSheet({ title: 'Clear search history?', confirmLabel: 'Clear', danger: true });
+      overlayOpen = false;
+      // Either way we stay on the history view rather than falling back
+      // to the idle grid: cleared, it becomes the empty state, which is
+      // the honest picture of what just happened.
+      if (ok) clearRecentSearches();
+      showPrompt();
     });
   }
 
@@ -252,6 +316,7 @@ export function renderSearchView(root) {
   // poster navigated away entirely, so the revert becomes a no-op.
   input.addEventListener('blur', () => {
     setTimeout(() => {
+      if (overlayOpen) return; // a sheet of ours took focus; leave the screen alone
       if (!input.value.trim() && showingHistory) showIdle();
     }, 200);
   });

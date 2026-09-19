@@ -9,7 +9,6 @@ import { renderSearchView } from './views/search-view.js';
 import { renderDiscoverView, warmDiscover } from './views/discover-view.js';
 import { renderListDetailView } from './views/lists-view.js';
 import { renderMessagesView } from './views/messages-view.js';
-import { renderPeopleView } from './views/people-view.js';
 import { MESSENGER_ARCHIVED } from './config.js';
 import { renderMessageThreadView } from './views/message-thread-view.js';
 import { renderProfileView, warmOwnProfile } from './views/profile-view.js';
@@ -232,7 +231,10 @@ function registerRoutes() {
   route('/studio/:companyId', (p) => renderStudioView(appEl, p));
   route('/settings', () => renderSettingsView(appEl));
   route('/notifications', () => renderNotificationsView(appEl));
-  route('/people', () => renderPeopleView(appEl));
+  // Finding people to follow is the Players tab's job, not a page of its
+  // own — this just opens Search already on that tab (see
+  // paintSuggestedPeople in search-view.js).
+  route('/people', () => renderSearchView(appEl, { initialTab: 'people' }));
   route('/log', () => {
     history.replaceState(null, '', '#/feed');
     renderFeedView(appEl).then(() => openLogModal({ onSaved: refreshCurrentView }));

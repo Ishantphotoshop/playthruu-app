@@ -5727,12 +5727,6 @@ a.gd-credit__name { text-decoration: none; }
    the creator's own row read as one run-on word, "you admin". */
 .group-info__dot { color: var(--ink-faint); font-weight: 400; margin: 0 3px; }
 
-/* ---- people to follow ---- */
-.people-intro {
-  color: var(--ink-dim); font-size: 13.5px; line-height: 1.5;
-  padding: 0 2px var(--space-3);
-}
-
 /* The home feed's sections were crowding each other — each strip sat
    almost against the next heading, so the whole screen read as one
    dense block rather than as separate rows. A little more air above
