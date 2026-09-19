@@ -4,7 +4,7 @@ import {
   iconTag, iconGamepad, iconFlame, iconStar, iconCalendar, iconTrophy, iconSparkle,
   iconInfo, iconDiary, iconUserPlus, iconBookmark,
 } from '../components.js';
-import { heroFanArt, tourSceneArt, emberFieldHtml } from './landing-art.js';
+import { heroFanHtml, heroReviewHtml, tourSceneHtml, resolveShowcase } from './landing-art.js';
 import { esc, starRow, qs, qsa, toast } from '../utils.js';
 import { renderAuthView } from './auth-view.js';
 import { navigate } from '../router.js';
@@ -228,33 +228,53 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
   // Two real buttons rather than a button and a text link: signing in
   // is not a footnote. It is what every returning person on a new
   // device needs, and it was previously the smallest thing on screen.
+  // The covers behind both the entry screen and the tour. Held at this
+  // level, not inside either screen, so switching between them (or
+  // coming back from Browse) does not re-resolve or re-request anything.
+  let showcase = null;
+  let showcaseWanted = false;
+
+  // Kicked off the first time a screen needs covers. The screen paints
+  // immediately with the app's own titled placeholder frames and swaps
+  // in real art when IGDB answers — the entry screen must never sit
+  // blank waiting on a third-party search.
+  function loadShowcase() {
+    if (showcase || showcaseWanted) return;
+    showcaseWanted = true;
+    resolveShowcase().then((games) => {
+      showcase = games;
+      if (screen === 'entry') {
+        const slot = qs('#lp-art', root);
+        if (slot) slot.innerHTML = heroFanHtml(showcase);
+        const proof = qs('#lp-proof', root);
+        if (proof) proof.innerHTML = heroReviewHtml(showcase);
+      } else if (screen === 'tour') {
+        const slot = qs('#tour-art', root);
+        if (slot) slot.innerHTML = tourSceneHtml(TOUR_SLIDES[tourIndex].scene, showcase);
+      }
+    }).catch(() => { /* placeholders stay; nothing to recover from */ });
+  }
+
   function entryHtml() {
     return `
       <div class="lp">
-        <div class="lp__floor" aria-hidden="true"></div>
-        ${emberFieldHtml()}
         <header class="lp__head">
           <p class="lp__eyebrow">Every game you play</p>
-          <div class="lp__brand">
-            <img src="icons/mark-blue.svg" alt="" class="lp__mark">
-            <h1 class="lp__word">PlayThruu</h1>
-          </div>
+          <h1 class="lp__word">PlayThruu</h1>
         </header>
-        <div class="lp__art">${heroFanArt()}</div>
-        <div class="lp__scrim" aria-hidden="true"></div>
-        <div class="lp__grain" aria-hidden="true"></div>
-        <div class="lp__scan" aria-hidden="true"></div>
+        <div class="lp__art" id="lp-art">${heroFanHtml(showcase)}</div>
+        <div class="lp__proof" id="lp-proof">${heroReviewHtml(showcase)}</div>
         <div class="lp__content">
           <p class="lp__tagline">Log what you play, rate it out of five, and keep every playthrough in one place.</p>
           <div class="lp__actions">
             <button type="button" class="lp__cta" id="entry-tour">Get started</button>
             <button type="button" class="lp__ghost" id="entry-signin">I already have an account</button>
           </div>
-          <p class="lp__facts"><span>Free</span><span>No ads</span><span>Your library stays yours</span></p>
         </div>
       </div>`;
   }
   function wireEntry(stage) {
+    loadShowcase();
     qs('#entry-signin', stage).addEventListener('click', () => goToAuth('signin'));
     qs('#entry-tour', stage).addEventListener('click', () => { screen = 'tour'; tourIndex = 0; paint(); });
   }
@@ -507,8 +527,6 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
     tourDirection = null;
     return `
       <div class="tour">
-        <div class="lp__floor" aria-hidden="true"></div>
-        <div class="lp__grain" aria-hidden="true"></div>
         <div class="tour__progress">
           ${TOUR_SLIDES.map((_, i) => `<span class="tour__seg${i < tourIndex ? ' tour__seg--done' : ''}${i === tourIndex ? ' tour__seg--active' : ''}"></span>`).join('')}
         </div>
@@ -517,7 +535,7 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
         </div>
         <div class="tour__stage">
           <div class="tour__content${enterClass}" id="tour-slide">
-            <div class="tour__art">${tourSceneArt(slide.scene)}</div>
+            <div class="tour__art" id="tour-art">${tourSceneHtml(slide.scene, showcase)}</div>
             <h2 class="tour__title">${esc(slide.title)}</h2>
             <p class="tour__body">${esc(slide.body)}</p>
           </div>
@@ -535,6 +553,7 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
     paintScreen();
   }
   function wireTour(stage) {
+    loadShowcase();
     qs('#tour-skip', stage).addEventListener('click', () => goToAuth('signup'));
     qs('#tour-next', stage).addEventListener('click', advanceTour);
     wireTourSwipe(stage);

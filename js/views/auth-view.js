@@ -311,8 +311,6 @@ export function renderAuthView(root, { startMode = 'signin' } = {}) {
           <div class="auth-screen__art auth-screen__art--a is-active"></div>
           <div class="auth-screen__art auth-screen__art--b"></div>
         </div>
-        <div class="lp__floor" aria-hidden="true"></div>
-        <div class="lp__grain" aria-hidden="true"></div>
 
         <button type="button" class="auth-screen__back" id="auth-back-to-landing" aria-label="Back">${iconBack()}</button>
         <button type="button" class="auth-screen__credit" id="auth-credit" hidden>Art from <span id="auth-credit-game"></span></button>
@@ -323,7 +321,7 @@ export function renderAuthView(root, { startMode = 'signin' } = {}) {
             <img src="icons/mark-blue.svg" alt="" class="auth-screen__mark">
             <h1>PlayThruu</h1>
           </div>
-          <p>Log it &middot; Rate it &middot; Review it</p>
+          <p>LOG it. Rate it. Review it. Remember it</p>
         </div>
 
         ${!configured ? `
