@@ -4,6 +4,7 @@ import {
   iconTag, iconGamepad, iconFlame, iconStar, iconCalendar, iconTrophy, iconSparkle,
   iconInfo, iconDiary, iconUserPlus, iconBookmark,
 } from '../components.js';
+import { heroFanArt, tourSceneArt, emberFieldHtml } from './landing-art.js';
 import { esc, starRow, qs, qsa, toast } from '../utils.js';
 import { renderAuthView } from './auth-view.js';
 import { navigate } from '../router.js';
@@ -30,11 +31,11 @@ import { state } from '../state.js';
 // (see the routing changes above) — it didn't fit a carousel whose whole
 // point is "here's what having an account actually gets you."
 const TOUR_SLIDES = [
-  { icon: 'gamepad', title: 'Log everything you play', body: 'Every game, the moment you finish it — or the moment you start.' },
-  { icon: 'star', title: 'Rate it, half-stars and all', body: 'From a rough 2½ to a perfect 5 — say exactly what you thought.' },
-  { icon: 'review', title: 'Write reviews, read theirs', body: 'Short thoughts or a full write-up — whatever the game deserves.' },
-  { icon: 'people', title: "Follow friends, see what they're playing", body: 'Your feed, built from the people you actually care about.' },
-  { icon: 'list', title: 'Build lists & a want-to-play queue', body: 'Rank your favourites, queue up what\'s next.' },
+  { scene: 'log', title: 'Log everything you play', body: 'Every game, the moment you finish it — or the moment you start.' },
+  { scene: 'rate', title: 'Rate it, half-stars and all', body: 'From a rough 2½ to a perfect 5 — say exactly what you thought.' },
+  { scene: 'review', title: 'Write reviews, read theirs', body: 'Short thoughts or a full write-up — whatever the game deserves.' },
+  { scene: 'people', title: "Follow friends, see what they're playing", body: 'Your feed, built from the people you actually care about.' },
+  { scene: 'list', title: 'Build lists & a want-to-play queue', body: "Rank your favourites, queue up what's next." },
 ];
 
 // Curated titles mixed into the front of the Games tab's newest-first
@@ -216,69 +217,44 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
     else { stage.innerHTML = browseHtml(); wireBrowse(stage); }
   }
 
-  // ---- entry: brand + one clear action (Get Started, into the tour),
-  // with sign-in and anonymous browsing as small secondary links rather
-  // than competing top-level buttons. No cover-art backdrop (an earlier
-  // version scrolled a live wall of real game covers behind this) — the
-  // brief is still to lean on the brand itself rather than borrowed game
-  // art, so the "live wallpaper" here is a flat field in the app's own
-  // --bg (see .landing-entry__wallpaper in styles.css) plus a star field
-  // scattered across the ENTIRE screen, always twinkling on its own
-  // clock regardless of the cursor. An earlier version replaced the flat
-  // field with drifting colour orbs (plus a mouse-parallax layer on top
-  // of those) — pulled after actually seeing it next to the stars, which
-  // read as the "space wallpaper" this was going for on their own; the
-  // coloured glow just competed with them. Behind a grain layer and a
-  // vignette that keeps the centre readable. Purely decorative
-  // (aria-hidden) — the mark, wordmark and tagline are still the only
-  // actual content. ----
-  const STAR_COUNT = 70;
-  // Generated once per module load, not per paint() — landing-entry
-  // remounts every time Account/Browse nav back to it (see the comment
-  // on gamesCache above), and re-randomising the whole sky on every one
-  // of those would make already-mid-twinkle stars visibly jump instead
-  // of continuing their cycle.
-  const STARS = Array.from({ length: STAR_COUNT }, () => ({
-    x: (Math.random() * 100).toFixed(1),
-    y: (Math.random() * 100).toFixed(1),
-    size: (Math.random() * 1.6 + 0.8).toFixed(1),
-    peak: (Math.random() * 0.5 + 0.45).toFixed(2),
-    dur: (Math.random() * 3 + 2).toFixed(1),
-    delay: (Math.random() * 5).toFixed(1),
-  }));
-  function starfieldHtml() {
-    return `
-      <div class="landing-entry__stars" aria-hidden="true">
-        ${STARS.map((s) => `<span class="landing-entry__star" style="--x:${s.x}%;--y:${s.y}%;--size:${s.size}px;--peak:${s.peak};--dur:${s.dur}s;--delay:${s.delay}s;"></span>`).join('')}
-      </div>`;
-  }
+  // ---- entry: the front door ---------------------------------------
+  // Full-bleed and bottom-anchored over its own lit world (see the
+  // "ember arcade" block in styles.css and the SVG kit in
+  // landing-art.js). The previous version centred a wordmark and one
+  // button in an empty black screen; everything here is arranged so the
+  // illustration, the light and the words read as one composition with
+  // no leftover space at either end.
+  //
+  // Two real buttons rather than a button and a text link: signing in
+  // is not a footnote. It is what every returning person on a new
+  // device needs, and it was previously the smallest thing on screen.
   function entryHtml() {
     return `
-      <div class="landing-entry">
-        <div class="landing-entry__wallpaper" aria-hidden="true"></div>
-        ${starfieldHtml()}
-        <div class="landing-entry__content">
-          <div class="landing-entry__brand">
-            <img src="icons/mark-blue.svg" alt="" class="landing-entry__mark">
-            <span class="landing-entry__word">PlayThruu</span>
+      <div class="lp">
+        <div class="lp__floor" aria-hidden="true"></div>
+        ${emberFieldHtml()}
+        <header class="lp__head">
+          <p class="lp__eyebrow">Every game you play</p>
+          <div class="lp__brand">
+            <img src="icons/mark-blue.svg" alt="" class="lp__mark">
+            <h1 class="lp__word">PlayThruu</h1>
           </div>
-          <p class="landing-entry__tagline">The diary for everything you play.</p>
-          <button type="button" class="landing-entry__row" id="entry-tour">Get Started</button>
-          <div class="landing-entry__links">
-            <p class="landing-entry__link landing-entry__link--strong">Already have an account? <button type="button" class="landing-entry__link-inline" id="entry-signin">Log in</button></p>
+        </header>
+        <div class="lp__art">${heroFanArt()}</div>
+        <div class="lp__scrim" aria-hidden="true"></div>
+        <div class="lp__grain" aria-hidden="true"></div>
+        <div class="lp__scan" aria-hidden="true"></div>
+        <div class="lp__content">
+          <p class="lp__tagline">Log what you play, rate it out of five, and keep every playthrough in one place.</p>
+          <div class="lp__actions">
+            <button type="button" class="lp__cta" id="entry-tour">Get started</button>
+            <button type="button" class="lp__ghost" id="entry-signin">I already have an account</button>
           </div>
+          <p class="lp__facts"><span>Free</span><span>No ads</span><span>Your library stays yours</span></p>
         </div>
       </div>`;
   }
   function wireEntry(stage) {
-    // "Take a look around" as its own line is gone — the bottom nav's
-    // own grid/browse icon already goes to the exact same screen, so it
-    // was a second path to a place one tap away either way. Standalone
-    // "Sign Up" is gone too, for the same reason: Get Started already
-    // leads into the tour, which ends at (or can be skipped straight
-    // to) the exact same sign-up screen — a second button for the same
-    // destination sitting right underneath the first was the redundancy
-    // that made this stack feel cluttered.
     qs('#entry-signin', stage).addEventListener('click', () => goToAuth('signin'));
     qs('#entry-tour', stage).addEventListener('click', () => { screen = 'tour'; tourIndex = 0; paint(); });
   }
@@ -512,35 +488,55 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
     qsa('.landing-browseby__row[data-feature]', stage).forEach((el) => el.addEventListener('click', () => goToAuth('signup')));
   }
 
-  // ---- tour: a short feature carousel, ending on sign-up --------------
+  // ---- tour: illustrated feature slides, ending on sign-up ----------
+  // Progress is a segmented bar rather than dots, and there is a real
+  // Continue button again. The carousel was swipe-only, which is a fine
+  // gesture on a phone and a dead end everywhere else: this app gets
+  // driven with a mouse as often as a thumb, and a screen whose only
+  // way forward is an undiscoverable drag strands those people on slide
+  // one. Swipe still works exactly as it did (see wireTourSwipe).
   function tourHtml() {
     const slide = TOUR_SLIDES[tourIndex];
+    const last = tourIndex === TOUR_SLIDES.length - 1;
     // Glides the new slide in from the direction it was swiped from
-    // (see wireTourSwipe below) instead of just cutting straight to it
-    // — that entrance is what actually reads as "sliding," since the
-    // drag-follow during the gesture itself gets wiped the instant this
-    // re-renders. Consumed once so a later plain re-paint (e.g. a theme
-    // toggle refresh) doesn't replay it.
+    // instead of cutting to it — the drag-follow during the gesture is
+    // wiped the instant this re-renders, so this entrance is what
+    // actually reads as sliding. Consumed once, so a later plain
+    // re-paint does not replay it.
     const enterClass = tourDirection ? ` tour__content--enter-${tourDirection}` : '';
     tourDirection = null;
     return `
       <div class="tour">
-        <button type="button" class="tour__skip" id="tour-skip">Skip</button>
-        <div class="tour__content${enterClass}" id="tour-slide">
-          <div class="tour__art">${tourMockupHtml(slide.icon)}</div>
-          <h2 class="tour__title">${esc(slide.title)}</h2>
-          <p class="tour__body">${esc(slide.body)}</p>
+        <div class="lp__floor" aria-hidden="true"></div>
+        <div class="lp__grain" aria-hidden="true"></div>
+        <div class="tour__progress">
+          ${TOUR_SLIDES.map((_, i) => `<span class="tour__seg${i < tourIndex ? ' tour__seg--done' : ''}${i === tourIndex ? ' tour__seg--active' : ''}"></span>`).join('')}
         </div>
-        <div class="tour__dots">
-          ${TOUR_SLIDES.map((_, i) => `<span class="tour__dot${i === tourIndex ? ' tour__dot--active' : ''}"></span>`).join('')}
+        <div class="tour__top">
+          <button type="button" class="tour__skip" id="tour-skip">Skip</button>
+        </div>
+        <div class="tour__stage">
+          <div class="tour__content${enterClass}" id="tour-slide">
+            <div class="tour__art">${tourSceneArt(slide.scene)}</div>
+            <h2 class="tour__title">${esc(slide.title)}</h2>
+            <p class="tour__body">${esc(slide.body)}</p>
+          </div>
+        </div>
+        <div class="tour__foot">
+          <button type="button" class="lp__cta tour__next" id="tour-next">${last ? 'Create your account' : 'Continue'}</button>
+          <p class="tour__hint">${last ? 'Takes about a minute' : 'or swipe'}</p>
         </div>
       </div>`;
   }
-  // No Continue button — this is swipe-only now (see wireTourSwipe
-  // below): swipe left to advance, right to go back, and swiping past
-  // the last slide lands on sign-up the same way Skip does.
+  function advanceTour() {
+    if (tourIndex === TOUR_SLIDES.length - 1) { goToAuth('signup'); return; }
+    tourDirection = 'forward';
+    tourIndex += 1;
+    paintScreen();
+  }
   function wireTour(stage) {
     qs('#tour-skip', stage).addEventListener('click', () => goToAuth('signup'));
+    qs('#tour-next', stage).addEventListener('click', advanceTour);
     wireTourSwipe(stage);
   }
 
@@ -567,7 +563,7 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
     let startX = 0, dx = 0, dragging = false;
 
     container.addEventListener('pointerdown', (e) => {
-      if (e.target.closest('.tour__skip')) return; // let Skip's own click through untouched
+      if (e.target.closest('.tour__skip') || e.target.closest('.tour__next')) return; // let those buttons' own clicks through untouched
       startX = e.clientX; dx = 0; dragging = true;
       try { container.setPointerCapture(e.pointerId); } catch { /* fine without capture */ }
     });
@@ -582,10 +578,7 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
       dragging = false;
       try { container.releasePointerCapture(e.pointerId); } catch { /* already released */ }
       if (dx <= -SWIPE_THRESHOLD) {
-        if (tourIndex === TOUR_SLIDES.length - 1) { goToAuth('signup'); return; }
-        tourDirection = 'forward';
-        tourIndex += 1;
-        paintScreen();
+        advanceTour();
       } else if (dx >= SWIPE_THRESHOLD && tourIndex > 0) {
         tourDirection = 'backward';
         tourIndex -= 1;
@@ -671,59 +664,4 @@ function iconCompass() {
     <circle cx="12" cy="12" r="9.2" stroke="currentColor" stroke-width="2.3"/>
     <path d="m15.3 8.7-4.2 2.8-2.1 4.1 4.2-2.8 2.1-4.1z" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/>
   </svg>`;
-}
-
-// Small mockups for the tour slides, built from the app's own real
-// component classes/CSS (.stamp, starRow's .stars, the card/avatar
-// radii and shadow tokens) rather than abstract icon glyphs — no real
-// screenshots exist to embed here (this carousel runs before anyone's
-// signed in or any data has loaded), so the "cover art" underneath is a
-// flat gradient placeholder in the app's own palette, not a fetched
-// image, but everything drawn on top of it is genuine app UI at a
-// smaller scale.
-function tourMockupHtml(name) {
-  const mockups = {
-    gamepad: `
-      <div class="tour-mock tour-mock--log">
-        <div class="tour-mock__poster"><span class="tour-mock__stamp stamp stamp--played">PLAYED</span></div>
-        <div class="tour-mock__card">
-          <span class="tour-mock__label">Elden Ring</span>
-          <div class="tour-mock__lines"><div class="tour-mock__line tour-mock__line--short"></div></div>
-        </div>
-      </div>`,
-    star: `
-      <div class="tour-mock tour-mock--rate">
-        <div class="tour-mock__poster"></div>
-        <div class="tour-mock__card">
-          <span class="tour-mock__label">Hades II</span>
-          ${starRow(4.5, { size: 20 })}
-        </div>
-      </div>`,
-    review: `
-      <div class="tour-mock tour-mock--review">
-        <div class="tour-mock__poster"></div>
-        <div class="tour-mock__lines">
-          <div class="tour-mock__line"></div>
-          <div class="tour-mock__line"></div>
-          <div class="tour-mock__line tour-mock__line--short"></div>
-        </div>
-      </div>`,
-    people: `
-      <div class="tour-mock tour-mock--people">
-        <div class="tour-mock__stack">
-          <span class="tour-mock__avatar"></span>
-          <span class="tour-mock__avatar"></span>
-          <span class="tour-mock__avatar"></span>
-        </div>
-      </div>`,
-    list: `
-      <div class="tour-mock tour-mock--list">
-        <div class="tour-mock__stack">
-          <span class="tour-mock__poster"></span>
-          <span class="tour-mock__poster"></span>
-          <span class="tour-mock__poster"></span>
-        </div>
-      </div>`,
-  };
-  return mockups[name] || mockups.star;
 }
