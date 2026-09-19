@@ -391,7 +391,159 @@ function looseTitle(s) {
 // appear, just below the ones that actually match the word typed.
 const MATCH_TIER_WORST = 7;
 
-function titleMatchTier(query, title) {
+// ------------------------------------------------------------
+// ABBREVIATIONS
+// ------------------------------------------------------------
+// Nobody types "Grand Theft Auto". They type GTA, and IGDB's own search
+// returns nothing useful for it, because the string "gta" appears in
+// none of those titles. Same for every other series people only ever
+// say as initials.
+//
+// Two halves make this work, and it needs both: the query is EXPANDED
+// before it goes to IGDB (so the right games come back at all), and
+// titleMatchTier below scores a result against the expansions as well
+// as the raw query (so the relevance filter does not immediately throw
+// them away again for not containing the letters that were typed).
+//
+// An abbreviation may legitimately mean more than one series — "ds" is
+// Dark Souls and Death Stranding, "re" is Resident Evil — so every
+// entry is a list and all of them are tried.
+const TITLE_ALIASES = {
+  gta: ['grand theft auto'],
+  cod: ['call of duty'],
+  mw: ['modern warfare'],
+  rdr: ['red dead redemption'],
+  tlou: ['the last of us'],
+  gow: ['god of war'],
+  ac: ["assassin's creed"],
+  botw: ['the legend of zelda breath of the wild', 'breath of the wild'],
+  totk: ['the legend of zelda tears of the kingdom', 'tears of the kingdom'],
+  ds: ['dark souls', 'death stranding'],
+  re: ['resident evil'],
+  mgs: ['metal gear solid'],
+  ff: ['final fantasy'],
+  ffvii: ['final fantasy vii'],
+  nfs: ['need for speed'],
+  csgo: ['counter-strike global offensive'],
+  cs: ['counter-strike'],
+  dmc: ['devil may cry'],
+  kh: ['kingdom hearts'],
+  sotc: ['shadow of the colossus'],
+  bg3: ["baldur's gate 3"],
+  bg: ["baldur's gate"],
+  cp2077: ['cyberpunk 2077'],
+  cp: ['cyberpunk'],
+  hzd: ['horizon zero dawn'],
+  hfw: ['horizon forbidden west'],
+  tw3: ['the witcher 3 wild hunt'],
+  tw: ['the witcher'],
+  pubg: ["playerunknown's battlegrounds"],
+  ow: ['overwatch'],
+  lol: ['league of legends'],
+  wow: ['world of warcraft'],
+  gtav: ['grand theft auto v'],
+  sm2: ["marvel's spider-man 2"],
+  mh: ['monster hunter'],
+  mhw: ['monster hunter world'],
+  er: ['elden ring'],
+  bo6: ['call of duty black ops 6'],
+  nba2k: ['nba 2k'],
+  ffxiv: ['final fantasy xiv'],
+  ffxvi: ['final fantasy xvi'],
+  poe: ['path of exile'],
+  dbd: ['dead by daylight'],
+  tes: ['the elder scrolls'],
+  oot: ['the legend of zelda ocarina of time'],
+  ww: ['the legend of zelda the wind waker'],
+  sm64: ['super mario 64'],
+  ssbu: ['super smash bros ultimate'],
+  ssb: ['super smash bros'],
+  gt7: ['gran turismo 7'],
+  fh: ['forza horizon'],
+  fm: ['forza motorsport'],
+  kcd: ['kingdom come deliverance'],
+  sf6: ['street fighter 6'],
+  sf: ['street fighter'],
+  mk: ['mortal kombat'],
+  tekken: ['tekken'],
+  hl: ['half-life'],
+  hla: ['half-life alyx'],
+  p5: ['persona 5'],
+  p4: ['persona 4'],
+  p3: ['persona 3'],
+  smt: ['shin megami tensei'],
+  xc: ['xenoblade chronicles'],
+  alttp: ['the legend of zelda a link to the past'],
+  sotn: ['castlevania symphony of the night'],
+  nier: ['nier automata'],
+  ac6: ['armored core vi'],
+  ttt: ['tekken tag tournament'],
+};
+
+// Roman numerals are how sequels are actually titled — "Grand Theft
+// Auto V", "Final Fantasy VII" — while people type the digit. Only the
+// low numbers matter; nobody searches for part XVIII.
+const ROMAN = ['', 'i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x', 'xi', 'xii', 'xiii', 'xiv', 'xv', 'xvi'];
+
+function swapNumberForms(q) {
+  const out = [];
+  // "gta 5" -> "gta v"
+  const digits = q.replace(/\b(\d{1,2})\b/g, (m, d) => (ROMAN[Number(d)] ? ROMAN[Number(d)] : m));
+  if (digits !== q) out.push(digits);
+  // "final fantasy vii" -> "final fantasy 7"
+  const romans = q.replace(/\b([ivx]{1,5})\b/g, (m) => {
+    const i = ROMAN.indexOf(m.toLowerCase());
+    return i > 0 ? String(i) : m;
+  });
+  if (romans !== q) out.push(romans);
+  return out;
+}
+
+/**
+ * Every spelling of a query worth searching for, most literal first.
+ *
+ * "gta 5" comes back as ["gta 5", "grand theft auto 5", "gta v",
+ * "grand theft auto v"], which between them find the game whichever way
+ * IGDB happens to have titled it.
+ */
+export function expandQuery(query) {
+  const raw = String(query || '').trim();
+  if (!raw) return [];
+  const out = [raw];
+  const norm = normalizeTitle(raw);
+  if (!norm) return out;
+
+  const words = norm.split(' ');
+  const head = words[0];
+  const rest = words.slice(1).join(' ');
+
+  // The whole query is an abbreviation ("gta"), or it leads with one
+  // ("gta 5", "re 4") — the common shapes by far.
+  for (const expansion of TITLE_ALIASES[norm] || []) out.push(expansion);
+  if (rest && TITLE_ALIASES[head]) {
+    for (const expansion of TITLE_ALIASES[head]) out.push(`${expansion} ${rest}`);
+  }
+  // "rdr2", "gta5", "re4" — the sequel number written straight onto the
+  // abbreviation with no space, which is how people actually type it.
+  const glued = /^([a-z]+)(\d{1,2})$/.exec(head);
+  if (glued && TITLE_ALIASES[glued[1]]) {
+    const tail = [glued[2], rest].filter(Boolean).join(' ');
+    for (const expansion of TITLE_ALIASES[glued[1]]) out.push(`${expansion} ${tail}`);
+  }
+
+  for (const form of [...out]) out.push(...swapNumberForms(form));
+
+  // De-duplicated on the normalised form, so "GTA" and "gta" are one.
+  const seen = new Set();
+  return out.filter((q) => {
+    const k = normalizeTitle(q);
+    if (!k || seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+}
+
+function titleMatchTierExact(query, title) {
   const qExact = looseTitle(query);
   const tExact = looseTitle(title);
   if (qExact && tExact === qExact) return 0; // exact, accents and all
@@ -411,6 +563,26 @@ function titleMatchTier(query, title) {
   const tWordSet = new Set(tWords);
   if (qWords.every((w) => tWordSet.has(w))) return 6;
   return MATCH_TIER_WORST;
+}
+
+// The tier actually used everywhere: the best score across every
+// spelling of the query (see expandQuery). Without this, expanding the
+// query would find "Grand Theft Auto V" and then dropIrrelevant would
+// throw it straight back out for not containing the letters "gta".
+// Expansions score one tier worse than a literal hit, so a game that
+// really is called what you typed still outranks one that only matches
+// through an abbreviation.
+function titleMatchTier(query, title) {
+  const direct = titleMatchTierExact(query, title);
+  if (direct === 0 || direct === 1) return direct;
+  let best = direct;
+  const forms = expandQuery(query);
+  for (let i = 1; i < forms.length; i++) {
+    const tier = titleMatchTierExact(forms[i], title);
+    if (tier >= MATCH_TIER_WORST) continue;
+    best = Math.min(best, Math.min(tier + 1, MATCH_TIER_WORST - 1));
+  }
+  return best;
 }
 
 function rankSearchResults(query, results) {
@@ -566,12 +738,20 @@ export async function searchGamesEverywhere(query, limit = 20, page = 1) {
   // rejected the whole search — so one transient IGDB error wiped out
   // every remote result and left only the local catalog showing, which
   // looked exactly like "search only finds games people already logged".
+  // An abbreviated query is also searched in full ("gta" -> "grand
+  // theft auto"), because IGDB matches on the title text and none of
+  // those games contain the letters people actually type. One extra
+  // request, and only when the query really is an abbreviation we know.
+  const [, expanded] = expandQuery(query);
   const settled = await Promise.allSettled([
     page === 1 ? searchGames(query, limit) : Promise.resolve([]),
     searchIgdb(query, limit, page),
     page === 1 ? searchRawg(query, limit) : Promise.resolve([]),
+    expanded ? searchIgdb(expanded, limit, page) : Promise.resolve([]),
   ]);
-  const [local, igdbRemote, rawgRemote] = settled.map((r) => (r.status === 'fulfilled' ? r.value : []));
+  const [local, igdbDirect, rawgRemote, igdbExpanded] = settled.map((r) => (r.status === 'fulfilled' ? r.value : []));
+  const igdbSeen = new Set(igdbDirect.map((g) => g.title.trim().toLowerCase()));
+  const igdbRemote = [...igdbDirect, ...igdbExpanded.filter((g) => !igdbSeen.has(g.title.trim().toLowerCase()))];
 
   const localTitles = new Set(local.map((g) => g.title.trim().toLowerCase()));
   let remote = igdbRemote.filter((g) => !localTitles.has(g.title.trim().toLowerCase()));
@@ -597,7 +777,7 @@ export async function searchGamesEverywhere(query, limit = 20, page = 1) {
   return {
     results,
     // A full page back means there's probably more behind it.
-    hasMore: igdbRemote.length >= limit,
+    hasMore: igdbDirect.length >= limit,
   };
 }
 

@@ -83,35 +83,32 @@ function poster(game, extraClass = '', inner = '') {
   </div>`;
 }
 
-// ---- the entry screen's fan ------------------------------------------
-// Five covers held like a hand of cards: the outer pair ride higher and
-// turn further out, the centre one sits lowest and largest and is the
-// only one carrying a rating and a stamp — a game someone has actually
-// logged, which is the pitch of the whole app in one object.
-const FAN = [
-  { key: 'tsushima', cls: 'lp-fan__slot--outer-l' },
-  { key: 'spiderman2', cls: 'lp-fan__slot--outer-r' },
-  { key: 'lastofus2', cls: 'lp-fan__slot--inner-l' },
-  { key: 'ragnarok', cls: 'lp-fan__slot--inner-r' },
-];
+// ---- the entry screen's shelf ----------------------------------------
+const SHELF = ['lastofus2', 'wolverine', 'ragnarok'];
 
-export function heroFanHtml(games) {
-  return `
-    <div class="lp-fan">
-      ${FAN.map((s) => `<div class="lp-fan__slot ${s.cls}">${poster(pick(games, s.key))}</div>`).join('')}
-      <div class="lp-fan__slot lp-fan__slot--centre">
-        <!-- The rating and the stamp ride together in one badge along
-             the bottom edge. Floated separately they collided with the
-             cover's own logo, which sits across the top or the middle of
-             almost every key art there is; the bottom strip is the one
-             band a publisher reliably leaves clear. -->
-        ${poster(pick(games, 'wolverine'), 'lp-poster--hero', `
-          <span class="lp-poster__badge">
-            ${starRow(4.5, { size: 12 })}
-            <span class="stamp stamp--played">Played</span>
-          </span>`)}
-      </div>
-    </div>`;
+/**
+ * The shelf on the entry screen: three covers, one size, one baseline.
+ *
+ * This was a fan of five, each at its own angle, over a reflection.
+ * Flat and square is the simpler, more honest picture of what the app
+ * holds — a row of games you kept — and it leaves the screen's
+ * composition to the margin and the type rather than to a trick.
+ *
+ * The middle one is captioned with a rating and a stamp, UNDER the
+ * cover rather than over it: on top, those marks landed on whatever the
+ * publisher put in the middle of their key art.
+ */
+export function shelfHtml(games) {
+  return SHELF.map((key, i) => poster(
+    pick(games, key),
+    '',
+    i === 1
+      ? `<span class="lp-poster__caption">
+           ${starRow(4.5, { size: 12 })}
+           <span class="lp-poster__stamp">Played</span>
+         </span>`
+      : '',
+  )).join('');
 }
 
 // ---- tour scenes ------------------------------------------------------
@@ -146,11 +143,14 @@ const SCENES = {
   // Logging: a cover, stamped.
   log: (games) => `
     <div class="lp-scene lp-scene--log">
-      <div class="lp-scene__back">${poster(pick(games, 'eldenring'))}</div>
-      <div class="lp-scene__front">
-        ${poster(pick(games, 'rdr2'), 'lp-poster--hero', `
-          <span class="lp-poster__stamp stamp stamp--played">Played</span>`)}
+      <div class="lp-scene__row">
+        ${poster(pick(games, 'eldenring'))}
+        ${poster(pick(games, 'rdr2'), 'lp-poster--hero')}
       </div>
+      <span class="lp-poster__caption">
+        ${starRow(5, { size: 12 })}
+        <span class="lp-poster__stamp">Played</span>
+      </span>
     </div>`,
 
   // Rating: the star row at a size nobody can miss.
@@ -194,9 +194,19 @@ const SCENES = {
     </div>`,
 };
 
-/** The single review shown under the entry screen's fan. */
-export function heroReviewHtml(games) {
-  return reviewCardHtml(games, 'lastofus2');
+/**
+ * The entry screen's review, set as a pull quote rather than boxed in a
+ * card. A card there read as a widget dropped onto the page; a quote
+ * reads as part of it, which is what a laid-out page does with one.
+ */
+export function heroQuoteHtml(games) {
+  const key = 'lastofus2';
+  const g = pick(games, key);
+  const r = REVIEWS[key];
+  return `
+    <div class="lp__quote-stars">${starRow(r.rating, { size: 14 })}</div>
+    <p class="lp__quote-text">${esc(r.text)}</p>
+    <p class="lp__quote-by"><b>${esc(r.who)}</b> on ${esc(g.title)}</p>`;
 }
 
 export function tourSceneHtml(kind, games) {

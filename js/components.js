@@ -143,13 +143,13 @@ export function feedSectionHead(title, { seeMoreHref, count = 0 } = {}) {
 function iconHomeFilled() {
   return `<svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 3.3 3 11h2v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-9h2z"/></svg>`;
 }
-function iconSearchFilled() {
+export function iconSearchFilled() {
   return `<svg viewBox="0 0 24 24"><path fill="currentColor" d="M11 3a8 8 0 1 0 4.9 14.3l4.4 4.4 1.4-1.4-4.4-4.4A8 8 0 0 0 11 3zm0 2a6 6 0 1 1 0 12 6 6 0 0 1 0-12z"/></svg>`;
 }
 function iconMessageFilled() {
   return `<svg viewBox="0 0 24 24"><path fill="currentColor" d="M6.5 4h11A2.5 2.5 0 0 1 20 6.5v7a2.5 2.5 0 0 1-2.5 2.5H10l-4.5 4v-4H6.5A2.5 2.5 0 0 1 4 13.5v-7A2.5 2.5 0 0 1 6.5 4z"/></svg>`;
 }
-function iconUserFilled() {
+export function iconUserFilled() {
   return `<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5" fill="currentColor"/><path fill="currentColor" d="M12 13c-4 0-7.5 2.4-8.6 6.4A1 1 0 0 0 4.4 20.7h15.2a1 1 0 0 0 1-1.3C19.5 15.4 16 13 12 13z"/></svg>`;
 }
 // Filled, matching the signed-in nav's new filled style (see
@@ -158,7 +158,7 @@ function iconUserFilled() {
 // solid versions of their old outline shapes rather than new icons
 // entirely, so the signed-out nav genuinely looks like the same design
 // language as the signed-in one instead of two different icon sets.
-function iconBrowseNavFilled() {
+export function iconBrowseNavFilled() {
   return `<svg viewBox="0 0 24 24" aria-hidden="true">
     <rect x="3" y="3" width="8" height="8" rx="1.6" fill="currentColor"/>
     <rect x="13" y="3" width="8" height="8" rx="1.6" fill="currentColor"/>
@@ -166,8 +166,14 @@ function iconBrowseNavFilled() {
     <rect x="13" y="13" width="8" height="8" rx="1.6" fill="currentColor"/>
   </svg>`;
 }
-function iconCompassNavFilled() {
-  return `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2 14.5 9.5 22 12 14.5 14.5 12 22 9.5 14.5 2 12 9.5 9.5z"/></svg>`;
+// A compass, which is what this tab is. It was a four-pointed sparkle —
+// nothing to do with Discover, and it did not match the outline compass
+// the landing screen's own nav was drawing in the same slot, so the
+// icon appeared to change shape depending on which signed-out screen
+// you were looking at. The needle is knocked out of the disc with
+// evenodd rather than drawn on top, so it reads at 24px.
+export function iconCompassNavFilled() {
+  return `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" clip-rule="evenodd" d="M12 1.8a10.2 10.2 0 1 0 0 20.4 10.2 10.2 0 0 0 0-20.4zm4.6 5.6-2.2 5.1a2.4 2.4 0 0 1-1.25 1.25l-5.1 2.2a.55.55 0 0 1-.72-.72l2.2-5.1a2.4 2.4 0 0 1 1.25-1.25l5.1-2.2a.55.55 0 0 1 .72.72zM12 10.7a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 0 0 0-2.6z"/></svg>`;
 }
 
 // Three shapes, not one:

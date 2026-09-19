@@ -72,11 +72,19 @@
   /* --- accent: one hot signal colour, and only one ---
      On a field with literally zero chroma, a single saturated colour
      carries the entire personality, so it does not need help and must
-     not get competition. Everything that is not this orange is grey. */
-  --accent: #ff7a29;
-  --accent-bright: #ff9a5c;
-  --accent-deep: #d15c14;
-  --accent-dim: rgba(255, 122, 41, 0.15);
+     not get competition. Everything that is not this cyan is grey.
+
+     Cool, not warm, and that is the whole reason for it. Game cover art
+     is overwhelmingly warm — orange fire, red logos, gold type — and the
+     old orange accent was competing with every poster on every screen
+     instead of standing out against them. A cold accent separates from
+     that art cleanly, stays legible at 1px on near-black, and is light
+     enough to take the app's dark ink as button text (see .btn--accent),
+     which a deeper colour would not. */
+  --accent: #27d2ef;
+  --accent-bright: #6fe3f8;
+  --accent-deep: #0e93ad;
+  --accent-dim: rgba(39, 210, 239, 0.15);
   --gold: #ffc247;
   /* Warm orange — the Messenger's status accent (Playing / send).
      Online presence stays green (--success); orange is for status. */
@@ -132,6 +140,15 @@
   --weight-strong: 600;
 
   /* --- space: deliberately roomier than v2 --- */
+  /* The page gutter: the distance from the edge of the screen to the
+     edge of page content, and the ONE value every screen uses for it.
+     Separate from the spacing scale on purpose — --space-4 was doing
+     this job while also being a general 20px, so tuning the gutter
+     meant moving unrelated vertical rhythm with it. 16px rather than
+     20: on a 390px phone that is 8px more usable width per row, which
+     a three-up poster grid feels immediately. */
+  --gutter: 16px;
+
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 14px;
@@ -157,7 +174,7 @@
   --shadow-accent: 0 6px 22px rgba(0,0,0,0.34);
   /* The console focus ring: a soft accent bloom, the cue that tells
      you where you are on a screen you're navigating, not clicking. */
-  --glow-focus: 0 0 0 2px rgba(255,255,255,0.85), 0 0 26px rgba(255,122,41,0.5);
+  --glow-focus: 0 0 0 2px rgba(255,255,255,0.85), 0 0 26px rgba(39, 210, 239,0.5);
 
   --ease: cubic-bezier(0.25, 0.8, 0.25, 1);
   --dur-fast: 0.16s;
@@ -350,7 +367,7 @@ ul { list-style: none; margin: 0; padding: 0; }
      below is shorter and flush, so less reserved space is needed to
      clear it — kept a little more than the bar's own ~67px footprint
      for breathing room, not cut exactly to it. */
-  padding: var(--space-4) var(--space-4) calc(90px + var(--safe-bottom));
+  padding: var(--space-4) var(--gutter) calc(90px + var(--safe-bottom));
   overflow-y: auto;
   /* Same "scroll still works, the track just isn't drawn" treatment
      .trending-strip already used for its own horizontal scroll — a
@@ -429,7 +446,7 @@ ul { list-style: none; margin: 0; padding: 0; }
 .topbar {
   position: sticky; top: 0; z-index: 20;
   display: flex; align-items: center; gap: var(--space-3);
-  padding: calc(var(--space-3) + var(--safe-top)) var(--space-4) var(--space-3);
+  padding: calc(var(--space-3) + var(--safe-top)) var(--gutter) var(--space-3);
   /* Solid, not glass — glass is kept on the nav bar + login only. */
   background: var(--bg);
   border-bottom: 1px solid var(--line);
@@ -467,7 +484,7 @@ ul { list-style: none; margin: 0; padding: 0; }
    glitch/seam right under the pill. A small amount back (10px) moves
    that transition into plain background instead of the pill's edge,
    without meaningfully reopening the gap the last fix closed. */
-.home-tabs { background: var(--bg); padding: 4px var(--space-4) 10px; display: flex; justify-content: center; }
+.home-tabs { background: var(--bg); padding: 4px var(--gutter) 10px; display: flex; justify-content: center; }
 /* The pill itself: same recipe as .segmented (Search's Games/Players
    tabs) — full width of its container rather than sized to its own
    content, each item taking an equal flex:1 share instead of just
@@ -694,7 +711,10 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 /* Active tab is marked by the icon/label lighting up to full white (from
    the 60%-opacity resting state) — no dot beneath it. */
 .tabbar__item--active { color: #fff; }
-.tabbar__item--active svg { filter: drop-shadow(0 1px 1.5px rgba(0,0,0,0.38)) drop-shadow(0 0 6px rgba(255,122,41,0.35)); }
+/* A plain drop shadow to lift the glyph off the bar, and no coloured
+   bloom behind it. The accent already names the active tab; a glow on
+   top of that is decoration the rest of the app does not use. */
+.tabbar__item--active svg { filter: drop-shadow(0 1px 1.5px rgba(0,0,0,0.38)); }
 /* Sits inline with the other items — same min-width/height as its
    siblings (see .tabbar__item above), so it lands dead centre every
    time. No badge/disc — a plain white icon like any other tabbar
@@ -1030,9 +1050,9 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 
 .search-recent__heading {
   font-size: var(--text-label); font-weight: 700; text-transform: uppercase;
-  letter-spacing: 0.08em; color: var(--ink-faint); margin: var(--space-2) 2px var(--space-3);
+  letter-spacing: 0.08em; color: var(--ink-faint); margin: var(--space-2) 0 var(--space-3);
 }
-.search-recent__row { display: flex; align-items: center; justify-content: space-between; margin: var(--space-2) 2px var(--space-3); }
+.search-recent__row { display: flex; align-items: center; justify-content: space-between; margin: var(--space-2) 0 var(--space-3); }
 .search-recent__row .search-recent__heading { margin: 0; }
 /* Left-swipe-to-delete, iOS-call-log style — see wireSwipeToReveal in
    search-view.js. .recent-search-row__content sits opaque on top of
@@ -1059,7 +1079,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   box-shadow: var(--shadow-card); transition: box-shadow var(--dur) var(--ease);
 }
 .discovery-tile:hover { transform: translateY(-4px) scale(1.03); }
-.discovery-tile:hover .discovery-tile__cover { box-shadow: 0 14px 40px rgba(0,0,0,0.5), 0 0 22px rgba(255, 122, 41,0.22); }
+.discovery-tile:hover .discovery-tile__cover { box-shadow: 0 14px 40px rgba(0,0,0,0.5), 0 0 22px rgba(39, 210, 239,0.22); }
 .discovery-tile:focus-visible { outline: none; transform: translateY(-4px) scale(1.03); }
 .discovery-tile:focus-visible .discovery-tile__cover { box-shadow: var(--glow-focus); }
 .discovery-tile:focus-visible .discovery-tile__cover { box-shadow: var(--glow-focus); }
@@ -1124,7 +1144,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    headings and every non-poster section keep their existing rhythm. */
 .trending-strip {
   display: flex; gap: var(--space-3); overflow-x: auto;
-  padding: 0 2px var(--space-4); margin-top: -1px;
+  padding: 0 0 var(--space-4); margin-top: -1px;
   scrollbar-width: none; -ms-overflow-style: none;
 }
 .trending-strip::-webkit-scrollbar { display: none; }
@@ -2002,10 +2022,10 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
    they're untouched. */
 .view-body .trending-strip,
 .view-body .recent-played-row {
-  margin-left: calc(-1 * var(--space-4));
-  margin-right: calc(-1 * var(--space-4));
-  padding-left: var(--space-4);
-  padding-right: var(--space-4);
+  margin-left: calc(-1 * var(--gutter));
+  margin-right: calc(-1 * var(--gutter));
+  padding-left: var(--gutter);
+  padding-right: var(--gutter);
 }
 #feed-body .discovery-active { margin-top: 2px; }
 
@@ -2629,7 +2649,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 .quick-act[data-on="1"] .quick-act__icon--pad { color: var(--success); filter: drop-shadow(0 0 10px rgba(74,222,155,0.5)); }
 .quick-act[data-on="1"] .quick-act__icon--heart { color: var(--coral); filter: drop-shadow(0 0 10px rgba(255,107,107,0.5)); }
 .quick-act[data-on="1"] .quick-act__icon--heart svg path { fill: var(--coral); }
-.quick-act[data-on="1"] .quick-act__icon--save { color: var(--accent-bright); filter: drop-shadow(0 0 10px rgba(255, 122, 41,0.5)); }
+.quick-act[data-on="1"] .quick-act__icon--save { color: var(--accent-bright); filter: drop-shadow(0 0 10px rgba(39, 210, 239,0.5)); }
 .quick-act[data-on="1"] .quick-act__icon--save svg path { fill: var(--accent-bright); }
 
 /* Controller "rumble" on activation — a short physical wobble that
@@ -2856,7 +2876,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
    the fallback for games without one. */
 .gd-hero {
   position: relative; overflow: hidden;
-  margin: calc(-1 * var(--space-4)) calc(-1 * var(--space-4)) 0;
+  margin: calc(-1 * var(--space-4)) calc(-1 * var(--gutter)) 0;
   /* Was a flat 260px, which only happened to roughly match the image's
      own rendered height (16:9 of the hero's width) at one specific
      viewport width — narrower than that and the image+its fade were
@@ -3050,7 +3070,7 @@ a.gd-credit__name { text-decoration: none; }
    edge, the way the reference draws it. */
 .gd-rule {
   height: 1px; flex-shrink: 0;
-  margin: 0 calc(-1 * var(--space-4));
+  margin: 0 calc(-1 * var(--gutter));
   background: var(--gd-rule);
 }
 
@@ -3717,7 +3737,7 @@ a.gd-credit__name { text-decoration: none; }
   position: absolute; left: 50%; bottom: 0; width: 2px; height: 56px;
   margin-left: -1px; background: var(--accent-bright);
   border-radius: 1px; pointer-events: none;
-  box-shadow: 0 0 8px rgba(255, 122, 41,0.6);
+  box-shadow: 0 0 8px rgba(39, 210, 239,0.6);
 }
 
 /* ---- moderation: report sheet, block, delete account ---------------- */
@@ -4019,7 +4039,7 @@ a.gd-credit__name { text-decoration: none; }
 .set-group__title {
   font-size: var(--text-label); font-weight: 700; text-transform: uppercase;
   letter-spacing: 0.08em; color: var(--ink-faint);
-  margin: var(--space-4) 6px var(--space-2);
+  margin: var(--space-4) 0 var(--space-2);
   display: flex; align-items: center; justify-content: space-between;
 }
 .set-group__title--danger { color: var(--danger); }
@@ -4118,14 +4138,9 @@ a.gd-credit__name { text-decoration: none; }
   transition: color 160ms ease;
 }
 .landing-nav .tabbar__item:hover { color: var(--ink); }
-/* The active item is named by the accent and by a dot under it — colour
-   alone is a weak signal at icon size. No glow on the dot: the rest of
-   the app does not glow, and this bar is meant to be the same bar. */
+/* Colour alone marks the active tab. The dot under it was one mark too
+   many for a four-item bar where the icons already differ. */
 .landing-nav .tabbar__item--active { color: var(--accent-bright); }
-.landing-nav .tabbar__item--active::after {
-  content: ''; position: absolute; left: 50%; bottom: 4px; transform: translateX(-50%);
-  width: 4px; height: 4px; border-radius: 50%; background: var(--accent);
-}
 /* Icon-only — no label underneath. No drop-shadow glow — flat lime on
    flat black, full stop. Same 25px size as the real in-app nav's icons
    now (was 30px) — matching its look was the whole point of redoing
@@ -4137,176 +4152,133 @@ a.gd-credit__name { text-decoration: none; }
 .landing-nav .tabbar__item svg { width: 24px; height: 24px; filter: none; }
 
 /* ---- entry screen ----------------------------------------------------
-   Real game covers, in the app's own poster frames, on the app's own
-   background, under the app's own buttons. The previous version of this
-   screen invented a look for itself — hand-drawn cases, a perspective
-   floor, drifting embers, scanlines, glows on everything — and the
-   result read as a different product from the one behind it.
+   Laid out like a printed page rather than a piece of software: one
+   left-hand margin that every single line hangs off, a hairline rule
+   under the masthead, a flat shelf of covers, a pull quote, and the two
+   actions at the foot. Nothing rotates, nothing floats, nothing moves.
 
-   Three bands: the name at the top, the covers in the middle taking
-   whatever room is left, the pitch and the two actions at the bottom.
-   That is what keeps the screen full at any height without a stack of
-   media queries guessing at each device. */
+   The versions before this leaned on effects to carry the screen — a
+   perspective floor, drifting embers, scanlines, glowing buttons, cards
+   fanned at five different angles. Take those away and what is left has
+   to be composition, spacing and type, which is the whole point: this
+   is the first thing anyone sees, and it should look drawn rather than
+   generated. */
 .lp {
   position: relative; overflow: hidden;
   min-height: calc(100dvh - 63px - var(--safe-bottom));
-  display: flex; flex-direction: column; justify-content: space-between;
-  /* One soft warm lift under the fan, nothing more. The screen was flat
-     black before, which is the right call where cover art supplies the
-     colour and the wrong one here, where this IS the cover art. */
-  background:
-    radial-gradient(112% 48% at 50% 62%, rgba(255, 122, 41, 0.10) 0%, transparent 68%),
-    var(--bg);
+  display: flex; flex-direction: column;
+  padding: calc(var(--space-6) + env(safe-area-inset-top, 0px)) var(--gutter) var(--space-5);
+  background: var(--bg);
 }
 
-.lp__head {
-  position: relative; z-index: 2;
-  padding: calc(var(--space-6) + env(safe-area-inset-top, 0px)) var(--space-5) 0;
-  display: flex; flex-direction: column; align-items: center;
-}
-.lp__eyebrow {
-  font-family: var(--font-mono); font-size: 10.5px; font-weight: 500;
-  letter-spacing: 0.22em; text-transform: uppercase;
-  color: var(--ink-faint);
-  display: flex; align-items: center; gap: 9px;
-  margin-bottom: 14px;
-}
-/* Rules either side, which is the one piece of structure on the screen:
-   it centres a short string optically instead of leaving it floating. */
-.lp__eyebrow::before, .lp__eyebrow::after {
-  content: ''; width: 24px; height: 1px; background: var(--line-strong);
-}
+/* ---- masthead ---- */
+.lp__head { flex-shrink: 0; }
 .lp__word {
   font-family: var(--font-brand); font-weight: 800;
-  font-size: clamp(30px, 9.2vw, 40px); line-height: 1;
-  letter-spacing: -0.035em; color: var(--ink);
-}
-
-/* ---- the fan ---------------------------------------------------------
-   Five covers held like a hand of cards. Laid out in percentages inside
-   a fixed-ratio box so the whole arrangement scales as one object —
-   positioning these in pixels meant re-tuning every slot for every
-   screen width. */
-.lp__art {
-  position: relative; z-index: 1;
-  flex: 1 1 auto; min-height: 150px;
-  display: flex; align-items: center; justify-content: center;
-  /* Side padding because the outer two covers are rotated: a 24-degree
-     turn pushes their corners well past the slot's own box, and without
-     this they were being sliced off by the edge of the screen. */
-  padding: var(--space-3) 14px;
-}
-.lp-fan {
-  position: relative; width: 100%; max-width: 440px; aspect-ratio: 1.66;
-  align-self: center;
-}
-.lp-fan__slot { position: absolute; bottom: 0; }
-.lp-fan__slot--outer-l { left: 0;    width: 29%; transform: rotate(-22deg); bottom: 19%; }
-.lp-fan__slot--outer-r { right: 0;   width: 29%; transform: rotate(22deg);  bottom: 19%; }
-.lp-fan__slot--inner-l { left: 12%;  width: 34%; transform: rotate(-12deg); bottom: 8%; z-index: 2; }
-.lp-fan__slot--inner-r { right: 12%; width: 34%; transform: rotate(12deg);  bottom: 8%; z-index: 2; }
-.lp-fan__slot--centre {
-  left: 50%; width: 40%; transform: translateX(-50%) rotate(-2deg); z-index: 3;
-}
-
-.lp-poster { position: relative; }
-/* The covers carry a real drop shadow rather than a coloured glow: it is
-   what separates five overlapping rectangles from each other, and it is
-   the same shadow language the rest of the app uses on raised surfaces. */
-.lp-poster__frame {
-  display: block; width: 100%; aspect-ratio: var(--ratio-card);
-  border-radius: 10px; overflow: hidden;
-  background: var(--surface);
-  box-shadow: 0 14px 28px -10px rgba(0, 0, 0, 0.75), 0 2px 8px -2px rgba(0, 0, 0, 0.6);
-}
-.lp-poster__frame img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.lp-poster--hero .lp-poster__frame {
-  box-shadow: 0 22px 44px -14px rgba(0, 0, 0, 0.85), 0 3px 10px -2px rgba(0, 0, 0, 0.7);
-}
-
-/* What the app does to a game, shown on the game: the rating and the
-   stamp a real logged title carries, in one badge across the bottom of
-   the cover. The z-index is load-bearing — .poster-frame__img carries
-   z-index:1 inside a parent that creates no stacking context, so without
-   it the artwork paints straight over this. */
-.lp-poster__badge {
-  position: absolute; z-index: 2; left: 50%; bottom: 7%; transform: translateX(-50%);
-  display: flex; align-items: center; gap: 7px;
-  padding: 4px 8px; border-radius: var(--radius-pill);
-  background: rgba(8, 8, 8, 0.78);
-  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  white-space: nowrap; max-width: 92%;
-}
-.lp-poster__badge .stamp {
-  font-size: 8.5px; padding: 2px 5px; border-width: 1px; letter-spacing: 0.12em;
-}
-/* The tour's log slide still stamps a bare cover, with no rating yet. */
-.lp-poster__stamp {
-  position: absolute; z-index: 2; left: 50%; bottom: 8%; transform: translateX(-50%) rotate(-4deg);
-  padding: 3px 9px; border-radius: 5px;
-  border: 1.5px solid currentColor; background: rgba(8, 8, 8, 0.7);
-  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
-  font-family: var(--font-mono); font-size: 10px; font-weight: 600;
-  letter-spacing: 0.14em; text-transform: uppercase;
-}
-
-/* ---- the pitch and the actions ---- */
-/* One real review under the fan. It fills what was otherwise a band of
-   empty screen between the name and the pitch, and it does it by showing
-   the thing the app is for rather than by padding: the same review card
-   component the browse screen uses, with a real rating and a real line
-   of writing in it. */
-.lp__proof {
-  position: relative; z-index: 2;
-  padding: 0 var(--space-5); margin-bottom: var(--space-4);
-  display: flex; justify-content: center;
-}
-.lp__proof .landing-review-card { max-width: 360px; cursor: default; pointer-events: none; }
-
-.lp__content {
-  position: relative; z-index: 2;
-  padding: 0 var(--space-5) var(--space-6);
-  display: flex; flex-direction: column; align-items: center; text-align: center;
+  font-size: clamp(34px, 11vw, 46px); line-height: 0.95;
+  letter-spacing: -0.045em; color: var(--ink);
 }
 .lp__tagline {
-  max-width: 19em; font-size: 15px; line-height: 1.55;
-  color: var(--ink-dim); text-wrap: balance;
+  margin-top: 12px; max-width: 16em;
+  font-size: 16px; line-height: 1.45; color: var(--ink-dim);
 }
-.lp__actions { margin-top: var(--space-4); width: 100%; max-width: 340px; display: grid; gap: 10px; }
-/* The app's own buttons, not bespoke ones. Signing in is a real button
-   rather than a text link: it was the smallest thing on the screen, and
-   it is what every returning person on a new device needs. */
+/* The rule is the only piece of ornament on the screen, and it is doing
+   a job: it closes the masthead, so the covers below read as a separate
+   band rather than as more of the same block. */
+.lp__rule {
+  height: 1px; background: var(--line-strong);
+  margin: var(--space-5) 0 0;
+}
+
+/* ---- the shelf ----
+   Three covers, the same size, the same gap, standing on one baseline.
+   An overlapping fan is more dramatic and less honest: this is what the
+   app is, a row of games you have kept. */
+.lp__shelf {
+  flex: 1 1 auto; min-height: 0;
+  /* flex-start, not center: the middle cover carries a caption, which
+     makes its flex item taller — centring against it pushed the other
+     two covers down and broke the one baseline the row is built on. */
+  display: flex; align-items: flex-start; justify-content: flex-start;
+  gap: 10px; padding: var(--space-5) 0 var(--space-4);
+}
+.lp__shelf .lp-poster { flex: 1 1 0; min-width: 0; max-width: 132px; }
+.lp-poster { position: relative; }
+.lp-poster__frame {
+  display: block; width: 100%; aspect-ratio: var(--ratio-card);
+  border-radius: 8px; overflow: hidden; background: var(--surface);
+  border: 1px solid var(--line);
+}
+.lp-poster__frame img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* No skeleton shimmer here. It is the one animation left on the screen,
+   it only ever shows for the second before the art arrives, and a
+   pulsing block is exactly the "generated" feel this screen is avoiding. */
+.lp .poster-frame::after, .lp-poster__frame::after { display: none !important; animation: none !important; }
+
+/* The rating and the stamp sit UNDER the middle cover rather than on
+   top of it: over the artwork they landed on whatever the publisher put
+   there, and a caption under a picture is what a page does anyway. */
+.lp-poster__caption {
+  display: flex; align-items: center; gap: 8px; margin-top: 9px;
+}
+.lp-poster__caption .stars { flex-shrink: 0; }
+.lp-poster__stamp {
+  font-family: var(--font-mono); font-size: 8.5px; font-weight: 600;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  padding: 2px 5px; border-radius: 3px;
+  border: 1px solid currentColor; color: var(--accent-bright);
+  transform: none;
+}
+
+/* ---- the pull quote ----
+   A real review, set as a quote rather than boxed in a card. The card
+   version read as a widget dropped onto the page; this reads as part of
+   the page, which is what a designed layout does with a testimonial. */
+.lp__quote { flex-shrink: 0; border-top: 1px solid var(--line); padding-top: var(--space-4); }
+.lp__quote-stars { margin-bottom: 10px; }
+.lp__quote-text {
+  font-size: 16.5px; line-height: 1.4; color: var(--ink);
+  letter-spacing: -0.01em; text-wrap: balance;
+}
+/* Sentence case, not uppercase: a long game title set in tracked-out
+   capitals ran to two lines and read as a label rather than a credit. */
+.lp__quote-by {
+  margin-top: 9px; font-size: 13px; color: var(--ink-faint);
+}
+.lp__quote-by b { color: var(--ink-dim); font-weight: 600; }
+
+/* ---- the actions ---- */
+.lp__actions { flex-shrink: 0; margin-top: var(--space-5); display: grid; gap: 9px; }
 .lp__cta, .lp__ghost {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 100%; min-height: 50px; padding: 15px var(--space-5);
+  width: 100%; min-height: 50px; padding: 14px var(--space-5);
   border-radius: var(--radius-pill); cursor: pointer;
-  font-family: var(--font-display); font-weight: 800; font-size: 17px;
+  font-family: var(--font-display); font-weight: 800; font-size: 16px;
   letter-spacing: -0.005em;
-  transition: transform var(--dur-fast) var(--ease), filter var(--dur) var(--ease), background var(--dur) var(--ease);
+  transition: background var(--dur) var(--ease), transform var(--dur-fast) var(--ease);
 }
-.lp__cta { background: var(--accent); color: #140a02; border: 1px solid transparent; }
+.lp__cta { background: var(--accent); color: var(--bg); border: 1px solid transparent; }
 .lp__cta:hover { background: var(--accent-bright); }
-.lp__cta:active { filter: brightness(1.08); transform: scale(0.99); }
+.lp__cta:active { transform: scale(0.99); }
 .lp__ghost {
   background: transparent; color: var(--ink);
-  border: 1px solid var(--line-strong);
-  font-weight: 600; font-size: 15px;
+  border: 1px solid var(--line-strong); font-weight: 600; font-size: 15px;
 }
 .lp__ghost:hover { background: var(--surface); }
 .lp__ghost:active { transform: scale(0.99); }
 .lp__cta:focus-visible, .lp__ghost:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 3px; }
 
-@media (max-height: 700px) {
-  .lp__head { padding-top: calc(var(--space-4) + env(safe-area-inset-top, 0px)); }
-  .lp__art { min-height: 110px; padding: var(--space-2) 0; }
-  .lp__content { padding-bottom: var(--space-4); }
+@media (max-height: 720px) {
+  .lp { padding-top: calc(var(--space-4) + env(safe-area-inset-top, 0px)); }
+  .lp__shelf { padding: var(--space-4) 0; }
+  .lp__rule { margin-top: var(--space-4); }
+  .lp__tagline { margin-top: 9px; font-size: 15px; }
+  .lp__quote-text { font-size: 15px; }
+  .lp__actions { margin-top: var(--space-4); }
 }
 
 /* ---- feature tour ----------------------------------------------------
-   The same covers, one step further in. Each slide shows the thing being
-   described happening to a real game rather than an icon standing in for
-   it.
+   The same page, one step in: same left margin, same rule, same type.
 
    min-height:100dvh directly on .tour, not height:100% inherited through
    .landing/.landing-stage's flex chain — a flex container whose height
@@ -4318,112 +4290,81 @@ a.gd-credit__name { text-decoration: none; }
 .tour {
   position: relative; overflow: hidden; min-height: 100dvh;
   display: flex; flex-direction: column;
-  padding: calc(var(--space-5) + env(safe-area-inset-top, 0px)) var(--space-5) calc(var(--space-5) + var(--safe-bottom));
-  touch-action: pan-y;
-  background:
-    radial-gradient(110% 44% at 50% 44%, rgba(255, 122, 41, 0.08) 0%, transparent 70%),
-    var(--bg);
+  padding: calc(var(--space-5) + env(safe-area-inset-top, 0px)) var(--gutter) calc(var(--space-5) + var(--safe-bottom));
+  touch-action: pan-y; background: var(--bg);
 }
-
-/* Progress as segments, not dots. Dots say "five things"; a filled bar
-   answers "how much is left", which is the only question anyone has
-   during an onboarding carousel. */
-.tour__progress { position: relative; z-index: 3; display: flex; gap: 5px; }
-.tour__seg { flex: 1; height: 3px; border-radius: 2px; background: var(--line-strong); overflow: hidden; }
-.tour__seg--done { background: var(--accent); }
-.tour__seg--active::after {
-  content: ''; display: block; height: 100%; width: 100%;
-  background: var(--accent); transform-origin: left;
-  animation: tour-fill 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-@keyframes tour-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
-
-.tour__top { position: relative; z-index: 3; display: flex; justify-content: flex-end; margin-top: 14px; }
+.tour__progress { position: relative; z-index: 3; display: flex; gap: 4px; flex-shrink: 0; }
+.tour__seg { flex: 1; height: 2px; border-radius: 1px; background: var(--line-strong); }
+.tour__seg--done, .tour__seg--active { background: var(--accent); }
+.tour__top { display: flex; justify-content: flex-end; margin-top: 12px; flex-shrink: 0; }
 .tour__skip {
   background: none; border: none; cursor: pointer; padding: 6px 2px;
-  font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+  font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase;
   color: var(--ink-faint);
 }
 .tour__skip:hover { color: var(--ink-dim); }
-
-.tour__stage { position: relative; z-index: 2; flex: 1; display: flex; flex-direction: column; justify-content: center; }
-.tour__content { display: flex; flex-direction: column; align-items: center; text-align: center; }
-.tour__content--enter-forward  { animation: tour-enter-forward 380ms cubic-bezier(0.16, 1, 0.3, 1) both; }
-.tour__content--enter-backward { animation: tour-enter-backward 380ms cubic-bezier(0.16, 1, 0.3, 1) both; }
-@keyframes tour-enter-forward  { from { opacity: 0; transform: translateX(46px); } to { opacity: 1; transform: none; } }
-@keyframes tour-enter-backward { from { opacity: 0; transform: translateX(-46px); } to { opacity: 1; transform: none; } }
-
-.tour__art { width: 100%; max-width: 330px; margin-bottom: var(--space-6); }
+.tour__stage { flex: 1; display: flex; flex-direction: column; justify-content: center; min-height: 0; }
+.tour__content { display: flex; flex-direction: column; align-items: flex-start; text-align: left; }
+.tour__art { width: 100%; margin-bottom: var(--space-5); }
 .tour__title {
   font-family: var(--font-brand); font-weight: 700;
-  font-size: clamp(21px, 6.2vw, 26px); line-height: 1.18; letter-spacing: -0.03em;
-  max-width: 13em; color: var(--ink); text-wrap: balance;
+  font-size: clamp(23px, 7vw, 29px); line-height: 1.12; letter-spacing: -0.035em;
+  max-width: 11em; color: var(--ink);
 }
 .tour__body {
-  margin-top: 13px; max-width: 20em;
-  font-size: 15px; line-height: 1.55; color: var(--ink-dim); text-wrap: balance;
+  margin-top: 12px; max-width: 22em;
+  font-size: 15.5px; line-height: 1.5; color: var(--ink-dim);
 }
-
-.tour__foot { position: relative; z-index: 3; display: flex; flex-direction: column; gap: 12px; }
-/* A Continue button, back after the carousel went swipe-only. Swipe is
-   still wired and is still the nicer gesture on a phone, but a screen
-   whose only way forward is an undiscoverable drag strands anyone on a
-   mouse — and this app gets driven with a mouse as often as a thumb. */
+.tour__foot { flex-shrink: 0; display: flex; flex-direction: column; gap: 10px; }
 .tour__next { width: 100%; }
 .tour__hint {
   text-align: center; font-family: var(--font-mono); font-size: 10px;
   letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-faint);
 }
-@media (prefers-reduced-motion: reduce) {
-  .tour__content--enter-forward, .tour__content--enter-backward, .tour__seg--active::after { animation: none; }
-}
 
 /* ---- tour scenes ---- */
-.lp-scene { display: flex; align-items: center; justify-content: center; }
-.lp-scene--log { position: relative; height: 210px; }
-.lp-scene--log .lp-scene__back { position: absolute; left: 14%; bottom: 8%; width: 34%; transform: rotate(-10deg); }
-.lp-scene--log .lp-scene__front { position: absolute; left: 42%; bottom: 0; width: 40%; transform: rotate(4deg); }
-.lp-scene--rate { flex-direction: column; gap: var(--space-4); }
+.lp-scene { display: flex; }
+/* The caption is its own row under the pair, not inside one of them:
+   living inside a poster it made that flex item taller and knocked the
+   two covers off the single baseline they are meant to share. */
+.lp-scene--log { flex-direction: column; align-items: flex-start; gap: 10px; }
+.lp-scene--log .lp-scene__row { display: flex; align-items: flex-end; gap: 12px; }
+.lp-scene--log .lp-poster { width: 118px; }
+.lp-scene--log .lp-poster--hero { width: 146px; }
+.lp-scene--log .lp-poster__caption { margin-top: 0; }
+.lp-scene--rate { flex-direction: column; align-items: flex-start; gap: var(--space-4); }
 .lp-scene--rate .lp-poster { width: 132px; }
-.lp-scene__stars { display: flex; gap: 3px; }
 .lp-scene--review { flex-direction: column; gap: 10px; width: 100%; }
-/* The review cards are display here, not controls — they are the
-   illustration for this slide, so they must not look tappable or eat
-   the swipe that moves the carousel on. */
+/* Display, not controls: these must not look tappable or swallow the
+   swipe that moves the carousel on. */
 .lp-review { cursor: default; pointer-events: none; }
-.lp-scene--people { flex-direction: column; }
-.lp-scene--people .lp-scene__row { display: flex; gap: 10px; justify-content: center; }
-.lp-scene--people .lp-poster--small { width: 84px; }
-.lp-scene--people .lp-poster--small:nth-child(1) { transform: rotate(-7deg); }
-.lp-scene--people .lp-poster--small:nth-child(3) { transform: rotate(7deg); }
-/* Below the covers with air, not overlapping them. Sitting on top, the
-   row of faces landed square in the middle of the centre cover and read
-   as clutter rather than as "these people played these". */
-.lp-scene__faces { position: relative; z-index: 3; display: flex; margin-top: 16px; }
-.lp-face { display: block; margin-left: -11px; }
+.lp-scene--people { flex-direction: column; align-items: flex-start; gap: var(--space-4); }
+.lp-scene--people .lp-scene__row { display: flex; gap: 10px; }
+.lp-scene--people .lp-poster--small { width: 96px; }
+.lp-scene__faces { display: flex; }
+.lp-face { display: block; margin-left: -10px; }
 .lp-face:first-child { margin-left: 0; }
-.lp-face img, .lp-face .avatar {
-  border-radius: 50%; border: 3px solid var(--bg); display: block;
-}
-/* A different tint each, so four faces read as four people rather than
-   as one placeholder repeated. */
+.lp-face img, .lp-face .avatar { border-radius: 50%; border: 2px solid var(--bg); display: block; }
+/* A different tint each. Four identical grey discs read as one
+   placeholder repeated, not as four people — and the default initials
+   sat grey-on-grey. */
 .lp-face:nth-child(1) .avatar, .lp-face:nth-child(1) img { background: #8b5cf6; color: #fff; }
-.lp-face:nth-child(2) .avatar, .lp-face:nth-child(2) img { background: var(--accent); color: #140a02; }
-.lp-face:nth-child(3) .avatar, .lp-face:nth-child(3) img { background: var(--gold); color: #140a02; }
-.lp-face:nth-child(4) .avatar, .lp-face:nth-child(4) img { background: #4f8ef7; color: #fff; }
-.lp-scene--list { flex-direction: column; gap: 10px; width: 100%; }
+.lp-face:nth-child(2) .avatar, .lp-face:nth-child(2) img { background: var(--accent); color: var(--bg); }
+.lp-face:nth-child(3) .avatar, .lp-face:nth-child(3) img { background: var(--gold); color: #14100a; }
+.lp-face:nth-child(4) .avatar, .lp-face:nth-child(4) img { background: #f0688a; color: #fff; }
+.lp-scene--list { flex-direction: column; gap: 8px; width: 100%; }
 .lp-listrow {
   display: flex; align-items: center; gap: 12px; width: 100%;
-  padding: 10px 14px; border-radius: var(--radius-s);
+  padding: 9px 12px; border-radius: var(--radius-s);
   background: var(--surface-raised); border: 1px solid var(--line);
 }
 .lp-listrow__rank {
-  font-family: var(--font-mono); font-size: 13px; font-weight: 600;
-  color: var(--ink-faint); width: 12px; flex-shrink: 0;
+  font-family: var(--font-mono); font-size: 12.5px; font-weight: 600;
+  color: var(--ink-faint); width: 10px; flex-shrink: 0;
 }
 .lp-listrow__cover {
-  width: 34px; flex-shrink: 0; aspect-ratio: var(--ratio-card);
-  border-radius: 5px; overflow: hidden; background: var(--surface); display: block;
+  width: 32px; flex-shrink: 0; aspect-ratio: var(--ratio-card);
+  border-radius: 4px; overflow: hidden; background: var(--surface); display: block;
 }
 .lp-listrow__cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .lp-listrow__title {
@@ -4497,50 +4438,6 @@ a.gd-credit__name { text-decoration: none; }
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 
-/* ---- search screen: locked search bar + real browse-by categories ---- */
-.landing-search-screen { padding: calc(var(--space-3) + var(--safe-top)) var(--space-4) 0; }
-/* Looks exactly like a real search field, but it's a <button> — tapping
-   it opens sign-up instead of focusing an input. */
-.landing-search {
-  display: flex; align-items: center; gap: 10px; width: 100%;
-  padding: 13px 16px; margin-bottom: var(--space-6);
-  border-radius: var(--radius-pill); background: var(--surface-raised);
-  border: 1px solid var(--line-strong); color: var(--ink-faint);
-  font-size: var(--text-body); font-family: inherit; cursor: pointer; text-align: left;
-  transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
-}
-.landing-search svg { width: 18px; height: 18px; flex-shrink: 0; }
-.landing-search:active {
-  background: var(--surface-high);
-  border-color: var(--accent-dim);
-  box-shadow: 0 0 0 3px var(--accent-dim);
-}
-.landing-browseby__heading {
-  font-size: var(--text-label); font-weight: 700; text-transform: uppercase;
-  letter-spacing: 0.08em; color: var(--ink-faint); margin: var(--space-4) 2px var(--space-2);
-}
-.landing-browseby { border-top: 1px solid var(--line); }
-.landing-browseby__row {
-  display: flex; align-items: center; justify-content: space-between; width: 100%;
-  padding: 14px 2px; background: none; border: none; border-bottom: 1px solid var(--line);
-  color: var(--ink); font-size: 15px; font-weight: 600; cursor: pointer; text-align: left;
-}
-/* Leading icon per row — every other list-like surface in the app
-   (tabbar, provider rows) pairs an icon with its label; this was the
-   one plain-text list left. Sits in a fixed-width box so every label
-   still lines up in a column regardless of each icon's own proportions,
-   tinted with the brand accent (at low opacity, not a solid fill) so
-   the row reads as "branded" rather than a generic settings list. */
-.landing-browseby__row-main { display: flex; align-items: center; gap: 13px; min-width: 0; }
-.landing-browseby__row-icon {
-  display: grid; place-items: center; flex-shrink: 0;
-  width: 30px; height: 30px; border-radius: 9px;
-  background: var(--accent-dim); color: var(--accent-bright);
-}
-.landing-browseby__row-icon svg { width: 16px; height: 16px; }
-.landing-browseby__chevron { width: 16px; height: 16px; color: var(--ink-faint); flex-shrink: 0; }
-.landing-browseby__row:active { background: var(--surface-raised); }
-
 /* ---- pull-to-refresh (Feed, Profile) ----------------------------------
    Sits absolutely at the top of the scroll container, translated down
    into view as the person drags — see wirePullToRefresh() in
@@ -4594,7 +4491,7 @@ a.gd-credit__name { text-decoration: none; }
 #messages-body.view-body--no-topbar { padding-top: calc(var(--safe-top) + 16px); }
 /* Space between the "Messages" heading and the Chats/Requests tabs so the
    top doesn't read as one cramped block. */
-.msg-inbox-head { display: flex; align-items: center; justify-content: space-between; padding: 2px 2px 0; margin-bottom: 22px; }
+.msg-inbox-head { display: flex; align-items: center; justify-content: space-between; padding: 2px 0 0; margin-bottom: 22px; }
 .msg-inbox-title { font-family: var(--font-brand); font-weight: 800; font-size: 25px; letter-spacing: -0.02em; }
 /* The app's main accent (not orange) with the dark icon, like every other
    primary action button in the app. */
@@ -5287,7 +5184,7 @@ a.gd-credit__name { text-decoration: none; }
      the pill it belongs beside. The top padding is the gap the header's
      removed border used to imply — without it the tabs sat flush against
      the header with nothing between them at all. */
-  padding: var(--space-3) var(--space-4) 0;
+  padding: var(--space-3) var(--gutter) 0;
 }
 .act-tabs .segmented { flex: 1; min-width: 0; }
 /* The list is the point of this screen, so it starts right under the
@@ -5423,7 +5320,7 @@ a.gd-credit__name { text-decoration: none; }
    two tap targets for one action. */
 .set-group__toggle {
   display: flex; align-items: center; justify-content: space-between; gap: var(--space-2);
-  width: 100%; margin: var(--space-4) 6px var(--space-2); padding: 0;
+  width: 100%; margin: var(--space-4) 0 var(--space-2); padding: 0;
   background: none; border: none; cursor: pointer;
   font-family: inherit; font-size: var(--text-label); font-weight: 700;
   text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-faint);
@@ -5571,8 +5468,8 @@ a.gd-credit__name { text-decoration: none; }
    cancels .view-body's side padding for this one strip only. */
 .story-rail {
   display: flex; gap: 14px; overflow-x: auto;
-  padding: 2px var(--space-4) var(--space-4);
-  margin: 0 calc(var(--space-4) * -1);
+  padding: 2px var(--gutter) var(--space-4);
+  margin: 0 calc(var(--gutter) * -1);
   scrollbar-width: none; -ms-overflow-style: none;
 }
 .story-rail::-webkit-scrollbar { display: none; }
@@ -5717,8 +5614,8 @@ a.gd-credit__name { text-decoration: none; }
    unreadable at four-across. */
 .foryou-strip {
   display: flex; gap: 12px; overflow-x: auto;
-  padding: 0 var(--space-4) var(--space-2);
-  margin: 0 calc(var(--space-4) * -1);
+  padding: 0 var(--gutter) var(--space-2);
+  margin: 0 calc(var(--gutter) * -1);
   scrollbar-width: none; -ms-overflow-style: none;
 }
 .foryou-strip::-webkit-scrollbar { display: none; }

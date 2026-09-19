@@ -1,10 +1,9 @@
 import * as api from '../api.js';
 import {
   posterFrame, avatarImg, spinner, emptyState, iconSearch,
-  iconTag, iconGamepad, iconFlame, iconStar, iconCalendar, iconTrophy, iconSparkle,
-  iconInfo, iconDiary, iconUserPlus, iconBookmark,
+  iconUserFilled, iconBrowseNavFilled, iconCompassNavFilled, iconSearchFilled,
 } from '../components.js';
-import { heroFanHtml, heroReviewHtml, tourSceneHtml, resolveShowcase } from './landing-art.js';
+import { shelfHtml, heroQuoteHtml, tourSceneHtml, resolveShowcase } from './landing-art.js';
 import { esc, starRow, qs, qsa, toast } from '../utils.js';
 import { renderAuthView } from './auth-view.js';
 import { navigate } from '../router.js';
@@ -201,7 +200,15 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
     qsa('.landing-nav .tabbar__item', root).forEach((btn) => {
       btn.addEventListener('click', () => {
         const next = btn.dataset.screen;
+        // Both of these hand off to the real, already-public screen
+        // rather than to a lookalike inside this shell. Search used to
+        // show a mock — a search bar that was really a button, over a
+        // list of categories that all opened sign-up. Signed-out
+        // visitors can genuinely search, so showing them an imitation
+        // was wrong twice over: once for being fake, and once for not
+        // looking like the thing it was imitating.
         if (next === 'discover') { navigate('/discover'); return; }
+        if (next === 'search') { navigate('/search'); return; }
         if (next === screen) return;
         screen = next;
         paint();
@@ -212,7 +219,6 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
   function paintScreen() {
     const stage = qs('#landing-stage', root);
     if (screen === 'entry') { stage.innerHTML = entryHtml(); wireEntry(stage); }
-    else if (screen === 'search') { stage.innerHTML = searchHtml(); wireSearch(stage); }
     else if (screen === 'tour') { stage.innerHTML = tourHtml(); wireTour(stage); }
     else { stage.innerHTML = browseHtml(); wireBrowse(stage); }
   }
@@ -244,10 +250,10 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
     resolveShowcase().then((games) => {
       showcase = games;
       if (screen === 'entry') {
-        const slot = qs('#lp-art', root);
-        if (slot) slot.innerHTML = heroFanHtml(showcase);
-        const proof = qs('#lp-proof', root);
-        if (proof) proof.innerHTML = heroReviewHtml(showcase);
+        const shelf = qs('#lp-shelf', root);
+        if (shelf) shelf.innerHTML = shelfHtml(showcase);
+        const quote = qs('#lp-quote', root);
+        if (quote) quote.innerHTML = heroQuoteHtml(showcase);
       } else if (screen === 'tour') {
         const slot = qs('#tour-art', root);
         if (slot) slot.innerHTML = tourSceneHtml(TOUR_SLIDES[tourIndex].scene, showcase);
@@ -259,17 +265,15 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
     return `
       <div class="lp">
         <header class="lp__head">
-          <p class="lp__eyebrow">Every game you play</p>
           <h1 class="lp__word">PlayThruu</h1>
+          <p class="lp__tagline">The diary for every game you play.</p>
+          <div class="lp__rule"></div>
         </header>
-        <div class="lp__art" id="lp-art">${heroFanHtml(showcase)}</div>
-        <div class="lp__proof" id="lp-proof">${heroReviewHtml(showcase)}</div>
-        <div class="lp__content">
-          <p class="lp__tagline">Log what you play, rate it out of five, and keep every playthrough in one place.</p>
-          <div class="lp__actions">
-            <button type="button" class="lp__cta" id="entry-tour">Get started</button>
-            <button type="button" class="lp__ghost" id="entry-signin">I already have an account</button>
-          </div>
+        <div class="lp__shelf" id="lp-shelf">${shelfHtml(showcase)}</div>
+        <blockquote class="lp__quote" id="lp-quote">${heroQuoteHtml(showcase)}</blockquote>
+        <div class="lp__actions">
+          <button type="button" class="lp__cta" id="entry-tour">Get started</button>
+          <button type="button" class="lp__ghost" id="entry-signin">I already have an account</button>
         </div>
       </div>`;
   }
@@ -441,72 +445,6 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
     }
   }
 
-  // ---- search: a REAL search bar + REAL Discover filters -------------
-  // A leading icon per row (added alongside the trailing chevron that
-  // was already there) — every OTHER list-like surface in the app pairs
-  // an icon with its label (the tabbar, provider rows, tour mockups...);
-  // this was the one plain text list left, and against the entry
-  // screen's live wallpaper right before it, it read as flat/unfinished
-  // by comparison. Icons are matched by feel, not literal precision —
-  // e.g. Highest Rated and "Rate it" share the star, Most Popular gets
-  // the flame already used for trending elsewhere.
-  const CATEGORY_ICON = {
-    Genre: iconTag, Platform: iconGamepad, 'Most Popular': iconFlame,
-    'Highest Rated': iconStar, 'Most Anticipated': iconCalendar,
-    'All-Time Top Rated': iconTrophy, 'Newest Releases': iconSparkle,
-  };
-  const FEATURE_ICON = { new: iconInfo, track: iconDiary, rate: iconStar, friends: iconUserPlus, lists: iconBookmark };
-  function searchHtml() {
-    const categories = [
-      'Genre', 'Platform', 'Most Popular', 'Highest Rated',
-      'Most Anticipated', 'All-Time Top Rated', 'Newest Releases',
-    ];
-    const features = [
-      { id: 'new', label: 'New here?' },
-      { id: 'track', label: 'Track everything you play' },
-      { id: 'rate', label: 'Rate it and write reviews' },
-      { id: 'friends', label: "Follow friends, see what they're playing" },
-      { id: 'lists', label: 'Build lists and a want-to-play queue' },
-    ];
-    const chevron = `<svg class="landing-browseby__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"/></svg>`;
-    return `
-      <div class="landing-search-screen">
-        <button type="button" class="landing-search" id="landing-search-bar" aria-label="Search for a game">
-          ${iconSearch()}
-          <span>Search</span>
-        </button>
-        <p class="landing-browseby__heading">Browse by</p>
-        <div class="landing-browseby">
-          ${categories.map((c) => `
-            <button type="button" class="landing-browseby__row" data-cat="${esc(c)}">
-              <span class="landing-browseby__row-main"><span class="landing-browseby__row-icon">${CATEGORY_ICON[c]()}</span><span>${esc(c)}</span></span>
-              ${chevron}
-            </button>`).join('')}
-        </div>
-        <p class="landing-browseby__heading">Playthruu</p>
-        <div class="landing-browseby">
-          ${features.map((f) => `
-            <button type="button" class="landing-browseby__row" data-feature="${f.id}">
-              <span class="landing-browseby__row-main"><span class="landing-browseby__row-icon">${FEATURE_ICON[f.id]()}</span><span>${esc(f.label)}</span></span>
-              ${chevron}
-            </button>`).join('')}
-        </div>
-      </div>`;
-  }
-  function wireSearch(stage) {
-    // Both real now: the search bar opens the actual search screen, and
-    // every Browse-by row opens the real, working Discover screen —
-    // where the actual genre/platform/sort controls live. Genre and
-    // Platform don't map to one single value, so rather than build a
-    // preset for each, all seven rows just land on the same real screen
-    // and the person picks from there — the point was that tapping one
-    // of these used to force a login wall no matter what; now it never
-    // does.
-    qs('#landing-search-bar', stage).addEventListener('click', () => navigate('/search'));
-    qsa('.landing-browseby__row[data-cat]', stage).forEach((el) => el.addEventListener('click', () => navigate('/discover')));
-    // The feature-highlight rows genuinely do need an account.
-    qsa('.landing-browseby__row[data-feature]', stage).forEach((el) => el.addEventListener('click', () => goToAuth('signup')));
-  }
 
   // ---- tour: illustrated feature slides, ending on sign-up ----------
   // Progress is a segmented bar rather than dots, and there is a real
@@ -647,11 +585,16 @@ function reviewTeaserHtml(log) {
 // same way tapping a poster anywhere on this screen already hands off
 // to the real /game/:id page with its own real nav.
 function landingNavHtml(active) {
+  // Exactly the icons the signed-out navBar() in components.js draws,
+  // not a second set of the same four. Two icon sets in the same slots
+  // meant the bar appeared to change shape as you moved between this
+  // shell and a real public route like /discover — and one of them was
+  // drawing a four-pointed sparkle where Discover's compass belongs.
   const items = [
-    { id: 'entry', icon: iconAccountLocked(), label: 'Account' },
-    { id: 'browse', icon: iconGridBrowse(), label: 'Browse' },
-    { id: 'discover', icon: iconCompass(), label: 'Discover' },
-    { id: 'search', icon: iconSearch(), label: 'Search' },
+    { id: 'entry', icon: iconUserFilled(), label: 'Account' },
+    { id: 'browse', icon: iconBrowseNavFilled(), label: 'Browse' },
+    { id: 'discover', icon: iconCompassNavFilled(), label: 'Discover' },
+    { id: 'search', icon: iconSearchFilled(), label: 'Search' },
   ];
   return `
     <nav class="tabbar landing-nav">
@@ -662,25 +605,4 @@ function landingNavHtml(active) {
     </nav>`;
 }
 
-function iconAccountLocked() {
-  return `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-    <circle cx="12" cy="8" r="3.7" stroke="currentColor" stroke-width="2.3"/>
-    <path d="M4.3 20c1.3-3.6 3.7-5.7 6.6-6.2" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"/>
-    <rect x="14" y="14" width="7.5" height="6.5" rx="1.4" stroke="currentColor" stroke-width="2.1"/>
-    <path d="M15.8 14v-1.6a1.95 1.95 0 0 1 3.9 0V14" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/>
-  </svg>`;
-}
-function iconGridBrowse() {
-  return `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-    <rect x="3" y="3" width="7.7" height="7.7" rx="1.6" stroke="currentColor" stroke-width="2.3"/>
-    <rect x="13.3" y="3" width="7.7" height="7.7" rx="1.6" stroke="currentColor" stroke-width="2.3"/>
-    <rect x="3" y="13.3" width="7.7" height="7.7" rx="1.6" stroke="currentColor" stroke-width="2.3"/>
-    <rect x="13.3" y="13.3" width="7.7" height="7.7" rx="1.6" stroke="currentColor" stroke-width="2.3"/>
-  </svg>`;
-}
-function iconCompass() {
-  return `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-    <circle cx="12" cy="12" r="9.2" stroke="currentColor" stroke-width="2.3"/>
-    <path d="m15.3 8.7-4.2 2.8-2.1 4.1 4.2-2.8 2.1-4.1z" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/>
-  </svg>`;
-}
+
