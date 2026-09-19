@@ -443,6 +443,11 @@ ul { list-style: none; margin: 0; padding: 0; }
    Against the light theme's cream --bg it sat there as a flat black
    slab with no relation to the rest of the app. var(--bg) instead
    matches whichever theme is active, same as every other surface. */
+/* No hairline under the bar — for a screen whose header is followed
+   immediately by its own tab strip, that rule draws a second horizontal
+   edge a few pixels above the tabs' rounded pill, so the two read as
+   competing lines crowded into the same small space. */
+.topbar--flush { border-bottom: none; }
 .topbar--home { justify-content: center; padding-top: calc(var(--space-4) + var(--safe-top)); padding-bottom: var(--space-3); border-bottom: none; background: var(--bg); }
 /* Compose (Messages) / settings (own Profile) still need a right-side
    action even on the home-style header — absolutely positioned rather
@@ -5281,8 +5286,13 @@ a.gd-credit__name { text-decoration: none; }
    stream), so it reads as part of the tabs rather than as a page-level
    control up in the header. */
 .act-tabs {
-  display: flex; align-items: flex-start; gap: var(--space-2);
-  padding: 0 var(--space-4);
+  display: flex; align-items: center; gap: var(--space-2);
+  /* center, not flex-start: the pill is 50px tall and the filter button
+     42px, so top-aligning them left the button sitting 8px high against
+     the pill it belongs beside. The top padding is the gap the header's
+     removed border used to imply — without it the tabs sat flush against
+     the header with nothing between them at all. */
+  padding: var(--space-3) var(--space-4) 0;
 }
 .act-tabs .segmented { flex: 1; min-width: 0; }
 /* The list is the point of this screen, so it starts right under the

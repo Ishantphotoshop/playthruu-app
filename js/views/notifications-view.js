@@ -167,7 +167,7 @@ export async function renderNotificationsView(root) {
   // ---- the stream -------------------------------------------------------
   function paintShell() {
     const count = activeFilterCount();
-    root.innerHTML = topBar('Notifications', { back: true, brand: true }) + `
+    root.innerHTML = topBar('Notifications', { back: true, brand: true, flush: true }) + `
       <div class="act-tabs">
         <div class="segmented segmented--wide" id="act-tabs">
           ${TABS.map((t) => `<button class="segmented__item${t.id === activeTab ? ' segmented__item--active' : ''}" data-tab="${t.id}">${t.label}</button>`).join('')}

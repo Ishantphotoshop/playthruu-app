@@ -176,7 +176,11 @@ function iconCompassNavFilled() {
 //  - back:  back arrow + page title (sub-pages)
 //  - plain: page title only, no wordmark — the wordmark repeating on
 //           every tab was visual noise, so it now appears once, on home
-export function topBar(title, { back = false, right = '', home = false, wordmark = true, brand = false } = {}) {
+// `flush`: drop the hairline under the bar. For a screen whose header is
+// immediately followed by its own tab strip, that rule draws a second
+// horizontal edge a few pixels above the tabs' own rounded pill — two
+// competing lines stacked in the same small space.
+export function topBar(title, { back = false, right = '', home = false, wordmark = true, brand = false, flush = false } = {}) {
   if (home) {
     return `
       <header class="topbar topbar--home">
@@ -186,7 +190,7 @@ export function topBar(title, { back = false, right = '', home = false, wordmark
       </header>`;
   }
   return `
-    <header class="topbar">
+    <header class="topbar${flush ? ' topbar--flush' : ''}">
       ${back ? `<button class="topbar__back" data-action="back" aria-label="Back">${iconBack()}</button>` : ''}
       <h1 class="topbar__title${brand ? ' topbar__title--brand' : ''}">${esc(title)}</h1>
       <div class="topbar__right">${right}</div>
