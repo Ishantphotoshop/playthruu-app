@@ -4,6 +4,7 @@ import * as api from './api.js';
 import { state } from './state.js';
 import { route, setNotFound, startRouter, navigate, refreshCurrentView } from './router.js';
 import { renderLandingView, seedPinnedGames } from './views/landing-view.js';
+import { renderAuthView } from './views/auth-view.js';
 import { renderFeedView } from './views/feed-view.js';
 import { renderSearchView } from './views/search-view.js';
 import { renderDiscoverView, warmDiscover } from './views/discover-view.js';
@@ -257,6 +258,11 @@ function wireGlobalChrome() {
     if (account) { e.preventDefault(); renderLandingView(appEl); }
     const browse = e.target.closest('[data-action="browse"]');
     if (browse) { e.preventDefault(); renderLandingView(appEl, { startScreen: 'browse' }); }
+    // The three slots on the signed-out bar that genuinely need an
+    // account — Log and Notifications — go straight to sign-up rather
+    // than to a page that would only tell you to sign up.
+    const wantsAccount = e.target.closest('[data-action="signup"]');
+    if (wantsAccount) { e.preventDefault(); renderAuthView(appEl, { startMode: 'signup' }); }
 
     // Tapping Search again while already on it: an <a href="#/search">
     // only fires hashchange when the hash actually CHANGES, so a second

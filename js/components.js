@@ -79,49 +79,59 @@ export function posterFrame(coverUrl, title, extraClass = '', { tag = 'span', hr
 // are data-action buttons that drop back into the landing shell on the
 // right screen; Discover and Search are real links either way.
 export function navBar(activeBase = '/feed') {
-  if (!state.user) {
-    return `
-      <nav class="tabbar landing-nav">
-        <button type="button" class="tabbar__item" data-action="account" aria-label="Account">${iconUserFilled()}</button>
-        <button type="button" class="tabbar__item" data-action="browse" aria-label="Browse">${iconBrowseNavFilled()}</button>
-        <a href="#/discover" class="tabbar__item${activeBase === '/discover' ? ' tabbar__item--active' : ''}" data-route="/discover" aria-label="Discover">${iconCompassNavFilled()}</a>
-        <a href="#/search" class="tabbar__item${activeBase === '/search' ? ' tabbar__item--active' : ''}" data-route="/search" aria-label="Search">${iconSearchFilled()}</a>
-      </nav>`;
-  }
-  // News lives in the Feed/News tabs at the top of the home screen now
-  // (see homeTabs() below), not down here too — 5 real destinations
-  // (odd), so a single flat row with justify-content: space-evenly
-  // (see .tabbar in styles.css) already lands Log dead centre AND gives
-  // every gap — between icons and at the two outer edges — the exact
-  // same width. The two-group flex trick used while News made this 6
-  // (even) is gone; it's no longer needed and was giving the outer
-  // edges a different gap than the inner ones once padding was tightened.
+  // ONE bar, signed in or out.
+  //
+  // Signed-out visitors used to get a different bar entirely: four
+  // items (Account, Browse, Discover, Search) in different slots from
+  // the five the app itself uses, so signing in rearranged the one
+  // piece of furniture that should never move. Now the shape, the
+  // slots, the icons and the centre button are identical, and only
+  // what a tap DOES differs — the three destinations that genuinely
+  // need an account open sign-up instead.
+  //
+  // Discover lost its slot to make room. It is not gone: the filter
+  // button on the Search screen opens it, which is where someone
+  // looking to browse by genre actually goes.
+  //
+  // 5 items (odd), so a single flat row with justify-content:
+  // space-evenly (see .tabbar in styles.css) lands Log dead centre AND
+  // gives every gap — between icons and at both outer edges — the same
+  // width.
+  //
   // The messenger is archived (see MESSENGER_ARCHIVED in config.js) —
-  // its tab slot is a notification bell instead for as long as that
-  // stays true. Nothing about the other four items changed.
+  // its slot is a notification bell for as long as that stays true.
+  const out = !state.user;
   const items = [
-    { route: '/feed', icon: iconHomeFilled(), label: 'Feed' },
+    // Home for a signed-out visitor is the landing shell's browse
+    // screen: a real wall of games and real public reviews, which is
+    // the closest honest equivalent of a feed.
+    out ? { action: 'browse', route: '/feed', icon: iconHomeFilled(), label: 'Home' }
+        : { route: '/feed', icon: iconHomeFilled(), label: 'Feed' },
     { route: '/search', icon: iconSearchFilled(), label: 'Search' },
     // A plus, not the brand mark. The mark is the app's identity and
     // reads as a logo sitting in the middle of the bar rather than as
     // something to press; a plus says "add" the way it does in every
     // other app, which is exactly what this button does.
-    { route: '/log', icon: iconPlus(), label: 'Log', primary: true },
-    MESSENGER_ARCHIVED
-      ? { route: '/notifications', icon: iconBell(), label: 'Notifications' }
-      : { route: '/messages', icon: iconMessageFilled(), label: 'Messages' },
-    { route: '/me', icon: iconUserFilled(), label: 'Profile' },
+    out ? { action: 'signup', route: '/log', icon: iconPlus(), label: 'Log a game', primary: true }
+        : { route: '/log', icon: iconPlus(), label: 'Log', primary: true },
+    out ? { action: 'signup', route: '/notifications', icon: iconBell(), label: 'Notifications' }
+        : (MESSENGER_ARCHIVED
+            ? { route: '/notifications', icon: iconBell(), label: 'Notifications' }
+            : { route: '/messages', icon: iconMessageFilled(), label: 'Messages' }),
+    out ? { action: 'account', route: '/me', icon: iconUserFilled(), label: 'Account' }
+        : { route: '/me', icon: iconUserFilled(), label: 'Profile' },
   ];
-  // Icon-only now, no label underneath — same convention the signed-out
-  // nav above already used. aria-label carries the name instead so it's
-  // still announced to screen readers even though nothing's printed.
-  const navLink = (it) => `
-    <a href="#${it.route}" class="tabbar__item${it.primary ? ' tabbar__item--primary' : ''}${activeBase === it.route ? ' tabbar__item--active' : ''}" data-route="${it.route}" aria-label="${it.label}">
-      ${it.icon}
-    </a>`;
+
+  // Icon-only, no label underneath — aria-label carries the name so it
+  // is still announced even though nothing is printed.
+  const cls = (it) => `tabbar__item${it.primary ? ' tabbar__item--primary' : ''}${activeBase === it.route ? ' tabbar__item--active' : ''}`;
+  const node = (it) => (it.action
+    ? `<button type="button" class="${cls(it)}" data-action="${it.action}" aria-label="${it.label}">${it.icon}</button>`
+    : `<a href="#${it.route}" class="${cls(it)}" data-route="${it.route}" aria-label="${it.label}">${it.icon}</a>`);
+
   return `
     <nav class="tabbar">
-      ${items.map(navLink).join('')}
+      ${items.map(node).join('')}
     </nav>`;
 }
 

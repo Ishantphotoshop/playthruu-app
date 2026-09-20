@@ -7,6 +7,7 @@ import { shelfHtml, heroQuoteHtml, tourSceneHtml, resolveShowcase } from './land
 import { esc, starRow, qs, qsa, toast } from '../utils.js';
 import { renderAuthView } from './auth-view.js';
 import { navigate } from '../router.js';
+import { navBar } from '../components.js';
 import { state } from '../state.js';
 
 // The funnel shown to anyone who opens the app signed out. Structured to
@@ -189,32 +190,12 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
       root.innerHTML = `
         <div class="landing">
           <div class="landing-stage" id="landing-stage"></div>
-          ${landingNavHtml(screen)}
+          ${navBar(screen === 'entry' ? '/me' : '/feed')}
         </div>`;
-      wireNav();
     }
     paintScreen();
   }
 
-  function wireNav() {
-    qsa('.landing-nav .tabbar__item', root).forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const next = btn.dataset.screen;
-        // Both of these hand off to the real, already-public screen
-        // rather than to a lookalike inside this shell. Search used to
-        // show a mock — a search bar that was really a button, over a
-        // list of categories that all opened sign-up. Signed-out
-        // visitors can genuinely search, so showing them an imitation
-        // was wrong twice over: once for being fake, and once for not
-        // looking like the thing it was imitating.
-        if (next === 'discover') { navigate('/discover'); return; }
-        if (next === 'search') { navigate('/search'); return; }
-        if (next === screen) return;
-        screen = next;
-        paint();
-      });
-    });
-  }
 
   function paintScreen() {
     const stage = qs('#landing-stage', root);
@@ -573,36 +554,6 @@ function reviewTeaserHtml(log) {
         ${log.review ? `<p class="landing-review-card__text">${esc(log.review)}</p>` : ''}
       </div>
     </button>`;
-}
-
-// The 4-icon bottom nav, styled with the exact same classes the real
-// app's tabbar uses (.tabbar/.tabbar__item) so it's the same piece of
-// glass, not a lookalike. Icons only now — the icons plus the screens
-// they open are self-explanatory, and dropping the labels frees up
-// visual weight to make the icons themselves bigger. Discover is the
-// one item here that isn't a local screen inside this shell — it hands
-// off to the real, already-public /discover route (see wireNav), the
-// same way tapping a poster anywhere on this screen already hands off
-// to the real /game/:id page with its own real nav.
-function landingNavHtml(active) {
-  // Exactly the icons the signed-out navBar() in components.js draws,
-  // not a second set of the same four. Two icon sets in the same slots
-  // meant the bar appeared to change shape as you moved between this
-  // shell and a real public route like /discover — and one of them was
-  // drawing a four-pointed sparkle where Discover's compass belongs.
-  const items = [
-    { id: 'entry', icon: iconUserFilled(), label: 'Account' },
-    { id: 'browse', icon: iconBrowseNavFilled(), label: 'Browse' },
-    { id: 'discover', icon: iconCompassNavFilled(), label: 'Discover' },
-    { id: 'search', icon: iconSearchFilled(), label: 'Search' },
-  ];
-  return `
-    <nav class="tabbar landing-nav">
-      ${items.map((it) => `
-        <button type="button" class="tabbar__item${active === it.id ? ' tabbar__item--active' : ''}" data-screen="${it.id}" aria-label="${it.label}">
-          ${it.icon}
-        </button>`).join('')}
-    </nav>`;
 }
 
 
