@@ -47,12 +47,30 @@ const SHOWCASE = {
 // instead of a poster. Bumping the key fixes the browsers that exist
 // now; the completeness check below is what stops it happening again
 // the next time a title is added.
-// The games used as a full-bleed background. Not every cover survives
-// being blown up to fill a phone: a 3:4 box crops hard, and a cover
-// whose whole idea is a logo across the middle loses it. These are
-// built around a face or a figure — and each one's text-free key art
-// is fetched for exactly this use (see getKeyArt in api.js).
-const COVER_STARS = ['hellblade2', 'lastofus2', 'tsushima', 'alanwake2', 'silenthill2', 'wukong', 'ff7rebirth'];
+// ---- the artwork the entry screen rotates through ---------------------
+// Each entry names an exact IGDB image, chosen by looking at every
+// artwork and screenshot the game has and picking one that is (a) free
+// of any text and (b) built around a face or a figure, which is what
+// survives being cropped to a phone.
+//
+// Hand-picked rather than "take the first one", because neither source
+// is reliably clean: artworks are often the marketing key art complete
+// with the logo and a tagline, and screenshots are often mid-combat
+// with the HUD up — Final Fantasy VII Rebirth's first screenshot had a
+// "Got 'Em!" callout sitting directly under the masthead.
+//
+// Silent Hill 2 is not here on purpose: IGDB resolves that title to the
+// 2001 original, whose art is all PS2-era and falls apart at this size.
+const COVER_STARS = [
+  { key: 'hellblade2', image: 'ar2cjv' },   // Senua, hands to her face
+  { key: 'lastofus2', image: 'scpkht' },    // Joel, close, lit from one side
+  { key: 'tsushima', image: 'ob4pm8jmsutkttmdm5ys' }, // Jin against fire
+  { key: 'alanwake2', image: 'ar3nui' },    // the red forest
+  { key: 'wukong', image: 'sc8i9c' },       // the Monkey King, armoured
+  { key: 'ff7rebirth', image: 'scmwdg' },   // Aerith, in profile
+];
+
+const IGDB_ART = (imageId) => `https://images.igdb.com/igdb/image/upload/t_1080p/${imageId}.jpg`;
 
 const STORAGE_KEY = 'playthruu:showcase-games:v2';
 let showcaseCache = null;
@@ -108,16 +126,6 @@ export async function resolveShowcase() {
     if (g && g.cover_url) out[k] = { igdb_id: g.igdb_id, title: g.title, cover_url: g.cover_url };
   });
 
-  // Key art for the ones used as a full-bleed background. One extra
-  // request for all of them together, and a game with no artwork of
-  // its own simply keeps its cover.
-  try {
-    const art = await api.getKeyArt(COVER_STARS.map((k) => out[k] && out[k].igdb_id));
-    for (const k of COVER_STARS) {
-      if (out[k] && art[out[k].igdb_id]) out[k].art_url = art[out[k].igdb_id];
-    }
-  } catch { /* covers still work as a background, just with their logo on */ }
-
   showcaseCache = out;
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(out)); } catch { /* fine to skip persisting */ }
   return showcaseCache;
@@ -137,55 +145,23 @@ function poster(game, extraClass = '', inner = '') {
   </div>`;
 }
 
-// ---- the entry screen's cover ---------------------------------------
-// (COVER_STARS is declared above resolveShowcase, which needs it.)
-// The entry screen is laid out like a magazine, so it needs one piece
-// of art big enough to be the cover of one.
-//
-// Not every game cover survives that. A 3:4 box blown up to fill a
-// phone crops hard, and a cover whose whole idea is a logo across the
-// middle loses it. These are the ones built around a face or a figure,
-// which is exactly what a magazine cover is built around too.
-// Chosen once per load, not per paint: the entry screen remounts every
-// time the bottom bar comes back to it, and re-rolling there would
-// swap the cover under someone mid-read. A different issue each time
-// the app opens is the point — a magazine that never changes its cover
-// is a poster.
-const COVER_KEY = COVER_STARS[Math.floor(Math.random() * COVER_STARS.length)];
-
-export function magazineCoverHtml(games) {
-  const g = pick(games, COVER_KEY);
-  // The key art if the game has any, its cover if not. Not posterFrame:
-  // that is built for thumbnails in a scrolling grid, so it lazy-loads
-  // and shows a shimmer — both wrong for the one image that IS the
-  // screen. This one is eager and high priority, because it is the
-  // first thing anybody sees and nothing else on the page competes
-  // with it for bandwidth.
-  const src = g.art_url || g.cover_url;
-  if (!src) return '';
-  return `<img class="lp__art" src="${esc(src)}" alt="" fetchpriority="high" decoding="async">`;
-}
-
-/**
- * Tells the browser to start the cover art before the stylesheet and
- * the rest of the page have finished, which is most of the difference
- * between the art appearing with the words and a beat after them.
- */
-export function preloadCover(games) {
-  const g = pick(games, COVER_KEY);
-  const href = g.art_url || g.cover_url;
-  if (!href || document.querySelector(`link[rel="preload"][href="${href}"]`)) return;
-  const link = document.createElement('link');
-  link.rel = 'preload';
-  link.as = 'image';
-  link.href = href;
-  link.fetchPriority = 'high';
-  document.head.appendChild(link);
-}
-
-/** The cover line naming what this issue's art is. */
-export function coverStarTitle(games) {
-  return pick(games, COVER_KEY).title;
+// ---- the entry screen's rotating artwork ------------------------------
+// Every few seconds the entry screen changes the game behind it, the
+// same way the login screen does. These are the games it rotates
+// through: not every cover survives being blown up to fill a phone, so
+// these are built around a face or a figure, and each one's text-free
+// key art is fetched for exactly this use (see getKeyArt in api.js).
+export function coverStars(games) {
+  return COVER_STARS
+    .map(({ key, image }) => {
+      const g = (games || {})[key];
+      // The artwork url is built from the picked image id, so it needs
+      // nothing from the network — only the game's own title and id,
+      // for the credit and where it goes when tapped.
+      if (!g || !g.igdb_id) return null;
+      return { key, title: g.title, src: IGDB_ART(image), igdbId: g.igdb_id };
+    })
+    .filter(Boolean);
 }
 
 // ---- tour scenes ------------------------------------------------------

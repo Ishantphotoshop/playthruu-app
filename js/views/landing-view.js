@@ -3,7 +3,7 @@ import {
   posterFrame, avatarImg, spinner, emptyState, iconSearch,
   iconUserFilled, iconBrowseNavFilled, iconCompassNavFilled, iconSearchFilled,
 } from '../components.js';
-import { magazineCoverHtml, coverStarTitle, preloadCover, tourSceneHtml, resolveShowcase } from './landing-art.js';
+import { coverStars, tourSceneHtml, resolveShowcase } from './landing-art.js';
 import { esc, starRow, qs, qsa, toast } from '../utils.js';
 import { renderAuthView } from './auth-view.js';
 import { navigate } from '../router.js';
@@ -231,11 +231,7 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
     resolveShowcase().then((games) => {
       showcase = games;
       if (screen === 'entry') {
-        preloadCover(showcase);
-        const art = qs('#lp-art', root);
-        if (art) art.innerHTML = magazineCoverHtml(showcase);
-        const star = qs('#lp-star', root);
-        if (star) star.textContent = `On the cover: ${coverStarTitle(showcase)}`;
+        startRotation();
       } else if (screen === 'tour') {
         const slot = qs('#tour-art', root);
         if (slot) slot.innerHTML = tourSceneHtml(TOUR_SLIDES[tourIndex].scene, showcase);
@@ -243,35 +239,35 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
     }).catch(() => { /* placeholders stay; nothing to recover from */ });
   }
 
-  // Laid out like the cover of a magazine: masthead at the top, a rule
-  // under it, the issue line, then the cover lines and the two actions
-  // over the bottom of one full-bleed piece of art.
-  //
-  // The cover lines are what the app actually does, not invented
-  // figures — a real magazine's cover lines are the contents, and a
-  // number nobody can check reads as marketing the moment you look at
-  // it twice.
-  const COVER_LINES = [
-    'Log every game — finished, dropped, still going',
-    'Half-star ratings, and reviews worth reading',
-    'See what your friends played this week',
-  ];
+  // ---- entry: a diagonal cut over rotating game art ------------------
+  // The artwork behind it changes every few seconds and credits the
+  // game it came from, exactly as the login screen does — and the
+  // credit opens that game's page, which works signed out because
+  // /game/:id and /game/igdb/:id are both public routes (see
+  // registerPublicRoutes in app.js).
+  const ROTATE_MS = 5000;
+  let artLayer = 'a';
+  let artIndex = 0;
+  let rotateTimer = null;
+  let creditGame = null;
 
   function entryHtml() {
     return `
       <div class="lp">
-        <div class="lp__art-wrap" id="lp-art">${magazineCoverHtml(showcase)}</div>
-        <div class="lp__veil" aria-hidden="true"></div>
-        <header class="lp__masthead">
-          <h1 class="lp__word">Play<br>Thruu</h1>
-          <div class="lp__rule" aria-hidden="true"></div>
-          <p class="lp__issue">Your games, written down</p>
-        </header>
+        <div class="lp__art-wrap" aria-hidden="true">
+          <div class="lp__art lp__art--a is-active"></div>
+          <div class="lp__art lp__art--b"></div>
+          <div class="lp__art-veil"></div>
+        </div>
+        <div class="lp__edge" aria-hidden="true"></div>
+        <button type="button" class="lp__credit" id="lp-credit" hidden>Artwork from <span id="lp-credit-game"></span></button>
         <div class="lp__content">
-          <ul class="lp__lines">
-            ${COVER_LINES.map((l) => `<li>${esc(l)}</li>`).join('')}
-          </ul>
-          <p class="lp__star" id="lp-star">On the cover: ${esc(coverStarTitle(showcase))}</p>
+          <img src="icons/mark-blue.svg" alt="" class="lp__mark">
+          <h1 class="lp__word">PlayThruu</h1>
+          <blockquote class="lp__quote">
+            <p class="lp__quote-text">&ldquo;Made me hate a character then feel awful about it.&rdquo;</p>
+            <footer class="lp__quote-by">Aditya, on The Last of Us Part II</footer>
+          </blockquote>
           <div class="lp__actions">
             <button type="button" class="lp__cta" id="entry-tour">Get started</button>
             <button type="button" class="lp__ghost" id="entry-signin">I already have an account</button>
@@ -279,8 +275,71 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
         </div>
       </div>`;
   }
+
+  // Paint the next image onto the hidden layer, fade it in, and let the
+  // old one fade out under it — the same crossfade the login screen
+  // uses, rather than swapping one element's src, which flashes.
+  function showArt(entry, instant) {
+    const next = artLayer === 'a' ? 'b' : 'a';
+    const nextEl = qs(`.lp__art--${next}`, root);
+    const curEl = qs(`.lp__art--${artLayer}`, root);
+    if (!nextEl) return;
+    if (instant) {
+      const a = qs('.lp__art--a', root);
+      if (a) { a.style.backgroundImage = `url("${entry.src}")`; a.classList.add('is-active'); }
+      artLayer = 'a';
+    } else {
+      nextEl.style.backgroundImage = `url("${entry.src}")`;
+      nextEl.classList.add('is-active');
+      if (curEl) curEl.classList.remove('is-active');
+      artLayer = next;
+    }
+    creditGame = entry;
+    const credit = qs('#lp-credit', root);
+    const label = qs('#lp-credit-game', root);
+    if (credit && label) {
+      label.textContent = entry.title;
+      credit.hidden = false;
+    }
+  }
+
+  // Decoded before it is shown, so a rotation never fades in a
+  // half-loaded frame.
+  function preloadThenShow(entry, instant) {
+    const img = new Image();
+    img.onload = () => {
+      if (!qs('.lp__art--a', root)) { clearInterval(rotateTimer); rotateTimer = null; return; }
+      showArt(entry, instant);
+    };
+    img.src = entry.src;
+  }
+
+  function startRotation() {
+    clearInterval(rotateTimer);
+    rotateTimer = null;
+    const stars = coverStars(showcase);
+    if (!stars.length) return;
+    artIndex = Math.floor(Math.random() * stars.length);
+    preloadThenShow(stars[artIndex], true);
+    if (stars.length < 2) return;
+    rotateTimer = setInterval(() => {
+      // The screen is gone (the nav moved on, or someone signed in) —
+      // stop, or this keeps painting into a detached tree forever.
+      if (!qs('.lp__art--a', root)) { clearInterval(rotateTimer); rotateTimer = null; return; }
+      artIndex = (artIndex + 1) % stars.length;
+      preloadThenShow(stars[artIndex], false);
+    }, ROTATE_MS);
+  }
   function wireEntry(stage) {
     loadShowcase();
+    startRotation();
+    // Straight to the game's own page. The login screen has to search
+    // for its credited title first, because its backdrops are local
+    // files that only know a name; these came from IGDB and already
+    // carry an id, so there is nothing to look up.
+    qs('#lp-credit', stage).addEventListener('click', () => {
+      if (creditGame && creditGame.igdbId) navigate(`/game/igdb/${creditGame.igdbId}`);
+    });
     qs('#entry-signin', stage).addEventListener('click', () => goToAuth('signin'));
     qs('#entry-tour', stage).addEventListener('click', () => { screen = 'tour'; tourIndex = 0; paint(); });
   }

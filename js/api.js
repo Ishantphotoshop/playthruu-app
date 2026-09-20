@@ -649,38 +649,6 @@ function filterOutEditions(games) {
 // Edition", filtering that away leaves only the 2001 original to match
 // against, and the import silently records the wrong game. Same for
 // `version_parent`, which is exactly what IGDB hangs editions off.
-/**
- * Text-free key art for a set of IGDB games, in one request.
- *
- * A game's COVER always has its logo and title printed on it — that is
- * what a cover is. For anything using art as a background rather than
- * as a thumbnail, that text collides with the app's own, and no amount
- * of scrimming fixes type over type.
- *
- * SCREENSHOTS first, then artworks. `artworks` turned out not to be
- * reliably clean — plenty are the marketing key art complete with a
- * tagline ("THE MASTER OF HORROR ADVENTURE" sat across the top of
- * Silent Hill 2's, directly under the masthead). A screenshot is a
- * frame of the game itself, so it never carries marketing type at all.
- * The caller falls back to the cover only if a game has neither.
- *
- * Returns { [igdb_id]: url } at 1080p. Not `original`: those run to 4K
- * and several megabytes, which on a phone is a slower first paint in
- * exchange for detail nobody can see at this size.
- */
-export async function getKeyArt(igdbIds) {
-  const ids = [...new Set((igdbIds || []).filter(Boolean))];
-  if (!ids.length) return {};
-  const rows = await igdb('games',
-    `fields id,artworks.image_id,screenshots.image_id; where id = (${ids.join(',')}); limit ${ids.length};`);
-  const out = {};
-  for (const g of rows) {
-    const art = (g.screenshots || [])[0] || (g.artworks || [])[0];
-    if (art) out[g.id] = igdbImageUrl(art.image_id, '1080p');
-  }
-  return out;
-}
-
 export async function searchIgdb(query, limit = 12, page = 1, { includeEditions = false } = {}) {
   if (!query?.trim()) return [];
   // Wider than what we show, since ranking happens client-side — but
