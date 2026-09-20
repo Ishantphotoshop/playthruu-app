@@ -31,26 +31,30 @@
    primary action is a real failure, not a cosmetic one.
    ============================================================ */
 :root {
-  /* --- foundation: zero-chroma grey, six steps of elevation ---
-     R, G and B are equal at every step. This is deliberate and it is
-     the whole idea: a base with no chroma at all cannot tint anything
-     sitting on it, and this app's screens are mostly cover art it does
-     not control. Previous ramps all leaned somewhere — the old #0a0b0f
-     was quietly blue, the brown after it was loudly brown — and every
-     poster inherited that lean. Nothing here leans. The cost is that
-     grey alone reads clinical, which is exactly the job the single
-     accent below is carrying. */
-  --bg: #0b0b0b;
-  --bg-deep: #050505;
-  --bg-lift: #111111;
-  --surface: #161616;
-  --surface-raised: #1d1d1d;
-  --surface-high: #292929;
+  /* --- foundation: navy, six steps of elevation ---
+     Three of these are the palette exactly — #000814 as the page,
+     #001D3D as the first raised surface, #003566 as the highest — and
+     the three in between are interpolated so elevation reads as one
+     continuous climb rather than three jumps.
+
+     This replaces a deliberately zero-chroma grey ramp, and the reason
+     that ramp existed is worth keeping in mind: a base with no chroma
+     cannot tint the cover art sitting on it, and this app's screens are
+     mostly cover art. A navy base does lean, and every poster inherits
+     a little of that lean. The trade is taken knowingly — the lean is
+     slight because the base is nearly black, and a night-blue ground
+     gives the app somewhere to stand that grey never did. */
+  --bg: #000814;
+  --bg-deep: #00040d;
+  --bg-lift: #00122a;
+  --surface: #001d3d;
+  --surface-raised: #002a52;
+  --surface-high: #003566;
 
   /* --- glass --- */
   --glass-fill: rgba(255, 255, 255, 0.03);
   --glass-fill-strong: rgba(255, 255, 255, 0.08);
-  --glass-tint: rgba(11, 11, 11, 0.14);
+  --glass-tint: rgba(0, 8, 20, 0.14);
   --glass-filter: blur(22px) saturate(240%) brightness(1.24) contrast(1.05);
   --glass-filter-strong: blur(34px) saturate(230%) brightness(1.16) contrast(1.04);
   --glass-light: rgba(255, 255, 255, 0.045);
@@ -60,35 +64,36 @@
   --blur: 30px;
   --blur-strong: 42px;
   --glass: rgba(255, 255, 255, 0.05);
-  --glass-strong: rgba(11, 11, 11, 0.74);
+  --glass-strong: rgba(0, 8, 20, 0.74);
 
-  /* --- text: neutral, same as the ground it sits on. Any tint here
-     would defeat the point of a zero-chroma base, since ink covers
-     more of the screen than any surface does. --- */
-  --ink: #f5f5f5;
-  --ink-dim: #969696;
-  --ink-faint: #646464;
+  /* --- text: white, then two steps of the same blue the ground is ---
+     Secondary text carries a little of the base's own hue rather than
+     being neutral grey on a blue field, which reads as a different
+     material laid on top. Both steps are kept light enough to stay
+     legible on #000814 rather than being chosen for looks. --- */
+  --ink: #ffffff;
+  --ink-dim: #9fb4cd;
+  --ink-faint: #7692b3;
 
-  /* --- accent: one hot signal colour, and only one ---
-     On a field with literally zero chroma, a single saturated colour
-     carries the entire personality, so it does not need help and must
-     not get competition. Everything that is not this cyan is grey.
+  /* --- accent: the palette's yellow, and only it ---
+     #FFD60A over a #000814 ground is the highest-contrast pair the
+     palette contains, which is what an accent is for: it is never in
+     doubt what the primary action on a screen is. --accent-deep is the
+     palette's other yellow, #FFC300, used where the accent needs to sit
+     back a step rather than be invented darker.
 
-     Cool, not warm, and that is the whole reason for it. Game cover art
-     is overwhelmingly warm — orange fire, red logos, gold type — and the
-     old orange accent was competing with every poster on every screen
-     instead of standing out against them. A cold accent separates from
-     that art cleanly, stays legible at 1px on near-black, and is light
-     enough to take the app's dark ink as button text (see .btn--accent),
-     which a deeper colour would not. */
-  --accent: #27d2ef;
-  --accent-bright: #6fe3f8;
-  --accent-deep: #0e93ad;
-  --accent-dim: rgba(39, 210, 239, 0.15);
-  --gold: #ffc247;
+     Warm against a cool ground, so it separates from the base the way
+     the old cyan separated from grey — and it is light enough to take
+     the page colour as button text (see .btn--accent), which anything
+     deeper would not be. */
+  --accent: #ffd60a;
+  --accent-bright: #ffe45c;
+  --accent-deep: #ffc300;
+  --accent-dim: rgba(255, 214, 10, 0.15);
+  --gold: #ffc300;
   /* Warm orange — the Messenger's status accent (Playing / send).
      Online presence stays green (--success); orange is for status. */
-  --orange: #ff8c3a;
+  --orange: #ffc300;
   /* White, not gold. With the accent doing all the colour work, a
      second warm tone on ratings would read as a competing signal —
      and against a neutral grey a pure-white star is the sharper,
@@ -100,8 +105,8 @@
   --violet: #a78bfa;
 
   /* --- semantic --- */
-  --line: rgba(245, 245, 245, 0.08);
-  --line-strong: rgba(245, 245, 245, 0.16);
+  --line: rgba(255, 255, 255, 0.09);
+  --line-strong: rgba(255, 255, 255, 0.18);
   /* Rose, not the old #ff6b6b. Against an orange primary a plain red
      sits ~20 degrees away in hue and reads as the same colour at a
      glance, which is how "delete account" ends up looking like "log
@@ -109,7 +114,7 @@
      by hue rather than relying on brightness alone. */
   --danger: #f43f5e;
   --success: #3ddc97;
-  --warning: #ffc247;
+  --warning: #ffc300;
 
   /* --- type ---
      Manrope throughout: a cleaner, more even geometric sans than the
@@ -264,13 +269,13 @@
 html, body { height: 100%; overflow: hidden; }
 body {
   margin: 0;
-  /* The site page BEHIND/AROUND the app column. A fixed warm cream —
-     deliberately NOT a theme token — so that whatever theme the app
-     itself is in (dark by default), the surrounding page stays light
-     and the app panel is clearly set apart from it. On a phone the app
-     fills the screen so this is never seen; on desktop it's the cream
-     margin either side of the centred app column. */
-  background: #ece4d1;
+  /* The site page BEHIND/AROUND the app column. Plain white — the last
+     colour in the palette, and the one that sets a near-black navy
+     panel apart most cleanly. Deliberately NOT a theme token, so it
+     stays light whatever the app itself is doing. On a phone the app
+     fills the screen and this is never seen; on desktop it is the
+     margin either side of the centred column. */
+  background: #ffffff;
   background-attachment: fixed;
   color: var(--ink);
   font-family: var(--font-body);
@@ -666,7 +671,7 @@ ul { list-style: none; margin: 0; padding: 0; }
    label shadows further down, not by making the surface opaque.       */
 /* Docked edge-to-edge and flush to the bottom now, not the floating
    pill with side/bottom breathing room this used to be — same "docked,
-   full-width, square corners" shape .landing-nav.tabbar already used
+   full-width, square corners" shape the signed-out bar already used
    below (that override still applies on top of this unchanged), but
    keeping this bar's own surface-raised fill rather than switching to
    solid black — black was only ever meant for the PlayThruu/home-tabs
@@ -743,7 +748,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .tabbar__item:active { transform: scale(0.92); }
 /* Active tab is marked by the icon/label lighting up to full white (from
    the 60%-opacity resting state) — no dot beneath it. */
-.tabbar__item--active { color: #fff; }
+.tabbar__item--active { color: var(--accent); }
 /* A plain drop shadow to lift the glyph off the bar, and no coloured
    bloom behind it. The accent already names the active tab; a glow on
    top of that is decoration the rest of the app does not use. */
@@ -1905,9 +1910,9 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
   font-size: 12.5px; font-weight: 700; font-variant-numeric: tabular-nums;
 }
 .profile-header__hours {
-  background: color-mix(in srgb, var(--accent-bright) 14%, transparent);
-  border: 1px solid color-mix(in srgb, var(--accent-bright) 30%, transparent);
-  color: var(--accent-bright);
+  background: var(--glass-fill);
+  border: 1px solid var(--line-strong);
+  color: var(--ink);
 }
 /* Amber, not the old accent orange — a streak is a flame, so it stays
    warm, but it was the last hardcoded #ff8a3d left in the app and it
@@ -2495,7 +2500,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 /* ------------------------------------------------------------ auth screen */
 .auth-screen {
   position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column;
-  justify-content: flex-end; background: #0a0a0a; overflow: hidden;
+  justify-content: flex-end; background: var(--bg); overflow: hidden;
   transition: filter 320ms ease;
 }
 /* Whole screen blurs while the "Continue with" popup is open — art,
@@ -2525,7 +2530,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
    match the screen, in exchange for zero letterboxing/empty space. */
 .auth-screen__art {
   position: absolute; inset: 0;
-  background-color: #0a0a0a; background-size: cover; background-position: center 22%; background-repeat: no-repeat;
+  background-color: var(--bg); background-size: cover; background-position: center 22%; background-repeat: no-repeat;
   opacity: 0; transition: opacity 1.1s ease;
 }
 .auth-screen__art.is-active { opacity: 1; }
@@ -2590,7 +2595,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
   text-shadow: 0 2px 8px rgba(0,0,0,0.85);
 }
 .auth-form .field input {
-  width: 100%; background: #fff; color: #161616; border: none; border-radius: 12px;
+  width: 100%; background: #fff; color: #001d3d; border: none; border-radius: 12px;
   padding: 15px 16px; font-family: var(--font-body); font-size: 15px;
   box-shadow: 0 0 0 0 transparent; transition: box-shadow 0.15s ease;
 }
@@ -2608,7 +2613,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
   background: none; border: none; padding: 0; color: #929292; cursor: pointer; border-radius: 8px;
 }
 .auth-form .field__toggle svg { width: 18px; height: 18px; display: block; }
-.auth-form .field__toggle:active { color: #161616; background: rgba(0,0,0,0.06); }
+.auth-form .field__toggle:active { color: #001d3d; background: rgba(0,0,0,0.06); }
 /* Content fades/rises in on mount rather than just popping into place.
    Respects reduced-motion — no animation at all in that case, content
    just appears instantly in its final position. */
@@ -2626,7 +2631,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 .auth-form .field input::placeholder { color: #a0a0a0; }
 .auth-form .field { margin-bottom: 14px; display: block; }
 .auth-screen .btn--accent {
-  background: var(--gold); color: #14100a; border-radius: 999px; border: none;
+  background: var(--gold); color: var(--bg); border-radius: 999px; border: none;
   padding: 16px; font-family: var(--font-display); font-weight: 800; font-size: 17px;
   letter-spacing: 0.02em; width: 100%;
 }
@@ -2806,7 +2811,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
    surface here. The literal dark-theme accent value stays vivid as a
    small accent chip in both themes, the way a call-to-action often
    does regardless of surrounding theme. */
-.avatar-crop__apply { background: var(--accent); color: #0b0b0b; border-color: transparent; }
+.avatar-crop__apply { background: var(--accent); color: var(--bg); border-color: transparent; }
 .avatar-crop__cancel svg, .avatar-crop__apply svg { width: 16px; height: 16px; }
 .avatar-crop__stage-wrap {
   flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center;
@@ -3108,7 +3113,7 @@ a.gd-credit__name { text-decoration: none; }
   display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0;
   margin-top: 4px; padding: 6px 13px;
   border: none; border-radius: var(--radius-pill);
-  background: #fff; color: #0b0b0b;
+  background: #fff; color: var(--bg);
   font-size: 12.5px; font-weight: 700; letter-spacing: 0.01em;
   transition: transform var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
 }
@@ -3211,7 +3216,7 @@ a.gd-credit__name { text-decoration: none; }
    five — inherit it, since both sit inside .gd-dist. */
 .gd-dist {
   display: flex; flex-direction: column; gap: var(--space-2);
-  --star-fill: #22c55e;
+  --star-fill: var(--accent);
 }
 .gd-dist__head { display: flex; align-items: baseline; justify-content: space-between; }
 /* Measured Letterboxd's own heading at 12px/400/uppercase/muted and
@@ -3297,7 +3302,7 @@ a.gd-credit__name { text-decoration: none; }
    proportion once the chart shrank under it. */
 .gd-dist__bar {
   width: 100%; min-height: 4px; border-radius: 0;
-  background: #1f1f1f;
+  background: var(--surface-high);
   transition: background var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
   pointer-events: none; /* clicks belong to the button, not the bar */
 }
@@ -4144,7 +4149,7 @@ a.gd-credit__name { text-decoration: none; }
    Shown to a signed-out visitor instead of dropping straight onto a
    login form. Structured as three small screens (entry / browse /
    search) tied together by the SAME floating glass nav the real app
-   uses (.tabbar, reused via the .landing-nav wrapper below) — the goal
+   uses (.tabbar — one bar now, signed in or out) — the goal
    is that this reads as genuinely being inside Playthruu, not a
    separate marketing page bolted on the front. Real trending games and
    real public reviews throughout; nothing is actually clickable-through
@@ -4155,58 +4160,9 @@ a.gd-credit__name { text-decoration: none; }
    breathing room. This has to match .landing-entry's min-height calc
    below exactly, or the two disagree about where the bottom actually is
    and a visible gap opens up between them. The real height (see
-   .landing-nav.tabbar and .tabbar__item below): 1px border-top + 6px
+   .tabbar and .tabbar__item): 1px border-top + 6px
    padding-top + the 50px item itself + 6px padding-bottom = 63px. */
 .landing-stage { flex: 1; overflow-y: auto; padding-bottom: calc(63px + var(--safe-bottom)); background: var(--bg); }
-
-/* Docked edge-to-edge, not the floating pill the real in-app tabbar
-   uses — full width, square top corners, flush to the bottom and both
-   sides. Deliberately its own solid black + lime material, not the
-   real in-app tabbar's own glass — border/background/blur only, never
-   size or padding, since THAT is what the reserved nav space below
-   (.landing-stage, .landing-entry) is calculated against. Fixed
-   regardless of theme, same reasoning as the entry content above it:
-   this whole screen is a deliberate dark, high-contrast moment, not
-   one that should go pale in light theme. */
-.landing-nav.tabbar {
-  /* position:fixed anchors to the whole browser viewport, not to #app's
-     centred 560px column — plain left:0/right:0 only looked edge-to-edge
-     on an actual phone (viewport already narrower than 560px); on a wider
-     desktop/localhost window it stretched across the entire browser. This
-     matches #app's own centring formula instead, so the bar is genuinely
-     edge-to-edge against the APP's width at any viewport size. */
-  position: fixed; left: 50%; right: auto; bottom: 0; transform: translateX(-50%);
-  width: 100%; max-width: 560px;
-  border-radius: 0; border: none; border-top: 1px solid rgba(255,255,255,0.12);
-  /* Same symmetric 6px top/bottom as the real in-app .tabbar now
-     (spelled out explicitly here rather than left to inherit, since
-     .landing-stage/.landing-entry's height budgets above depend on this
-     exact value). */
-  padding: 6px 0 calc(6px + var(--safe-bottom));
-  /* Flat solid surface, not glass — matches the real in-app .tabbar
-     (see above) and every other panel in the app. */
-  background: #121212;
-  box-shadow: 0 10px 34px -8px rgba(0,0,0,0.55);
-}
-.landing-nav .tabbar__item {
-  position: relative;
-  background: none; border: none; font: inherit; cursor: pointer; appearance: none;
-  color: var(--ink-dim); text-shadow: none;
-  transition: color 160ms ease;
-}
-.landing-nav .tabbar__item:hover { color: var(--ink); }
-/* Colour alone marks the active tab. The dot under it was one mark too
-   many for a four-item bar where the icons already differ. */
-.landing-nav .tabbar__item--active { color: var(--accent-bright); }
-/* Icon-only — no label underneath. No drop-shadow glow — flat lime on
-   flat black, full stop. Same 25px size as the real in-app nav's icons
-   now (was 30px) — matching its look was the whole point of redoing
-   this bar. Item height/padding still comes from the base .tabbar__item
-   (50px tall) with nothing overridden here — that 50px is what the
-   reserved nav space below (.landing-stage, .landing-entry) is
-   calculated against; changing it without updating those is exactly
-   what reopened the gap above the bar the last time this was touched. */
-.landing-nav .tabbar__item svg { width: 24px; height: 24px; filter: none; }
 
 /* ---- entry screen ----------------------------------------------------
    One finished diary entry, held up on its own.
@@ -4422,7 +4378,7 @@ a.gd-credit__name { text-decoration: none; }
    sat grey-on-grey. */
 .lp-face:nth-child(1) .avatar, .lp-face:nth-child(1) img { background: #8b5cf6; color: #fff; }
 .lp-face:nth-child(2) .avatar, .lp-face:nth-child(2) img { background: var(--accent); color: var(--bg); }
-.lp-face:nth-child(3) .avatar, .lp-face:nth-child(3) img { background: var(--gold); color: #14100a; }
+.lp-face:nth-child(3) .avatar, .lp-face:nth-child(3) img { background: var(--gold); color: var(--bg); }
 .lp-face:nth-child(4) .avatar, .lp-face:nth-child(4) img { background: #f0688a; color: #fff; }
 .lp-scene--list { flex-direction: column; gap: 8px; width: 100%; }
 .lp-listrow {
