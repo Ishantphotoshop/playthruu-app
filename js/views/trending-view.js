@@ -21,7 +21,7 @@ export async function renderTrendingView(root) {
       return;
     }
     body.innerHTML = `<div class="card-grid">${games.map((g, i) => `
-      <button type="button" class="trending-card" data-idx="${i}">
+      <button type="button" class="trending-card" data-idx="${i}" aria-label="${esc(g.title)}">
         ${posterFrame(g.cover_url, g.title, 'trending-card__cover')}
       </button>`).join('')}</div>`;
 

@@ -36,7 +36,11 @@ export function posterFrame(coverUrl, title, extraClass = '', { tag = 'span', hr
   const src = coverUrl || placeholderCover(title);
   const sharp = coverUrl ? igdbSized(coverUrl, full ? '1080p' : 'cover_big') : src;
   const fallback = placeholderCover(title);
-  const attrs = tag === 'a' ? `href="${esc(href)}"` : '';
+  // A poster rendered as a link needs its own name: the cover image
+  // inside it is decorative to a screen reader once the link is the
+  // thing being announced, so several of these were reading as a bare
+  // "link" in the diary and activity lists.
+  const attrs = tag === 'a' ? `href="${esc(href)}" aria-label="${esc(title)}"` : '';
   // ONE image, and no spinner on top of it.
   //
   // This used to load a second, tiny copy underneath as a blurred
@@ -387,7 +391,7 @@ export function logCard(log, { showAuthor = true, likeInfo = null, ownLog = fals
 export function trendingStrip(games) {
   if (!games.length) return '';
   return `<div class="trending-strip">${games.map((g, i) => `
-    <button type="button" class="trending-card" data-idx="${i}">
+    <button type="button" class="trending-card" data-idx="${i}" aria-label="${esc(g.title)}">
       ${posterFrame(g.cover_url, g.title, 'trending-card__cover')}
     </button>`).join('')}</div>`;
 }
@@ -479,7 +483,7 @@ export function activityCard(log) {
   const a = log.profiles || {};
   return `
     <div class="activity-card">
-      <a href="#/game/${g.id}" class="activity-card__poster">
+      <a href="#/game/${g.id}" class="activity-card__poster" aria-label="${esc(g.title)}">
         ${posterFrame(g.cover_url, g.title, 'activity-card__cover')}
       </a>
       ${cardWho(a, null, { playing: true })}
@@ -488,7 +492,7 @@ export function activityCard(log) {
 
 export function likeButton(logId, { count, liked }) {
   return `
-    <button class="like-btn${liked ? ' like-btn--liked' : ''}" data-action="toggle-like" data-log-id="${logId}" aria-pressed="${liked}">
+    <button class="like-btn${liked ? ' like-btn--liked' : ''}" data-action="toggle-like" data-log-id="${logId}" aria-pressed="${liked}" aria-label="${liked ? 'Unlike' : 'Like'}">
       ${iconHeart()} <span>${count > 0 ? count : ''}</span>
     </button>`;
 }
@@ -568,7 +572,7 @@ export function showcaseGrid(slots) {
   // Bare poster art only — no rating shown beneath (a favourite is a
   // favourite; what they scored it isn't the point here).
   const cells = filled.map((s) => `
-      <a href="#/game/${s.game.id}" class="showcase-slot">
+      <a href="#/game/${s.game.id}" class="showcase-slot" aria-label="${esc(s.game.title)}">
         ${posterFrame(s.game.cover_url, s.game.title, 'showcase-slot__cover')}
       </a>`);
   // A single horizontal row of the top picks.

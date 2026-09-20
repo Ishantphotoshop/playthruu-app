@@ -204,7 +204,7 @@ export async function renderProfileView(root, { username }) {
         <h2 class="section-heading">Recently played</h2>
         <div class="recent-played-row">
           ${recentlyPlayed.map((l) => `
-            <a href="#/game/${l.games.id}" class="recent-played-item">
+            <a href="#/game/${l.games.id}" class="recent-played-item" aria-label="${esc(l.games.title)}">
               ${posterFrame(l.games.cover_url, l.games.title, 'recent-played-item__cover')}
             </a>`).join('')}
         </div>` : ''}
@@ -213,7 +213,7 @@ export async function renderProfileView(root, { username }) {
         <h2 class="section-heading">PlayStation library</h2>
         <div class="recent-played-row">
           ${importedGames.filter((g) => g.games).map((g) => `
-            <a href="#/game/${g.games.id}" class="recent-played-item">
+            <a href="#/game/${g.games.id}" class="recent-played-item" aria-label="${esc(g.games.title)}">
               ${posterFrame(g.games.cover_url, g.name, 'recent-played-item__cover')}
               <span class="recent-played-item__hours">${formatImportedHours(g.playtime_minutes)}</span>
             </a>`).join('')}
@@ -226,7 +226,7 @@ export async function renderProfileView(root, { username }) {
       ${playing.length
         ? `<div class="recent-played-row" id="playing-grid">${playing.map((l) => `
             <div class="playing-slot">
-              <a href="#/game/${l.games.id}" class="recent-played-item">
+              <a href="#/game/${l.games.id}" class="recent-played-item" aria-label="${esc(l.games.title)}">
                 ${posterFrame(l.games.cover_url, l.games.title, 'recent-played-item__cover')}
               </a>
               ${isOwn ? `<button type="button" class="playing-slot__remove" data-remove-log="${l.id}" aria-label="Remove from currently playing">${iconClose()}</button>` : ''}

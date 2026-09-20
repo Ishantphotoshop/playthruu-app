@@ -45,7 +45,7 @@ export async function renderReviewView(root, { id }) {
           : '<p class="muted review-page__nowrite">No written review — just logged and rated.</p>'}
 
         <div class="review-page__actions">
-          <button type="button" class="like-btn${likeInfo.liked ? ' like-btn--liked' : ''}" id="review-like" aria-pressed="${likeInfo.liked}">
+          <button type="button" class="like-btn${likeInfo.liked ? ' like-btn--liked' : ''}" id="review-like" aria-pressed="${likeInfo.liked}" aria-label="${likeInfo.liked ? 'Unlike this review' : 'Like this review'}">
             ${iconHeart()} <span>${likeInfo.count > 0 ? likeInfo.count : ''}</span>
           </button>
         </div>
