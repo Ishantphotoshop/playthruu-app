@@ -4209,108 +4209,88 @@ a.gd-credit__name { text-decoration: none; }
 .landing-nav .tabbar__item svg { width: 24px; height: 24px; filter: none; }
 
 /* ---- entry screen ----------------------------------------------------
-   Laid out like a printed page rather than a piece of software: one
-   left-hand margin that every single line hangs off, a hairline rule
-   under the masthead, a flat shelf of covers, a pull quote, and the two
-   actions at the foot. Nothing rotates, nothing floats, nothing moves.
+   A wall of real covers with the name and the two actions printed over
+   the bottom of it.
 
-   The versions before this leaned on effects to carry the screen — a
-   perspective floor, drifting embers, scanlines, glowing buttons, cards
-   fanned at five different angles. Take those away and what is left has
-   to be composition, spacing and type, which is the whole point: this
-   is the first thing anyone sees, and it should look drawn rather than
-   generated. */
+   The version before this was a typographic page — masthead, rule,
+   three covers on a baseline, a pull quote. Correct and quiet, and it
+   spent most of the screen on white space. This one spends the whole
+   screen on the thing the app is about, and says what it is in four
+   words over the top.
+
+   Still nothing moves. The wall is a still image made of real artwork,
+   not a carousel. */
 .lp {
-  position: relative; overflow: hidden;
+  position: relative; overflow: hidden; isolation: isolate;
   min-height: calc(100dvh - 63px - var(--safe-bottom));
-  display: flex; flex-direction: column;
-  padding: calc(var(--space-6) + env(safe-area-inset-top, 0px)) var(--gutter) var(--space-5);
+  display: flex; flex-direction: column; justify-content: flex-end;
   background: var(--bg);
 }
 
-/* ---- masthead ---- */
-.lp__head { flex-shrink: 0; }
+/* ---- the wall ----
+   Four columns rather than a grid, with the inner two pushed down so
+   the rows never line up. A true grid reads as a spreadsheet of games;
+   staggered columns read as a shelf someone actually filled.
+
+   Deliberately wider and taller than the screen — every edge is cut
+   off, which is what stops it looking like a component sitting on the
+   page and makes it the surface the page is printed on. */
+.lp-wall {
+  position: absolute; z-index: 0;
+  top: -6%; left: -4%; right: -4%; bottom: -6%;
+  display: flex; gap: 6px;
+  pointer-events: none;
+}
+.lp-wall__col { flex: 1 1 0; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.lp-wall__col--2 { margin-top: -7%; }
+.lp-wall__col--3 { margin-top: -14%; }
+.lp-wall__col--4 { margin-top: -4%; }
+.lp-wall__tile { display: block; }
+.lp-wall__frame {
+  display: block; width: 100%; aspect-ratio: var(--ratio-card);
+  border-radius: 6px; overflow: hidden; background: var(--surface);
+}
+.lp-wall__frame img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* The skeleton shimmer is the one animation that could run here, and it
+   would run 20 times at once behind the wordmark. Off. */
+.lp-wall .poster-frame::after { display: none !important; animation: none !important; }
+
+/* ---- the veil ----
+   Cover art is loud and multicoloured by definition, so the type over
+   it needs a real floor to stand on rather than a light tint: almost
+   transparent at the top, where the art is the point, and fully the
+   page colour by the time it reaches the words. */
+.lp__veil {
+  position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background:
+    linear-gradient(to bottom,
+      rgba(11, 11, 11, 0.42) 0%,
+      rgba(11, 11, 11, 0.58) 34%,
+      rgba(11, 11, 11, 0.94) 62%,
+      var(--bg) 82%);
+}
+
+/* ---- the words ---- */
+.lp__content {
+  position: relative; z-index: 2;
+  padding: 0 var(--gutter) var(--space-6);
+  display: flex; flex-direction: column; align-items: flex-start;
+}
 .lp__word {
-  font-family: var(--font-brand); font-weight: 800;
-  font-size: clamp(34px, 11vw, 46px); line-height: 1;
+  font-family: var(--font-brand); font-weight: var(--weight-black);
+  font-size: clamp(34px, 11vw, 46px); line-height: 0.95;
   letter-spacing: -0.045em; color: var(--ink);
 }
 .lp__tagline {
-  margin-top: 12px; max-width: 16em;
-  font-size: 16px; line-height: 1.5; color: var(--ink-dim);
+  margin-top: 12px; max-width: 18em;
+  font-size: var(--text-lead); line-height: var(--leading-body); color: var(--ink-dim);
 }
-/* The rule is the only piece of ornament on the screen, and it is doing
-   a job: it closes the masthead, so the covers below read as a separate
-   band rather than as more of the same block. */
-.lp__rule {
-  height: 1px; background: var(--line-strong);
-  margin: var(--space-5) 0 0;
-}
-
-/* ---- the shelf ----
-   Three covers, the same size, the same gap, standing on one baseline.
-   An overlapping fan is more dramatic and less honest: this is what the
-   app is, a row of games you have kept. */
-.lp__shelf {
-  flex: 1 1 auto; min-height: 0;
-  /* flex-start, not center: the middle cover carries a caption, which
-     makes its flex item taller — centring against it pushed the other
-     two covers down and broke the one baseline the row is built on. */
-  display: flex; align-items: flex-start; justify-content: flex-start;
-  gap: 10px; padding: var(--space-5) 0 var(--space-4);
-}
-.lp__shelf .lp-poster { flex: 1 1 0; min-width: 0; max-width: 132px; }
-.lp-poster { position: relative; }
-.lp-poster__frame {
-  display: block; width: 100%; aspect-ratio: var(--ratio-card);
-  border-radius: 8px; overflow: hidden; background: var(--surface);
-  border: 1px solid var(--line);
-}
-.lp-poster__frame img { width: 100%; height: 100%; object-fit: cover; display: block; }
-/* No skeleton shimmer here. It is the one animation left on the screen,
-   it only ever shows for the second before the art arrives, and a
-   pulsing block is exactly the "generated" feel this screen is avoiding. */
-.lp .poster-frame::after, .lp-poster__frame::after { display: none !important; animation: none !important; }
-
-/* The rating and the stamp sit UNDER the middle cover rather than on
-   top of it: over the artwork they landed on whatever the publisher put
-   there, and a caption under a picture is what a page does anyway. */
-.lp-poster__caption {
-  display: flex; align-items: center; gap: 8px; margin-top: 9px;
-}
-.lp-poster__caption .stars { flex-shrink: 0; }
-.lp-poster__stamp {
-  font-family: var(--font-mono); font-size: 8.5px; font-weight: 600;
-  letter-spacing: 0.14em; text-transform: uppercase;
-  padding: 2px 5px; border-radius: 3px;
-  border: 1px solid currentColor; color: var(--accent-bright);
-  transform: none;
-}
-
-/* ---- the pull quote ----
-   A real review, set as a quote rather than boxed in a card. The card
-   version read as a widget dropped onto the page; this reads as part of
-   the page, which is what a designed layout does with a testimonial. */
-.lp__quote { flex-shrink: 0; border-top: 1px solid var(--line); padding-top: var(--space-4); }
-.lp__quote-stars { margin-bottom: 10px; }
-.lp__quote-text {
-  font-size: 16px; line-height: 1.5; color: var(--ink);
-  letter-spacing: -0.01em; text-wrap: balance;
-}
-/* Sentence case, not uppercase: a long game title set in tracked-out
-   capitals ran to two lines and read as a label rather than a credit. */
-.lp__quote-by {
-  margin-top: 9px; font-size: 13.5px; color: var(--ink-faint);
-}
-.lp__quote-by b { color: var(--ink-dim); font-weight: 600; }
-
-/* ---- the actions ---- */
-.lp__actions { flex-shrink: 0; margin-top: var(--space-5); display: grid; gap: 9px; }
+.lp__actions { margin-top: var(--space-5); width: 100%; display: grid; gap: 9px; }
 .lp__cta, .lp__ghost {
   display: inline-flex; align-items: center; justify-content: center;
   width: 100%; min-height: 50px; padding: 14px var(--space-5);
   border-radius: var(--radius-pill); cursor: pointer;
-  font-family: var(--font-display); font-weight: 800; font-size: 16px;
+  font-family: var(--font-display); font-weight: var(--weight-black); font-size: var(--text-button);
   letter-spacing: -0.005em;
   transition: background var(--dur) var(--ease), transform var(--dur-fast) var(--ease);
 }
@@ -4318,19 +4298,20 @@ a.gd-credit__name { text-decoration: none; }
 .lp__cta:hover { background: var(--accent-bright); }
 .lp__cta:active { transform: scale(0.99); }
 .lp__ghost {
-  background: transparent; color: var(--ink);
-  border: 1px solid var(--line-strong); font-weight: 600; font-size: 15px;
+  /* Glass, not a flat panel: it sits on artwork, and a solid fill there
+     reads as a hole punched in the picture. */
+  background: rgba(255, 255, 255, 0.07); color: var(--ink);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  font-weight: var(--weight-strong); font-size: var(--text-body);
 }
-.lp__ghost:hover { background: var(--surface); }
+.lp__ghost:hover { background: rgba(255, 255, 255, 0.11); }
 .lp__ghost:active { transform: scale(0.99); }
 .lp__cta:focus-visible, .lp__ghost:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 3px; }
 
-@media (max-height: 720px) {
-  .lp { padding-top: calc(var(--space-4) + env(safe-area-inset-top, 0px)); }
-  .lp__shelf { padding: var(--space-4) 0; }
-  .lp__rule { margin-top: var(--space-4); }
-  .lp__tagline { margin-top: 9px; font-size: 15px; }
-  .lp__quote-text { font-size: 15px; }
+@media (max-height: 700px) {
+  .lp__content { padding-bottom: var(--space-4); }
+  .lp__tagline { margin-top: 9px; font-size: var(--text-body); }
   .lp__actions { margin-top: var(--space-4); }
 }
 

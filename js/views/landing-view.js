@@ -3,7 +3,7 @@ import {
   posterFrame, avatarImg, spinner, emptyState, iconSearch,
   iconUserFilled, iconBrowseNavFilled, iconCompassNavFilled, iconSearchFilled,
 } from '../components.js';
-import { shelfHtml, heroQuoteHtml, tourSceneHtml, resolveShowcase } from './landing-art.js';
+import { wallHtml, tourSceneHtml, resolveShowcase } from './landing-art.js';
 import { esc, starRow, qs, qsa, toast } from '../utils.js';
 import { renderAuthView } from './auth-view.js';
 import { navigate } from '../router.js';
@@ -231,10 +231,8 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
     resolveShowcase().then((games) => {
       showcase = games;
       if (screen === 'entry') {
-        const shelf = qs('#lp-shelf', root);
-        if (shelf) shelf.innerHTML = shelfHtml(showcase);
-        const quote = qs('#lp-quote', root);
-        if (quote) quote.innerHTML = heroQuoteHtml(showcase);
+        const wall = qs('#lp-wall', root);
+        if (wall) wall.innerHTML = wallHtml(showcase);
       } else if (screen === 'tour') {
         const slot = qs('#tour-art', root);
         if (slot) slot.innerHTML = tourSceneHtml(TOUR_SLIDES[tourIndex].scene, showcase);
@@ -245,16 +243,15 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
   function entryHtml() {
     return `
       <div class="lp">
-        <header class="lp__head">
+        <div class="lp-wall" id="lp-wall">${wallHtml(showcase)}</div>
+        <div class="lp__veil" aria-hidden="true"></div>
+        <div class="lp__content">
           <h1 class="lp__word">PlayThruu</h1>
-          <p class="lp__tagline">The diary for every game you play.</p>
-          <div class="lp__rule"></div>
-        </header>
-        <div class="lp__shelf" id="lp-shelf">${shelfHtml(showcase)}</div>
-        <blockquote class="lp__quote" id="lp-quote">${heroQuoteHtml(showcase)}</blockquote>
-        <div class="lp__actions">
-          <button type="button" class="lp__cta" id="entry-tour">Get started</button>
-          <button type="button" class="lp__ghost" id="entry-signin">I already have an account</button>
+          <p class="lp__tagline">Every game you play, kept in one place — rated, reviewed, remembered.</p>
+          <div class="lp__actions">
+            <button type="button" class="lp__cta" id="entry-tour">Get started</button>
+            <button type="button" class="lp__ghost" id="entry-signin">I already have an account</button>
+          </div>
         </div>
       </div>`;
   }
