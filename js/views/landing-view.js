@@ -3,7 +3,7 @@ import {
   posterFrame, avatarImg, spinner, emptyState, iconSearch,
   iconUserFilled, iconBrowseNavFilled, iconCompassNavFilled, iconSearchFilled,
 } from '../components.js';
-import { magazineCoverHtml, coverStarTitle, tourSceneHtml, resolveShowcase } from './landing-art.js';
+import { magazineCoverHtml, coverStarTitle, preloadCover, tourSceneHtml, resolveShowcase } from './landing-art.js';
 import { esc, starRow, qs, qsa, toast } from '../utils.js';
 import { renderAuthView } from './auth-view.js';
 import { navigate } from '../router.js';
@@ -231,6 +231,7 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
     resolveShowcase().then((games) => {
       showcase = games;
       if (screen === 'entry') {
+        preloadCover(showcase);
         const art = qs('#lp-art', root);
         if (art) art.innerHTML = magazineCoverHtml(showcase);
         const star = qs('#lp-star', root);

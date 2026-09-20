@@ -4187,14 +4187,13 @@ a.gd-credit__name { text-decoration: none; }
 
 /* The art is the page, not a picture on it. */
 .lp__art-wrap { position: absolute; inset: 0; z-index: 0; }
+/* A plain <img>, not the app's poster frame: that is built for
+   thumbnails in a scrolling grid, so it lazy-loads and shows a
+   shimmer — both wrong for the one image that IS the screen. */
 .lp__art {
   display: block; width: 100%; height: 100%;
-  border: none; border-radius: 0; background: var(--bg);
+  object-fit: cover; background: var(--bg);
 }
-.lp__art img { width: 100%; height: 100%; object-fit: cover; display: block; }
-/* The skeleton shimmer would be the only thing moving on the screen,
-   full-bleed, behind the masthead. */
-.lp__art-wrap .poster-frame::after { display: none !important; animation: none !important; }
 
 /* Dark at both ends and clear through the middle, so the masthead and
    the contents each get a floor while the art keeps the part of the

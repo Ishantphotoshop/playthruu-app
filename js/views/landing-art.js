@@ -39,7 +39,22 @@ const SHOWCASE = {
   ff7rebirth: 'Final Fantasy VII Rebirth',
 };
 
-const STORAGE_KEY = 'playthruu:showcase-games:v1';
+// v2, and read back defensively. v1 was written when this list held
+// eight games; growing it to eighteen left every browser that had
+// already visited holding a cache that was missing the ten new ones —
+// and five of the seven cover stars were among them, so most loads
+// resolved to nothing and rendered the app's titled placeholder
+// instead of a poster. Bumping the key fixes the browsers that exist
+// now; the completeness check below is what stops it happening again
+// the next time a title is added.
+// The games used as a full-bleed background. Not every cover survives
+// being blown up to fill a phone: a 3:4 box crops hard, and a cover
+// whose whole idea is a logo across the middle loses it. These are
+// built around a face or a figure — and each one's text-free key art
+// is fetched for exactly this use (see getKeyArt in api.js).
+const COVER_STARS = ['hellblade2', 'lastofus2', 'tsushima', 'alanwake2', 'silenthill2', 'wukong', 'ff7rebirth'];
+
+const STORAGE_KEY = 'playthruu:showcase-games:v2';
 let showcaseCache = null;
 
 /**
@@ -61,7 +76,11 @@ export async function resolveShowcase() {
   if (showcaseCache) return showcaseCache;
   try {
     const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
-    if (stored && typeof stored === 'object' && Object.keys(stored).length) {
+    // Every key, not just "some entries" — a cache written before a
+    // title was added is worse than no cache, because it answers.
+    const complete = stored && typeof stored === 'object'
+      && Object.keys(SHOWCASE).every((k) => stored[k] && stored[k].cover_url);
+    if (complete) {
       showcaseCache = stored;
       return showcaseCache;
     }
@@ -88,6 +107,17 @@ export async function resolveShowcase() {
     const g = found[i];
     if (g && g.cover_url) out[k] = { igdb_id: g.igdb_id, title: g.title, cover_url: g.cover_url };
   });
+
+  // Key art for the ones used as a full-bleed background. One extra
+  // request for all of them together, and a game with no artwork of
+  // its own simply keeps its cover.
+  try {
+    const art = await api.getKeyArt(COVER_STARS.map((k) => out[k] && out[k].igdb_id));
+    for (const k of COVER_STARS) {
+      if (out[k] && art[out[k].igdb_id]) out[k].art_url = art[out[k].igdb_id];
+    }
+  } catch { /* covers still work as a background, just with their logo on */ }
+
   showcaseCache = out;
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(out)); } catch { /* fine to skip persisting */ }
   return showcaseCache;
@@ -108,6 +138,7 @@ function poster(game, extraClass = '', inner = '') {
 }
 
 // ---- the entry screen's cover ---------------------------------------
+// (COVER_STARS is declared above resolveShowcase, which needs it.)
 // The entry screen is laid out like a magazine, so it needs one piece
 // of art big enough to be the cover of one.
 //
@@ -115,8 +146,6 @@ function poster(game, extraClass = '', inner = '') {
 // phone crops hard, and a cover whose whole idea is a logo across the
 // middle loses it. These are the ones built around a face or a figure,
 // which is exactly what a magazine cover is built around too.
-const COVER_STARS = ['hellblade2', 'lastofus2', 'tsushima', 'alanwake2', 'silenthill2', 'wukong', 'ff7rebirth'];
-
 // Chosen once per load, not per paint: the entry screen remounts every
 // time the bottom bar comes back to it, and re-rolling there would
 // swap the cover under someone mid-read. A different issue each time
@@ -126,7 +155,32 @@ const COVER_KEY = COVER_STARS[Math.floor(Math.random() * COVER_STARS.length)];
 
 export function magazineCoverHtml(games) {
   const g = pick(games, COVER_KEY);
-  return posterFrame(g.cover_url, g.title, 'lp__art', { full: true });
+  // The key art if the game has any, its cover if not. Not posterFrame:
+  // that is built for thumbnails in a scrolling grid, so it lazy-loads
+  // and shows a shimmer — both wrong for the one image that IS the
+  // screen. This one is eager and high priority, because it is the
+  // first thing anybody sees and nothing else on the page competes
+  // with it for bandwidth.
+  const src = g.art_url || g.cover_url;
+  if (!src) return '';
+  return `<img class="lp__art" src="${esc(src)}" alt="" fetchpriority="high" decoding="async">`;
+}
+
+/**
+ * Tells the browser to start the cover art before the stylesheet and
+ * the rest of the page have finished, which is most of the difference
+ * between the art appearing with the words and a beat after them.
+ */
+export function preloadCover(games) {
+  const g = pick(games, COVER_KEY);
+  const href = g.art_url || g.cover_url;
+  if (!href || document.querySelector(`link[rel="preload"][href="${href}"]`)) return;
+  const link = document.createElement('link');
+  link.rel = 'preload';
+  link.as = 'image';
+  link.href = href;
+  link.fetchPriority = 'high';
+  document.head.appendChild(link);
 }
 
 /** The cover line naming what this issue's art is. */
