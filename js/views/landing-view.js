@@ -3,7 +3,7 @@ import {
   posterFrame, avatarImg, spinner, emptyState, iconSearch,
   iconUserFilled, iconBrowseNavFilled, iconCompassNavFilled, iconSearchFilled,
 } from '../components.js';
-import { paperHtml, tourSceneHtml, resolveShowcase } from './landing-art.js';
+import { paperHtml, PAPER_STEPS, tourSceneHtml, resolveShowcase } from './landing-art.js';
 import { esc, starRow, qs, qsa, toast } from '../utils.js';
 import { renderAuthView } from './auth-view.js';
 import { navigate } from '../router.js';
@@ -245,7 +245,7 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
   function entryHtml() {
     return `
       <div class="lp">
-        ${paperHtml({ base: 224, step: 48, bend: 58 })}
+        ${paperHtml()}
         <div class="lp__content">
           <div class="lp__brand">
             <img src="icons/mark-blue.svg" alt="" class="lp__mark">
@@ -444,11 +444,13 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
     // wiped the instant this re-renders, so this entrance is what
     // actually reads as sliding. Consumed once, so a later plain
     // re-paint does not replay it.
-    const enterClass = tourDirection ? ` tour__content--enter-${tourDirection}` : '';
+    const enterDir = tourDirection;
+    const enterClass = enterDir ? ` tour__content--enter-${enterDir}` : '';
     tourDirection = null;
+    const step = PAPER_STEPS[tourIndex % PAPER_STEPS.length];
     return `
-      <div class="tour">
-        ${paperHtml({ base: 210, step: 44, bend: 56 })}
+      <div class="tour tour--chrome-${step.chrome}">
+        ${paperHtml({ ...step, extraClass: enterDir ? `lp-paper--enter-${enterDir}` : '' })}
         <div class="tour__progress">
           ${TOUR_SLIDES.map((_, i) => `<span class="tour__seg${i < tourIndex ? ' tour__seg--done' : ''}${i === tourIndex ? ' tour__seg--active' : ''}"></span>`).join('')}
         </div>

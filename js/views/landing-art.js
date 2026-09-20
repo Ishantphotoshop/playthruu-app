@@ -121,26 +121,44 @@ function poster(game, extraClass = '', inner = '') {
 }
 
 // ---- the paper ------------------------------------------------------
-// Five layers of colour hanging from the top of the screen, each one a
-// single curve, stacked so the yellow sits at the front and the darkest
-// navy at the back. The whole thing is one flow element rather than a
-// backdrop: its own height is what pushes the content clear of the
-// lowest curve, so nothing has to be nudged into place by hand.
+// Layers of colour hanging from the top of the screen, each ending in a
+// single curve, stacked so the front one covers the ones behind it.
 //
-// Drawn once here and used by both the entry screen and the tour, so
-// the two are demonstrably the same object rather than two drawings
-// that happen to look alike.
-const PAPER = ['#001D3D', '#002A52', '#003566', '#FFC300', '#FFD60A'];
+// Built from divs with an elliptical bottom radius rather than an SVG
+// path, and that is the whole point: the arc's DEPTH is a pixel value,
+// so it is identical at any width and can never be squashed. The first
+// version of this drew an SVG stretched to fit its box, which flattened
+// every curve to about seventy per cent of its drawn depth and made the
+// top of the screen look subtly wrong in a way that was hard to name.
+//
+// Each layer's height is a percentage of the block, so one CSS height
+// scales the whole stack — a short screen shrinks it without touching
+// the curves.
+const PAPER_FRONT = ['#001D3D', '#002A52', '#003566', '#FFC300', '#FFD60A'];
 
-export function paperHtml({ base = 330, step = 64, bend = 80 } = {}) {
-  const deepest = base + bend;
-  const layers = PAPER.map((fill, i) => {
-    const y = base - i * step;
-    // Each layer fills everything above its own curve, so a later one
-    // simply covers the one behind it — the same way cut paper stacks.
-    return `<path d="M-20 -20 L 410 -20 L 410 ${y} Q 195 ${y + bend} -20 ${y} Z" fill="${fill}"/>`;
-  }).join('');
-  return `<svg class="lp-paper" viewBox="0 0 390 ${deepest + 10}" preserveAspectRatio="none" aria-hidden="true">${layers}</svg>`;
+// One per step of the tour, so swiping changes the whole top of the
+// screen rather than just the words under it — the thing a carousel
+// does that a slideshow does not.
+// `chrome` is what the progress bar and Skip are drawn in, and it has
+// to be stated per step rather than fixed: the LAST colour in each
+// palette is the band across the very top of the screen, and dark
+// chrome on the yellow steps is white chrome on the navy ones. Set once
+// and forgotten, Skip simply disappeared on every step whose top band
+// was navy.
+export const PAPER_STEPS = [
+  { palette: PAPER_FRONT, heights: [82, 66, 51, 37, 23], chrome: 'dark' },
+  { palette: ['#FFD60A', '#FFC300', '#003566', '#002A52', '#001D3D'], heights: [80, 62, 46, 31, 17], chrome: 'light' },
+  { palette: ['#001D3D', '#FFC300', '#002A52', '#FFD60A', '#003566'], heights: [86, 70, 54, 38, 20], chrome: 'light' },
+  { palette: ['#003566', '#002A52', '#001D3D', '#FFD60A', '#FFC300'], heights: [78, 64, 50, 34, 18], chrome: 'dark' },
+  { palette: ['#001D3D', '#003566', '#FFC300', '#FFD60A', '#FFE45C'], heights: [88, 72, 56, 40, 24], chrome: 'dark' },
+];
+
+export function paperHtml({ palette = PAPER_FRONT, heights = [82, 66, 51, 37, 23], extraClass = '' } = {}) {
+  // `chrome` is read by the caller, not here.
+  const layers = palette.map((fill, i) => (
+    `<span class="lp-paper__layer" style="height:${heights[i]}%;background:${fill}"></span>`
+  )).join('');
+  return `<div class="lp-paper ${extraClass}" aria-hidden="true">${layers}</div>`;
 }
 
 // ---- tour scenes ------------------------------------------------------

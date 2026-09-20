@@ -4179,14 +4179,30 @@ a.gd-credit__name { text-decoration: none; }
   display: flex; flex-direction: column;
   background: var(--bg);
 }
-/* Height, not aspect ratio. Left to scale with WIDTH, the paper grew
-   with the app column and swallowed a short desktop window whole —
-   both buttons ended up below the fold at 1280x720. Its viewBox is
-   drawn with preserveAspectRatio="none", so it simply stretches to the
-   height it is given and the curves stay smooth. */
+/* The curve depth is a PIXEL value, not a share of the drawing, which
+   is what makes this survive every screen: --paper-bend is the same 64
+   at any width, so the arc always looks the way it was drawn. The
+   earlier version was an SVG stretched to fit its box, which flattened
+   every curve to about seventy per cent of its depth.
+
+   The block's height is the one thing that scales; each layer is a
+   percentage of it, so a short screen shrinks the whole stack without
+   touching the arcs. */
 .lp-paper {
-  display: block; width: 100%; flex-shrink: 0;
-  height: 38vh; max-height: 330px; min-height: 140px;
+  position: relative; display: block; width: 100%; flex-shrink: 0;
+  --paper-bend: 82px;
+  height: clamp(190px, 38vh, 340px);
+}
+.lp-paper__layer {
+  position: absolute; top: 0; display: block;
+  /* Overhanging BOTH edges by 30%, so what you see is the middle of an
+     ellipse much wider than the phone. Sized to the screen exactly, the
+     curve has to come all the way back up at each edge and the layers
+     read as a stack of pills with gaps down the sides; pushed out, the
+     arc sweeps off the screen and the edges stay square, which is what
+     a torn sheet of paper actually does. */
+  left: -30%; right: -30%;
+  border-radius: 0 0 50% 50% / 0 0 var(--paper-bend) var(--paper-bend);
 }
 
 .lp__content {
@@ -4243,8 +4259,7 @@ a.gd-credit__name { text-decoration: none; }
    sub-line goes entirely — the headline already says the thing, and a
    reachable sign-in button is worth more than a second sentence. */
 @media (max-height: 720px) {
-  .lp-paper { height: 20vh; min-height: 96px; }
-  .tour .lp-paper { height: 15vh; min-height: 80px; }
+  .lp-paper { height: clamp(120px, 21vh, 190px); --paper-bend: 58px; }
   .lp__content { padding-top: var(--space-3); padding-bottom: var(--space-4); }
   .lp__word { font-size: clamp(30px, 9.6vw, 40px); }
   .lp__sub { display: none; }
@@ -4272,8 +4287,18 @@ a.gd-credit__name { text-decoration: none; }
 .tour .lp-paper {
   margin: 0 calc(-1 * var(--gutter));
   width: calc(100% + (var(--gutter) * 2));
-  height: 26vh; max-height: 250px; min-height: 120px;
+  height: clamp(150px, 27vh, 260px);
+  --paper-bend: 66px;
 }
+/* The paper moves WITH the step, not behind it. A carousel is only a
+   carousel if the whole panel changes; when just the words slid and
+   the top stayed put, swiping read as nothing having happened. Every
+   step has its own colour order and its own layer depths, so the top
+   of the screen is visibly a different thing each time. */
+.lp-paper--enter-forward  { animation: paper-enter-forward 420ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+.lp-paper--enter-backward { animation: paper-enter-backward 420ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+@keyframes paper-enter-forward  { from { opacity: 0; transform: translateX(58px); } to { opacity: 1; transform: none; } }
+@keyframes paper-enter-backward { from { opacity: 0; transform: translateX(-58px); } to { opacity: 1; transform: none; } }
 
 /* Progress and Skip ride ON the paper, over its top band, which is the
    one part of the screen guaranteed to be a flat block of colour. */
@@ -4282,8 +4307,13 @@ a.gd-credit__name { text-decoration: none; }
   left: var(--gutter); right: var(--gutter); z-index: 3;
   display: flex; gap: 4px;
 }
-.tour__seg { flex: 1; height: 3px; border-radius: 2px; background: rgba(0, 8, 20, 0.22); }
-.tour__seg--done, .tour__seg--active { background: var(--bg); }
+/* Drawn in whatever reads against THIS step's top band — see `chrome`
+   on PAPER_STEPS. Fixed dark, these vanished on every navy step. */
+.tour__seg { flex: 1; height: 3px; border-radius: 2px; }
+.tour--chrome-dark .tour__seg { background: rgba(0, 8, 20, 0.24); }
+.tour--chrome-dark .tour__seg--done, .tour--chrome-dark .tour__seg--active { background: var(--bg); }
+.tour--chrome-light .tour__seg { background: rgba(255, 255, 255, 0.26); }
+.tour--chrome-light .tour__seg--done, .tour--chrome-light .tour__seg--active { background: var(--ink); }
 .tour__top {
   position: absolute; top: calc(var(--space-4) + env(safe-area-inset-top, 0px) + 14px);
   right: var(--gutter); z-index: 3;
@@ -4291,9 +4321,12 @@ a.gd-credit__name { text-decoration: none; }
 .tour__skip {
   background: none; border: none; cursor: pointer; padding: 6px 2px;
   font-family: var(--font-mono); font-size: var(--text-micro); font-weight: var(--weight-medium);
-  letter-spacing: 0.16em; text-transform: uppercase; color: rgba(0, 8, 20, 0.62);
+  letter-spacing: 0.16em; text-transform: uppercase;
 }
-.tour__skip:hover { color: var(--bg); }
+.tour--chrome-dark .tour__skip { color: rgba(0, 8, 20, 0.66); }
+.tour--chrome-dark .tour__skip:hover { color: var(--bg); }
+.tour--chrome-light .tour__skip { color: rgba(255, 255, 255, 0.72); }
+.tour--chrome-light .tour__skip:hover { color: var(--ink); }
 
 .tour__stage { flex: 1; display: flex; flex-direction: column; justify-content: center; min-height: 0; }
 .tour__content { display: flex; flex-direction: column; align-items: flex-start; text-align: left; }
@@ -4323,7 +4356,8 @@ a.gd-credit__name { text-decoration: none; }
   letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-faint);
 }
 @media (prefers-reduced-motion: reduce) {
-  .tour__content--enter-forward, .tour__content--enter-backward { animation: none; }
+  .tour__content--enter-forward, .tour__content--enter-backward,
+  .lp-paper--enter-forward, .lp-paper--enter-backward { animation: none; }
 }
 
 /* ---- tour scenes ---- */
@@ -4392,6 +4426,27 @@ a.gd-credit__name { text-decoration: none; }
   font-family: var(--font-display); font-weight: var(--weight-bold); font-size: 13.5px;
   color: var(--ink); text-align: left; line-height: var(--leading-title);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* Short screens (a 640-tall phone, a laptop in landscape). This block
+   has to come after the tour rules above, not next to the entry
+   screen's own short-screen tier: the selectors match at the same
+   specificity, so the later one wins and an override placed earlier is
+   simply dead — which is what silently put Continue 54px below the fold
+   on the review step at 360×640. */
+@media (max-height: 720px) {
+  .tour .lp-paper { height: clamp(96px, 15vh, 150px); --paper-bend: 48px; }
+  .tour__art { margin-bottom: var(--space-4); }
+  .tour__title { font-size: clamp(22px, 6.8vw, 28px); }
+  .tour__body { margin-top: 10px; font-size: var(--text-small); }
+  .tour__hint { display: none; }
+  /* The review step is the tallest of the five — two stacked cards. */
+  .lp-scene--review { gap: 8px; }
+  .lp-scene--review .landing-review-card { padding: 9px; }
+  .lp-scene--log .lp-poster { width: 84px; }
+  .lp-scene--log .lp-poster--hero { width: 104px; }
+  .lp-scene--rate .lp-poster { width: 96px; }
+  .lp-scene--people .lp-poster--small { width: 72px; }
 }
 
 /* ---- browse screen: a real poster wall + real reviews ---- */
