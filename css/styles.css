@@ -4165,78 +4165,49 @@ a.gd-credit__name { text-decoration: none; }
 .landing-stage { flex: 1; overflow-y: auto; padding-bottom: calc(63px + var(--safe-bottom)); background: var(--bg); }
 
 /* ---- entry screen ----------------------------------------------------
-   One sentence, set as large as it will go, on a sheet of glass.
+   Cut paper: five layers of colour hanging from the top of the screen,
+   yellow at the front through to the darkest navy at the back, with the
+   words underneath.
 
-   No imagery at all. Everything the screen has to say is said in type,
-   which means the type has to be worth looking at — so it runs nearly
-   edge to edge, four lines deep, with the last line in the accent.
-
-   The glass is what keeps that from being a flat wall of words. The
-   panel is genuinely transparent and blurred, and behind it sit two
-   large soft fields of colour for it to bend: glass over a plain
-   background is just a grey box, because there is nothing to refract.
-   Nothing moves. */
+   The paper is a flow element, not a background. Its own height is what
+   pushes the content clear of the lowest curve, so the two can never
+   drift out of step the way an absolutely-placed backdrop and a hand-
+   tuned padding always eventually do. */
 .lp {
-  position: relative; overflow: hidden; isolation: isolate;
+  position: relative; overflow: hidden;
   min-height: calc(100dvh - 63px - var(--safe-bottom));
-  display: flex; flex-direction: column; justify-content: center;
-  padding: calc(var(--space-4) + env(safe-area-inset-top, 0px)) var(--gutter) var(--space-4);
+  display: flex; flex-direction: column;
   background: var(--bg);
 }
-
-/* The two colour fields. Big, soft, and static — the whole job here is
-   to give the glass something to pick up, so they are placed where the
-   panel's edges will cross them rather than dead centre. */
-.lp__field {
-  position: absolute; border-radius: 50%; z-index: 0; pointer-events: none;
-  filter: blur(70px);
-}
-.lp__field--warm {
-  width: 118%; aspect-ratio: 1; right: -46%; bottom: -22%;
-  background: radial-gradient(circle, rgba(255, 214, 10, 0.30) 0%, rgba(255, 195, 0, 0.10) 46%, transparent 70%);
-}
-.lp__field--cool {
-  width: 112%; aspect-ratio: 1; left: -44%; top: -20%;
-  background: radial-gradient(circle, rgba(0, 53, 102, 0.95) 0%, rgba(0, 53, 102, 0.42) 48%, transparent 72%);
-}
-/* A little noise over the colour, so the large flat gradients do not
-   band on a phone screen — which is the usual giveaway of a blurred
-   blob used as a background. */
-.lp__grain {
-  position: absolute; inset: 0; z-index: 0; pointer-events: none; opacity: 0.35;
-  mix-blend-mode: overlay;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+/* Height, not aspect ratio. Left to scale with WIDTH, the paper grew
+   with the app column and swallowed a short desktop window whole —
+   both buttons ended up below the fold at 1280x720. Its viewBox is
+   drawn with preserveAspectRatio="none", so it simply stretches to the
+   height it is given and the curves stay smooth. */
+.lp-paper {
+  display: block; width: 100%; flex-shrink: 0;
+  height: 38vh; max-height: 330px; min-height: 140px;
 }
 
-/* ---- the sheet ----
-   Real glass: a barely-there fill, a heavy blur that actually samples
-   what is behind it, and a lighter top edge — the highlight is what
-   sells a pane as a physical thing rather than a translucent div. */
-.lp__panel {
-  position: relative; z-index: 1;
-  padding: var(--space-5) var(--space-5) var(--space-5);
-  border-radius: 26px;
-  background: linear-gradient(160deg, rgba(255, 255, 255, 0.085), rgba(255, 255, 255, 0.03));
-  -webkit-backdrop-filter: blur(30px) saturate(150%); backdrop-filter: blur(30px) saturate(150%);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  box-shadow:
-    0 24px 60px -24px rgba(0, 0, 0, 0.9),
-    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+.lp__content {
+  flex: 1; display: flex; flex-direction: column; justify-content: center;
+  padding: var(--space-4) var(--gutter) var(--space-5);
 }
 
-.lp__brand { display: flex; align-items: center; gap: 9px; }
-.lp__mark { width: 24px; height: 24px; display: block; }
+/* The mark and the name read as one lockup, so the name is set to the
+   mark's own height rather than to the body scale — at 15px beside a
+   24px mark it looked like a caption that had wandered next to a logo. */
+.lp__brand { display: flex; align-items: center; gap: 10px; }
+.lp__mark { width: 30px; height: 30px; display: block; flex-shrink: 0; }
 .lp__name {
   font-family: var(--font-brand); font-weight: var(--weight-bold);
-  font-size: var(--text-body); letter-spacing: -0.03em; color: var(--ink);
+  font-size: 22px; line-height: 1; letter-spacing: -0.035em; color: var(--ink);
 }
 
 .lp__word {
   margin: var(--space-4) 0 0;
   font-family: var(--font-brand); font-weight: var(--weight-black);
-  /* As large as four lines will go without the longest one ("you ever")
-     breaking — that line is what sets the ceiling. */
-  font-size: clamp(38px, 12.4vw, 52px); line-height: 0.92;
+  font-size: clamp(36px, 11.8vw, 48px); line-height: 0.92;
   letter-spacing: -0.055em; color: var(--ink);
 }
 .lp__word em { font-style: normal; color: var(--accent); }
@@ -4258,117 +4229,158 @@ a.gd-credit__name { text-decoration: none; }
 .lp__cta { background: var(--accent); color: var(--bg); border: 1px solid transparent; }
 .lp__cta:hover { background: var(--accent-bright); }
 .lp__cta:active { transform: scale(0.99); }
-/* The secondary button is a second, smaller pane of the same glass —
-   on a sheet like this a solid fill would read as a hole cut in it. */
 .lp__ghost {
-  background: rgba(255, 255, 255, 0.07); color: var(--ink);
-  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: var(--surface); color: var(--ink);
+  border: 1px solid var(--line-strong);
   font-weight: var(--weight-strong); font-size: var(--text-body);
 }
-.lp__ghost:hover { background: rgba(255, 255, 255, 0.12); }
+.lp__ghost:hover { background: var(--surface-raised); }
 .lp__ghost:active { transform: scale(0.99); }
 .lp__cta:focus-visible, .lp__ghost:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 3px; }
 
-/* Where the browser cannot blur what is behind an element, a
-   see-through panel is just a washed-out rectangle — so it becomes a
-   solid raised surface instead, which is the same idea honestly
-   expressed. */
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .lp__panel { background: var(--surface); }
-  .lp__ghost { background: var(--surface-raised); }
-}
-
+/* A short screen has to fit the paper, the name, four lines of
+   headline and two buttons. The paper gives up most of it, and the
+   sub-line goes entirely — the headline already says the thing, and a
+   reachable sign-in button is worth more than a second sentence. */
 @media (max-height: 720px) {
-  .lp__word { font-size: clamp(32px, 10.4vw, 42px); }
-  .lp__sub { margin-top: var(--space-3); font-size: var(--text-small); }
+  .lp-paper { height: 20vh; min-height: 96px; }
+  .tour .lp-paper { height: 15vh; min-height: 80px; }
+  .lp__content { padding-top: var(--space-3); padding-bottom: var(--space-4); }
+  .lp__word { font-size: clamp(30px, 9.6vw, 40px); }
+  .lp__sub { display: none; }
   .lp__actions { margin-top: var(--space-4); }
-  .lp__panel { padding: var(--space-4); }
 }
 
 /* ---- feature tour ----------------------------------------------------
-   The same page, one step in: same left margin, same rule, same type.
+   The same paper, shallower, so the steps are recognisably the same
+   place as the screen that sent you here.
 
    min-height:100dvh directly on .tour, not height:100% inherited through
    .landing/.landing-stage's flex chain — a flex container whose height
    only comes from a min-height several levels up is not guaranteed to
-   hand a definite height down to a 100%-height descendant, which is why
-   this used to sit at the top of the box instead of filling it. */
+   hand a definite height down to a 100%-height descendant. */
 .landing--tour { background: var(--bg); }
 .landing-stage--tour { padding-bottom: 0; overflow: hidden; }
 .tour {
   position: relative; overflow: hidden; min-height: 100dvh;
   display: flex; flex-direction: column;
-  padding: calc(var(--space-5) + env(safe-area-inset-top, 0px)) var(--gutter) calc(var(--space-5) + var(--safe-bottom));
+  padding: 0 var(--gutter) calc(var(--space-5) + var(--safe-bottom));
   touch-action: pan-y; background: var(--bg);
 }
-.tour__progress { position: relative; z-index: 3; display: flex; gap: 4px; flex-shrink: 0; }
-.tour__seg { flex: 1; height: 2px; border-radius: 1px; background: var(--line-strong); }
-.tour__seg--done, .tour__seg--active { background: var(--accent); }
-.tour__top { display: flex; justify-content: flex-end; margin-top: 12px; flex-shrink: 0; }
+/* The paper runs to the screen's edges, so it steps outside the tour's
+   own side padding rather than being inset by it. */
+.tour .lp-paper {
+  margin: 0 calc(-1 * var(--gutter));
+  width: calc(100% + (var(--gutter) * 2));
+  height: 26vh; max-height: 250px; min-height: 120px;
+}
+
+/* Progress and Skip ride ON the paper, over its top band, which is the
+   one part of the screen guaranteed to be a flat block of colour. */
+.tour__progress {
+  position: absolute; top: calc(var(--space-4) + env(safe-area-inset-top, 0px));
+  left: var(--gutter); right: var(--gutter); z-index: 3;
+  display: flex; gap: 4px;
+}
+.tour__seg { flex: 1; height: 3px; border-radius: 2px; background: rgba(0, 8, 20, 0.22); }
+.tour__seg--done, .tour__seg--active { background: var(--bg); }
+.tour__top {
+  position: absolute; top: calc(var(--space-4) + env(safe-area-inset-top, 0px) + 14px);
+  right: var(--gutter); z-index: 3;
+}
 .tour__skip {
   background: none; border: none; cursor: pointer; padding: 6px 2px;
-  font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase;
-  color: var(--ink-faint);
+  font-family: var(--font-mono); font-size: var(--text-micro); font-weight: var(--weight-medium);
+  letter-spacing: 0.16em; text-transform: uppercase; color: rgba(0, 8, 20, 0.62);
 }
-.tour__skip:hover { color: var(--ink-dim); }
+.tour__skip:hover { color: var(--bg); }
+
 .tour__stage { flex: 1; display: flex; flex-direction: column; justify-content: center; min-height: 0; }
 .tour__content { display: flex; flex-direction: column; align-items: flex-start; text-align: left; }
+.tour__content--enter-forward  { animation: tour-enter-forward 380ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+.tour__content--enter-backward { animation: tour-enter-backward 380ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+@keyframes tour-enter-forward  { from { opacity: 0; transform: translateX(46px); } to { opacity: 1; transform: none; } }
+@keyframes tour-enter-backward { from { opacity: 0; transform: translateX(-46px); } to { opacity: 1; transform: none; } }
+
 .tour__art { width: 100%; margin-bottom: var(--space-5); }
 .tour__title {
-  font-family: var(--font-brand); font-weight: 700;
-  font-size: clamp(23px, 7vw, 29px); line-height: 1.15; letter-spacing: -0.035em;
-  max-width: 11em; color: var(--ink);
+  font-family: var(--font-brand); font-weight: var(--weight-black);
+  font-size: clamp(26px, 8vw, 34px); line-height: 0.96; letter-spacing: -0.05em;
+  max-width: 10em; color: var(--ink);
 }
 .tour__body {
-  margin-top: 12px; max-width: 22em;
-  font-size: 15px; line-height: 1.5; color: var(--ink-dim);
+  margin-top: 14px; max-width: 22em;
+  font-size: var(--text-body); line-height: var(--leading-body); color: var(--ink-dim);
 }
-.tour__foot { flex-shrink: 0; display: flex; flex-direction: column; gap: 10px; }
+
+/* A floor under the gap. The review step is the tallest of the five,
+   and at its natural size the body copy finished one pixel above the
+   Continue button — which reads as a mistake, not as a tight layout. */
+.tour__foot { flex-shrink: 0; display: flex; flex-direction: column; gap: 10px; margin-top: var(--space-4); }
 .tour__next { width: 100%; }
 .tour__hint {
-  text-align: center; font-family: var(--font-mono); font-size: 10.5px;
+  text-align: center; font-family: var(--font-mono); font-size: var(--text-micro);
   letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-faint);
+}
+@media (prefers-reduced-motion: reduce) {
+  .tour__content--enter-forward, .tour__content--enter-backward { animation: none; }
 }
 
 /* ---- tour scenes ---- */
 .lp-scene { display: flex; }
-/* The caption is its own row under the pair, not inside one of them:
-   living inside a poster it made that flex item taller and knocked the
-   two covers off the single baseline they are meant to share. */
 .lp-scene--log { flex-direction: column; align-items: flex-start; gap: 10px; }
 .lp-scene--log .lp-scene__row { display: flex; align-items: flex-end; gap: 12px; }
-.lp-scene--log .lp-poster { width: 118px; }
-.lp-scene--log .lp-poster--hero { width: 146px; }
+.lp-scene--log .lp-poster { width: 104px; }
+.lp-scene--log .lp-poster--hero { width: 128px; }
 .lp-scene--log .lp-poster__caption { margin-top: 0; }
 .lp-scene--rate { flex-direction: column; align-items: flex-start; gap: var(--space-4); }
-.lp-scene--rate .lp-poster { width: 132px; }
-.lp-scene--review { flex-direction: column; gap: 10px; width: 100%; }
+.lp-scene--rate .lp-poster { width: 118px; }
+.lp-scene__stars { display: flex; gap: 3px; }
+/* Compact on the tour: two of these plus a headline and body copy is
+   the tallest step there is, so the card gives up what it can spare. */
+.lp-scene--review { flex-direction: column; gap: 8px; width: 100%; }
+.lp-scene--review .landing-review-card { padding: 11px; }
+.lp-scene--review .landing-review-card__cover { width: 44px; }
+.lp-scene--review .landing-review-card__game { font-size: var(--text-body); }
+.lp-scene--review .landing-review-card__by { margin-top: 4px; }
+.lp-scene--review .landing-review-card__stars { margin-top: 4px; }
+.lp-scene--review .landing-review-card__text { margin-top: 4px; font-size: var(--text-small); }
 /* Display, not controls: these must not look tappable or swallow the
    swipe that moves the carousel on. */
 .lp-review { cursor: default; pointer-events: none; }
 .lp-scene--people { flex-direction: column; align-items: flex-start; gap: var(--space-4); }
 .lp-scene--people .lp-scene__row { display: flex; gap: 10px; }
-.lp-scene--people .lp-poster--small { width: 96px; }
-.lp-scene__faces { display: flex; }
+.lp-scene--people .lp-poster--small { width: 88px; }
+.lp-scene__faces { position: relative; z-index: 3; display: flex; }
 .lp-face { display: block; margin-left: -10px; }
 .lp-face:first-child { margin-left: 0; }
 .lp-face img, .lp-face .avatar { border-radius: 50%; border: 2px solid var(--bg); display: block; }
-/* A different tint each. Four identical grey discs read as one
-   placeholder repeated, not as four people — and the default initials
-   sat grey-on-grey. */
 .lp-face:nth-child(1) .avatar, .lp-face:nth-child(1) img { background: #8b5cf6; color: #fff; }
 .lp-face:nth-child(2) .avatar, .lp-face:nth-child(2) img { background: var(--accent); color: var(--bg); }
-.lp-face:nth-child(3) .avatar, .lp-face:nth-child(3) img { background: var(--gold); color: var(--bg); }
+.lp-face:nth-child(3) .avatar, .lp-face:nth-child(3) img { background: var(--gold); color: #14100a; }
 .lp-face:nth-child(4) .avatar, .lp-face:nth-child(4) img { background: #f0688a; color: #fff; }
 .lp-scene--list { flex-direction: column; gap: 8px; width: 100%; }
+.lp-poster { position: relative; }
+.lp-poster__frame {
+  display: block; width: 100%; aspect-ratio: var(--ratio-card);
+  border-radius: 8px; overflow: hidden; background: var(--surface);
+  border: 1px solid var(--line);
+}
+.lp-poster__frame img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.lp-poster__caption { display: flex; align-items: center; gap: 8px; margin-top: 9px; }
+.lp-poster__stamp {
+  font-family: var(--font-mono); font-size: 8.5px; font-weight: var(--weight-strong);
+  letter-spacing: 0.14em; text-transform: uppercase;
+  padding: 2px 5px; border-radius: 3px;
+  border: 1px solid currentColor; color: var(--accent-bright); transform: none;
+}
 .lp-listrow {
   display: flex; align-items: center; gap: 12px; width: 100%;
   padding: 9px 12px; border-radius: var(--radius-s);
   background: var(--surface-raised); border: 1px solid var(--line);
 }
 .lp-listrow__rank {
-  font-family: var(--font-mono); font-size: 12.5px; font-weight: 600;
+  font-family: var(--font-mono); font-size: var(--text-small); font-weight: var(--weight-strong);
   color: var(--ink-faint); width: 10px; flex-shrink: 0;
 }
 .lp-listrow__cover {
@@ -4377,8 +4389,8 @@ a.gd-credit__name { text-decoration: none; }
 }
 .lp-listrow__cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .lp-listrow__title {
-  font-family: var(--font-display); font-weight: 700; font-size: 13.5px;
-  color: var(--ink); text-align: left; line-height: 1.3;
+  font-family: var(--font-display); font-weight: var(--weight-bold); font-size: 13.5px;
+  color: var(--ink); text-align: left; line-height: var(--leading-title);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 

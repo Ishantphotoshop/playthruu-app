@@ -120,6 +120,29 @@ function poster(game, extraClass = '', inner = '') {
   </div>`;
 }
 
+// ---- the paper ------------------------------------------------------
+// Five layers of colour hanging from the top of the screen, each one a
+// single curve, stacked so the yellow sits at the front and the darkest
+// navy at the back. The whole thing is one flow element rather than a
+// backdrop: its own height is what pushes the content clear of the
+// lowest curve, so nothing has to be nudged into place by hand.
+//
+// Drawn once here and used by both the entry screen and the tour, so
+// the two are demonstrably the same object rather than two drawings
+// that happen to look alike.
+const PAPER = ['#001D3D', '#002A52', '#003566', '#FFC300', '#FFD60A'];
+
+export function paperHtml({ base = 330, step = 64, bend = 80 } = {}) {
+  const deepest = base + bend;
+  const layers = PAPER.map((fill, i) => {
+    const y = base - i * step;
+    // Each layer fills everything above its own curve, so a later one
+    // simply covers the one behind it — the same way cut paper stacks.
+    return `<path d="M-20 -20 L 410 -20 L 410 ${y} Q 195 ${y + bend} -20 ${y} Z" fill="${fill}"/>`;
+  }).join('');
+  return `<svg class="lp-paper" viewBox="0 0 390 ${deepest + 10}" preserveAspectRatio="none" aria-hidden="true">${layers}</svg>`;
+}
+
 // ---- tour scenes ------------------------------------------------------
 // Reviews written the way a real one reads: one line, said like a person
 // rather than a blurb, short enough to land before anyone decides

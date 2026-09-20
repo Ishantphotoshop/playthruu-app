@@ -3,7 +3,7 @@ import {
   posterFrame, avatarImg, spinner, emptyState, iconSearch,
   iconUserFilled, iconBrowseNavFilled, iconCompassNavFilled, iconSearchFilled,
 } from '../components.js';
-import { tourSceneHtml, resolveShowcase } from './landing-art.js';
+import { paperHtml, tourSceneHtml, resolveShowcase } from './landing-art.js';
 import { esc, starRow, qs, qsa, toast } from '../utils.js';
 import { renderAuthView } from './auth-view.js';
 import { navigate } from '../router.js';
@@ -237,23 +237,16 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
     }).catch(() => { /* placeholders stay; nothing to recover from */ });
   }
 
-  // ---- entry: the statement, on glass -------------------------------
-  // No imagery. The whole screen is one sentence, set as large as it
-  // will go, and the only other things on it are the name and the two
-  // actions.
-  //
-  // The glass is what stops that being a flat wall of type: the panel
-  // is genuinely transparent and blurred, and behind it sit two big
-  // soft fields of colour, so the type has something to float over and
-  // the edges of the panel actually refract. Glass over a plain
-  // background is just a grey box — it needs something to bend.
+  // ---- entry: the statement, under cut paper ------------------------
+  // Five layers of colour hang from the top of the screen and the words
+  // sit under them. The paper is a flow element, not a backdrop: its own
+  // height is what clears the content of the lowest curve, so the two
+  // never have to be kept in sync by hand.
   function entryHtml() {
     return `
       <div class="lp">
-        <div class="lp__field lp__field--warm" aria-hidden="true"></div>
-        <div class="lp__field lp__field--cool" aria-hidden="true"></div>
-        <div class="lp__grain" aria-hidden="true"></div>
-        <div class="lp__panel">
+        ${paperHtml({ base: 224, step: 48, bend: 58 })}
+        <div class="lp__content">
           <div class="lp__brand">
             <img src="icons/mark-blue.svg" alt="" class="lp__mark">
             <span class="lp__name">PlayThruu</span>
@@ -455,6 +448,7 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
     tourDirection = null;
     return `
       <div class="tour">
+        ${paperHtml({ base: 210, step: 44, bend: 56 })}
         <div class="tour__progress">
           ${TOUR_SLIDES.map((_, i) => `<span class="tour__seg${i < tourIndex ? ' tour__seg--done' : ''}${i === tourIndex ? ' tour__seg--active' : ''}"></span>`).join('')}
         </div>
