@@ -1,6 +1,6 @@
 import * as api from '../api.js';
 import { state } from '../state.js';
-import { navBar, combinedGameResultsList, wireCombinedGameResults, profileRow, wireFollowButtons, spinner, skeletonList, emptyState, iconSearch, iconFilter, iconUser, posterFrame, confirmSheet, gameHref,
+import { navBar, combinedGameResultsList, wireCombinedGameResults, wireResultDirectors, profileRow, wireFollowButtons, spinner, skeletonList, emptyState, iconSearch, iconFilter, iconUser, posterFrame, confirmSheet, gameHref,
 } from '../components.js';
 import { qs, qsa, esc, toast, promptSignIn, getRecentlyViewed, recordRecentSearch, getRecentSearches, removeRecentSearch, clearRecentSearches } from '../utils.js';
 import { navigate } from '../router.js';
@@ -47,7 +47,7 @@ export function renderSearchView(root, { initialTab = 'games' } = {}) {
       </div>
       <form class="search-bar-row" id="search-form">
         <input type="search" id="search-input" class="search-input" placeholder="${tab === 'people' ? 'Search players…' : 'Search games…'}" autocomplete="off" enterkeyhint="search">
-        <a href="#/discover" class="filter-btn" id="filter-btn" aria-label="Browse and filter all games">${iconFilter()}</a>
+        <a href="#/discover/filters" class="filter-btn" id="filter-btn" aria-label="Filter games">${iconFilter()}</a>
       </form>
       <div id="search-results" class="search-results"></div>
     </div>` + navBar('/search');
@@ -106,53 +106,18 @@ export function renderSearchView(root, { initialTab = 'games' } = {}) {
       : emptyState('Search for a game to log, rate, or review.', { icon: iconSearch() });
   }
 
-  // Suggestions, cached for the life of this view so flipping between
-  // the two tabs does not refetch (and reshuffle) them every time.
-  let suggestedCache = null;
-
   /**
-   * The Players tab with an empty box: who to follow, not a prompt to
-   * go and think of a name.
+   * The Players tab with an empty box: nothing.
    *
-   * "Find people to follow" used to open a page of its own, which is a
-   * strange place to land — what you want there is the list the Players
-   * tab is already for. Putting it here makes the tab useful the moment
-   * it opens, and means one screen owns finding people instead of two.
+   * It used to open on "Popular on Playthruu" — a list of accounts to
+   * follow, painted before anyone had asked for one. A search tab that
+   * answers a question you did not ask is noise, and the people it
+   * suggested were the same handful every time. The tab is a search
+   * box now, and stays quiet until it is used.
    */
   const paintSuggestedPeople = async (ticket) => {
-    if (!state.user) {
-      results.innerHTML = emptyState('Sign in to find players to follow.', { icon: iconUser() });
-      return;
-    }
-    if (!suggestedCache) results.innerHTML = skeletonList(4);
-    let people = suggestedCache;
-    if (!people) {
-      try { people = await api.getSuggestedPeople(state.user.id, 20); }
-      catch { people = []; }
-      suggestedCache = people;
-    }
     if (ticket !== promptTicket) return;
-    if (!people.length) {
-      results.innerHTML = emptyState('No one to suggest yet — search for a player by name.', { icon: iconSearch() });
-      return;
-    }
-    const followingSet = await api.getFollowingIdSet(state.user.id);
-    if (ticket !== promptTicket) return;
-    results.innerHTML = `
-      <p class="search-recent__heading">Popular on Playthruu</p>
-      <div class="profile-list">${people.map((pr) => profileRow(pr, { following: followingSet.has(pr.id) })).join('')}</div>`;
-    wireFollowButtons(results, {
-      onToggle: async (userId, wasFollowing) => {
-        if (!state.user) { promptSignIn('Sign in to follow players.'); throw new Error('not signed in'); }
-        try {
-          if (wasFollowing) await api.unfollow(state.user.id, userId);
-          else await api.follow(state.user.id, userId);
-        } catch (err) {
-          toast(err.message || 'Could not update follow status.', 'error');
-          throw err;
-        }
-      },
-    });
+    results.innerHTML = '';
   };
   const renderIdleBrowse = async (ticket) => {
     filterBtn.style.display = tab === 'games' ? '' : 'none';
@@ -358,6 +323,7 @@ export function renderSearchView(root, { initialTab = 'games' } = {}) {
   let searchHasMore = false;
   let searchLoading = false;
   let searchObserver = null;
+  let directorObserver = null;
 
   function paintGameResults(items) {
     allResults = items;
@@ -374,6 +340,8 @@ export function renderSearchView(root, { initialTab = 'games' } = {}) {
       onLocal: (g) => { recordRecentSearch(input.value.trim(), tab); navigate(`/game/${g.id}`); },
       onRemote: (g) => { recordRecentSearch(input.value.trim(), tab); importAndOpen(g); },
     });
+    if (directorObserver) directorObserver.disconnect();
+    directorObserver = wireResultDirectors(results, items, api);
     observeSearchSentinel();
   }
 
@@ -503,6 +471,11 @@ export function renderSearchView(root, { initialTab = 'games' } = {}) {
     e.preventDefault();
     recordRecentSearch(input.value.trim(), tab);
     doSearch();
+    // Submitting is the point at which you want to LOOK at the results,
+    // and on a phone the keyboard is covering half of them. Dropping
+    // focus is what dismisses it; the blur handler above is a no-op
+    // here because the box is not empty.
+    input.blur();
   });
 
   // Search-as-you-type: run the search a short beat after typing stops,
@@ -515,8 +488,19 @@ export function renderSearchView(root, { initialTab = 'games' } = {}) {
   input.addEventListener('input', () => {
     clearTimeout(typeTimer);
     const q = input.value.trim();
-    if (!q) { showPrompt(); return; }
-    if (q.length < 2) return; // wait for a real query before hitting the network
+    // Anything shorter than a real query drops the results, it does not
+    // merely decline to fetch new ones. Returning early here left the
+    // PREVIOUS query's list sitting on screen: backspacing "Alan Wake"
+    // down to "A" still showed Alan Wake, which reads as the app
+    // ignoring the search box.
+    if (q.length < 2) {
+      searchTicket++; // any in-flight search is now for a query that no longer exists
+      if (searchObserver) searchObserver.disconnect();
+      if (directorObserver) directorObserver.disconnect();
+      allResults = []; searchHasMore = false; searchLoading = false;
+      showPrompt();
+      return;
+    }
     typeTimer = setTimeout(() => doSearch(), 300);
   });
 }

@@ -1,7 +1,7 @@
 import * as api from '../api.js';
 import { state } from '../state.js';
-import { esc, starRow, toast, qs, qsa, debounce, placeholderCover, formatDate, enableSwipeToDismiss, celebrate, pulseLogTab } from '../utils.js';
-import { iconClose, iconCalendar, iconGamepad, iconHeart, iconBookmark, combinedGameResults, wireCombinedGameResults, posterFrame } from '../components.js';
+import { esc, starRow, toast, qs, qsa, debounce, placeholderCover, formatDate, enableSwipeToDismiss, celebrate, pulseLogTab, getRecentSearches, recordRecentSearch } from '../utils.js';
+import { iconClose, iconCalendar, iconGamepad, iconHeart, iconBookmark, iconSearch, combinedGameResultsList, wireCombinedGameResults, wireResultDirectors, posterFrame } from '../components.js';
 import { openAddToListPicker } from './lists-view.js';
 
 export function openLogModal({ game = null, existingLog = null, defaultReplay = false, onSaved = () => {} } = {}) {
@@ -457,6 +457,11 @@ export function openLogModal({ game = null, existingLog = null, defaultReplay = 
 
   // Shown first when no game was passed in (e.g. the feed's "+" log
   // button) — search, pick a game, then paintForm() takes over.
+  // Picking the game to log. Deliberately the SAME list the Search tab
+  // shows — cover, title, year and director in a vertical row — rather
+  // than the poster grid this used to use: it is the same task, and two
+  // different-looking answers to "which game do you mean" is one more
+  // than the app needs.
   function paintPicker() {
     overlay.innerHTML = `
       <div class="modal modal--tall log-sheet">
@@ -465,7 +470,7 @@ export function openLogModal({ game = null, existingLog = null, defaultReplay = 
           <button class="modal__close" data-close aria-label="Close">${iconClose()}</button>
         </header>
         <div class="modal__body">
-          <label class="field"><span>Search for a game</span><input type="text" id="log-picker-search" autocomplete="off" placeholder="Start typing a title…"></label>
+          <label class="field"><span>Name of Game</span><input type="text" id="log-picker-search" autocomplete="off" placeholder="Name of Game"></label>
           <div id="log-picker-results"></div>
         </div>
       </div>`;
@@ -475,23 +480,64 @@ export function openLogModal({ game = null, existingLog = null, defaultReplay = 
 
     const input = qs('#log-picker-search', overlay);
     const results = qs('#log-picker-results', overlay);
+    let directorObserver = null;
 
-    const doSearch = debounce(async () => {
+    // Games only. The Search tab keeps ONE history for both of its tabs
+    // (see recordRecentSearch), so the raw list contains player searches
+    // too — a name like "ishant" is no use whatsoever when the question
+    // on screen is which game you played.
+    function paintRecent() {
+      const entries = getRecentSearches().filter((e) => e.tab !== 'people');
+      if (!entries.length) { results.innerHTML = ''; return; }
+      results.innerHTML = `
+        <p class="search-recent__heading">Recent searches</p>
+        <div class="recent-search-list">
+          ${entries.map((e) => `
+            <button type="button" class="recent-search-row__content log-recent-row" data-term="${esc(e.term)}">
+              ${iconSearch()}<span>${esc(e.term)}</span>
+            </button>`).join('')}
+        </div>`;
+      qsa('.log-recent-row', results).forEach((btn) => {
+        btn.addEventListener('click', () => {
+          input.value = btn.dataset.term;
+          runSearch();
+        });
+      });
+    }
+
+    async function runSearch() {
       const q = input.value.trim();
-      if (!q) { results.innerHTML = ''; return; }
+      if (!q) { paintRecent(); return; }
       results.innerHTML = '<p class="muted">Searching…</p>';
       try {
         const { results: found } = await api.searchGamesEverywhere(q);
-        results.innerHTML = combinedGameResults(found);
+        // A query the picker actually answered is worth remembering, the
+        // same rule the Search tab uses.
+        if (found.length) recordRecentSearch(q, 'games');
+        results.innerHTML = combinedGameResultsList(found);
         wireCombinedGameResults(results, found, {
           onLocal: (game) => { selectedGame = game; paintForm(); },
           onRemote: async (game) => { selectedGame = await api.addGame(game, state.user.id); paintForm(); },
         });
+        if (directorObserver) directorObserver.disconnect();
+        directorObserver = wireResultDirectors(results, found, api);
       } catch (err) {
         results.innerHTML = `<p class="muted">Couldn't search right now: ${esc(err.message)}</p>`;
       }
-    }, 350);
-    input.addEventListener('input', doSearch);
+    }
+
+    const doSearch = debounce(runSearch, 350);
+    input.addEventListener('input', () => {
+      if (directorObserver) directorObserver.disconnect();
+      // Emptying the box goes back to the history rather than leaving
+      // the last query's results sitting under an empty field.
+      if (!input.value.trim()) { paintRecent(); return; }
+      doSearch();
+    });
+    // Opening the sheet with nothing typed shows what you searched for
+    // last — usually the fastest way back to a game you are part-way
+    // through logging.
+    paintRecent();
     input.focus();
   }
 

@@ -1,8 +1,9 @@
 import * as api from '../api.js';
 import { state } from '../state.js';
-import { topBar, navBar, avatarImg, emptyState, spinner, iconBell, iconFilter, iconBack, iconCheck } from '../components.js';
-import { esc, timeAgo, starRow, qs, qsa, toast } from '../utils.js';
+import { navBar, avatarImg, emptyState, spinner, iconBell, iconBack } from '../components.js';
+import { esc, timeAgo, starRow, qs, qsa } from '../utils.js';
 import { navigate } from '../router.js';
+import { wirePullToRefresh } from './feed-view.js';
 
 // One screen for everything happening in the app: what the people you
 // follow have logged, liked and followed, what you have done yourself,
@@ -20,23 +21,12 @@ const TABS = [
   { id: 'incoming', label: 'Incoming' },
 ];
 
-// The two filters live on the Friends tab only, because they are both
-// about what ELSE to fold into that stream — neither means anything on a
-// tab that is already defined as exactly one of those things.
-const FILTER_KEY = 'playthruu:activity-filters';
-const FILTER_DEFAULTS = { includeYou: false, includeIncoming: false };
-
-function loadFilters() {
-  try {
-    return { ...FILTER_DEFAULTS, ...JSON.parse(localStorage.getItem(FILTER_KEY) || '{}') };
-  } catch {
-    return { ...FILTER_DEFAULTS };
-  }
-}
-
-function saveFilters(f) {
-  try { localStorage.setItem(FILTER_KEY, JSON.stringify(f)); } catch { /* private mode */ }
-}
+// There used to be a funnel here, opening an "Activity filter" page with
+// two switches for folding your own and incoming activity into the
+// Friends stream. It is gone: the three tabs ALREADY split activity by
+// whose it is, so the switches offered a second, overlapping way to
+// answer the same question, and a filter icon on a notifications screen
+// mostly reads as something being hidden from you.
 
 function nameOf(profile, fallback = 'Someone') {
   if (!profile) return fallback;
@@ -63,9 +53,13 @@ const PAST_TENSE = {
 
 // What the row says and where tapping it goes, decided together: a row
 // the app cannot open should not be phrased as something to open.
+// Only the GAME is bold. People's names used to be bold too, which put
+// two competing emphases in a one-line sentence and made the list read
+// as heavier than it is — the row is scanned for which game it is
+// about, and the name is context.
 function describe(row, viewerId) {
   const isYou = row.actor_id === viewerId;
-  const who = isYou ? 'You' : `<b>${esc(nameOf(row.actor))}</b>`;
+  const who = isYou ? 'You' : esc(nameOf(row.actor));
   const game = row.game
     ? `<b>${esc(row.game.title)}</b>`
     : null;
@@ -94,7 +88,7 @@ function describe(row, viewerId) {
       // "liked Ishant's review" reads as news about a stranger.
       const whose = row.targetIsViewer || row.target?.id === viewerId
         ? 'your'
-        : `<b>${esc(nameOf(row.target))}</b>'s`;
+        : `${esc(nameOf(row.target))}'s`;
       return {
         text: game
           ? `${who} liked ${whose} review of ${game}`
@@ -106,7 +100,7 @@ function describe(row, viewerId) {
     case 'follow': {
       const target = row.targetIsViewer || row.target?.id === viewerId
         ? 'you'
-        : `<b>${esc(nameOf(row.target))}</b>`;
+        : esc(nameOf(row.target));
       return {
         text: `${who} followed ${target}`,
         href: profileHref(isYou ? row.target : row.actor),
@@ -116,7 +110,7 @@ function describe(row, viewerId) {
     case 'comment': {
       const whose = row.targetIsViewer || row.target?.id === viewerId
         ? 'your'
-        : `<b>${esc(nameOf(row.target))}</b>'s`;
+        : `${esc(nameOf(row.target))}'s`;
       return {
         text: game
           ? `${who} commented on ${whose} review of ${game}`
@@ -134,7 +128,7 @@ function describe(row, viewerId) {
 function activityRow(row, viewerId) {
   const { text, quote, href } = describe(row, viewerId);
   const unread = !!row.unread;
-  const avatar = row.actor ? avatarImg(row.actor, 36) : '';
+  const avatar = row.actor ? avatarImg(row.actor, 30) : '';
   const clipped = quote && quote.length > 120 ? `${quote.slice(0, 120)}…` : quote;
   // A button rather than an anchor: plenty of rows have nowhere to go
   // (a deleted log, an account since removed) and a dead href is worse
@@ -153,87 +147,115 @@ function activityRow(row, viewerId) {
 
 export async function renderNotificationsView(root) {
   let activeTab = 'friends';
-  let filters = loadFilters();
   let rows = [];
   let cursor = null;
   let hasMore = false;
   let loading = false;
+  let sentinelObserver = null;
   const viewerId = state.user?.id;
 
-  function activeFilterCount() {
-    return (filters.includeYou ? 1 : 0) + (filters.includeIncoming ? 1 : 0);
-  }
-
-  // ---- the stream -------------------------------------------------------
+  // ---- the shell -------------------------------------------------------
+  // Painted ONCE. The head is deliberately the same shape as the Search
+  // tab's — a back chevron and a large title in the scrolling body, with
+  // the segmented control directly beneath — so the Friends/You/Incoming
+  // bar lands at the same height on screen as Games/Players does on
+  // Search and Feed/News does on Home. It used to be a topbar plus a
+  // separate sticky tab strip, which sat the pill at a different height
+  // from every other tabbed screen in the app.
   function paintShell() {
-    const count = activeFilterCount();
-    root.innerHTML = topBar('Notifications', { back: true, brand: true, flush: true }) + `
-      <div class="act-tabs">
+    root.innerHTML = `
+      <div class="view-body view-body--search" id="act-body">
+        <div class="msg-inbox-head">
+          <button type="button" class="inbox-back" data-action="back" aria-label="Back">${iconBack()}</button>
+          <h1 class="msg-inbox-title">Notifications</h1>
+        </div>
         <div class="segmented segmented--wide" id="act-tabs">
           ${TABS.map((t) => `<button class="segmented__item${t.id === activeTab ? ' segmented__item--active' : ''}" data-tab="${t.id}">${t.label}</button>`).join('')}
         </div>
-        <button type="button" class="act-filter-btn${count ? ' act-filter-btn--active' : ''}" id="act-filter" aria-label="Activity filter"${activeTab === 'friends' ? '' : ' hidden'}>
-          ${iconFilter()}${count ? `<span class="act-filter-btn__count">${count}</span>` : ''}
-        </button>
-      </div>
-      <div class="view-body" id="act-body">${spinner()}</div>` + navBar('');
+        <div id="act-slot">${spinner()}</div>
+      </div>` + navBar('');
 
     qsa('#act-tabs .segmented__item', root).forEach((btn) => {
       btn.addEventListener('click', () => {
         if (btn.dataset.tab === activeTab) return;
         activeTab = btn.dataset.tab;
+        qsa('#act-tabs .segmented__item', root).forEach((b) =>
+          b.classList.toggle('segmented__item--active', b.dataset.tab === activeTab));
         load({ reset: true });
       });
     });
 
-    qs('#act-filter', root)?.addEventListener('click', paintFilterScreen);
-
-    qs('#act-body', root).addEventListener('click', (e) => {
-      const more = e.target.closest('#act-more');
-      if (more) { load({ reset: false }); return; }
+    qs('#act-slot', root).addEventListener('click', (e) => {
       const rowEl = e.target.closest('.act');
       if (rowEl?.dataset.href) navigate(rowEl.dataset.href);
     });
+
+    // Pull down at the top of the list to reload it — the same gesture
+    // the Feed, Messages and Profile already carry.
+    wirePullToRefresh(qs('#act-body', root));
   }
+
+  const slot = () => qs('#act-slot', root);
 
   function emptyMessage() {
     if (activeTab === 'you') return "You haven't done anything yet — log a game and it shows up here.";
     if (activeTab === 'incoming') return 'Nothing aimed at you yet. Follows, likes and comments on your reviews land here.';
-    return activeFilterCount()
-      ? 'Nothing here yet. Follow a few people and their activity fills this in.'
-      : 'Nothing from the people you follow yet. Try the filter to fold in your own and incoming activity.';
+    return 'Nothing from the people you follow yet.';
   }
 
   function paintList() {
-    const body = qs('#act-body', root);
+    const body = slot();
     if (!body) return;
     if (!rows.length) {
       body.innerHTML = emptyState(emptyMessage(), { icon: iconBell() });
       return;
     }
+    // Reaching the bottom loads the next page by itself. The button that
+    // used to be here is kept only for browsers with no
+    // IntersectionObserver, where nothing would otherwise trigger the
+    // load and the spinner would spin for ever.
     body.innerHTML = `
       <div class="act-list">${rows.map((r) => activityRow(r, viewerId)).join('')}</div>
-      ${hasMore ? '<button type="button" class="btn btn--ghost btn--block act-more" id="act-more">Load more</button>' : ''}`;
+      ${hasMore ? `<div id="act-sentinel" aria-hidden="true"></div>
+         <div class="act-more" id="act-more">${spinner()}</div>` : ''}`;
+    observeSentinel();
+  }
+
+  function observeSentinel() {
+    if (sentinelObserver) { sentinelObserver.disconnect(); sentinelObserver = null; }
+    const sentinel = qs('#act-sentinel', root);
+    if (!sentinel) return;
+    if (!('IntersectionObserver' in window)) {
+      const more = qs('#act-more', root);
+      if (more) {
+        more.innerHTML = `<button type="button" class="btn btn--ghost btn--block" id="act-more-btn">Load more</button>`;
+        qs('#act-more-btn', more).addEventListener('click', () => load({ reset: false }));
+      }
+      return;
+    }
+    sentinelObserver = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting)) load({ reset: false });
+    }, { root: qs('#act-body', root), rootMargin: '300px' });
+    sentinelObserver.observe(sentinel);
   }
 
   async function load({ reset }) {
     if (loading) return;
+    if (!reset && !hasMore) return;
     loading = true;
     if (reset) {
       rows = [];
       cursor = null;
       hasMore = false;
-      paintShell();
-    } else {
-      const more = qs('#act-more', root);
-      if (more) { more.disabled = true; more.textContent = 'Loading…'; }
+      if (sentinelObserver) { sentinelObserver.disconnect(); sentinelObserver = null; }
+      if (slot()) slot().innerHTML = spinner();
     }
 
     try {
       const res = await api.getActivityFeed(viewerId, {
         scope: activeTab,
-        includeYou: filters.includeYou,
-        includeIncoming: filters.includeIncoming,
+        includeYou: false,
+        includeIncoming: false,
         before: reset ? null : cursor,
       });
       rows = reset ? res.rows : rows.concat(res.rows);
@@ -242,8 +264,7 @@ export async function renderNotificationsView(root) {
       paintList();
       markVisibleRead();
     } catch (err) {
-      const body = qs('#act-body', root);
-      if (body) body.innerHTML = `<p class="muted" style="padding:24px">Couldn't load activity: ${esc(err.message)}</p>`;
+      if (slot()) slot().innerHTML = `<p class="muted" style="padding:24px">Couldn't load activity: ${esc(err.message)}</p>`;
     } finally {
       loading = false;
     }
@@ -262,48 +283,6 @@ export async function renderNotificationsView(root) {
       .catch(() => { /* the badge simply stays until the next load */ });
   }
 
-  // ---- the filter screen ------------------------------------------------
-  // A real page rather than a sheet, matching the Discover filters: the
-  // back arrow discards, the tick applies. Edits land on a draft so
-  // nothing takes effect until it is actually confirmed.
-  function paintFilterScreen() {
-    const draft = { ...filters };
-
-    root.innerHTML = `
-      <header class="topbar">
-        <button type="button" class="topbar__back" id="act-filters-cancel" aria-label="Back">${iconBack()}</button>
-        <h1 class="topbar__title">Activity filter</h1>
-        <div class="topbar__right">
-          <button type="button" class="topbar__back" id="act-filters-apply" aria-label="Apply filter">${iconCheck()}</button>
-        </div>
-      </header>
-      <div class="view-body">
-        <div class="set-card">
-          <div class="set-toggle">
-            <span class="set-toggle__label"><b>Include your activity</b><span>Your own logs, likes and follows, mixed into the Friends stream</span></span>
-            <label class="set-switch"><input type="checkbox" data-filter="includeYou"${draft.includeYou ? ' checked' : ''}><span class="set-switch__track"></span></label>
-          </div>
-          <div class="set-toggle">
-            <span class="set-toggle__label"><b>Include incoming activity</b><span>Follows, likes and comments aimed at you, from anyone</span></span>
-            <label class="set-switch"><input type="checkbox" data-filter="includeIncoming"${draft.includeIncoming ? ' checked' : ''}><span class="set-switch__track"></span></label>
-          </div>
-        </div>
-        <p class="set-hint">Both off is the pure Friends feed — only the people you follow.</p>
-      </div>`;
-
-    qsa('input[data-filter]', root).forEach((input) => {
-      input.addEventListener('change', () => { draft[input.dataset.filter] = input.checked; });
-    });
-    qs('#act-filters-cancel', root).addEventListener('click', () => {
-      paintShell();
-      paintList();
-    });
-    qs('#act-filters-apply', root).addEventListener('click', () => {
-      filters = draft;
-      saveFilters(filters);
-      load({ reset: true });
-    });
-  }
-
+  paintShell();
   load({ reset: true });
 }

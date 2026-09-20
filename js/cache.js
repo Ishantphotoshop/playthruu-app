@@ -24,6 +24,7 @@ const store = new Map();
 export const CACHE_KEYS = {
   messages: 'messages',
   searchTrending: 'search-idle-trending',
+  trendingPage: 'trending-page',
 };
 
 export function getCached(key) {

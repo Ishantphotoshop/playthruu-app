@@ -112,8 +112,14 @@ export function navBar(activeBase = '/feed') {
     // reads as a logo sitting in the middle of the bar rather than as
     // something to press; a plus says "add" the way it does in every
     // other app, which is exactly what this button does.
+    // Signed in this is an ACTION, not a destination: it opens the log
+    // sheet straight over whatever you are looking at. As a link to
+    // /log it navigated to the feed first and opened the sheet on top
+    // of that, so tapping + from anywhere in the app threw away the
+    // screen you were on. (The /log route still exists for deep links
+    // and for the sheet's own "saved" refresh.)
     out ? { action: 'signup', route: '/log', icon: iconPlus(), label: 'Log a game', primary: true }
-        : { route: '/log', icon: iconPlus(), label: 'Log', primary: true },
+        : { action: 'log', route: '/log', icon: iconPlus(), label: 'Log', primary: true },
     out ? { action: 'signup', route: '/notifications', icon: iconBell(), label: 'Notifications' }
         : (MESSENGER_ARCHIVED
             ? { route: '/notifications', icon: iconBell(), label: 'Notifications' }
@@ -295,11 +301,15 @@ export function combinedGameResults(results, { capped = true } = {}) {
   if (!results.length) {
     return emptyState('No games found. Try a different spelling, or add it manually below.');
   }
+  // No "+ Add" badge on the not-yet-catalogued ones. Whether a game
+  // already has a row in this app's own database is an implementation
+  // detail of this app; to the person searching, every result is just a
+  // game, and tapping any of them opens it. The badge only ever
+  // advertised the difference.
   const html = results.map((g, i) => (g._source === 'remote'
     ? `<button type="button" class="game-card game-card--import" data-kind="remote" data-idx="${i}">
          ${posterFrame(g.cover_url, g.title, 'game-card__cover')}
          <div class="game-card__title">${esc(g.title)}</div>
-         <div class="game-card__add-badge">+ Add</div>
        </button>`
     : `<a href="#" class="game-card" data-kind="local" data-idx="${i}">
          ${posterFrame(g.cover_url, g.title, 'game-card__cover')}
@@ -332,30 +342,109 @@ export function wireCombinedGameResults(container, results, { onLocal, onRemote 
   });
 }
 
-// Vertical row layout for full-page search results (cover, title, year,
-// platform, genre) — easier to scan than the grid, which the pop-up log
-// modal still uses. Shares the same data-kind/data-idx markup convention
-// as combinedGameResults, so wireCombinedGameResults works on this too.
+// Vertical row layout for full-page search results — easier to scan
+// than the grid, which the favourite-game pickers still use. Shares the
+// same data-kind/data-idx markup convention as combinedGameResults, so
+// wireCombinedGameResults works on this too.
+//
+// The line under the title is the release year and who directed it,
+// which is what identifies a game to a person ("Alan Wake, 2010, Sam
+// Lake") far better than the platform and genre chips that used to be
+// there — those are true of hundreds of games at once. The year is
+// known immediately; the director is not (see wireResultDirectors) so
+// the row paints with the year and the director appears alongside it a
+// moment later, rather than the whole list waiting on a lookup.
 export function combinedGameResultsList(results) {
   if (!results.length) {
     return emptyState('No games found. Try a different spelling, or add it manually below.');
   }
   const row = (g, i) => {
     const kind = g._source === 'remote' ? 'remote' : 'local';
-    const meta = [g.release_year, g.platform, g.genre].filter(Boolean).join(' · ');
-    const tag = kind === 'remote' ? `<span class="result-row__add-badge">+ Add</span>` : '';
     const El = kind === 'local' ? 'a' : 'button';
     const attrs = kind === 'local' ? `href="#"` : `type="button"`;
     return `
       <${El} ${attrs} class="result-row" data-kind="${kind}" data-idx="${i}">
         ${posterFrame(g.cover_url, g.title, 'result-row__cover')}
         <div class="result-row__info">
-          <div class="result-row__title">${esc(g.title)}${tag}</div>
-          ${meta ? `<div class="result-row__meta">${esc(meta)}</div>` : ''}
+          <div class="result-row__title">${esc(g.title)}</div>
+          <div class="result-row__meta" data-meta-idx="${i}">${g.release_year ? esc(String(g.release_year)) : ''}</div>
         </div>
       </${El}>`;
   };
   return `<div class="result-list">${results.map((g, i) => row(g, i)).join('')}</div>`;
+}
+
+// Directors, resolved after the list is already on screen and only for
+// the rows somebody actually scrolls to.
+//
+// getGameCastAndDirector is a genuinely slow external lookup (RAWG, then
+// Wikidata — 2-3s) the first time it is asked about a game, and cached
+// on the game's row after that. Firing it for forty search results at
+// once would be forty of those; so rows are resolved as they come into
+// view, at most three at a time, and each answer is remembered for the
+// life of the page so paging back over the same rows costs nothing.
+const directorMemo = new Map(); // igdb_id|title -> string | null
+let directorQueue = [];
+let directorActive = 0;
+
+function directorKey(g) {
+  return g.igdb_id ? `igdb:${g.igdb_id}` : `t:${(g.title || '').toLowerCase()}`;
+}
+
+function pumpDirectorQueue() {
+  while (directorActive < 3 && directorQueue.length) {
+    const job = directorQueue.shift();
+    directorActive += 1;
+    job().finally(() => { directorActive -= 1; pumpDirectorQueue(); });
+  }
+}
+
+export function wireResultDirectors(container, results, api) {
+  const rows = qsa('[data-meta-idx]', container);
+  if (!rows.length) return null;
+
+  const fill = (el, g, name) => {
+    if (!name) return; // nothing found: the year alone stands
+    const year = g.release_year ? `${g.release_year}, ` : '';
+    el.textContent = `${year}directed by ${name}`;
+  };
+
+  const resolve = (el) => {
+    const g = results[Number(el.dataset.metaIdx)];
+    if (!g || el.dataset.dirDone) return;
+    el.dataset.dirDone = '1';
+    const key = directorKey(g);
+    if (directorMemo.has(key)) { fill(el, g, directorMemo.get(key)); return; }
+    directorQueue.push(async () => {
+      try {
+        const { director } = await api.getGameCastAndDirector(g);
+        const name = director?.name || null;
+        directorMemo.set(key, name);
+        // The list can be rebuilt (next page, new query) while this is
+        // in flight — only touch the element if it is still on screen.
+        if (el.isConnected) fill(el, g, name);
+      } catch {
+        directorMemo.set(key, null);
+      }
+    });
+    pumpDirectorQueue();
+  };
+
+  if (!('IntersectionObserver' in window)) {
+    // No observer: resolve the first handful and leave the rest at the
+    // year, rather than queueing the whole list.
+    rows.slice(0, 8).forEach(resolve);
+    return null;
+  }
+  const io = new IntersectionObserver((entries) => {
+    for (const e of entries) {
+      if (!e.isIntersecting) continue;
+      resolve(e.target);
+      io.unobserve(e.target);
+    }
+  }, { rootMargin: '200px' });
+  rows.forEach((el) => io.observe(el));
+  return io;
 }
 
 export function logCard(log, { showAuthor = true, likeInfo = null, ownLog = false } = {}) {

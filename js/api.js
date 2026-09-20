@@ -4678,14 +4678,80 @@ function tasteProfile(myLogs) {
   return [...genres.entries()].sort((a, b) => b[1] - a[1]).map(([label]) => label);
 }
 
+// Games IGDB itself considers similar to a batch of seed games, in ONE
+// pair of requests rather than one pair per seed. Returns a Map of
+// igdb_id -> { game, seeds, best, rating } so the caller can rank by
+// how many seeds pointed at the same title.
+async function similarToMany(seedIgdbIds, perSeed = 14) {
+  const out = new Map();
+  if (!seedIgdbIds.length) return out;
+  const details = await igdb('games', `fields similar_games; where id = (${seedIgdbIds.join(',')});`);
+
+  // Which seeds pointed at each candidate, and how near the top of that
+  // seed's list it sat — IGDB orders similar_games most-similar first,
+  // so position is real signal and worth keeping.
+  const hits = new Map(); // candidateId -> { seeds:Set, best:number }
+  for (const d of details) {
+    const ids = (d.similar_games || []).slice(0, perSeed);
+    ids.forEach((id, rank) => {
+      if (!hits.has(id)) hits.set(id, { seeds: new Set(), best: rank });
+      const h = hits.get(id);
+      h.seeds.add(d.id);
+      if (rank < h.best) h.best = rank;
+    });
+  }
+  if (!hits.size) return out;
+
+  // Apicalypse caps a single where-clause, and the ranking below only
+  // ever uses the head of the list anyway.
+  const ids = [...hits.keys()].slice(0, 300);
+  const games = await igdb('games',
+    `fields name,cover.image_id,first_release_date,total_rating,genres.name; where id = (${ids.join(',')}) & cover != null; limit 300;`);
+  for (const g of games) {
+    const h = hits.get(g.id);
+    if (!h) continue;
+    out.set(g.id, {
+      game: {
+        igdb_id: g.id,
+        title: g.name,
+        cover_url: igdbImageUrl(g.cover?.image_id, '1080p'),
+        release_year: g.first_release_date ? new Date(g.first_release_date * 1000).getFullYear() : null,
+        genre: g.genres?.[0]?.name || null,
+      },
+      seeds: h.seeds,
+      best: h.best,
+      rating: g.total_rating || 0,
+    });
+  }
+  return out;
+}
+
+// "Picked for you": games like the ones this person has actually been
+// playing lately.
+//
+// This used to lead with what the people you follow rated highly, which
+// is a fine signal but is not personal to YOUR taste — on an account
+// following a handful of people it mostly reproduced their diary. It is
+// now seeded from your OWN most recent logs and answered with IGDB's
+// similarity graph, so the strip tracks what you are into right now and
+// moves as you log things.
+//
+// Nothing already in the diary can come back: every candidate is checked
+// against both the local row ids and the igdb ids of everything logged,
+// in any status — played, playing, backlog or dropped. Recommending a
+// game you have already finished is the one mistake this section
+// cannot make.
 export async function getRecommendations(userId, { limit = 18 } = {}) {
   const [{ data: myLogs }, followingSet] = await Promise.all([
-    supabase.from('logs').select('game_id, rating, status, games!logs_game_id_fkey(id, title, genre, igdb_id)').eq('user_id', userId),
+    supabase
+      .from('logs')
+      .select('game_id, rating, status, created_at, games!logs_game_id_fkey(id, title, genre, igdb_id)')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false }),
     getFollowingIdSet(userId),
   ]);
 
   const mine = myLogs || [];
-  const topGenres = tasteProfile(mine);
   const out = [];
   const taken = new Set();
 
@@ -4714,9 +4780,43 @@ export async function getRecommendations(userId, { limit = 18 } = {}) {
     out.push({ game, reason, local });
   };
 
-  // ---- 1. what your people rated highly ----
+  // ---- 1. more like what you have been playing lately ----
+  // Seeds are the most recent logs, but a game you disliked is a bad
+  // thing to ask for more of — anything rated below 3 is skipped, while
+  // an unrated log still counts (most logs never get a rating, and
+  // bothering to log it at all is signal enough).
+  const seeds = [];
+  const seenSeed = new Set();
+  for (const l of mine) {
+    const id = l.games?.igdb_id;
+    if (!id || seenSeed.has(id)) continue;
+    if (l.rating && Number(l.rating) < 3) continue;
+    seenSeed.add(id);
+    seeds.push(id);
+    if (seeds.length >= 8) break;
+  }
+
+  if (seeds.length) {
+    try {
+      const cands = [...(await similarToMany(seeds)).values()]
+        .filter((c) => !playedIgdb.has(c.game.igdb_id))
+        // Agreeing seeds first (a game three of your recent titles all
+        // point at is a far better bet than one only a single title
+        // does), then how near the top of those lists it sat, then
+        // IGDB's own rating as the tie-break.
+        .sort((a, b) => (b.seeds.size - a.seeds.size) || (a.best - b.best) || (b.rating - a.rating));
+      for (const c of cands) {
+        if (out.length >= limit) break;
+        push(c.game, 'Like what you have been playing');
+      }
+    } catch { /* fall through to the passes below rather than returning nothing */ }
+  }
+
+  // ---- 2. what your people rated highly ----
+  // A backstop now rather than the lead: it only gets a look in when
+  // your own recent play has not filled the strip.
   const followingIds = [...followingSet];
-  if (followingIds.length) {
+  if (out.length < limit && followingIds.length) {
     try {
       const { data: theirs } = await supabase
         .from('logs')
@@ -4744,6 +4844,7 @@ export async function getRecommendations(userId, { limit = 18 } = {}) {
         return (b.total / b.fans.length) - (a.total / a.fans.length);
       });
       for (const entry of ranked) {
+        if (out.length >= limit) break;
         const avg = (entry.total / entry.fans.length).toFixed(1);
         const reason = entry.fans.length === 1
           ? `${entry.fans[0]} rated this ${avg}`
@@ -4755,7 +4856,8 @@ export async function getRecommendations(userId, { limit = 18 } = {}) {
     }
   }
 
-  // ---- 2. more of what you already like ----
+  // ---- 3. more of what you already like ----
+  const topGenres = tasteProfile(mine);
   for (const label of topGenres.slice(0, 3)) {
     if (out.length >= limit) break;
     const match = BROWSE_GENRES.find((g) => g.label.toLowerCase() === label.toLowerCase()
@@ -4770,7 +4872,7 @@ export async function getRecommendations(userId, { limit = 18 } = {}) {
     } catch { /* one genre failing should not empty the list */ }
   }
 
-  // ---- 3. nothing to go on yet ----
+  // ---- 4. nothing to go on yet ----
   if (!out.length) {
     try {
       const { games } = await browseGames({ sort: 'top_rated', minRating: '85' });

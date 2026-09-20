@@ -189,11 +189,13 @@ const DISCOVERY_CACHE_KEY = 'discovery';
 // friends. Auto-loads the next page as you approach the bottom, with a
 // manual button as a fallback for browsers without IntersectionObserver.
 //
-// Unlike Trending/Friends/Currently-playing above, this section is
-// Recommendations that can say WHY. A suggestion with no reason attached
-// is indistinguishable from a list of popular games, which the
-// collections strip below already is — so the reason line is the whole
-// point of this section existing separately from it.
+// Posters only — no title, no "because you..." line. The reason line
+// used to be here on the argument that a suggestion which cannot say
+// why is indistinguishable from a list of popular games. In practice it
+// turned a row of artwork into a row of small print, and the section
+// already earns its place by WHAT it contains: games like the ones you
+// have actually been playing lately (see getRecommendations), none of
+// which are already in your diary.
 //
 // Renders nothing at all when there is nothing personal to say, rather
 // than falling back to something generic under a "picked for you"
@@ -209,14 +211,16 @@ async function paintForYou(slot) {
   }
   if (!picks.length) { slot.innerHTML = ''; return; }
 
+  // feedSectionHead (with no see-more), not a bare <h2>: every other
+  // section on this page is built from it, and one section using a
+  // different wrapper is exactly why the gap above this one was 8px
+  // tighter than the gap above all the others.
   slot.innerHTML = `
-    <h2 class="section-heading">Picked for you</h2>
+    ${feedSectionHead('Picked for you')}
     <div class="foryou-strip" id="foryou-strip">
       ${picks.map((p, i) => `
-        <button type="button" class="foryou-card" data-idx="${i}">
+        <button type="button" class="foryou-card" data-idx="${i}" aria-label="${esc(p.game.title)}">
           ${posterFrame(p.game.cover_url, p.game.title, 'foryou-card__cover')}
-          <span class="foryou-card__title">${esc(p.game.title)}</span>
-          <span class="foryou-card__reason">${esc(p.reason)}</span>
         </button>`).join('')}
     </div>`;
 
@@ -271,7 +275,6 @@ async function paintDiscovery(slot) {
           ${iconFilter()}
         </button>
       </div>
-      <p class="discovery-active">${esc(activeCollection().label)}</p>
       <div class="discovery-grid" id="discovery-list">${games.length ? rowsHtml(games, 0) : skeletonTiles(9)}</div>
       <div id="discovery-more"></div>`;
     qs('#discovery-filter', slot).addEventListener('click', openPicker);

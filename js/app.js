@@ -204,6 +204,9 @@ function registerPublicRoutes() {
   route('/game/igdb/:igdbId', (p) => renderGameView(appEl, { igdbId: Number(p.igdbId) }));
   route('/search', () => renderSearchView(appEl));
   route('/discover', () => renderDiscoverView(appEl));
+  // What the Search tab's funnel opens: the filters themselves, not a
+  // page of popular games with the filters hidden behind a second tap.
+  route('/discover/filters', () => renderDiscoverView(appEl, { openFilters: true }));
 }
 
 function registerRoutes() {
@@ -263,6 +266,15 @@ function wireGlobalChrome() {
     // than to a page that would only tell you to sign up.
     const wantsAccount = e.target.closest('[data-action="signup"]');
     if (wantsAccount) { e.preventDefault(); renderAuthView(appEl, { startMode: 'signup' }); }
+
+    // The + in the tab bar. Opens the sheet in place — no navigation,
+    // so you come back to exactly the screen you were on when you close
+    // it, and nothing is re-fetched behind it.
+    const wantsLog = e.target.closest('[data-action="log"]');
+    if (wantsLog) {
+      e.preventDefault();
+      openLogModal({ onSaved: refreshCurrentView });
+    }
 
     // Tapping Search again while already on it: an <a href="#/search">
     // only fires hashchange when the hash actually CHANGES, so a second

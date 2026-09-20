@@ -71,7 +71,12 @@ function takeWarmedDiscover(filters, page) {
   return promise;
 }
 
-export function renderDiscoverView(root) {
+// `openFilters` lands straight on the Filters screen instead of on a
+// list of games. That is what the Search tab's filter button now does:
+// tapping a funnel and being shown the most popular games, with the
+// actual filters another tap away behind a second funnel, answered a
+// question nobody had asked.
+export function renderDiscoverView(root, { openFilters = false } = {}) {
   const filters = { ...DISCOVER_DEFAULTS };
   let page = 1;
   let loading = false;
@@ -110,15 +115,28 @@ export function renderDiscoverView(root) {
   const resultsEl = () => qs('#discover-results', root);
   const moreEl = () => qs('#discover-more', root);
 
+  // Bumped by every call, so a response that lands after a newer search
+  // has started is dropped instead of painting stale rows.
+  let searchTicket = 0;
+
   async function runSearch(reset = true) {
-    if (loading) return;
+    // NOT `if (loading) return`. Applying filters repaints the screen
+    // and immediately searches again, which can easily happen while the
+    // previous request is still in flight — bailing out there left the
+    // newly-painted, empty results container empty for good. That was
+    // the whole of "the filter feature isn't working": the filters were
+    // applied correctly and the results were simply never fetched.
+    // A newer search now supersedes the older one instead.
+    const ticket = ++searchTicket;
     loading = true;
+    if (reset) page = 1;
     const warmed = takeWarmedDiscover(filters, page);
     // Nothing to wait for when the warm already has it — showing a
     // spinner just to replace it a tick later is the flash this avoids.
-    if (reset && !warmed) { page = 1; resultsEl().innerHTML = spinner(); moreEl().innerHTML = ''; }
+    if (reset && !warmed) { resultsEl().innerHTML = spinner(); moreEl().innerHTML = ''; }
     try {
       const { games, hasMore } = await (warmed || api.browseGames({ ...filters, page }));
+      if (ticket !== searchTicket) return; // a newer search started mid-flight
       if (!resultsEl()) return; // navigated away (to the filters screen or elsewhere) before this landed
       if (reset) resultsEl().innerHTML = '';
       if (reset && !games.length) {
@@ -140,9 +158,11 @@ export function renderDiscoverView(root) {
       moreEl().innerHTML = hasMore ? `<button class="btn btn--ghost btn--block" id="load-more">Load more</button>` : '';
       if (hasMore) qs('#load-more', moreEl()).addEventListener('click', () => { page += 1; runSearch(false); });
     } catch (err) {
-      if (resultsEl()) resultsEl().innerHTML = `<p class="muted">Couldn't load games right now: ${esc(err.message)}</p>`;
+      if (ticket === searchTicket && resultsEl()) {
+        resultsEl().innerHTML = `<p class="muted">Couldn't load games right now: ${esc(err.message)}</p>`;
+      }
     } finally {
-      loading = false;
+      if (ticket === searchTicket) loading = false;
     }
   }
 
@@ -268,5 +288,8 @@ export function renderDiscoverView(root) {
     });
   }
 
-  paintResults();
+  // Back from the Filters screen goes to the results, as it always has;
+  // arriving WITH openFilters set just skips the results on the way in.
+  if (openFilters) paintFilters();
+  else paintResults();
 }
