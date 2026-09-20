@@ -1,6 +1,6 @@
 import * as api from '../api.js';
 import { state } from '../state.js';
-import { navBar, avatarImg, emptyState, spinner, iconBell, iconBack } from '../components.js';
+import { navBar, avatarImg, emptyState, spinner, iconBell, iconFilter, iconBack, iconCheck } from '../components.js';
 import { esc, timeAgo, starRow, qs, qsa } from '../utils.js';
 import { navigate } from '../router.js';
 import { wirePullToRefresh } from './feed-view.js';
@@ -21,12 +21,23 @@ const TABS = [
   { id: 'incoming', label: 'Incoming' },
 ];
 
-// There used to be a funnel here, opening an "Activity filter" page with
-// two switches for folding your own and incoming activity into the
-// Friends stream. It is gone: the three tabs ALREADY split activity by
-// whose it is, so the switches offered a second, overlapping way to
-// answer the same question, and a filter icon on a notifications screen
-// mostly reads as something being hidden from you.
+// The two filters live on the Friends tab only, because they are both
+// about what ELSE to fold into that stream — neither means anything on a
+// tab that is already defined as exactly one of those things.
+const FILTER_KEY = 'playthruu:activity-filters';
+const FILTER_DEFAULTS = { includeYou: false, includeIncoming: false };
+
+function loadFilters() {
+  try {
+    return { ...FILTER_DEFAULTS, ...JSON.parse(localStorage.getItem(FILTER_KEY) || '{}') };
+  } catch {
+    return { ...FILTER_DEFAULTS };
+  }
+}
+
+function saveFilters(f) {
+  try { localStorage.setItem(FILTER_KEY, JSON.stringify(f)); } catch { /* private mode */ }
+}
 
 function nameOf(profile, fallback = 'Someone') {
   if (!profile) return fallback;
@@ -147,6 +158,7 @@ function activityRow(row, viewerId) {
 
 export async function renderNotificationsView(root) {
   let activeTab = 'friends';
+  let filters = loadFilters();
   let rows = [];
   let cursor = null;
   let hasMore = false;
@@ -154,20 +166,31 @@ export async function renderNotificationsView(root) {
   let sentinelObserver = null;
   const viewerId = state.user?.id;
 
+  function activeFilterCount() {
+    return (filters.includeYou ? 1 : 0) + (filters.includeIncoming ? 1 : 0);
+  }
+
   // ---- the shell -------------------------------------------------------
-  // Painted ONCE. The head is deliberately the same shape as the Search
-  // tab's — a back chevron and a large title in the scrolling body, with
-  // the segmented control directly beneath — so the Friends/You/Incoming
-  // bar lands at the same height on screen as Games/Players does on
-  // Search and Feed/News does on Home. It used to be a topbar plus a
-  // separate sticky tab strip, which sat the pill at a different height
-  // from every other tabbed screen in the app.
+  // Painted ONCE. The head is the same shape as Messages' and Search's —
+  // a large title in the scrolling body with the segmented control
+  // directly beneath — so the Friends/You/Incoming bar lands at the same
+  // height on screen as Chats/Requests, Games/Players and Feed/News. It
+  // used to be a topbar plus a separate sticky tab strip, which sat the
+  // pill at a different height from every other tabbed screen.
+  //
+  // No back chevron: this is one of the five destinations in the tab
+  // bar, and none of the others has one — there is nothing consistent
+  // for "back" to mean from a tab you reached by tapping its own icon.
+  // The filter sits where Messages puts its compose button.
   function paintShell() {
+    const count = activeFilterCount();
     root.innerHTML = `
       <div class="view-body view-body--search" id="act-body">
         <div class="msg-inbox-head">
-          <button type="button" class="inbox-back" data-action="back" aria-label="Back">${iconBack()}</button>
           <h1 class="msg-inbox-title">Notifications</h1>
+          <button type="button" class="act-filter-btn${count ? ' act-filter-btn--active' : ''}" id="act-filter" aria-label="Activity filter"${activeTab === 'friends' ? '' : ' hidden'}>
+            ${iconFilter()}${count ? `<span class="act-filter-btn__count">${count}</span>` : ''}
+          </button>
         </div>
         <div class="segmented segmented--wide" id="act-tabs">
           ${TABS.map((t) => `<button class="segmented__item${t.id === activeTab ? ' segmented__item--active' : ''}" data-tab="${t.id}">${t.label}</button>`).join('')}
@@ -181,9 +204,16 @@ export async function renderNotificationsView(root) {
         activeTab = btn.dataset.tab;
         qsa('#act-tabs .segmented__item', root).forEach((b) =>
           b.classList.toggle('segmented__item--active', b.dataset.tab === activeTab));
+        // The two switches only mean anything on Friends (see above), so
+        // the chip goes away on the other two rather than sitting there
+        // doing nothing.
+        const chip = qs('#act-filter', root);
+        if (chip) chip.hidden = activeTab !== 'friends';
         load({ reset: true });
       });
     });
+
+    qs('#act-filter', root)?.addEventListener('click', paintFilterScreen);
 
     qs('#act-slot', root).addEventListener('click', (e) => {
       const rowEl = e.target.closest('.act');
@@ -200,7 +230,9 @@ export async function renderNotificationsView(root) {
   function emptyMessage() {
     if (activeTab === 'you') return "You haven't done anything yet — log a game and it shows up here.";
     if (activeTab === 'incoming') return 'Nothing aimed at you yet. Follows, likes and comments on your reviews land here.';
-    return 'Nothing from the people you follow yet.';
+    return activeFilterCount()
+      ? 'Nothing here yet. Follow a few people and their activity fills this in.'
+      : 'Nothing from the people you follow yet. Try the filter to fold in your own and incoming activity.';
   }
 
   function paintList() {
@@ -254,8 +286,8 @@ export async function renderNotificationsView(root) {
     try {
       const res = await api.getActivityFeed(viewerId, {
         scope: activeTab,
-        includeYou: false,
-        includeIncoming: false,
+        includeYou: filters.includeYou,
+        includeIncoming: filters.includeIncoming,
         before: reset ? null : cursor,
       });
       rows = reset ? res.rows : rows.concat(res.rows);
@@ -281,6 +313,50 @@ export async function renderNotificationsView(root) {
     api.markNotificationsRead(ids)
       .then(() => { window.dispatchEvent(new CustomEvent('notifications:read')); })
       .catch(() => { /* the badge simply stays until the next load */ });
+  }
+
+  // ---- the filter screen ------------------------------------------------
+  // A real page rather than a sheet, matching the Discover filters: the
+  // back arrow discards, the tick applies. Edits land on a draft so
+  // nothing takes effect until it is actually confirmed.
+  function paintFilterScreen() {
+    const draft = { ...filters };
+
+    root.innerHTML = `
+      <header class="topbar">
+        <button type="button" class="topbar__back" id="act-filters-cancel" aria-label="Back">${iconBack()}</button>
+        <h1 class="topbar__title">Activity filter</h1>
+        <div class="topbar__right">
+          <button type="button" class="topbar__back" id="act-filters-apply" aria-label="Apply filter">${iconCheck()}</button>
+        </div>
+      </header>
+      <div class="view-body">
+        <div class="set-card">
+          <div class="set-toggle">
+            <span class="set-toggle__label"><b>Include your activity</b><span>Your own logs, likes and follows, mixed into the Friends stream</span></span>
+            <label class="set-switch"><input type="checkbox" data-filter="includeYou"${draft.includeYou ? ' checked' : ''}><span class="set-switch__track"></span></label>
+          </div>
+          <div class="set-toggle">
+            <span class="set-toggle__label"><b>Include incoming activity</b><span>Follows, likes and comments aimed at you, from anyone</span></span>
+            <label class="set-switch"><input type="checkbox" data-filter="includeIncoming"${draft.includeIncoming ? ' checked' : ''}><span class="set-switch__track"></span></label>
+          </div>
+        </div>
+        <p class="set-hint">Both off is the pure Friends feed — only the people you follow.</p>
+      </div>`;
+
+    qsa('input[data-filter]', root).forEach((input) => {
+      input.addEventListener('change', () => { draft[input.dataset.filter] = input.checked; });
+    });
+    qs('#act-filters-cancel', root).addEventListener('click', () => {
+      paintShell();
+      paintList();
+    });
+    qs('#act-filters-apply', root).addEventListener('click', () => {
+      filters = draft;
+      saveFilters(filters);
+      paintShell();
+      load({ reset: true });
+    });
   }
 
   paintShell();

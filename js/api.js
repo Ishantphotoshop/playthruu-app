@@ -750,15 +750,18 @@ export async function searchGamesEverywhere(query, limit = 20, page = 1) {
     expanded ? searchIgdb(expanded, limit, page) : Promise.resolve([]),
   ]);
   const [local, igdbDirect, rawgRemote, igdbExpanded] = settled.map((r) => (r.status === 'fulfilled' ? r.value : []));
-  const igdbSeen = new Set(igdbDirect.map((g) => g.title.trim().toLowerCase()));
-  const igdbRemote = [...igdbDirect, ...igdbExpanded.filter((g) => !igdbSeen.has(g.title.trim().toLowerCase()))];
+  // dedupeKey, not a raw lowercase of the title: a remote "Alan Wake II"
+  // is the local "Alan Wake 2" and has to be recognised as such HERE,
+  // before ranking, or both spellings take up a slot apiece.
+  const igdbSeen = new Set(igdbDirect.map((g) => dedupeKey(g.title)));
+  const igdbRemote = [...igdbDirect, ...igdbExpanded.filter((g) => !igdbSeen.has(dedupeKey(g.title)))];
 
-  const localTitles = new Set(local.map((g) => g.title.trim().toLowerCase()));
-  let remote = igdbRemote.filter((g) => !localTitles.has(g.title.trim().toLowerCase()));
+  const localTitles = new Set(local.map((g) => dedupeKey(g.title)));
+  let remote = igdbRemote.filter((g) => !localTitles.has(dedupeKey(g.title)));
 
-  const seenTitles = new Set([...localTitles, ...remote.map((g) => g.title.trim().toLowerCase())]);
+  const seenTitles = new Set([...localTitles, ...remote.map((g) => dedupeKey(g.title))]);
   const rawgFiltered = rawgRemote
-    .filter((g) => !seenTitles.has(g.title.trim().toLowerCase()))
+    .filter((g) => !seenTitles.has(dedupeKey(g.title)))
     .filter((g) => isRelevantMatch(query, g.title));
   remote = [...remote, ...rawgFiltered];
 
@@ -800,19 +803,70 @@ function mergeRankSearch(query, items) {
 // whichever has cover art and the widest reach — and every duplicate's
 // platforms are merged onto it. First-occurrence order is preserved, so
 // the relevance ranking above still holds.
+// The key two rows have to share to count as the same game. Plain
+// normalisation is not enough on its own: IGDB and our own catalogue
+// disagree about how to write a sequel number, so "Alan Wake 2" and
+// "Alan Wake II" came back as two rows for one game, with the same
+// cover, the same year and the same director under them.
+//
+// Only numerals of TWO OR MORE characters are folded. A bare trailing
+// "X" is the tempting case to include and exactly the one that must
+// not be: Mega Man X and Mega Man 10 are different games in different
+// series, and folding single letters also turns "V Rising" into
+// "5 Rising" and "I Am Fish" into "1 Am Fish".
+// A trailing "(1997)" is IGDB disambiguating one same-named game from
+// another, and it is also how the same game ends up listed twice —
+// "Final Fantasy VII" alongside "Final Fantasy VII (1997)". Stripped
+// from the key, with the year kept separately so explicitYear below can
+// stop the strip from merging Prey (2006) into Prey (2017).
+const TRAILING_YEAR = /\s*\(\s*(19|20)\d{2}\s*\)\s*$/;
+
+function explicitYear(title) {
+  const m = String(title || '').match(TRAILING_YEAR);
+  return m ? m[0].replace(/[^0-9]/g, '') : null;
+}
+
+function dedupeKey(title) {
+  const t = normalizeTitle(String(title || '').replace(TRAILING_YEAR, ''));
+  if (!t) return '';
+  return t.split(' ').map((w) => {
+    if (w.length < 2) return w;
+    const i = ROMAN.indexOf(w);
+    return i > 0 ? String(i) : w;
+  }).join(' ');
+}
+
+// How much this row actually tells you about the game. Used to pick
+// which of a duplicate pair survives — the ask was to keep "the main
+// one with more information", and cover-art-plus-recency did not
+// capture that on its own.
+function infoScore(g) {
+  const fields = [g.release_year, g.platform, g.genre, g.developer, g.publisher,
+    g.summary, g.cover_url, g.igdb_id];
+  return fields.reduce((n, v) => n + (v ? 1 : 0), 0);
+}
+
 function mergeDuplicateTitles(games) {
   const groups = new Map();
   const order = [];
   games.forEach((g, i) => {
-    const key = normalizeTitle(g.title) || `__${i}`;
+    const key = dedupeKey(g.title) || `__${i}`;
     if (!groups.has(key)) { groups.set(key, []); order.push(key); }
     groups.get(key).push(g);
   });
-  return order.map((key) => {
+  return order.flatMap((key) => {
     const group = groups.get(key);
     if (group.length === 1) return group[0];
+    // Two or more DIFFERENT years spelled out in the titles means IGDB
+    // is telling us these are distinct games that happen to share a
+    // name — Prey (2006) and Prey (2017). Collapsing those would delete
+    // a real game from the results, so the group is left alone.
+    const years = new Set(group.map((g) => explicitYear(g.title)).filter(Boolean));
+    if (years.size > 1) return group;
     const rep = [...group].sort((a, b) => {
       if ((a._source === 'local') !== (b._source === 'local')) return a._source === 'local' ? -1 : 1;
+      const info = infoScore(b) - infoScore(a);
+      if (info !== 0) return info;
       const cover = (b.cover_url ? 1 : 0) - (a.cover_url ? 1 : 0);
       if (cover !== 0) return cover;
       return (b.igdb_added || 0) - (a.igdb_added || 0);
@@ -825,7 +879,11 @@ function mergeDuplicateTitles(games) {
         if (!seen.has(lower)) { seen.add(lower); platforms.push(p); }
       }
     }
-    return { ...rep, platform: platforms.slice(0, 6).join(', ') };
+    // Prefer the clean spelling for the row that survives: with the
+    // duplicate gone there is nothing left for "(1997)" to distinguish
+    // it from, and it just reads as clutter.
+    const plain = group.find((g) => !explicitYear(g.title));
+    return { ...rep, title: plain ? plain.title : rep.title, platform: platforms.slice(0, 6).join(', ') };
   });
 }
 

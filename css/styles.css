@@ -1190,12 +1190,12 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    the posters floating loose rather than belonging to the heading above
    them. Taken off the STRIP rather than the heading's margin, so
    headings and every non-poster section keep their existing rhythm. */
-.trending-strip {
+.trending-strip, .foryou-strip {
   display: flex; gap: var(--space-3); overflow-x: auto;
   padding: 0 0 var(--space-4); margin-top: -1px;
   scrollbar-width: none; -ms-overflow-style: none;
 }
-.trending-strip::-webkit-scrollbar { display: none; }
+.trending-strip::-webkit-scrollbar, .foryou-strip::-webkit-scrollbar { display: none; }
 /* The "see more" destinations (trending-view.js, friends-playing-
    view.js, currently-playing-view.js) reuse the exact same card
    classes as the feed's own strips, in a real 3-column grid instead of
@@ -1295,7 +1295,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    phone. */
 @media (max-width: 560px) {
   :root { --feed-card-w: calc((100vw - 38px) / 3.1); }
-  .trending-strip { gap: 6px; }
+  .trending-strip, .foryou-strip { gap: 6px; }
 }
 .card-who .avatar { flex-shrink: 0; }
 .card-who__meta { min-width: 0; display: flex; flex-direction: column; gap: 1px; overflow: hidden; }
@@ -2050,11 +2050,8 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 .section-heading {
   font-family: var(--font-brand); font-weight: 700;
   font-size: var(--text-heading); letter-spacing: -0.01em;
-  color: var(--ink); margin: var(--space-6) 0 var(--space-4);
+  color: var(--ink); margin: var(--space-4) 0 12px;
 }
-/* Tighter rhythm on the feed specifically — the gaps between the strips
-   and the next heading were too airy. */
-#feed-body .section-heading { margin: var(--space-4) 0 var(--space-3); }
 /* "Trending now" is the very first thing in the scroll area — its own
    20px top margin was stacking on top of .view-body's own 20px top
    padding, doubling the gap under the Feed/News pill above it. */
@@ -2072,8 +2069,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
    with trailing padding on the strips too, the gap under a poster row
    came out 8px wider than the gap under the grid, which is what made
    the page read as unevenly spaced. */
-#feed-body .trending-strip { padding-bottom: 0; }
-#feed-body .foryou-strip { padding-bottom: 0; }
+#feed-body .trending-strip, #feed-body .foryou-strip { padding-bottom: 0; }
 
 /* Every horizontal poster strip in the app bleeds out to the true screen
    edges, not just the feed's — the same fix, applied wherever these rows
@@ -2086,6 +2082,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
    wrapping grids on the "see more" pages use .card-grid, not these, so
    they're untouched. */
 .view-body .trending-strip,
+.view-body .foryou-strip,
 .view-body .recent-played-row {
   margin-left: calc(-1 * var(--gutter));
   margin-right: calc(-1 * var(--gutter));
@@ -2116,7 +2113,8 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
    plain classes) and silently do nothing. */
 #feed-body .feed-section-head { margin-top: var(--space-4); }
 #feed-body #trending-section .feed-section-head { margin-top: 0; }
-#feed-body .feed-section-head .section-heading { margin-top: 0; margin-bottom: 12px; }
+#feed-body .feed-section-head .section-heading { margin-top: 0; margin-bottom: 0; }
+#feed-body .feed-section-head { margin-bottom: 12px; }
 .see-more-link { font-size: 12.5px; font-weight: 700; color: var(--accent-bright); flex-shrink: 0; }
 /* Icon-only "see more" for the three feed strips (see feedSectionHead()
    in components.js) — deliberately plainer than .see-more-link's text +
@@ -4083,7 +4081,7 @@ a.gd-credit__name { text-decoration: none; }
 
 .set-account {
   display: flex; align-items: center; gap: var(--space-3);
-  padding: var(--space-3) var(--space-4); margin: var(--space-3) 0 var(--space-2);
+  padding: var(--space-3) var(--space-4); margin: 0 0 var(--space-2);
   background: var(--surface-raised); border: 1px solid var(--line);
   border-radius: var(--radius-l);
 }
@@ -5275,14 +5273,18 @@ a.gd-credit__name { text-decoration: none; }
    the standard body size it filled the screen with six of them. The
    tabs above are deliberately NOT scaled down with it — they are the
    same control as on every other tabbed screen. */
+/* No rule between rows. The hairlines chopped the list into thirty
+   boxed-off strips; the whitespace and the avatar column already say
+   where one row stops and the next begins, and without them the list
+   reads as one continuous thing to scan. Slightly more padding takes
+   over the separating job the border used to do. */
 .act {
   display: flex; align-items: flex-start; gap: 10px;
-  width: 100%; padding: 9px 2px; text-align: left;
-  background: none; border: none; border-bottom: 1px solid var(--line);
+  width: 100%; padding: 11px 2px; text-align: left;
+  background: none; border: none;
   color: var(--ink); cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
-.act:last-child { border-bottom: none; }
 .act:active { background: rgba(255, 255, 255, 0.04); }
 
 .act__avatar { flex-shrink: 0; display: flex; padding-top: 1px; }
@@ -5295,7 +5297,10 @@ a.gd-credit__name { text-decoration: none; }
    only by one step: two competing emphases in a one-line sentence
    (bold name AND bold game) is what made the list look busy. */
 .act__text { font-size: 13.5px; line-height: 1.45; color: var(--ink); font-weight: var(--weight-medium); }
-.act__text b { font-weight: var(--weight-strong); }
+/* The game is the one thing in the row worth finding at a glance, so
+   it carries the heaviest weight in the app's ladder against a medium
+   sentence — a bigger jump than the single step it had. */
+.act__text b { font-weight: var(--weight-black); }
 /* Inline stars sit on the text baseline rather than on their own line,
    which is what keeps "watched Hades ★★★★" reading as one sentence. */
 .act__text .stars { display: inline-flex; vertical-align: -1px; margin-left: 2px; }
@@ -5334,21 +5339,30 @@ a.gd-credit__name { text-decoration: none; }
 }
 .act-more .spinner { width: 30px; height: 30px; }
 
-/* The back chevron on the Notifications head. Same round chip as the
-   Search bar's filter button, one size down, so the two screens carry
-   the same control vocabulary. */
-.inbox-back {
-  flex-shrink: 0; width: 38px; height: 38px; display: grid; place-items: center;
+/* The activity filter chip, sitting in the Notifications head where
+   Messages puts its compose button. Same 34px round chip, in the
+   neutral surface rather than the accent — this one filters what is
+   already on screen, it does not start anything. */
+.act-filter-btn {
+  position: relative; flex-shrink: 0;
+  width: 34px; height: 34px; display: grid; place-items: center;
   background: var(--surface); border: 1.5px solid var(--line); border-radius: 50%;
   color: var(--ink); cursor: pointer;
   transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
 }
-.inbox-back svg { width: 20px; height: 20px; }
-.inbox-back:active { transform: scale(0.94); background: var(--surface-raised); }
-/* A head carrying a back button reads left-to-right as one group, so it
-   packs to the start instead of pushing its two halves to the edges.
-   The height is handled above, for every head at once. */
-.msg-inbox-head:has(.inbox-back) { justify-content: flex-start; gap: 10px; }
+.act-filter-btn svg { width: 17px; height: 17px; }
+.act-filter-btn:active { transform: scale(0.92); background: var(--surface-raised); }
+.act-filter-btn--active { color: var(--accent-bright); border-color: var(--accent-bright); }
+.act-filter-btn[hidden] { display: none; }
+.act-filter-btn__count {
+  position: absolute; top: -3px; right: -3px;
+  min-width: 15px; height: 15px; padding: 0 4px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: var(--radius-pill);
+  background: var(--accent-bright); color: var(--bg);
+  font-family: var(--font-mono); font-size: 9.5px; font-weight: 700; line-height: 1;
+  box-shadow: 0 0 0 2px var(--bg);
+}
 
 /* ---- notification settings ---- */
 
@@ -5701,13 +5715,6 @@ a.gd-credit__name { text-decoration: none; }
 /* A horizontal strip rather than the poster grid the collections below
    use: each card has to carry a line of reasoning, and a reason is
    unreadable at four-across. */
-.foryou-strip {
-  display: flex; gap: var(--space-3); overflow-x: auto;
-  padding: 0 var(--gutter) var(--space-2);
-  margin: 0 calc(var(--gutter) * -1);
-  scrollbar-width: none; -ms-overflow-style: none;
-}
-.foryou-strip::-webkit-scrollbar { display: none; }
 /* A poster and nothing else, so the card IS the cover — no column, no
    gap, nothing below it to leave room for. */
 /* The same width as every other poster strip on the feed, from the
