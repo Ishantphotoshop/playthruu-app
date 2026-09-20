@@ -599,6 +599,14 @@ export function wirePullToRefresh(body) {
 
   body.addEventListener('pointerdown', (e) => {
     if (e.pointerType === 'mouse' || refreshing || body.scrollTop > 0) return;
+    // Re-attach if the view has repainted its own body since this was
+    // wired. The Feed does exactly that — the indicator is prepended
+    // when the shell is built, and then every section paint replaces
+    // body.innerHTML, taking the indicator with it. The listeners here
+    // survive (they are on the body itself), so the gesture still ran,
+    // silently, against a detached element: no arrow, no spinner, no
+    // sign the pull had registered at all.
+    if (!indicator.isConnected) body.prepend(indicator);
     startY = e.clientY; tracking = true; dragging = false;
   });
 

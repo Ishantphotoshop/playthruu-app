@@ -4569,7 +4569,17 @@ a.gd-credit__name { text-decoration: none; }
 #messages-body.view-body--no-topbar { padding-top: calc(var(--safe-top) + 16px); }
 /* Space between the "Messages" heading and the Chats/Requests tabs so the
    top doesn't read as one cramped block. */
-.msg-inbox-head { display: flex; align-items: center; justify-content: space-between; padding: 2px 0 0; margin-bottom: 22px; }
+/* A FIXED height, not one derived from whatever the head happens to
+   contain. Messages puts a 34px compose chip in here, Notifications a
+   38px back chip and Search nothing but the heading — three different
+   head heights, which put the tab bar underneath at 74 / 78 / 71px
+   down the screen on three screens that should look identical above
+   the fold. Height plus margin is a constant 55px now, so the bar
+   lands at the same place on all of them. */
+.msg-inbox-head {
+  display: flex; align-items: center; justify-content: space-between;
+  min-height: 38px; padding: 0; margin-bottom: 17px;
+}
 .msg-inbox-title { font-family: var(--font-brand); font-weight: 800; font-size: 25px; letter-spacing: -0.02em; }
 /* The app's main accent (not orange) with the dark icon, like every other
    primary action button in the app. */
@@ -5337,12 +5347,8 @@ a.gd-credit__name { text-decoration: none; }
 .inbox-back:active { transform: scale(0.94); background: var(--surface-raised); }
 /* A head carrying a back button reads left-to-right as one group, so it
    packs to the start instead of pushing its two halves to the edges.
-   The smaller bottom margin compensates for the chip being taller than
-   the bare heading on Messages/Search: without it the tab pill below
-   sat 7px lower here than the same pill does on every other screen. */
-.msg-inbox-head:has(.inbox-back) {
-  justify-content: flex-start; gap: 10px; margin-bottom: 15px;
-}
+   The height is handled above, for every head at once. */
+.msg-inbox-head:has(.inbox-back) { justify-content: flex-start; gap: 10px; }
 
 /* ---- notification settings ---- */
 
