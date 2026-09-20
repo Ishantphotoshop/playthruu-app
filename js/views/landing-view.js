@@ -3,7 +3,7 @@ import {
   posterFrame, avatarImg, spinner, emptyState, iconSearch,
   iconUserFilled, iconBrowseNavFilled, iconCompassNavFilled, iconSearchFilled,
 } from '../components.js';
-import { diaryCardHtml, tourSceneHtml, resolveShowcase } from './landing-art.js';
+import { magazineCoverHtml, coverStarTitle, tourSceneHtml, resolveShowcase } from './landing-art.js';
 import { esc, starRow, qs, qsa, toast } from '../utils.js';
 import { renderAuthView } from './auth-view.js';
 import { navigate } from '../router.js';
@@ -231,8 +231,10 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
     resolveShowcase().then((games) => {
       showcase = games;
       if (screen === 'entry') {
-        const card = qs('#lp-card', root);
-        if (card) card.innerHTML = diaryCardHtml(showcase);
+        const art = qs('#lp-art', root);
+        if (art) art.innerHTML = magazineCoverHtml(showcase);
+        const star = qs('#lp-star', root);
+        if (star) star.textContent = `On the cover: ${coverStarTitle(showcase)}`;
       } else if (screen === 'tour') {
         const slot = qs('#tour-art', root);
         if (slot) slot.innerHTML = tourSceneHtml(TOUR_SLIDES[tourIndex].scene, showcase);
@@ -240,15 +242,35 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
     }).catch(() => { /* placeholders stay; nothing to recover from */ });
   }
 
+  // Laid out like the cover of a magazine: masthead at the top, a rule
+  // under it, the issue line, then the cover lines and the two actions
+  // over the bottom of one full-bleed piece of art.
+  //
+  // The cover lines are what the app actually does, not invented
+  // figures — a real magazine's cover lines are the contents, and a
+  // number nobody can check reads as marketing the moment you look at
+  // it twice.
+  const COVER_LINES = [
+    'Log every game — finished, dropped, still going',
+    'Half-star ratings, and reviews worth reading',
+    'See what your friends played this week',
+  ];
+
   function entryHtml() {
     return `
       <div class="lp">
-        <header class="lp__head">
-          <h1 class="lp__word">PlayThruu</h1>
+        <div class="lp__art-wrap" id="lp-art">${magazineCoverHtml(showcase)}</div>
+        <div class="lp__veil" aria-hidden="true"></div>
+        <header class="lp__masthead">
+          <h1 class="lp__word">Play<br>Thruu</h1>
+          <div class="lp__rule" aria-hidden="true"></div>
+          <p class="lp__issue">Your games, written down</p>
         </header>
-        <div class="lp__stage" id="lp-card">${diaryCardHtml(showcase)}</div>
         <div class="lp__content">
-          <p class="lp__line">That is one playthruu.<br>Start yours.</p>
+          <ul class="lp__lines">
+            ${COVER_LINES.map((l) => `<li>${esc(l)}</li>`).join('')}
+          </ul>
+          <p class="lp__star" id="lp-star">On the cover: ${esc(coverStarTitle(showcase))}</p>
           <div class="lp__actions">
             <button type="button" class="lp__cta" id="entry-tour">Get started</button>
             <button type="button" class="lp__ghost" id="entry-signin">I already have an account</button>

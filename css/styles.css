@@ -4165,104 +4165,94 @@ a.gd-credit__name { text-decoration: none; }
 .landing-stage { flex: 1; overflow-y: auto; padding-bottom: calc(63px + var(--safe-bottom)); background: var(--bg); }
 
 /* ---- entry screen ----------------------------------------------------
-   One finished diary entry, held up on its own.
+   The cover of a magazine: masthead at the top, a rule under it, the
+   issue line, then the contents and the two actions over the bottom of
+   one full-bleed piece of art.
 
-   The two versions before this described the app — a typographic page
-   that said what it was for, then a wall of covers that said what it
-   was about. This one just shows the thing the app makes: a game, what
-   somebody did to it, and what they said. If that artefact is not worth
-   an account, no amount of pitch will help; if it is, nothing else
-   needs saying.
+   A magazine cover is the one layout that wants exactly what this
+   screen has — a name that should be enormous, a single strong image,
+   and three or four lines telling you what is inside. It also gives the
+   type somewhere to go: the masthead owns the top, the contents own the
+   bottom, and the art is allowed to be the whole middle.
 
-   Built to the shape of the app's own share card, so what is on screen
-   is the same object people already post elsewhere. Nothing animates. */
+   Nothing moves. The cover changes between openings, which is what a
+   magazine does, but never while you are looking at it. */
 .lp {
-  position: relative; overflow: hidden;
+  position: relative; overflow: hidden; isolation: isolate;
   min-height: calc(100dvh - 63px - var(--safe-bottom));
-  display: flex; flex-direction: column;
+  display: flex; flex-direction: column; justify-content: space-between;
   padding: calc(var(--space-5) + env(safe-area-inset-top, 0px)) var(--gutter) var(--space-5);
   background: var(--bg);
 }
 
-.lp__head { flex-shrink: 0; text-align: center; }
+/* The art is the page, not a picture on it. */
+.lp__art-wrap { position: absolute; inset: 0; z-index: 0; }
+.lp__art {
+  display: block; width: 100%; height: 100%;
+  border: none; border-radius: 0; background: var(--bg);
+}
+.lp__art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* The skeleton shimmer would be the only thing moving on the screen,
+   full-bleed, behind the masthead. */
+.lp__art-wrap .poster-frame::after { display: none !important; animation: none !important; }
+
+/* Dark at both ends and clear through the middle, so the masthead and
+   the contents each get a floor while the art keeps the part of the
+   frame worth seeing. Cover art is loud; type over it needs more than a
+   tint. */
+.lp__veil {
+  position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  /* The lower half goes dark EARLY and hard. Almost every game cover
+     prints its own logo across the bottom third — the exact band the
+     cover lines sit in — and at a gentler ramp the two sets of type
+     collided and neither could be read. The top of the frame, where
+     the face usually is, keeps its light. */
+  background: linear-gradient(to bottom,
+    rgba(0, 8, 20, 0.86) 0%,
+    rgba(0, 8, 20, 0.50) 20%,
+    rgba(0, 8, 20, 0.28) 36%,
+    rgba(0, 8, 20, 0.72) 52%,
+    rgba(0, 8, 20, 0.95) 66%,
+    var(--bg) 78%);
+}
+
+/* ---- masthead ---- */
+.lp__masthead { position: relative; z-index: 2; }
 .lp__word {
   font-family: var(--font-brand); font-weight: var(--weight-black);
-  font-size: clamp(22px, 6.4vw, 27px); line-height: 1;
-  letter-spacing: -0.035em; color: var(--ink);
+  /* Tight enough that the two lines lock together as one block, which
+     is what makes a masthead read as a masthead rather than a heading. */
+  font-size: clamp(40px, 13.2vw, 56px); line-height: 0.86;
+  letter-spacing: -0.055em; color: var(--ink);
+  text-transform: uppercase;
 }
-
-/* The card gets whatever room is left, and sits in the middle of it. */
-.lp__stage {
-  flex: 1 1 auto; min-height: 0;
-  display: flex; align-items: center; justify-content: center;
-  padding: var(--space-4) 0;
-}
-
-/* ---- the entry ----
-   A real card on a real surface, not a floating mock: the same raised
-   panel, hairline border and radius the app uses for everything else
-   it considers an object. */
-.lp-entry {
-  margin: 0; width: 100%;
-  /* Sized from the viewport HEIGHT, not a fixed width. The card is
-     mostly a 3:4 cover, so its height follows its width — at a fixed
-     310px it grew past the bottom of a phone and pushed the second
-     button off the screen entirely. Tying the width to vh makes the
-     whole card shrink on a short screen instead. */
-  max-width: min(290px, 27vh);
-  background: var(--surface-raised);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-l);
-  overflow: hidden;
-  box-shadow: 0 22px 46px -18px rgba(0, 0, 0, 0.85);
-}
-.lp-entry__art { padding: 12px 12px 0; }
-.lp-entry__cover {
-  display: block; width: 100%; aspect-ratio: var(--ratio-card);
-  border-radius: 10px; overflow: hidden; background: var(--surface);
-}
-.lp-entry__cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
-/* No shimmer: this is the one object on the screen and a pulse behind
-   it would be the only thing moving. */
-.lp-entry .poster-frame::after { display: none !important; animation: none !important; }
-
-.lp-entry__meta { display: flex; flex-direction: column; gap: 3px; padding: 12px 14px 13px; }
-.lp-entry__status {
+.lp__rule { height: 2px; background: var(--accent); margin: 14px 0 11px; }
+.lp__issue {
   font-family: var(--font-mono); font-size: var(--text-micro); font-weight: var(--weight-medium);
-  letter-spacing: 0.16em; text-transform: uppercase; color: var(--accent-bright);
-}
-.lp-entry__game {
-  font-family: var(--font-display); font-weight: var(--weight-bold);
-  font-size: var(--text-lead); line-height: var(--leading-title); color: var(--ink);
+  letter-spacing: 0.2em; text-transform: uppercase; color: var(--ink-dim);
 }
 
-/* The review sits below a rule inside the same card — one object with
-   two halves, the way the share card reads. */
-.lp-entry__review { border-top: 1px solid var(--line); padding: 12px 14px 14px; }
-.lp-entry__who { display: flex; align-items: center; gap: 8px; }
-.lp-entry__who img, .lp-entry__who .avatar {
-  border-radius: 50%; flex-shrink: 0; display: block;
-  background: var(--accent); color: var(--bg);
+/* ---- contents ---- */
+.lp__content { position: relative; z-index: 2; }
+.lp__lines { list-style: none; margin: 0; padding: 0; display: grid; gap: 9px; }
+.lp__lines li {
+  display: grid; grid-template-columns: 14px 1fr; gap: 10px; align-items: baseline;
+  font-size: var(--text-body); font-weight: var(--weight-strong);
+  line-height: var(--leading-title); color: var(--ink);
 }
-.lp-entry__name {
-  font-size: var(--text-small); font-weight: var(--weight-strong); color: var(--ink-dim);
+/* An em dash per line, in the accent: a magazine's cover lines are a
+   list, and the marker is what says so without a bullet's roundness. */
+.lp__lines li::before { content: '—'; color: var(--accent); font-weight: var(--weight-bold); }
+/* One line, always. A long title wrapping to two moved every control
+   under it, so the whole block shifted depending on which cover came
+   up — and the cover itself already shows the name. */
+.lp__star {
+  margin-top: 16px;
+  font-family: var(--font-mono); font-size: var(--text-micro);
+  letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-faint);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.lp-entry__stars { margin-left: auto; flex-shrink: 0; display: flex; }
-.lp-entry__quote {
-  margin-top: 9px;
-  font-size: var(--text-body); line-height: var(--leading-body); color: var(--ink);
-}
-
-/* ---- the ask ---- */
-.lp__content { flex-shrink: 0; }
-.lp__line {
-  font-family: var(--font-brand); font-weight: var(--weight-bold);
-  font-size: clamp(21px, 6.2vw, 26px); line-height: var(--leading-display);
-  letter-spacing: -0.035em; color: var(--ink);
-  margin-bottom: var(--space-4);
-}
-.lp__actions { display: grid; gap: 9px; }
+.lp__actions { margin-top: var(--space-5); display: grid; gap: 9px; }
 .lp__cta, .lp__ghost {
   display: inline-flex; align-items: center; justify-content: center;
   width: 100%; min-height: 50px; padding: 14px var(--space-5);
@@ -4274,35 +4264,25 @@ a.gd-credit__name { text-decoration: none; }
 .lp__cta { background: var(--accent); color: var(--bg); border: 1px solid transparent; }
 .lp__cta:hover { background: var(--accent-bright); }
 .lp__cta:active { transform: scale(0.99); }
+/* Glass, not a flat panel: it sits on artwork, where a solid fill reads
+   as a hole punched in the picture. */
 .lp__ghost {
-  background: transparent; color: var(--ink);
-  border: 1px solid var(--line-strong);
+  background: rgba(255, 255, 255, 0.07); color: var(--ink);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
   font-weight: var(--weight-strong); font-size: var(--text-body);
 }
-.lp__ghost:hover { background: var(--surface); }
+.lp__ghost:hover { background: rgba(255, 255, 255, 0.11); }
 .lp__ghost:active { transform: scale(0.99); }
 .lp__cta:focus-visible, .lp__ghost:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 3px; }
 
-/* A short screen has to fit the same five things: name, card, line and
-   two buttons. The card is what gives, because it is the only part that
-   can shrink without anything becoming unusable — the second button
-   getting pushed under the nav bar is not a trade worth making. */
 @media (max-height: 720px) {
-  .lp { padding-top: calc(var(--space-3) + env(safe-area-inset-top, 0px)); padding-bottom: var(--space-3); }
-  .lp__stage { padding: var(--space-2) 0; }
-  /* Narrowing the card stops helping past a point: the title and the
-     quote just wrap onto more lines, so the height comes back. On a
-     screen this short the review half is dropped instead — the cover,
-     the status and the title still say what the app does, and the
-     second button staying reachable matters more. */
-  .lp-entry { max-width: min(230px, 26vh); }
-  .lp-entry__review { display: none; }
-  .lp-entry__art { padding: 9px 9px 0; }
-  .lp-entry__meta { padding: 9px 11px 10px; gap: 2px; }
-  .lp-entry__review { padding: 9px 11px 11px; }
-  .lp-entry__quote { margin-top: 7px; font-size: var(--text-small); }
-  .lp__line { margin-bottom: var(--space-2); font-size: 19px; }
-  .lp__cta, .lp__ghost { min-height: 46px; padding: 12px var(--space-4); }
+  .lp { padding-top: calc(var(--space-4) + env(safe-area-inset-top, 0px)); padding-bottom: var(--space-4); }
+  .lp__rule { margin: 10px 0 8px; }
+  .lp__lines { gap: 7px; }
+  .lp__lines li { font-size: var(--text-small); }
+  .lp__star { margin-top: 12px; }
+  .lp__actions { margin-top: var(--space-4); }
 }
 
 /* ---- feature tour ----------------------------------------------------

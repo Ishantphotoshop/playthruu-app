@@ -107,34 +107,31 @@ function poster(game, extraClass = '', inner = '') {
   </div>`;
 }
 
-// ---- the entry screen's card ----------------------------------------
-// One finished diary entry, shown the way the app's own share card
-// shows one: the cover, what was done to it, and who said what about
-// it. Built to the shape of the share card rather than invented, so the
-// first thing anyone sees is a real artefact this app produces — not a
-// description of one, and not decoration.
-export function diaryCardHtml(games) {
-  const key = 'lastofus2';
-  const g = pick(games, key);
-  const r = REVIEWS[key];
-  return `
-    <figure class="lp-entry">
-      <div class="lp-entry__art">
-        ${posterFrame(g.cover_url, g.title, 'lp-entry__cover')}
-      </div>
-      <figcaption class="lp-entry__meta">
-        <span class="lp-entry__status">Played</span>
-        <span class="lp-entry__game">${esc(g.title)}</span>
-      </figcaption>
-      <div class="lp-entry__review">
-        <div class="lp-entry__who">
-          ${avatarImg({ display_name: r.who, username: r.who }, 28)}
-          <span class="lp-entry__name">${esc(r.who)}</span>
-          <span class="lp-entry__stars">${starRow(r.rating, { size: 13 })}</span>
-        </div>
-        <p class="lp-entry__quote">${esc(r.text)}</p>
-      </div>
-    </figure>`;
+// ---- the entry screen's cover ---------------------------------------
+// The entry screen is laid out like a magazine, so it needs one piece
+// of art big enough to be the cover of one.
+//
+// Not every game cover survives that. A 3:4 box blown up to fill a
+// phone crops hard, and a cover whose whole idea is a logo across the
+// middle loses it. These are the ones built around a face or a figure,
+// which is exactly what a magazine cover is built around too.
+const COVER_STARS = ['hellblade2', 'lastofus2', 'tsushima', 'alanwake2', 'silenthill2', 'wukong', 'ff7rebirth'];
+
+// Chosen once per load, not per paint: the entry screen remounts every
+// time the bottom bar comes back to it, and re-rolling there would
+// swap the cover under someone mid-read. A different issue each time
+// the app opens is the point — a magazine that never changes its cover
+// is a poster.
+const COVER_KEY = COVER_STARS[Math.floor(Math.random() * COVER_STARS.length)];
+
+export function magazineCoverHtml(games) {
+  const g = pick(games, COVER_KEY);
+  return posterFrame(g.cover_url, g.title, 'lp__art', { full: true });
+}
+
+/** The cover line naming what this issue's art is. */
+export function coverStarTitle(games) {
+  return pick(games, COVER_KEY).title;
 }
 
 // ---- tour scenes ------------------------------------------------------
