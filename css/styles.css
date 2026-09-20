@@ -125,12 +125,26 @@
   --font-brand: 'Unbounded', system-ui, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Consolas, monospace;
 
+  /* The type ladder. Every size in the app is one of these — the
+     stylesheet used to carry 32 different font-sizes, most of them half
+     a pixel from another one doing the same job, which is drift rather
+     than a scale. --text-title was 24px and used nowhere, while 25px
+     and 26px were both in use; it is 25 now because that is the size
+     the app actually reaches for. */
   --text-display: 34px;
-  --text-title: 24px;
+  --text-title: 25px;
   --text-heading: 19px;
+  --text-button: 17px;
+  /* One step above body, for card titles and long-form reading — eight
+     rules reach for it deliberately (a review's own text, list and card
+     names), so it is a rung on the ladder rather than an outlier. */
+  --text-lead: 16px;
   --text-body: 15px;
-  --text-meta: 13px;
+  --text-sub: 13.5px;
+  --text-meta: 13.5px;
+  --text-small: 12.5px;
   --text-label: 11.5px;
+  --text-micro: 10.5px;
 
   /* Light at large sizes, normal at small — the single biggest
      lever on whether an interface feels calm or loud. */
@@ -499,7 +513,7 @@ ul { list-style: none; margin: 0; padding: 0; }
 }
 .home-tabs__item {
   flex: 1; text-align: center;
-  font-family: var(--font-brand); font-weight: 700; font-size: 14px;
+  font-family: var(--font-brand); font-weight: 700; font-size: 15px;
   letter-spacing: -0.01em; color: var(--ink-dim);
   padding: 10px var(--space-2);
   border-radius: var(--radius-pill);
@@ -512,7 +526,7 @@ ul { list-style: none; margin: 0; padding: 0; }
 /* Tight tracking, not the wide letter-spacing this used to carry —
    a bold wordmark sitting close to its mark reads as one confident
    lockup; spread out, it read as two unrelated pieces. */
-.topbar--home .topbar__logo { font-size: 26px; letter-spacing: -0.01em; }
+.topbar--home .topbar__logo { font-size: 25px; letter-spacing: -0.01em; }
 .topbar__mark { width: 28px; height: 28px; border-radius: 8px; flex-shrink: 0; }
 /* Flat, bold, and the plain theme ink — matches the actual "PlayThruu"
    brand mark exactly (see icons/mark-blue.svg) rather than a decorative
@@ -685,7 +699,7 @@ ul { list-style: none; margin: 0; padding: 0; }
   /* Slightly brighter than --ink-faint was: on a transparent surface the
      artwork behind competes with the labels, so unselected items need a
      little more presence to stay readable while still sitting back. */
-  color: rgba(255,255,255,0.60); font-size: 10px; font-weight: 600;
+  color: rgba(255,255,255,0.60); font-size: 10.5px; font-weight: 600;
   padding: var(--space-2) var(--space-3); letter-spacing: 0.01em;
   border-radius: var(--radius-m);
   transition: color var(--dur) var(--ease), transform var(--dur-fast) var(--ease);
@@ -776,7 +790,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   display: flex; align-items: center; justify-content: center;
   border-radius: var(--radius-pill);
   background: var(--accent-bright); color: var(--bg);
-  font-family: var(--font-mono); font-size: 10px; font-weight: 700; line-height: 1;
+  font-family: var(--font-mono); font-size: 10.5px; font-weight: 700; line-height: 1;
   box-shadow: 0 0 0 2px var(--bg);
 }
 
@@ -863,7 +877,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .field-row { display: flex; gap: 12px; }
 .field-row .field { flex: 1; }
 .field-row--checks { flex-wrap: wrap; gap: 16px; margin-bottom: 14px; }
-.checkbox { display: flex; align-items: center; gap: 7px; font-size: 14px; color: var(--ink-dim); }
+.checkbox { display: flex; align-items: center; gap: 7px; font-size: 15px; color: var(--ink-dim); }
 .checkbox input { width: 17px; height: 17px; accent-color: var(--accent-bright); }
 .auth-form { display: flex; flex-direction: column; }
 
@@ -901,7 +915,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .favorite-row__remove svg { width: 15px; height: 15px; }
 .favorite-row--empty {
   border: 1.5px dashed var(--line); background: transparent; justify-content: center;
-  color: var(--ink-dim); font-size: 13px; font-weight: 600; padding: 14px 10px;
+  color: var(--ink-dim); font-size: 13.5px; font-weight: 600; padding: 14px 10px;
 }
 .favorite-row--empty svg { width: 16px; height: 16px; }
 
@@ -915,8 +929,8 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 }
 .pick-list__row:active { background: var(--surface-raised); }
 .pick-list__row:disabled { opacity: 0.6; }
-.pick-list__name { font-weight: var(--weight-strong); font-size: 14px; }
-.pick-list__count { font-size: 12px; flex-shrink: 0; }
+.pick-list__name { font-weight: var(--weight-strong); font-size: 15px; }
+.pick-list__count { font-size: 12.5px; flex-shrink: 0; }
 
 .segmented {
   display: flex; border-radius: var(--radius-pill); padding: var(--space-1); gap: var(--space-1);
@@ -931,9 +945,13 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    because only 700/800/900 are loaded for Unbounded (see index.html) —
    the old 600 has nothing to fall back to in this face. */
 .segmented__item {
-  flex: 1; text-align: center; padding: 10px var(--space-2); border-radius: var(--radius-pill);
+  flex: 1; min-width: 0; text-align: center; padding: 10px 6px; border-radius: var(--radius-pill);
   font-family: var(--font-brand); font-size: 12.5px; font-weight: 700; letter-spacing: -0.01em;
   color: var(--ink-dim); min-height: 40px;
+  /* A four-up row with one long label used to break onto two lines,
+     which made that one pill taller than the three beside it and threw
+     the whole control out of alignment. */
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
 }
 .segmented__item--active {
@@ -1062,13 +1080,13 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .recent-search-row { position: relative; overflow: hidden; border-radius: var(--radius-s); }
 .recent-search-row__delete {
   position: absolute; inset: 0; left: auto; width: 84px;
-  background: #e5484d; color: #fff; font-size: 13px; font-weight: 700;
+  background: #e5484d; color: #fff; font-size: 13.5px; font-weight: 700;
 }
 .recent-search-row__content {
   position: relative; z-index: 1; width: 100%;
   display: flex; align-items: center; gap: 10px;
   background: var(--surface); padding: 12px 14px;
-  font-size: 14.5px; color: var(--ink); text-align: left;
+  font-size: 15px; color: var(--ink); text-align: left;
   touch-action: pan-y;
 }
 .recent-search-row__content svg { width: 16px; height: 16px; color: var(--ink-faint); flex-shrink: 0; }
@@ -1324,7 +1342,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    Both changes chosen from a set of live comparisons the user reviewed
    side by side rather than picked blind. */
 .card-who__playing {
-  font-family: var(--font-body); font-weight: 700; font-size: 11px;
+  font-family: var(--font-body); font-weight: 700; font-size: 11.5px;
   color: var(--accent-bright); line-height: 11px;
 }
 
@@ -1363,7 +1381,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .review-page__game { display: flex; gap: 16px; align-items: flex-start; margin-bottom: 4px; }
 .review-page__cover { width: 96px; flex-shrink: 0; aspect-ratio: var(--ratio-card); object-fit: cover; border-radius: 8px; background: var(--surface); box-shadow: var(--shadow-card); }
 .review-page__game-info { min-width: 0; padding-top: 4px; }
-.review-page__title { font-family: var(--font-display); font-weight: 700; font-size: 20px; line-height: 1.2; }
+.review-page__title { font-family: var(--font-display); font-weight: 700; font-size: 19px; line-height: 1.2; }
 .review-page__year { color: var(--ink-dim); font-size: var(--text-meta); margin-top: 2px; }
 .review-page__stars { margin-top: 10px; }
 .review-page__author { display: flex; align-items: center; gap: 10px; padding: 14px 0; margin-top: 14px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
@@ -1398,8 +1416,8 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .comment__body { flex: 1; min-width: 0; }
 .comment__head { display: flex; align-items: baseline; gap: 8px; }
 .comment__name { font-weight: 700; font-size: 13.5px; color: var(--ink); }
-.comment__time { font-size: 11px; color: var(--ink-faint); }
-.comment__text { font-size: 14px; line-height: 1.5; color: var(--ink-dim); margin-top: 2px; white-space: pre-wrap; word-break: break-word; }
+.comment__time { font-size: 11.5px; color: var(--ink-faint); }
+.comment__text { font-size: 15px; line-height: 1.5; color: var(--ink-dim); margin-top: 2px; white-space: pre-wrap; word-break: break-word; }
 .comment__delete { flex-shrink: 0; width: 26px; height: 26px; display: grid; place-items: center; color: var(--ink-faint); border-radius: 50%; background: none; border: none; }
 .comment__delete svg { width: 13px; height: 13px; }
 .comment__delete:active { background: var(--surface-high); }
@@ -1448,8 +1466,8 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   border-radius: var(--radius-s); background: var(--surface);
   box-shadow: var(--shadow-card); transition: box-shadow 0.15s ease;
 }
-.game-card__title { font-size: 12px; font-weight: 600; margin-top: 6px; line-height: 1.3; }
-.game-card__note { font-size: 11px; color: var(--ink-dim); }
+.game-card__title { font-size: 12.5px; font-weight: 600; margin-top: 6px; line-height: 1.3; }
+.game-card__note { font-size: 11.5px; color: var(--ink-dim); }
 .game-card__add-badge {
   position: absolute; top: 6px; right: 6px;
   background: var(--accent-bright); color: var(--bg);
@@ -1477,7 +1495,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .disc-field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }
 .discover-select {
   width: 100%; background: var(--surface); border: 1.5px solid var(--line); border-radius: var(--radius-s);
-  padding: 11px 13px; font-size: 14px; color: var(--ink); font-family: var(--font-body);
+  padding: 11px 13px; font-size: 15px; color: var(--ink); font-family: var(--font-body);
   color-scheme: dark;
 }
 .discover-card { width: 100%; text-align: left; }
@@ -1495,7 +1513,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .discover-filters-btn {
   position: relative; flex-shrink: 0; display: flex; align-items: center; gap: 6px;
   border-radius: var(--radius-s);
-  padding: 0 14px; font-size: 14px; font-weight: 600; color: var(--ink); font-family: var(--font-body);
+  padding: 0 14px; font-size: 15px; font-weight: 600; color: var(--ink); font-family: var(--font-body);
   transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
 }
 .discover-filters-btn--solo { flex: 1; justify-content: center; min-height: 46px; }
@@ -1554,7 +1572,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .discover-list .result-row:active { transform: scale(0.99); background: var(--surface-high); }
 .result-row__info { min-width: 0; flex: 1; }
 .result-row__title { font-weight: var(--weight-strong); font-size: 15px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.result-row__meta { font-size: 12px; color: var(--ink-dim); margin-top: 3px; font-family: var(--font-mono); }
+.result-row__meta { font-size: 12.5px; color: var(--ink-dim); margin-top: 3px; font-family: var(--font-mono); }
 .result-row__add-badge { background: var(--accent-bright); color: var(--bg); font-size: 9.5px; font-weight: 700; padding: 2px 7px; border-radius: 999px; flex-shrink: 0; }
 
 /* ------------------------------------------------------------ news */
@@ -1573,12 +1591,12 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   background: var(--surface) center/cover no-repeat;
 }
 .news-card__info { min-width: 0; flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 3px; }
-.news-card__title { font-weight: var(--weight-strong); font-size: 14.5px; line-height: 1.3; }
+.news-card__title { font-weight: var(--weight-strong); font-size: 15px; line-height: 1.3; }
 .news-card__summary {
   font-size: 12.5px; color: var(--ink-dim); line-height: 1.35;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
-.news-card__meta { font-size: 11px; color: var(--ink-dim); font-family: var(--font-mono); margin-top: 1px; }
+.news-card__meta { font-size: 11.5px; color: var(--ink-dim); font-family: var(--font-mono); margin-top: 1px; }
 /* A post written in the admin build rather than pulled off an RSS feed.
    Marked with the accent down its leading edge so it reads as "from
    PlayThruu" at a glance, without a badge competing with the headline.
@@ -1669,7 +1687,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 .recent-played-item__hours {
   position: absolute; right: 5px; bottom: 5px;
   background: rgba(11,11,11,0.82); backdrop-filter: blur(4px);
-  color: var(--ink); font-size: 10px; font-weight: 700;
+  color: var(--ink); font-size: 10.5px; font-weight: 700;
   font-variant-numeric: tabular-nums;
   padding: 2px 6px; border-radius: var(--radius-pill);
 }
@@ -1712,7 +1730,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
   height: 96px;
 }
 .rating-histogram__anchor {
-  flex: 0 0 auto; font-size: 13px; color: var(--ink);
+  flex: 0 0 auto; font-size: 13.5px; color: var(--ink);
   line-height: 1; padding-bottom: 2px;
 }
 .rating-histogram__bars {
@@ -1740,7 +1758,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
   background: color-mix(in srgb, var(--accent) 62%, transparent);
 }
 .rating-histogram__bar-count {
-  font-family: var(--font-mono); font-size: 10px; font-weight: 500; color: var(--ink);
+  font-family: var(--font-mono); font-size: 10.5px; font-weight: 500; color: var(--ink);
   margin-bottom: var(--space-1); opacity: 0; transform: translateY(3px);
   transition: opacity var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
 }
@@ -1760,7 +1778,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
   color: var(--ink); letter-spacing: -0.03em; line-height: 1;
 }
 .rating-histogram__score-stars {
-  font-size: 12px; color: var(--ink); letter-spacing: 0.08em; line-height: 1;
+  font-size: 12.5px; color: var(--ink); letter-spacing: 0.08em; line-height: 1;
 }
 
 /* ------------------------------------------------------------ log cards ("save slot") */
@@ -1792,11 +1810,11 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 }
 .log-card__review--spoiler.is-revealed .spoiler-text { filter: none; opacity: 1; user-select: text; }
 .log-card__review--spoiler.is-revealed .spoiler-veil { opacity: 0; pointer-events: none; }
-.spoiler-tag { font-family: var(--font-mono); font-size: 10px; color: var(--coral); border: 1px solid var(--coral); border-radius: 3px; padding: 1px 5px; }
+.spoiler-tag { font-family: var(--font-mono); font-size: 10.5px; color: var(--coral); border: 1px solid var(--coral); border-radius: 3px; padding: 1px 5px; }
 .log-card__footer { display: flex; align-items: center; gap: 14px; margin-top: 10px; }
-.log-card__time { font-size: 11px; color: var(--ink-faint); font-family: var(--font-mono); }
-.log-card__edit { font-size: 12px; color: var(--accent-bright); font-weight: 600; margin-left: auto; }
-.like-btn { display: flex; align-items: center; gap: 4px; color: var(--ink-faint); font-size: 12px; font-weight: 600; }
+.log-card__time { font-size: 11.5px; color: var(--ink-faint); font-family: var(--font-mono); }
+.log-card__edit { font-size: 12.5px; color: var(--accent-bright); font-weight: 600; margin-left: auto; }
+.like-btn { display: flex; align-items: center; gap: 4px; color: var(--ink-faint); font-size: 12.5px; font-weight: 600; }
 .like-btn svg { width: 17px; height: 17px; }
 .like-btn--liked { color: var(--coral); }
 .like-btn--liked svg { fill: var(--coral); }
@@ -1807,7 +1825,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 .profile-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; }
 .profile-row__link { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; transition: opacity 0.12s ease; }
 .profile-row__link:active { opacity: 0.7; }
-.profile-row__display { font-weight: 600; font-size: 14.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.profile-row__display { font-weight: 600; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .profile-row__username { font-size: 12.5px; color: var(--ink-dim); font-family: var(--font-mono); }
 
 .follow-icon-btn {
@@ -1825,7 +1843,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 .profile-header__names h1 { font-family: var(--font-display); font-weight: var(--weight-heading); font-size: var(--text-title); letter-spacing: -0.015em; }
 .profile-header__username { font-family: var(--font-mono); font-size: 12.5px; color: var(--ink-dim); margin-top: 2px; }
 .profile-header__actions { display: flex; flex-direction: column; gap: 6px; }
-.profile-header__bio { font-size: 14px; color: var(--ink-dim); line-height: 1.5; margin-bottom: 18px; }
+.profile-header__bio { font-size: 15px; color: var(--ink-dim); line-height: 1.5; margin-bottom: 18px; }
 
 /* Letterboxd-style profile hero: everything centered in a single column,
    large circular avatar on top, name + @handle, bio, then actions. */
@@ -1849,17 +1867,21 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 .profile-header__hours, .profile-header__streak {
   display: inline-flex; align-items: center; gap: 5px;
   padding: 5px 14px; border-radius: var(--radius-pill);
-  font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums;
+  font-size: 12.5px; font-weight: 700; font-variant-numeric: tabular-nums;
 }
 .profile-header__hours {
   background: color-mix(in srgb, var(--accent-bright) 14%, transparent);
   border: 1px solid color-mix(in srgb, var(--accent-bright) 30%, transparent);
   color: var(--accent-bright);
 }
+/* Amber, not the old accent orange — a streak is a flame, so it stays
+   warm, but it was the last hardcoded #ff8a3d left in the app and it
+   read as a leftover next to everything else. --gold is the token that
+   already means "warm highlight" here. */
 .profile-header__streak {
-  background: color-mix(in srgb, #ff8a3d 14%, transparent);
-  border: 1px solid color-mix(in srgb, #ff8a3d 30%, transparent);
-  color: #ff8a3d;
+  background: color-mix(in srgb, var(--gold) 13%, transparent);
+  border: 1px solid color-mix(in srgb, var(--gold) 30%, transparent);
+  color: var(--gold);
 }
 .profile-header__streak svg { width: 13px; height: 13px; }
 .profile-header--hero .profile-header__actions {
@@ -1887,8 +1909,8 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 .director-bio { font-size: 13.5px; line-height: 1.6; color: var(--ink-dim); margin-bottom: 8px; }
 .director-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin: 16px 0; }
 .director-stats__item { background: var(--surface); border-radius: var(--radius-s); padding: 12px; text-align: center; }
-.director-stats__item b { display: block; font-family: var(--font-mono); font-size: 20px; font-weight: 500; color: var(--ink); letter-spacing: -0.02em; }
-.director-stats__item span { font-size: 10px; color: var(--ink-dim); text-transform: uppercase; letter-spacing: 0.03em; }
+.director-stats__item b { display: block; font-family: var(--font-mono); font-size: 19px; font-weight: 500; color: var(--ink); letter-spacing: -0.02em; }
+.director-stats__item span { font-size: 10.5px; color: var(--ink-dim); text-transform: uppercase; letter-spacing: 0.03em; }
 .gameography-card { width: 100%; text-align: left; }
 .gameography-card__meta { display: flex; align-items: center; justify-content: space-between; margin-top: 3px; font-size: 10.5px; color: var(--ink-dim); font-family: var(--font-mono); }
 
@@ -1906,7 +1928,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 }
 .director-hero__photo--fallback { display: grid; place-items: center; color: var(--ink-faint); }
 .director-hero__photo--fallback svg { width: 40px; height: 40px; }
-.director-hero__name { font-family: var(--font-display); font-weight: 700; font-size: 24px; letter-spacing: -0.01em; }
+.director-hero__name { font-family: var(--font-display); font-weight: 700; font-size: 25px; letter-spacing: -0.01em; }
 .director-hero__pills { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 10px; }
 
 .director-bio-more[hidden] { display: none; }
@@ -1920,7 +1942,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 }
 .director-featured__cover { width: 72px; flex-shrink: 0; aspect-ratio: 3/4; border-radius: 6px; overflow: hidden; }
 .director-featured__info { flex: 1; min-width: 0; }
-.director-featured__title { font-family: var(--font-display); font-weight: 700; font-size: 15.5px; margin-bottom: 4px; }
+.director-featured__title { font-family: var(--font-display); font-weight: 700; font-size: 15px; margin-bottom: 4px; }
 
 .stat-strip { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-bottom: 24px; }
 .stat-tile { background: var(--surface); border-radius: var(--radius-s); padding: 10px 4px; text-align: center; display: block; }
@@ -1935,7 +1957,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 }
 .stat-link:active { background: var(--surface-raised); }
 .stat-link b { display: block; font-family: var(--font-mono); font-size: 19px; font-weight: 500; color: var(--ink); letter-spacing: -0.02em; }
-.stat-link__year { font-size: 12px; color: var(--ink-dim); }
+.stat-link__year { font-size: 12.5px; color: var(--ink-dim); }
 /* Direct child only. This is the stat's LABEL — the "/6" beside the
    total is also a span, just nested inside the <b>, and an unscoped
    selector styled it as a label too (it out-specified
@@ -2053,7 +2075,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 #feed-body .feed-section-head { margin-top: var(--space-4); }
 #feed-body #trending-section .feed-section-head { margin-top: 0; }
 #feed-body .feed-section-head .section-heading { margin-top: 0; margin-bottom: 12px; }
-.see-more-link { font-size: 12px; font-weight: 700; color: var(--accent-bright); flex-shrink: 0; }
+.see-more-link { font-size: 12.5px; font-weight: 700; color: var(--accent-bright); flex-shrink: 0; }
 /* Icon-only "see more" for the three feed strips (see feedSectionHead()
    in components.js) — deliberately plainer than .see-more-link's text +
    accent colour, since this only shows up when a row actually has more
@@ -2088,15 +2110,15 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 .diary-row:active { background: var(--surface); }
 .diary-row__cover { width: 34px; aspect-ratio: var(--ratio-inline); object-fit: cover; border-radius: 4px; }
 .diary-row__main { flex: 1; min-width: 0; }
-.diary-row__title { font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.diary-row__meta { display: flex; align-items: center; gap: 8px; margin-top: 3px; font-family: var(--font-mono); font-size: 11px; color: var(--ink-dim); }
-.diary-row .stamp { font-size: 9px; padding: 2px 6px; }
+.diary-row__title { font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.diary-row__meta { display: flex; align-items: center; gap: 8px; margin-top: 3px; font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-dim); }
+.diary-row .stamp { font-size: 9.5px; padding: 2px 6px; }
 
 .list-index { display: flex; flex-direction: column; }
 .list-index__item { display: block; padding: 14px 0; border-bottom: 1px solid var(--line); transition: background 0.12s ease; }
 .list-index__item:active { background: var(--surface); }
 .list-index__name { font-family: var(--font-display); font-weight: 700; font-size: 16px; }
-.list-index__count { font-size: 12px; color: var(--ink-dim); margin-top: 2px; font-family: var(--font-mono); }
+.list-index__count { font-size: 12.5px; color: var(--ink-dim); margin-top: 2px; font-family: var(--font-mono); }
 
 /* ---- Lists index: poster-collage cards ------------------------------ */
 .list-cards { display: flex; flex-direction: column; gap: var(--space-3); }
@@ -2138,7 +2160,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 .ranked-row__link { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
 .ranked-row__cover { width: 44px; aspect-ratio: var(--ratio-inline); border-radius: 6px; flex-shrink: 0; }
 .ranked-row__info { min-width: 0; }
-.ranked-row__title { font-weight: 600; font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ranked-row__title { font-weight: 600; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ranked-row__meta { font-size: 12.5px; color: var(--ink-dim); margin-top: 2px; }
 .ranked-row__controls { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
 .ranked-row__move, .ranked-row__remove {
@@ -2161,10 +2183,10 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
   font-family: var(--font-display); font-weight: var(--weight-display);
   font-size: var(--text-display); line-height: 1.1; letter-spacing: -0.025em;
 }
-.game-detail__date { font-size: 11px; color: var(--ink-dim); letter-spacing: 0.05em; margin-top: 6px; font-family: var(--font-mono); }
+.game-detail__date { font-size: 11.5px; color: var(--ink-dim); letter-spacing: 0.05em; margin-top: 6px; font-family: var(--font-mono); }
 .game-detail__actions-row { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
 .btn--pill { border-radius: 999px; padding: 8px 16px; font-size: 12.5px; }
-.game-detail__playtime { font-size: 12px; color: var(--ink-dim); font-family: var(--font-mono); }
+.game-detail__playtime { font-size: 12.5px; color: var(--ink-dim); font-family: var(--font-mono); }
 .game-detail__poster {
   width: 104px; aspect-ratio: var(--ratio-card); flex-shrink: 0; border-radius: var(--radius-s);
   box-shadow: var(--shadow-modal); cursor: pointer;
@@ -2220,8 +2242,8 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 .game-detail__avg { display: flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-weight: 700; font-size: 16px; color: var(--gold); margin-top: 10px; }
 
 .game-detail__facts { display: flex; flex-direction: column; gap: var(--space-3); }
-.game-detail__fact { display: flex; gap: 10px; font-size: 13px; }
-.game-detail__fact span:first-child { font-weight: 700; color: var(--ink-dim); text-transform: uppercase; font-size: 10px; letter-spacing: 0.04em; width: 96px; flex-shrink: 0; padding-top: 2px; }
+.game-detail__fact { display: flex; gap: 10px; font-size: 13.5px; }
+.game-detail__fact span:first-child { font-weight: 700; color: var(--ink-dim); text-transform: uppercase; font-size: 10.5px; letter-spacing: 0.04em; width: 96px; flex-shrink: 0; padding-top: 2px; }
 .game-detail__fact span:last-child { color: var(--ink); }
 .game-detail__tabs { margin: 6px 0 14px; }
 #game-tab-content { margin-bottom: 22px; }
@@ -2233,7 +2255,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
   border: 1px solid var(--line);
 }
 .stat-card svg { width: 19px; height: 19px; margin-bottom: var(--space-4); opacity: 0.9; }
-.stat-card b { display: block; font-family: var(--font-mono); font-size: 20px; font-weight: 500; letter-spacing: -0.02em; }
+.stat-card b { display: block; font-family: var(--font-mono); font-size: 19px; font-weight: 500; letter-spacing: -0.02em; }
 .stat-card span { font-size: var(--text-label); text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.75; margin-top: 2px; display: block; }
 .stat-card--green { background: color-mix(in srgb, var(--success) 10%, var(--surface)); color: var(--success); }
 .stat-card--green b { color: var(--success); }
@@ -2254,8 +2276,8 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 .crew-row__photo--studio { border-radius: var(--radius-s); object-fit: contain; padding: 6px; }
 .crew-row__photo--fallback { display: grid; place-items: center; color: var(--ink-faint); }
 .crew-row__photo--fallback svg { width: 18px; height: 18px; }
-.crew-row__name { font-weight: 600; font-size: 14px; }
-.crew-row__role { font-size: 12px; color: var(--ink-dim); margin-top: 2px; }
+.crew-row__name { font-weight: 600; font-size: 15px; }
+.crew-row__role { font-size: 12.5px; color: var(--ink-dim); margin-top: 2px; }
 
 /* max-width/max-height alone only CAP a size — an <iframe> with no
    width/height attribute and no other CSS width falls back to the
@@ -2276,9 +2298,9 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
   background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-m);
   padding: 12px 14px; text-align: left;
 }
-.own-log-row .btn--ghost { flex-shrink: 0; padding: 12px 16px; font-size: 13px; }
-.own-log-card__label { font-size: 13px; font-weight: 600; color: var(--ink); flex: 1; }
-.own-log-card__edit { font-size: 12px; font-weight: 700; color: var(--accent-bright); flex-shrink: 0; }
+.own-log-row .btn--ghost { flex-shrink: 0; padding: 12px 16px; font-size: 13.5px; }
+.own-log-card__label { font-size: 13.5px; font-weight: 600; color: var(--ink); flex: 1; }
+.own-log-card__edit { font-size: 12.5px; font-weight: 700; color: var(--accent-bright); flex-shrink: 0; }
 
 /* ------------------------------------------------------------ modal */
 .modal-overlay {
@@ -2322,7 +2344,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 }
 .modal--tall { max-height: 92vh; }
 .modal__header { display: flex; align-items: center; justify-content: space-between; padding: 18px 20px 10px; }
-.modal__header h2 { font-family: var(--font-display); font-weight: 700; font-size: 18px; }
+.modal__header h2 { font-family: var(--font-display); font-weight: 700; font-size: 17px; }
 /* A plain dark round close button — the "×" is drawn as a masked shape
    so every close button matches regardless of what it was built with.
    Deliberately neutral (surface + ink tones, no accent colour): a close
@@ -2429,7 +2451,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 
 .banner {
   background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-s);
-  padding: 12px 14px; font-size: 13px; color: var(--ink-dim); margin-bottom: 16px; line-height: 1.5;
+  padding: 12px 14px; font-size: 13.5px; color: var(--ink-dim); margin-bottom: 16px; line-height: 1.5;
 }
 .banner a { color: var(--accent-bright); font-weight: 600; }
 
@@ -3021,7 +3043,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
    800 is the whole of Manrope's weight range — the <link> requests it
    and there is nothing heavier to move up to. */
 .gd-head__title {
-  font-family: var(--font-display); font-size: 22px; line-height: 1.2;
+  font-family: var(--font-display); font-size: 21px; line-height: 1.2;
   font-weight: 800; letter-spacing: -0.01em;
 }
 
@@ -3033,7 +3055,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 }
 .gd-credit__name {
   display: block; margin-top: 2px;
-  font-size: 18px; font-weight: 700;
+  font-size: 17px; font-weight: 700;
   /* The page's own ink, so the director reads as the headline credit it
      is rather than as a link. Deliberately NOT a hardcoded white: the
      credit sits on the page background (below the artwork strip, not
@@ -3099,7 +3121,7 @@ a.gd-credit__name { text-decoration: none; }
   width: 50px; height: 50px; border-radius: 50%;
   display: grid; place-items: center;
   background: var(--surface-high); color: var(--ink-dim);
-  font-size: 13px; font-weight: 700;
+  font-size: 13.5px; font-weight: 700;
 }
 .gd-tags { display: flex; flex-wrap: wrap; gap: 6px; }
 .gd-tag {
@@ -3120,7 +3142,7 @@ a.gd-credit__name { text-decoration: none; }
    caption text. It also sits tight under the credit above it, so the
    header and the blurb read as one block instead of two. */
 .gd-synopsis {
-  font-size: 15.5px; line-height: 1.5; font-weight: 600;
+  font-size: 15px; line-height: 1.5; font-weight: 600;
   color: var(--ink); margin: 0; letter-spacing: -0.01em;
 }
 .gd-synopsis.is-clamped {
@@ -3163,7 +3185,7 @@ a.gd-credit__name { text-decoration: none; }
    17px/700, but sentence case, semibold and full ink rather than caps
    and grey, so it keeps some presence instead of receding entirely. */
 .gd-dist__title {
-  font-family: var(--font-display); font-size: 14px; font-weight: 600;
+  font-family: var(--font-display); font-size: 15px; font-weight: 600;
   letter-spacing: -0.01em; color: var(--ink); margin: 0;
 }
 /* One row now, not two: the single low-end star used to sit on its own
@@ -3283,7 +3305,7 @@ a.gd-credit__name { text-decoration: none; }
    panel's headline figure without matching the old bold weight's
    heaviness. */
 .gd-avg__num {
-  font-size: 20px; font-weight: 600;
+  font-size: 19px; font-weight: 600;
   line-height: 1; letter-spacing: -0.02em; color: var(--ink);
   font-variant-numeric: tabular-nums;
 }
@@ -3331,7 +3353,7 @@ a.gd-credit__name { text-decoration: none; }
 .gd-log__text {
   flex: 1; min-width: 0;
   display: flex; align-items: center; gap: 7px;
-  font-size: 14.5px; font-weight: 600; letter-spacing: -0.005em;
+  font-size: 15px; font-weight: 600; letter-spacing: -0.005em;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .gd-log__more { flex-shrink: 0; display: flex; color: var(--ink-faint); }
@@ -3344,7 +3366,7 @@ a.gd-credit__name { text-decoration: none; }
   font-size: 19px; font-weight: 700; letter-spacing: -0.015em; margin: 0;
   line-height: 1.25;
 }
-.lg-head__year { color: var(--ink-dim); font-size: 14px; margin: 2px 0 0; }
+.lg-head__year { color: var(--ink-dim); font-size: 15px; margin: 2px 0 0; }
 
 /* Statuses are exclusive by nature — you are not simultaneously playing
    a game and keeping it in your backlog — so these behave as one choice
@@ -3401,7 +3423,7 @@ a.gd-credit__name { text-decoration: none; }
 .lg-row__icon svg { width: 19px; height: 19px; }
 .lg-row__label { flex: 1; min-width: 0; }
 .lg-row__note {
-  color: var(--ink-faint); font-family: var(--font-mono); font-size: 11px;
+  color: var(--ink-faint); font-family: var(--font-mono); font-size: 11.5px;
   letter-spacing: 0.04em; flex-shrink: 0;
 }
 .lg-row--danger, .lg-row--danger .lg-row__icon { color: var(--danger); }
@@ -3497,7 +3519,7 @@ a.gd-credit__name { text-decoration: none; }
 .gd-tab {
   background: transparent; border: 1px solid var(--line);
   border-radius: var(--radius-pill); padding: 8px 18px;
-  font-size: 13px; letter-spacing: 0; text-transform: none;
+  font-size: 13.5px; letter-spacing: 0; text-transform: none;
   font-weight: 600; color: var(--ink-dim);
   transition: all var(--dur-fast) var(--ease);
 }
@@ -3524,7 +3546,7 @@ a.gd-credit__name { text-decoration: none; }
   display: flex; align-items: center; justify-content: center;
   width: 100%; height: 44px; margin-top: var(--space-2);
   background: none; border: none;
-  font-size: 13px; font-weight: 700; color: var(--ink-dim);
+  font-size: 13.5px; font-weight: 700; color: var(--ink-dim);
   transition: color var(--dur-fast) var(--ease);
 }
 .gd-showmore:hover { color: var(--ink); }
@@ -3549,7 +3571,7 @@ a.gd-credit__name { text-decoration: none; }
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .gd-review__time { font-size: 11.5px; color: var(--ink-faint); font-family: var(--font-mono); }
-.gd-review__body { font-size: 14px; line-height: 1.55; color: var(--ink-dim); margin: 0; }
+.gd-review__body { font-size: 15px; line-height: 1.55; color: var(--ink-dim); margin: 0; }
 /* Spoiler veil — identical behaviour/markup to the feed's own log-card
    spoiler (same is-revealed class, toggled by the same wireLogCards
    handler), only restyled to sit inside this card's own padding. */
@@ -3558,7 +3580,7 @@ a.gd-credit__name { text-decoration: none; }
   background: none; border: none; padding: 0; cursor: pointer;
 }
 .gd-review__body--spoiler .spoiler-text {
-  font-size: 14px; line-height: 1.55; color: var(--ink-dim); filter: blur(6px); user-select: none;
+  font-size: 15px; line-height: 1.55; color: var(--ink-dim); filter: blur(6px); user-select: none;
 }
 .gd-review__body--spoiler.is-revealed .spoiler-text { filter: none; user-select: auto; cursor: text; }
 .gd-review__body--spoiler .spoiler-veil {
@@ -3575,12 +3597,12 @@ a.gd-credit__name { text-decoration: none; }
 .gd-review__foot { display: flex; align-items: center; gap: var(--space-4); }
 .gd-review__replies {
   display: flex; align-items: center; gap: 4px;
-  color: var(--ink-faint); font-size: 12px; font-weight: 600;
+  color: var(--ink-faint); font-size: 12.5px; font-weight: 600;
 }
 .gd-review__replies svg { width: 16px; height: 16px; }
 .gd-review__edit {
   margin-left: auto; background: none; border: none;
-  font-size: 12px; font-weight: 700; color: var(--accent-bright);
+  font-size: 12.5px; font-weight: 700; color: var(--accent-bright);
 }
 .gd-review__report {
   margin-left: auto; background: none; border: none; color: var(--ink-faint);
@@ -3600,7 +3622,7 @@ a.gd-credit__name { text-decoration: none; }
 /* Base sizing/shape already comes from .crew-row__photo above; only the
    larger director variant needs its own dimensions. */
 .crew-row__photo--lg {
-  width: 56px; height: 56px; flex-shrink: 0; font-size: 20px;
+  width: 56px; height: 56px; flex-shrink: 0; font-size: 19px;
 }
 
 .gd-director {
@@ -3954,11 +3976,11 @@ a.gd-credit__name { text-decoration: none; }
 .mood-row:active { transform: scale(0.985); }
 .mood-row__index {
   font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 12px; font-weight: 700; color: var(--ink-faint);
+  font-size: 12.5px; font-weight: 700; color: var(--ink-faint);
   letter-spacing: 0.04em; flex-shrink: 0; width: 20px;
 }
 .mood-row__label {
-  flex: 1; min-width: 0; font-weight: 700; font-size: 14.5px;
+  flex: 1; min-width: 0; font-weight: 700; font-size: 15px;
   text-transform: uppercase; letter-spacing: 0.05em;
 }
 .mood-row__arrow {
@@ -3998,7 +4020,7 @@ a.gd-credit__name { text-decoration: none; }
   margin-bottom: var(--space-2);
 }
 .suspended-icon svg { width: 32px; height: 32px; }
-.suspended-card h1 { font-family: var(--font-display); font-weight: 700; font-size: 22px; }
+.suspended-card h1 { font-family: var(--font-display); font-weight: 700; font-size: 21px; }
 .suspended-card p { color: var(--ink-dim); font-size: var(--text-body); line-height: 1.55; }
 .suspended-screen__note { color: var(--ink-faint); font-size: var(--text-meta); }
 .suspended-card .btn { margin-top: var(--space-3); }
@@ -4026,7 +4048,7 @@ a.gd-credit__name { text-decoration: none; }
 .set-account__avatar { width: 64px; height: 64px; border-radius: 50%; overflow: hidden; flex-shrink: 0; }
 .set-account__avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block; }
 .set-account__meta { flex: 1; min-width: 0; }
-.set-account__name { font-family: var(--font-display); font-weight: 700; font-size: 18px; line-height: 1.2; }
+.set-account__name { font-family: var(--font-display); font-weight: 700; font-size: 17px; line-height: 1.2; }
 .set-account__handle { color: var(--ink-dim); font-size: var(--text-meta); margin-top: 2px; }
 .set-account__photo {
   display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;
@@ -4237,13 +4259,13 @@ a.gd-credit__name { text-decoration: none; }
 .lp__quote { flex-shrink: 0; border-top: 1px solid var(--line); padding-top: var(--space-4); }
 .lp__quote-stars { margin-bottom: 10px; }
 .lp__quote-text {
-  font-size: 16.5px; line-height: 1.4; color: var(--ink);
+  font-size: 16px; line-height: 1.4; color: var(--ink);
   letter-spacing: -0.01em; text-wrap: balance;
 }
 /* Sentence case, not uppercase: a long game title set in tracked-out
    capitals ran to two lines and read as a label rather than a credit. */
 .lp__quote-by {
-  margin-top: 9px; font-size: 13px; color: var(--ink-faint);
+  margin-top: 9px; font-size: 13.5px; color: var(--ink-faint);
 }
 .lp__quote-by b { color: var(--ink-dim); font-weight: 600; }
 
@@ -4313,12 +4335,12 @@ a.gd-credit__name { text-decoration: none; }
 }
 .tour__body {
   margin-top: 12px; max-width: 22em;
-  font-size: 15.5px; line-height: 1.5; color: var(--ink-dim);
+  font-size: 15px; line-height: 1.5; color: var(--ink-dim);
 }
 .tour__foot { flex-shrink: 0; display: flex; flex-direction: column; gap: 10px; }
 .tour__next { width: 100%; }
 .tour__hint {
-  text-align: center; font-family: var(--font-mono); font-size: 10px;
+  text-align: center; font-family: var(--font-mono); font-size: 10.5px;
   letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-faint);
 }
 
@@ -4383,7 +4405,7 @@ a.gd-credit__name { text-decoration: none; }
 .landing-browse__mark { width: 22px; height: 22px; border-radius: 6px; }
 .landing-header__logo {
   font-family: var(--font-brand); font-weight: 800; font-style: normal;
-  font-size: 18px; letter-spacing: -0.01em;
+  font-size: 17px; letter-spacing: -0.01em;
   /* A flat gradient fill instead of a solid colour — the same accent
      the rest of the app already leans on (buttons, focus glow), just
      applied to the wordmark itself rather than another blue element
@@ -4405,7 +4427,7 @@ a.gd-credit__name { text-decoration: none; }
 .landing-browse__tabs .segmented__item {
   flex: none; position: relative; min-height: auto;
   padding: 4px 2px 14px; border-radius: 0;
-  font-size: 14.5px; font-weight: 700; color: var(--ink-faint);
+  font-size: 15px; font-weight: 700; color: var(--ink-faint);
 }
 .landing-browse__tabs .segmented__item--active {
   background: none; box-shadow: none; color: var(--ink);
@@ -4429,12 +4451,12 @@ a.gd-credit__name { text-decoration: none; }
 .landing-review-card:active { transform: scale(0.99); background: var(--surface-high); }
 .landing-review-card__cover { width: 56px; flex-shrink: 0; aspect-ratio: var(--ratio-card); object-fit: cover; border-radius: 7px; background: var(--surface); }
 .landing-review-card__body { min-width: 0; flex: 1; }
-.landing-review-card__game { font-family: var(--font-display); font-weight: 700; font-size: 14.5px; line-height: 1.25; }
+.landing-review-card__game { font-family: var(--font-display); font-weight: 700; font-size: 15px; line-height: 1.25; }
 .landing-review-card__by { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
-.landing-review-card__by span { font-size: 12px; font-weight: 600; color: var(--ink-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.landing-review-card__by span { font-size: 12.5px; font-weight: 600; color: var(--ink-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .landing-review-card__stars { margin-top: 6px; }
 .landing-review-card__text {
-  margin-top: 6px; font-size: 13px; line-height: 1.5; color: var(--ink-dim);
+  margin-top: 6px; font-size: 13.5px; line-height: 1.5; color: var(--ink-dim);
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 
@@ -4507,7 +4529,7 @@ a.gd-credit__name { text-decoration: none; }
   color: var(--ink-faint);
 }
 .convo-search svg { width: 16px; height: 16px; flex-shrink: 0; }
-.convo-search input { flex: 1; min-width: 0; background: none; border: none; color: var(--ink); font-size: 14px; }
+.convo-search input { flex: 1; min-width: 0; background: none; border: none; color: var(--ink); font-size: 15px; }
 .convo-search input::placeholder { color: var(--ink-faint); }
 
 .convo-list { display: flex; flex-direction: column; gap: 2px; padding-top: 4px; }
@@ -4537,11 +4559,11 @@ a.gd-credit__name { text-decoration: none; }
 /* Username + the "Playing <game>" chip share the top line; both can shrink
    so the game name sits right after the name and truncates if long. */
 .convo-row__top { display: flex; align-items: center; gap: 6px; }
-.convo-row__name { flex: 0 1 auto; min-width: 2.5em; font-weight: 700; font-size: 14.5px; line-height: 1.15; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.convo-row__playing { flex: 0 1 auto; min-width: 0; font-size: 12px; color: var(--orange); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.convo-row__name { flex: 0 1 auto; min-width: 2.5em; font-weight: 700; font-size: 15px; line-height: 1.15; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.convo-row__playing { flex: 0 1 auto; min-width: 0; font-size: 12.5px; color: var(--orange); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .convo-row__playing b { font-weight: 700; }
 /* Same size + normal font as the message preview it sits beside. */
-.convo-row__time { font-size: 13px; color: var(--ink-faint); flex-shrink: 0; }
+.convo-row__time { font-size: 13.5px; color: var(--ink-faint); flex-shrink: 0; }
 /* The per-row options button (3-dot menu) next to the name. */
 .convo-row__menu { flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; border: none; background: none; color: var(--ink-dim); }
 .convo-row__menu svg { width: 22px; height: 22px; }
@@ -4552,8 +4574,8 @@ a.gd-credit__name { text-decoration: none; }
 .convo-menu { display: flex; flex-direction: column; gap: 2px; padding: 2px 2px 6px; }
 .convo-menu__who { display: flex; align-items: center; gap: 11px; padding: 4px 8px 14px; }
 .convo-menu__who-txt { display: flex; flex-direction: column; min-width: 0; }
-.convo-menu__who-txt b { font-size: 15.5px; font-weight: 700; }
-.convo-menu__who-txt span { font-size: 12px; color: var(--ink-dim); font-family: var(--font-mono); }
+.convo-menu__who-txt b { font-size: 15px; font-weight: 700; }
+.convo-menu__who-txt span { font-size: 12.5px; color: var(--ink-dim); font-family: var(--font-mono); }
 .convo-menu__item { display: flex; align-items: center; gap: 13px; width: 100%; padding: 13px 12px; border: none; background: none; border-radius: var(--radius-m); color: var(--ink); font-size: 15px; font-weight: 500; text-align: left; }
 .convo-menu__item svg { width: 20px; height: 20px; color: var(--ink-dim); flex-shrink: 0; }
 .convo-menu__item:active { background: var(--surface-raised); }
@@ -4572,9 +4594,9 @@ a.gd-credit__name { text-decoration: none; }
 .mod-sub:first-child { margin-top: 0; }
 .mod-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
 .mod-row__meta { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.mod-row__meta b { font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.mod-row__meta span { font-size: 12px; color: var(--ink-dim); font-family: var(--font-mono); }
-.mod-row__btn { flex-shrink: 0; padding: 7px 14px; font-size: 13px; }
+.mod-row__meta b { font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mod-row__meta span { font-size: 12.5px; color: var(--ink-dim); font-family: var(--font-mono); }
+.mod-row__btn { flex-shrink: 0; padding: 7px 14px; font-size: 13.5px; }
 
 /* Settings → Connected accounts. Same row shape as .mod-row, just with
    a platform mark instead of an avatar photo. */
@@ -4586,8 +4608,8 @@ a.gd-credit__name { text-decoration: none; }
 }
 .conn-row__icon svg { width: 19px; height: 19px; }
 .conn-row__meta { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.conn-row__meta b { font-size: 14px; font-weight: 700; }
-.conn-row__meta span { font-size: 12px; color: var(--ink-dim); font-family: var(--font-mono); }
+.conn-row__meta b { font-size: 15px; font-weight: 700; }
+.conn-row__meta span { font-size: 12.5px; color: var(--ink-dim); font-family: var(--font-mono); }
 .conn-row__btn { flex-shrink: 0; padding: 7px 12px; font-size: 12.5px; }
 /* The disconnected state: same row shape, the meta column replaced by
    an input — connecting is one action, not a form with a separate
@@ -4595,7 +4617,7 @@ a.gd-credit__name { text-decoration: none; }
 .conn-connect { display: flex; align-items: center; gap: 12px; }
 .conn-connect input {
   flex: 1; min-width: 0; background: var(--bg-lift); border: 1px solid var(--line);
-  border-radius: var(--radius-s); padding: 10px 12px; color: var(--ink); font-size: 14px;
+  border-radius: var(--radius-s); padding: 10px 12px; color: var(--ink); font-size: 15px;
 }
 .conn-connect input:focus { outline: none; border-color: var(--accent); }
 
@@ -4697,11 +4719,11 @@ a.gd-credit__name { text-decoration: none; }
    when the row's avatar is a stack. */
 .convo-row__av:has(.convo-stack)::before { content: none; }
 .compose-mode { margin-bottom: 14px; }
-.compose-name { width: 100%; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-m); padding: 11px 14px; font-size: 14px; color: var(--ink); margin-bottom: 10px; }
+.compose-name { width: 100%; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-m); padding: 11px 14px; font-size: 15px; color: var(--ink); margin-bottom: 10px; }
 .compose-name::placeholder { color: var(--ink-faint); }
 .compose-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
 .compose-chips:empty { display: none; }
-.compose-chip { display: inline-flex; align-items: center; gap: 3px; padding: 5px 5px 5px 11px; background: var(--surface-high); border-radius: 999px; font-size: 13px; font-weight: 600; }
+.compose-chip { display: inline-flex; align-items: center; gap: 3px; padding: 5px 5px 5px 11px; background: var(--surface-high); border-radius: 999px; font-size: 13.5px; font-weight: 600; }
 .compose-chip button { display: grid; place-items: center; width: 18px; height: 18px; border: none; background: none; color: var(--ink-dim); border-radius: 50%; flex-shrink: 0; }
 .compose-chip button svg { width: 12px; height: 12px; }
 .profile-row--selected { background: color-mix(in srgb, var(--accent) 12%, transparent); border-radius: var(--radius-m); }
@@ -4716,16 +4738,16 @@ a.gd-credit__name { text-decoration: none; }
 .group-info__member { display: flex; align-items: center; gap: 11px; padding: 8px 6px; color: var(--ink); border-radius: var(--radius-m); }
 .group-info__member:active { background: var(--surface-raised); }
 .group-info__m-meta { display: flex; flex-direction: column; min-width: 0; }
-.group-info__m-meta b { font-size: 14px; font-weight: 700; }
-.group-info__m-meta > span { font-size: 12px; color: var(--ink-dim); font-family: var(--font-mono); }
-.group-info__you { font-family: var(--font-body); color: var(--accent-deep); font-weight: 700; font-size: 11px; }
+.group-info__m-meta b { font-size: 15px; font-weight: 700; }
+.group-info__m-meta > span { font-size: 12.5px; color: var(--ink-dim); font-family: var(--font-mono); }
+.group-info__you { font-family: var(--font-body); color: var(--accent-deep); font-weight: 700; font-size: 11.5px; }
 .group-info__actions { border-top: 1px solid var(--line); padding-top: 6px; }
 .convo-row__line { display: flex; align-items: center; gap: 6px; margin-top: 1px; }
 /* flex:0 1 auto (not flex:1) so the time sits right after the preview text
    instead of being pushed to the far edge; min-width:0 lets a long preview
    still truncate. */
 .convo-row__preview {
-  font-size: 13px; line-height: 1.2; color: var(--ink-dim); flex: 0 1 auto; min-width: 0;
+  font-size: 13.5px; line-height: 1.2; color: var(--ink-dim); flex: 0 1 auto; min-width: 0;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .convo-row__undot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
@@ -4764,7 +4786,7 @@ a.gd-credit__name { text-decoration: none; }
 .thread-hd { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; color: var(--ink); }
 .thread-hd__meta { min-width: 0; }
 .thread-hd__name { font-weight: 700; font-size: 15px; letter-spacing: -0.01em; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.thread-hd__pres { display: flex; align-items: center; gap: 5px; font-family: var(--font-body); font-size: 12px; color: var(--ink-dim); margin-top: 1px; }
+.thread-hd__pres { display: flex; align-items: center; gap: 5px; font-family: var(--font-body); font-size: 12.5px; color: var(--ink-dim); margin-top: 1px; }
 .thread-hd__pres--online { color: var(--orange); }
 .thread-hd__pres b { color: var(--orange); font-weight: 700; }
 .thread-hd__dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
@@ -4775,7 +4797,7 @@ a.gd-credit__name { text-decoration: none; }
    default composer stays a single clean input instead of a row of icons.
    "Share a game" is the flagship, given the accent-lit hero treatment. */
 .share-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; padding: 4px 0 6px; }
-.share-opt { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 15px 8px; background: var(--surface-raised); border: 1px solid var(--line); border-radius: var(--radius-m); color: var(--ink-dim); font-size: 12px; font-weight: 500; }
+.share-opt { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 15px 8px; background: var(--surface-raised); border: 1px solid var(--line); border-radius: var(--radius-m); color: var(--ink-dim); font-size: 12.5px; font-weight: 500; }
 .share-opt:active { transform: scale(0.97); }
 .share-opt__ic { width: 32px; height: 32px; border-radius: var(--radius-s); display: grid; place-items: center; background: var(--surface-high); color: var(--ink); }
 .share-opt__ic svg { width: 18px; height: 18px; }
@@ -4786,15 +4808,15 @@ a.gd-credit__name { text-decoration: none; }
 .gamepick-row { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 8px 6px; border-radius: var(--radius-s); }
 .gamepick-row:active { background: var(--surface-raised); }
 .gamepick-row img, .gamepick-row .gamepick-row__cover { width: 38px; height: 51px; border-radius: 5px; object-fit: cover; background: var(--surface-high); flex-shrink: 0; }
-.gamepick-row__title { font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.gamepick-row__meta { font-family: var(--font-mono); font-size: 11px; color: var(--ink-faint); margin-top: 2px; display: block; }
+.gamepick-row__title { font-weight: 600; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gamepick-row__meta { font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-faint); margin-top: 2px; display: block; }
 .listpick-row { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 8px 6px; border-radius: var(--radius-s); }
 .listpick-row:active { background: var(--surface-raised); }
 .listpick-row__collage { width: 56px; height: 42px; flex-shrink: 0; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 1.5px; border-radius: 5px; overflow: hidden; background: var(--surface); }
 .listpick-row__collage span { background: var(--surface-high) center / cover no-repeat; }
 
 .thread-messages { display: flex; flex-direction: column; padding: 4px 0; }
-.thread-empty { text-align: center; color: var(--ink-faint); font-size: 13px; padding: 48px 0; }
+.thread-empty { text-align: center; color: var(--ink-faint); font-size: 13.5px; padding: 48px 0; }
 
 /* Quiet Canvas — messages are grouped into clusters by sender+time so a
    run of consecutive messages reads as one calm block with a single
@@ -4824,7 +4846,7 @@ a.gd-credit__name { text-decoration: none; }
   position: relative; /* anchors .msg-heart-burst */
   background: var(--surface); color: var(--ink);
   padding: 9px 13px; border-radius: 16px;
-  font-size: 14px; line-height: 1.4; word-break: break-word; white-space: pre-wrap;
+  font-size: 15px; line-height: 1.4; word-break: break-word; white-space: pre-wrap;
 }
 .msg-cluster:not(.msg-cluster--mine) .msg-row--tail .msg-bubble { border-bottom-left-radius: 5px; }
 /* Mine: a SUBTLE accent-tinted surface with ink text, not a slab of lime
@@ -4890,14 +4912,14 @@ a.gd-credit__name { text-decoration: none; }
 .msg-gamecard__hero { display: none; } /* legacy hook, unused in the horizontal card */
 .msg-gamecard__tag {
   position: absolute; top: 7px; left: 7px; z-index: 2;
-  font-family: var(--font-mono); font-size: 8px; letter-spacing: 0.08em; text-transform: uppercase;
+  font-family: var(--font-mono); font-size: 8.5px; letter-spacing: 0.08em; text-transform: uppercase;
   color: var(--bg); background: var(--accent); padding: 2px 5px; border-radius: 4px; font-weight: 500;
 }
 .msg-gamecard__body { flex: 1; min-width: 0; display: flex; flex-direction: column; padding: 11px 13px; }
-.msg-gamecard__title { font-weight: 700; font-size: 14px; letter-spacing: -0.01em; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.msg-gamecard__title { font-weight: 700; font-size: 15px; letter-spacing: -0.01em; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .msg-gamecard__meta { font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-faint); margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .msg-gamecard__rate { display: flex; align-items: center; gap: 6px; margin-top: 7px; font-size: 10.5px; color: var(--ink-dim); overflow: hidden; white-space: nowrap; }
-.msg-gamecard__rate .msg-stars { color: var(--gold); letter-spacing: 1px; font-size: 11px; flex-shrink: 0; }
+.msg-gamecard__rate .msg-stars { color: var(--gold); letter-spacing: 1px; font-size: 11.5px; flex-shrink: 0; }
 .msg-gamecard__cta {
   margin-top: 9px; padding-top: 8px; border-top: 1px solid var(--line);
   display: flex; align-items: center; gap: 4px;
@@ -4918,7 +4940,7 @@ a.gd-credit__name { text-decoration: none; }
 .msg-reviewcard__head { min-width: 0; flex: 1; display: flex; flex-direction: column; }
 .msg-reviewcard__tag { font-family: var(--font-mono); font-size: 8.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent-deep); font-weight: 500; }
 .msg-reviewcard__title { font-weight: 700; font-size: 13.5px; letter-spacing: -0.01em; line-height: 1.2; margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.msg-reviewcard__stars { color: var(--gold); font-size: 12px; letter-spacing: 1px; margin-top: 4px; }
+.msg-reviewcard__stars { color: var(--gold); font-size: 12.5px; letter-spacing: 1px; margin-top: 4px; }
 .msg-reviewcard__text {
   padding: 9px 13px 12px; font-size: 12.5px; line-height: 1.45; color: var(--ink-dim);
   display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
@@ -4935,7 +4957,7 @@ a.gd-credit__name { text-decoration: none; }
 .msg-listcard__collage span { background: var(--surface-high) center / cover no-repeat; }
 .msg-listcard__body { padding: 10px 13px 12px; display: flex; flex-direction: column; }
 .msg-listcard__tag { font-family: var(--font-mono); font-size: 8.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent-deep); font-weight: 500; }
-.msg-listcard__name { font-weight: 700; font-size: 14px; letter-spacing: -0.01em; margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.msg-listcard__name { font-weight: 700; font-size: 15px; letter-spacing: -0.01em; margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .msg-listcard__meta { font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-faint); margin-top: 3px; }
 
 /* Fixed at the very bottom in place of the tab bar (this screen doesn't
@@ -4961,7 +4983,7 @@ a.gd-credit__name { text-decoration: none; }
 .thread-composer__icon:active { background: var(--surface-raised); }
 .thread-composer input {
   flex: 1; min-width: 0; background: var(--surface); border: 1px solid var(--line);
-  border-radius: 999px; padding: 10px 16px; font-size: 14px; color: var(--ink);
+  border-radius: 999px; padding: 10px 16px; font-size: 15px; color: var(--ink);
 }
 .thread-composer input::placeholder { color: var(--ink-faint); }
 .thread-composer__send {
@@ -4978,7 +5000,7 @@ a.gd-credit__name { text-decoration: none; }
   padding: 8px 4px; border-bottom: 1px solid var(--line); margin-bottom: 4px;
 }
 .thread-replying__info { min-width: 0; }
-.thread-replying__label { font-size: 11px; font-weight: 700; color: var(--accent-bright); }
+.thread-replying__label { font-size: 11.5px; font-weight: 700; color: var(--accent-bright); }
 .thread-replying__snippet {
   font-size: 12.5px; color: var(--ink-dim); margin-top: 2px;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
@@ -5126,7 +5148,7 @@ a.gd-credit__name { text-decoration: none; }
 .gd-pilltab {
   padding: 7px 16px; border-radius: var(--radius-pill);
   background: transparent; border: 1px solid var(--line);
-  color: var(--ink-dim); font-size: 13px; font-weight: 600;
+  color: var(--ink-dim); font-size: 13.5px; font-weight: 600;
   transition: all var(--dur-fast) var(--ease);
 }
 .gd-pilltab--on { background: var(--accent); border-color: var(--accent); color: var(--bg); }
@@ -5156,7 +5178,7 @@ a.gd-credit__name { text-decoration: none; }
   display: flex; align-items: center; justify-content: center;
   border-radius: var(--radius-pill);
   background: var(--accent-bright); color: var(--bg);
-  font-family: var(--font-mono); font-size: 10px; font-weight: 700; line-height: 1;
+  font-family: var(--font-mono); font-size: 10.5px; font-weight: 700; line-height: 1;
   box-shadow: 0 0 0 2px var(--bg);
 }
 
@@ -5166,7 +5188,7 @@ a.gd-credit__name { text-decoration: none; }
 .topbar__action {
   background: none; border: none; padding: 4px 2px;
   color: var(--accent-bright); font-family: var(--font-body);
-  font-size: 13px; font-weight: 600; cursor: pointer;
+  font-size: 13.5px; font-weight: 600; cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
 .topbar__action:active { opacity: 0.6; }
@@ -5233,7 +5255,7 @@ a.gd-credit__name { text-decoration: none; }
 .act__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 /* Regular weight with only the names bolded inside it, so the person is
    what the eye catches and the verb reads as ordinary sentence text. */
-.act__text { font-size: 14px; line-height: 1.4; color: var(--ink); font-weight: 400; }
+.act__text { font-size: 15px; line-height: 1.4; color: var(--ink); font-weight: 400; }
 .act__text b { font-weight: 700; }
 /* Inline stars sit on the text baseline rather than on their own line,
    which is what keeps "watched Hades ★★★★" reading as one sentence. */
@@ -5241,7 +5263,7 @@ a.gd-credit__name { text-decoration: none; }
 /* A quoted review or comment is dimmed so it reads as somebody's words
    inside the row rather than as more of the app talking. */
 .act__quote {
-  font-size: 13px; line-height: 1.4; color: var(--ink-dim);
+  font-size: 13.5px; line-height: 1.4; color: var(--ink-dim);
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 /* Right-aligned and never wrapping: the time is a column the eye tracks
@@ -5274,8 +5296,8 @@ a.gd-credit__name { text-decoration: none; }
 }
 .set-toggle:last-of-type { border-bottom: none; }
 .set-toggle__label { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.set-toggle__label b { font-size: 14px; font-weight: 600; color: var(--ink); }
-.set-toggle__label span { font-size: 12px; color: var(--ink-dim); line-height: 1.35; }
+.set-toggle__label b { font-size: 15px; font-weight: 600; color: var(--ink); }
+.set-toggle__label span { font-size: 12.5px; color: var(--ink-dim); line-height: 1.35; }
 
 /* The switch itself is a real checkbox with the box hidden, so it keeps
    the native focus ring, keyboard behaviour and label association, and
@@ -5352,7 +5374,7 @@ a.gd-credit__name { text-decoration: none; }
    a pure render of what was actually said. */
 .msg-typing {
   display: flex; align-items: center; gap: 8px;
-  padding: 2px 4px 8px; color: var(--ink-faint); font-size: 12px;
+  padding: 2px 4px 8px; color: var(--ink-faint); font-size: 12.5px;
 }
 .msg-typing__dots { display: inline-flex; gap: 3px; align-items: center; }
 .msg-typing__dots i {
@@ -5375,7 +5397,7 @@ a.gd-credit__name { text-decoration: none; }
 .msg-seen { display: inline-flex; align-items: center; gap: 2px; margin-left: 5px; vertical-align: -3px; }
 .msg-seen__a { display: inline-flex; }
 .msg-seen__a img { width: 16px; height: 16px; border-radius: 50%; display: block; box-shadow: 0 0 0 1.5px var(--bg); }
-.msg-seen__more { font-family: var(--font-mono); font-size: 9px; color: var(--ink-faint); margin-left: 2px; }
+.msg-seen__more { font-family: var(--font-mono); font-size: 9.5px; color: var(--ink-faint); margin-left: 2px; }
 .group-info__member-row { display: flex; align-items: center; gap: 4px; }
 .group-info__member-row .group-info__member { flex: 1; min-width: 0; }
 .group-info__member--dim { opacity: 0.5; }
@@ -5423,8 +5445,8 @@ a.gd-credit__name { text-decoration: none; }
 }
 @keyframes rec-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
 @media (prefers-reduced-motion: reduce) { .thread-recording__dot { animation: none; } }
-.thread-recording__time { font-family: var(--font-mono); font-size: 13px; color: var(--ink); }
-.thread-recording__hint { flex: 1; min-width: 0; font-size: 13px; color: var(--ink-dim); }
+.thread-recording__time { font-family: var(--font-mono); font-size: 13.5px; color: var(--ink); }
+.thread-recording__hint { flex: 1; min-width: 0; font-size: 13.5px; color: var(--ink-dim); }
 
 /* In-thread search */
 .thread-search-list { display: flex; flex-direction: column; }
@@ -5436,11 +5458,11 @@ a.gd-credit__name { text-decoration: none; }
 .thread-search-hit:active { background: var(--surface-raised); }
 .thread-search-hit__who { font-size: 12.5px; font-weight: 700; color: var(--ink-dim); }
 .thread-search-hit__body {
-  font-size: 14px; line-height: 1.4;
+  font-size: 15px; line-height: 1.4;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 .thread-search-hit__body mark { background: color-mix(in srgb, var(--accent-bright) 35%, transparent); color: var(--ink); border-radius: 3px; }
-.thread-search-hit__when { font-family: var(--font-mono); font-size: 10px; color: var(--ink-faint); }
+.thread-search-hit__when { font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-faint); }
 
 /* Where a search result lands. Bright for a moment, then out of the way —
    a permanent highlight would leave the thread looking edited. */
@@ -5498,7 +5520,7 @@ a.gd-credit__name { text-decoration: none; }
 }
 .story-ring__inner img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .story-ring__name {
-  max-width: 68px; font-size: 11px; color: var(--ink-dim);
+  max-width: 68px; font-size: 11.5px; color: var(--ink-dim);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .story-ring__plus {
@@ -5550,7 +5572,7 @@ a.gd-credit__name { text-decoration: none; }
 .story-viewer__who img { border-radius: 50%; }
 .story-viewer__meta { display: flex; flex-direction: column; min-width: 0; }
 .story-viewer__meta b { font-size: 13.5px; font-weight: 700; }
-.story-viewer__meta > span { font-size: 11px; color: rgba(255,255,255,0.65); }
+.story-viewer__meta > span { font-size: 11.5px; color: rgba(255,255,255,0.65); }
 .story-viewer__tools { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
 .story-viewer__icon {
   width: 34px; height: 34px; border-radius: 50%;
@@ -5575,7 +5597,7 @@ a.gd-credit__name { text-decoration: none; }
 .story-viewer__poster img { width: 100%; display: block; }
 .story-viewer__game-meta { display: flex; flex-direction: column; gap: 3px; }
 .story-viewer__game-meta b { font-family: var(--font-brand); font-size: 17px; font-weight: 700; letter-spacing: -0.01em; }
-.story-viewer__game-meta > span { font-size: 12px; color: rgba(255,255,255,0.6); }
+.story-viewer__game-meta > span { font-size: 12.5px; color: rgba(255,255,255,0.6); }
 .story-viewer__caption {
   max-width: 30ch; font-size: 15px; line-height: 1.45; color: rgba(255,255,255,0.92);
 }
@@ -5628,20 +5650,20 @@ a.gd-credit__name { text-decoration: none; }
 .foryou-card__cover { width: 100%; border-radius: 10px; overflow: hidden; }
 .foryou-card__cover img { width: 100%; display: block; }
 .foryou-card__title {
-  font-size: 13px; font-weight: 600; line-height: 1.3;
+  font-size: 13.5px; font-weight: 600; line-height: 1.3;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 /* The reason is the whole point of the card, so it gets the accent
    rather than being greyed out as secondary metadata. */
 .foryou-card__reason {
-  font-size: 11px; line-height: 1.35; color: var(--accent-bright);
+  font-size: 11.5px; line-height: 1.35; color: var(--accent-bright);
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 
 /* The group's rules, shown under its name in the info sheet. Set by the
    admin; a group without any renders nothing here at all. */
 .group-info__rules {
-  font-size: 13px; line-height: 1.5; color: var(--ink-dim);
+  font-size: 13.5px; line-height: 1.5; color: var(--ink-dim);
   padding: 2px 6px 10px; white-space: pre-wrap;
 }
 /* Separates the two labels a member row can carry at once — without it

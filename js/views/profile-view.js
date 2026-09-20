@@ -182,7 +182,7 @@ export async function renderProfileView(root, { username }) {
       <div class="segmented segmented--wide" id="profile-tabs">
         <button class="segmented__item segmented__item--active" data-tab="profile">Profile</button>
         <button class="segmented__item" data-tab="journal">Journal</button>
-        <button class="segmented__item" data-tab="wanttoplay">Want to Play</button>
+        <button class="segmented__item" data-tab="wanttoplay">Backlog</button>
         <button class="segmented__item" data-tab="lists">Lists</button>
       </div>
 
