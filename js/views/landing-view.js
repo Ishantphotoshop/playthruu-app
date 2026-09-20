@@ -3,7 +3,7 @@ import {
   posterFrame, avatarImg, spinner, emptyState, iconSearch,
   iconUserFilled, iconBrowseNavFilled, iconCompassNavFilled, iconSearchFilled,
 } from '../components.js';
-import { coverStars, tourSceneHtml, resolveShowcase } from './landing-art.js';
+import { tourSceneHtml, resolveShowcase } from './landing-art.js';
 import { esc, starRow, qs, qsa, toast } from '../utils.js';
 import { renderAuthView } from './auth-view.js';
 import { navigate } from '../router.js';
@@ -230,44 +230,36 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
     showcaseWanted = true;
     resolveShowcase().then((games) => {
       showcase = games;
-      if (screen === 'entry') {
-        startRotation();
-      } else if (screen === 'tour') {
+      if (screen === 'tour') {
         const slot = qs('#tour-art', root);
         if (slot) slot.innerHTML = tourSceneHtml(TOUR_SLIDES[tourIndex].scene, showcase);
       }
     }).catch(() => { /* placeholders stay; nothing to recover from */ });
   }
 
-  // ---- entry: a diagonal cut over rotating game art ------------------
-  // The artwork behind it changes every few seconds and credits the
-  // game it came from, exactly as the login screen does — and the
-  // credit opens that game's page, which works signed out because
-  // /game/:id and /game/igdb/:id are both public routes (see
-  // registerPublicRoutes in app.js).
-  const ROTATE_MS = 5000;
-  let artLayer = 'a';
-  let artIndex = 0;
-  let rotateTimer = null;
-  let creditGame = null;
-
+  // ---- entry: the statement, on glass -------------------------------
+  // No imagery. The whole screen is one sentence, set as large as it
+  // will go, and the only other things on it are the name and the two
+  // actions.
+  //
+  // The glass is what stops that being a flat wall of type: the panel
+  // is genuinely transparent and blurred, and behind it sit two big
+  // soft fields of colour, so the type has something to float over and
+  // the edges of the panel actually refract. Glass over a plain
+  // background is just a grey box — it needs something to bend.
   function entryHtml() {
     return `
       <div class="lp">
-        <div class="lp__art-wrap" aria-hidden="true">
-          <div class="lp__art lp__art--a is-active"></div>
-          <div class="lp__art lp__art--b"></div>
-          <div class="lp__art-veil"></div>
-        </div>
-        <div class="lp__edge" aria-hidden="true"></div>
-        <button type="button" class="lp__credit" id="lp-credit" hidden>Artwork from <span id="lp-credit-game"></span></button>
-        <div class="lp__content">
-          <img src="icons/mark-blue.svg" alt="" class="lp__mark">
-          <h1 class="lp__word">PlayThruu</h1>
-          <blockquote class="lp__quote">
-            <p class="lp__quote-text">&ldquo;Made me hate a character then feel awful about it.&rdquo;</p>
-            <footer class="lp__quote-by">Aditya, on The Last of Us Part II</footer>
-          </blockquote>
+        <div class="lp__field lp__field--warm" aria-hidden="true"></div>
+        <div class="lp__field lp__field--cool" aria-hidden="true"></div>
+        <div class="lp__grain" aria-hidden="true"></div>
+        <div class="lp__panel">
+          <div class="lp__brand">
+            <img src="icons/mark-blue.svg" alt="" class="lp__mark">
+            <span class="lp__name">PlayThruu</span>
+          </div>
+          <h1 class="lp__word">Every<br>game<br>you ever<br><em>played.</em></h1>
+          <p class="lp__sub">One diary. Every rating, every review, and the ones you never finished.</p>
           <div class="lp__actions">
             <button type="button" class="lp__cta" id="entry-tour">Get started</button>
             <button type="button" class="lp__ghost" id="entry-signin">I already have an account</button>
@@ -275,71 +267,8 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
         </div>
       </div>`;
   }
-
-  // Paint the next image onto the hidden layer, fade it in, and let the
-  // old one fade out under it — the same crossfade the login screen
-  // uses, rather than swapping one element's src, which flashes.
-  function showArt(entry, instant) {
-    const next = artLayer === 'a' ? 'b' : 'a';
-    const nextEl = qs(`.lp__art--${next}`, root);
-    const curEl = qs(`.lp__art--${artLayer}`, root);
-    if (!nextEl) return;
-    if (instant) {
-      const a = qs('.lp__art--a', root);
-      if (a) { a.style.backgroundImage = `url("${entry.src}")`; a.classList.add('is-active'); }
-      artLayer = 'a';
-    } else {
-      nextEl.style.backgroundImage = `url("${entry.src}")`;
-      nextEl.classList.add('is-active');
-      if (curEl) curEl.classList.remove('is-active');
-      artLayer = next;
-    }
-    creditGame = entry;
-    const credit = qs('#lp-credit', root);
-    const label = qs('#lp-credit-game', root);
-    if (credit && label) {
-      label.textContent = entry.title;
-      credit.hidden = false;
-    }
-  }
-
-  // Decoded before it is shown, so a rotation never fades in a
-  // half-loaded frame.
-  function preloadThenShow(entry, instant) {
-    const img = new Image();
-    img.onload = () => {
-      if (!qs('.lp__art--a', root)) { clearInterval(rotateTimer); rotateTimer = null; return; }
-      showArt(entry, instant);
-    };
-    img.src = entry.src;
-  }
-
-  function startRotation() {
-    clearInterval(rotateTimer);
-    rotateTimer = null;
-    const stars = coverStars(showcase);
-    if (!stars.length) return;
-    artIndex = Math.floor(Math.random() * stars.length);
-    preloadThenShow(stars[artIndex], true);
-    if (stars.length < 2) return;
-    rotateTimer = setInterval(() => {
-      // The screen is gone (the nav moved on, or someone signed in) —
-      // stop, or this keeps painting into a detached tree forever.
-      if (!qs('.lp__art--a', root)) { clearInterval(rotateTimer); rotateTimer = null; return; }
-      artIndex = (artIndex + 1) % stars.length;
-      preloadThenShow(stars[artIndex], false);
-    }, ROTATE_MS);
-  }
   function wireEntry(stage) {
     loadShowcase();
-    startRotation();
-    // Straight to the game's own page. The login screen has to search
-    // for its credited title first, because its backdrops are local
-    // files that only know a name; these came from IGDB and already
-    // carry an id, so there is nothing to look up.
-    qs('#lp-credit', stage).addEventListener('click', () => {
-      if (creditGame && creditGame.igdbId) navigate(`/game/igdb/${creditGame.igdbId}`);
-    });
     qs('#entry-signin', stage).addEventListener('click', () => goToAuth('signin'));
     qs('#entry-tour', stage).addEventListener('click', () => { screen = 'tour'; tourIndex = 0; paint(); });
   }

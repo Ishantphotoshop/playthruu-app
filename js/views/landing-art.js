@@ -47,31 +47,6 @@ const SHOWCASE = {
 // instead of a poster. Bumping the key fixes the browsers that exist
 // now; the completeness check below is what stops it happening again
 // the next time a title is added.
-// ---- the artwork the entry screen rotates through ---------------------
-// Each entry names an exact IGDB image, chosen by looking at every
-// artwork and screenshot the game has and picking one that is (a) free
-// of any text and (b) built around a face or a figure, which is what
-// survives being cropped to a phone.
-//
-// Hand-picked rather than "take the first one", because neither source
-// is reliably clean: artworks are often the marketing key art complete
-// with the logo and a tagline, and screenshots are often mid-combat
-// with the HUD up — Final Fantasy VII Rebirth's first screenshot had a
-// "Got 'Em!" callout sitting directly under the masthead.
-//
-// Silent Hill 2 is not here on purpose: IGDB resolves that title to the
-// 2001 original, whose art is all PS2-era and falls apart at this size.
-const COVER_STARS = [
-  { key: 'hellblade2', image: 'ar2cjv' },   // Senua, hands to her face
-  { key: 'lastofus2', image: 'scpkht' },    // Joel, close, lit from one side
-  { key: 'tsushima', image: 'ob4pm8jmsutkttmdm5ys' }, // Jin against fire
-  { key: 'alanwake2', image: 'ar3nui' },    // the red forest
-  { key: 'wukong', image: 'sc8i9c' },       // the Monkey King, armoured
-  { key: 'ff7rebirth', image: 'scmwdg' },   // Aerith, in profile
-];
-
-const IGDB_ART = (imageId) => `https://images.igdb.com/igdb/image/upload/t_1080p/${imageId}.jpg`;
-
 const STORAGE_KEY = 'playthruu:showcase-games:v2';
 let showcaseCache = null;
 
@@ -143,25 +118,6 @@ function poster(game, extraClass = '', inner = '') {
     ${posterFrame(game.cover_url, game.title, 'lp-poster__frame')}
     ${inner}
   </div>`;
-}
-
-// ---- the entry screen's rotating artwork ------------------------------
-// Every few seconds the entry screen changes the game behind it, the
-// same way the login screen does. These are the games it rotates
-// through: not every cover survives being blown up to fill a phone, so
-// these are built around a face or a figure, and each one's text-free
-// key art is fetched for exactly this use (see getKeyArt in api.js).
-export function coverStars(games) {
-  return COVER_STARS
-    .map(({ key, image }) => {
-      const g = (games || {})[key];
-      // The artwork url is built from the picked image id, so it needs
-      // nothing from the network — only the game's own title and id,
-      // for the credit and where it goes when tapped.
-      if (!g || !g.igdb_id) return null;
-      return { key, title: g.title, src: IGDB_ART(image), igdbId: g.igdb_id };
-    })
-    .filter(Boolean);
 }
 
 // ---- tour scenes ------------------------------------------------------

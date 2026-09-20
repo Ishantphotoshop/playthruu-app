@@ -4165,111 +4165,88 @@ a.gd-credit__name { text-decoration: none; }
 .landing-stage { flex: 1; overflow-y: auto; padding-bottom: calc(63px + var(--safe-bottom)); background: var(--bg); }
 
 /* ---- entry screen ----------------------------------------------------
-   Game art across the top, cut off on a diagonal, with the mark, the
-   name, a line somebody wrote and the two actions below it.
+   One sentence, set as large as it will go, on a sheet of glass.
 
-   The diagonal is the whole idea. A straight edge between a picture and
-   a page is the most ordinary thing in app design; an angled one makes
-   the art read as a piece of print laid down on the screen, and it
-   gives the eye a direction to travel — down and to the left, which is
-   exactly where the buttons are.
+   No imagery at all. Everything the screen has to say is said in type,
+   which means the type has to be worth looking at — so it runs nearly
+   edge to edge, four lines deep, with the last line in the accent.
 
-   The artwork changes every five seconds and credits the game it came
-   from, the same way the login screen does. */
+   The glass is what keeps that from being a flat wall of words. The
+   panel is genuinely transparent and blurred, and behind it sit two
+   large soft fields of colour for it to bend: glass over a plain
+   background is just a grey box, because there is nothing to refract.
+   Nothing moves. */
 .lp {
   position: relative; overflow: hidden; isolation: isolate;
   min-height: calc(100dvh - 63px - var(--safe-bottom));
-  display: flex; flex-direction: column; justify-content: flex-end;
+  display: flex; flex-direction: column; justify-content: center;
+  padding: calc(var(--space-4) + env(safe-area-inset-top, 0px)) var(--gutter) var(--space-4);
   background: var(--bg);
 }
 
-/* ---- the art, and the cut ---- */
-.lp__art-wrap {
-  position: absolute; top: 0; left: 0; right: 0; height: 62%; z-index: 0;
-  /* Cut from 100% on the right down to 78% on the left: the low corner
-     sits on the side the reading starts from. */
-  clip-path: polygon(0 0, 100% 0, 100% 78%, 0 100%);
-  background: var(--bg);
+/* The two colour fields. Big, soft, and static — the whole job here is
+   to give the glass something to pick up, so they are placed where the
+   panel's edges will cross them rather than dead centre. */
+.lp__field {
+  position: absolute; border-radius: 50%; z-index: 0; pointer-events: none;
+  filter: blur(70px);
 }
-/* Two layers so a change crossfades instead of flashing: the incoming
-   image is painted on the hidden one and faded up while the outgoing
-   one fades away under it. */
-.lp__art {
-  position: absolute; inset: 0;
-  background-size: cover; background-position: center 42%; background-repeat: no-repeat;
-  opacity: 0; transition: opacity 900ms ease;
+.lp__field--warm {
+  width: 118%; aspect-ratio: 1; right: -46%; bottom: -22%;
+  background: radial-gradient(circle, rgba(255, 214, 10, 0.30) 0%, rgba(255, 195, 0, 0.10) 46%, transparent 70%);
 }
-.lp__art.is-active { opacity: 1; }
-/* Keeps the top of the frame readable under the status bar and stops
-   the art from glaring against the page it sits on. */
-.lp__art-veil {
-  position: absolute; inset: 0; pointer-events: none;
-  background: linear-gradient(to bottom,
-    rgba(0, 8, 20, 0.62) 0%,
-    rgba(0, 8, 20, 0.18) 26%,
-    rgba(0, 8, 20, 0.30) 70%,
-    rgba(0, 8, 20, 0.78) 100%);
+.lp__field--cool {
+  width: 112%; aspect-ratio: 1; left: -44%; top: -20%;
+  background: radial-gradient(circle, rgba(0, 53, 102, 0.95) 0%, rgba(0, 53, 102, 0.42) 48%, transparent 72%);
 }
-/* The cut itself, drawn as a hairline of accent along the same angle —
-   without it the art just stops, and the shape reads as a mistake
-   rather than an edge. */
-.lp__edge {
-  position: absolute; top: 0; left: 0; right: 0; height: 62%; z-index: 1;
-  clip-path: polygon(0 calc(100% - 2px), 100% calc(78% - 2px), 100% 78%, 0 100%);
-  background: var(--accent);
-  pointer-events: none;
+/* A little noise over the colour, so the large flat gradients do not
+   band on a phone screen — which is the usual giveaway of a blurred
+   blob used as a background. */
+.lp__grain {
+  position: absolute; inset: 0; z-index: 0; pointer-events: none; opacity: 0.35;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
 }
 
-/* ---- the credit ----
-   Same job as the login screen's: says whose artwork this is, and opens
-   that game. A real button, because it does something.
-   Bottom-right, following the diagonal down to its high side, where it
-   never sits over the low corner the content rises into. */
-.lp__credit {
-  /* Top-right, inside the art and well clear of the cut — the same
-     corner the login screen puts its credit in. Parked just above the
-     diagonal it collided with the mark and the wordmark rising into
-     the low side of the cut. */
-  position: absolute; right: var(--gutter); top: calc(var(--space-4) + var(--safe-top)); z-index: 2;
-  max-width: calc(100% - (var(--gutter) * 2));
-  display: inline-flex; align-items: center; gap: 5px;
-  padding: 7px 13px; border-radius: var(--radius-pill);
-  background: rgba(0, 8, 20, 0.62); border: 1px solid rgba(255, 255, 255, 0.14);
-  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
-  font-size: var(--text-small); font-weight: var(--weight-strong); color: var(--ink-dim);
-  cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  transition: background var(--dur) var(--ease);
+/* ---- the sheet ----
+   Real glass: a barely-there fill, a heavy blur that actually samples
+   what is behind it, and a lighter top edge — the highlight is what
+   sells a pane as a physical thing rather than a translucent div. */
+.lp__panel {
+  position: relative; z-index: 1;
+  padding: var(--space-5) var(--space-5) var(--space-5);
+  border-radius: 26px;
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.085), rgba(255, 255, 255, 0.03));
+  -webkit-backdrop-filter: blur(30px) saturate(150%); backdrop-filter: blur(30px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow:
+    0 24px 60px -24px rgba(0, 0, 0, 0.9),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
 }
-.lp__credit span { color: var(--ink); }
-.lp__credit:hover { background: rgba(0, 8, 20, 0.8); }
-.lp__credit:active { transform: scale(0.98); }
-.lp__credit:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 2px; }
 
-/* ---- the words ---- */
-.lp__content {
-  position: relative; z-index: 2;
-  padding: 0 var(--gutter) var(--space-6);
-  display: flex; flex-direction: column; align-items: flex-start;
+.lp__brand { display: flex; align-items: center; gap: 9px; }
+.lp__mark { width: 24px; height: 24px; display: block; }
+.lp__name {
+  font-family: var(--font-brand); font-weight: var(--weight-bold);
+  font-size: var(--text-body); letter-spacing: -0.03em; color: var(--ink);
 }
-.lp__mark { width: 40px; height: 40px; display: block; }
+
 .lp__word {
-  margin-top: 12px;
+  margin: var(--space-4) 0 0;
   font-family: var(--font-brand); font-weight: var(--weight-black);
-  font-size: clamp(32px, 10.4vw, 42px); line-height: 1;
-  letter-spacing: -0.045em; color: var(--ink);
+  /* As large as four lines will go without the longest one ("you ever")
+     breaking — that line is what sets the ceiling. */
+  font-size: clamp(38px, 12.4vw, 52px); line-height: 0.92;
+  letter-spacing: -0.055em; color: var(--ink);
 }
-.lp__quote { margin: 20px 0 0; padding: 0; border-left: 2px solid var(--accent); padding-left: 14px; }
-.lp__quote-text {
-  margin: 0; max-width: 19em;
-  font-size: var(--text-lead); line-height: var(--leading-title); color: var(--ink);
-  letter-spacing: -0.01em;
+.lp__word em { font-style: normal; color: var(--accent); }
+
+.lp__sub {
+  margin: var(--space-4) 0 0; max-width: 22em;
+  font-size: var(--text-body); line-height: var(--leading-body); color: var(--ink-dim);
 }
-.lp__quote-by {
-  margin-top: 7px;
-  font-family: var(--font-mono); font-size: var(--text-micro);
-  letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-faint);
-}
-.lp__actions { margin-top: var(--space-5); width: 100%; display: grid; gap: 9px; }
+
+.lp__actions { margin-top: var(--space-5); display: grid; gap: 9px; }
 .lp__cta, .lp__ghost {
   display: inline-flex; align-items: center; justify-content: center;
   width: 100%; min-height: 50px; padding: 14px var(--space-5);
@@ -4281,29 +4258,32 @@ a.gd-credit__name { text-decoration: none; }
 .lp__cta { background: var(--accent); color: var(--bg); border: 1px solid transparent; }
 .lp__cta:hover { background: var(--accent-bright); }
 .lp__cta:active { transform: scale(0.99); }
+/* The secondary button is a second, smaller pane of the same glass —
+   on a sheet like this a solid fill would read as a hole cut in it. */
 .lp__ghost {
-  background: transparent; color: var(--ink);
-  border: 1px solid var(--line-strong);
+  background: rgba(255, 255, 255, 0.07); color: var(--ink);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
   font-weight: var(--weight-strong); font-size: var(--text-body);
 }
-.lp__ghost:hover { background: var(--surface); }
+.lp__ghost:hover { background: rgba(255, 255, 255, 0.12); }
 .lp__ghost:active { transform: scale(0.99); }
 .lp__cta:focus-visible, .lp__ghost:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 3px; }
 
-/* The crossfade is the one thing on this screen that moves, and it is
-   there because the art is meant to rotate. Anyone who has asked the
-   system to stop animation gets the change without the fade. */
-@media (prefers-reduced-motion: reduce) {
-  .lp__art { transition: none; }
+/* Where the browser cannot blur what is behind an element, a
+   see-through panel is just a washed-out rectangle — so it becomes a
+   solid raised surface instead, which is the same idea honestly
+   expressed. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .lp__panel { background: var(--surface); }
+  .lp__ghost { background: var(--surface-raised); }
 }
 
 @media (max-height: 720px) {
-  .lp__art-wrap, .lp__edge { height: 56%; }
-  .lp__mark { width: 34px; height: 34px; }
-  .lp__quote { margin-top: 14px; }
-  .lp__quote-text { font-size: var(--text-body); }
+  .lp__word { font-size: clamp(32px, 10.4vw, 42px); }
+  .lp__sub { margin-top: var(--space-3); font-size: var(--text-small); }
   .lp__actions { margin-top: var(--space-4); }
-  .lp__content { padding-bottom: var(--space-4); }
+  .lp__panel { padding: var(--space-4); }
 }
 
 /* ---- feature tour ----------------------------------------------------
