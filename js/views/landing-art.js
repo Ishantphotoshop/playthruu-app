@@ -107,28 +107,34 @@ function poster(game, extraClass = '', inner = '') {
   </div>`;
 }
 
-// ---- the entry screen's wall ----------------------------------------
-// Four columns of covers running off every edge, the middle two pushed
-// down so the rows never line up into a grid. A grid reads as a
-// spreadsheet of games; an offset wall reads as a shelf someone filled.
-//
-// The columns are deliberately taller than the screen. Nothing here is
-// meant to be seen whole — it is the surface the screen is printed on.
-const WALL_COLUMNS = [
-  ['lastofus2', 'tsushima', 'eldenring', 'alanwake2', 'rdr2'],
-  ['wolverine', 'ragnarok', 'silenthill2', 'baldursgate3', 'cyberpunk'],
-  ['spiderman2', 'hellblade2', 'wukong', 'horizonfw', 're4'],
-  ['deathstranding2', 'expedition33', 'ff7rebirth', 'lastofus2', 'ragnarok'],
-];
-
-export function wallHtml(games) {
-  return WALL_COLUMNS.map((col, i) => `
-    <div class="lp-wall__col lp-wall__col--${i + 1}" aria-hidden="true">
-      ${col.map((key) => {
-        const g = pick(games, key);
-        return `<span class="lp-wall__tile">${posterFrame(g.cover_url, g.title, 'lp-wall__frame')}</span>`;
-      }).join('')}
-    </div>`).join('');
+// ---- the entry screen's card ----------------------------------------
+// One finished diary entry, shown the way the app's own share card
+// shows one: the cover, what was done to it, and who said what about
+// it. Built to the shape of the share card rather than invented, so the
+// first thing anyone sees is a real artefact this app produces — not a
+// description of one, and not decoration.
+export function diaryCardHtml(games) {
+  const key = 'lastofus2';
+  const g = pick(games, key);
+  const r = REVIEWS[key];
+  return `
+    <figure class="lp-entry">
+      <div class="lp-entry__art">
+        ${posterFrame(g.cover_url, g.title, 'lp-entry__cover')}
+      </div>
+      <figcaption class="lp-entry__meta">
+        <span class="lp-entry__status">Played</span>
+        <span class="lp-entry__game">${esc(g.title)}</span>
+      </figcaption>
+      <div class="lp-entry__review">
+        <div class="lp-entry__who">
+          ${avatarImg({ display_name: r.who, username: r.who }, 28)}
+          <span class="lp-entry__name">${esc(r.who)}</span>
+          <span class="lp-entry__stars">${starRow(r.rating, { size: 13 })}</span>
+        </div>
+        <p class="lp-entry__quote">${esc(r.text)}</p>
+      </div>
+    </figure>`;
 }
 
 // ---- tour scenes ------------------------------------------------------

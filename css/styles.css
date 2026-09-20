@@ -4209,83 +4209,104 @@ a.gd-credit__name { text-decoration: none; }
 .landing-nav .tabbar__item svg { width: 24px; height: 24px; filter: none; }
 
 /* ---- entry screen ----------------------------------------------------
-   A wall of real covers with the name and the two actions printed over
-   the bottom of it.
+   One finished diary entry, held up on its own.
 
-   The version before this was a typographic page — masthead, rule,
-   three covers on a baseline, a pull quote. Correct and quiet, and it
-   spent most of the screen on white space. This one spends the whole
-   screen on the thing the app is about, and says what it is in four
-   words over the top.
+   The two versions before this described the app — a typographic page
+   that said what it was for, then a wall of covers that said what it
+   was about. This one just shows the thing the app makes: a game, what
+   somebody did to it, and what they said. If that artefact is not worth
+   an account, no amount of pitch will help; if it is, nothing else
+   needs saying.
 
-   Still nothing moves. The wall is a still image made of real artwork,
-   not a carousel. */
+   Built to the shape of the app's own share card, so what is on screen
+   is the same object people already post elsewhere. Nothing animates. */
 .lp {
-  position: relative; overflow: hidden; isolation: isolate;
+  position: relative; overflow: hidden;
   min-height: calc(100dvh - 63px - var(--safe-bottom));
-  display: flex; flex-direction: column; justify-content: flex-end;
+  display: flex; flex-direction: column;
+  padding: calc(var(--space-5) + env(safe-area-inset-top, 0px)) var(--gutter) var(--space-5);
   background: var(--bg);
 }
 
-/* ---- the wall ----
-   Four columns rather than a grid, with the inner two pushed down so
-   the rows never line up. A true grid reads as a spreadsheet of games;
-   staggered columns read as a shelf someone actually filled.
-
-   Deliberately wider and taller than the screen — every edge is cut
-   off, which is what stops it looking like a component sitting on the
-   page and makes it the surface the page is printed on. */
-.lp-wall {
-  position: absolute; z-index: 0;
-  top: -6%; left: -4%; right: -4%; bottom: -6%;
-  display: flex; gap: 6px;
-  pointer-events: none;
-}
-.lp-wall__col { flex: 1 1 0; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-.lp-wall__col--2 { margin-top: -7%; }
-.lp-wall__col--3 { margin-top: -14%; }
-.lp-wall__col--4 { margin-top: -4%; }
-.lp-wall__tile { display: block; }
-.lp-wall__frame {
-  display: block; width: 100%; aspect-ratio: var(--ratio-card);
-  border-radius: 6px; overflow: hidden; background: var(--surface);
-}
-.lp-wall__frame img { width: 100%; height: 100%; object-fit: cover; display: block; }
-/* The skeleton shimmer is the one animation that could run here, and it
-   would run 20 times at once behind the wordmark. Off. */
-.lp-wall .poster-frame::after { display: none !important; animation: none !important; }
-
-/* ---- the veil ----
-   Cover art is loud and multicoloured by definition, so the type over
-   it needs a real floor to stand on rather than a light tint: almost
-   transparent at the top, where the art is the point, and fully the
-   page colour by the time it reaches the words. */
-.lp__veil {
-  position: absolute; inset: 0; z-index: 1; pointer-events: none;
-  background:
-    linear-gradient(to bottom,
-      rgba(11, 11, 11, 0.42) 0%,
-      rgba(11, 11, 11, 0.58) 34%,
-      rgba(11, 11, 11, 0.94) 62%,
-      var(--bg) 82%);
-}
-
-/* ---- the words ---- */
-.lp__content {
-  position: relative; z-index: 2;
-  padding: 0 var(--gutter) var(--space-6);
-  display: flex; flex-direction: column; align-items: flex-start;
-}
+.lp__head { flex-shrink: 0; text-align: center; }
 .lp__word {
   font-family: var(--font-brand); font-weight: var(--weight-black);
-  font-size: clamp(34px, 11vw, 46px); line-height: 0.95;
-  letter-spacing: -0.045em; color: var(--ink);
+  font-size: clamp(22px, 6.4vw, 27px); line-height: 1;
+  letter-spacing: -0.035em; color: var(--ink);
 }
-.lp__tagline {
-  margin-top: 12px; max-width: 18em;
-  font-size: var(--text-lead); line-height: var(--leading-body); color: var(--ink-dim);
+
+/* The card gets whatever room is left, and sits in the middle of it. */
+.lp__stage {
+  flex: 1 1 auto; min-height: 0;
+  display: flex; align-items: center; justify-content: center;
+  padding: var(--space-4) 0;
 }
-.lp__actions { margin-top: var(--space-5); width: 100%; display: grid; gap: 9px; }
+
+/* ---- the entry ----
+   A real card on a real surface, not a floating mock: the same raised
+   panel, hairline border and radius the app uses for everything else
+   it considers an object. */
+.lp-entry {
+  margin: 0; width: 100%;
+  /* Sized from the viewport HEIGHT, not a fixed width. The card is
+     mostly a 3:4 cover, so its height follows its width — at a fixed
+     310px it grew past the bottom of a phone and pushed the second
+     button off the screen entirely. Tying the width to vh makes the
+     whole card shrink on a short screen instead. */
+  max-width: min(290px, 27vh);
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-l);
+  overflow: hidden;
+  box-shadow: 0 22px 46px -18px rgba(0, 0, 0, 0.85);
+}
+.lp-entry__art { padding: 12px 12px 0; }
+.lp-entry__cover {
+  display: block; width: 100%; aspect-ratio: var(--ratio-card);
+  border-radius: 10px; overflow: hidden; background: var(--surface);
+}
+.lp-entry__cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* No shimmer: this is the one object on the screen and a pulse behind
+   it would be the only thing moving. */
+.lp-entry .poster-frame::after { display: none !important; animation: none !important; }
+
+.lp-entry__meta { display: flex; flex-direction: column; gap: 3px; padding: 12px 14px 13px; }
+.lp-entry__status {
+  font-family: var(--font-mono); font-size: var(--text-micro); font-weight: var(--weight-medium);
+  letter-spacing: 0.16em; text-transform: uppercase; color: var(--accent-bright);
+}
+.lp-entry__game {
+  font-family: var(--font-display); font-weight: var(--weight-bold);
+  font-size: var(--text-lead); line-height: var(--leading-title); color: var(--ink);
+}
+
+/* The review sits below a rule inside the same card — one object with
+   two halves, the way the share card reads. */
+.lp-entry__review { border-top: 1px solid var(--line); padding: 12px 14px 14px; }
+.lp-entry__who { display: flex; align-items: center; gap: 8px; }
+.lp-entry__who img, .lp-entry__who .avatar {
+  border-radius: 50%; flex-shrink: 0; display: block;
+  background: var(--accent); color: var(--bg);
+}
+.lp-entry__name {
+  font-size: var(--text-small); font-weight: var(--weight-strong); color: var(--ink-dim);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.lp-entry__stars { margin-left: auto; flex-shrink: 0; display: flex; }
+.lp-entry__quote {
+  margin-top: 9px;
+  font-size: var(--text-body); line-height: var(--leading-body); color: var(--ink);
+}
+
+/* ---- the ask ---- */
+.lp__content { flex-shrink: 0; }
+.lp__line {
+  font-family: var(--font-brand); font-weight: var(--weight-bold);
+  font-size: clamp(21px, 6.2vw, 26px); line-height: var(--leading-display);
+  letter-spacing: -0.035em; color: var(--ink);
+  margin-bottom: var(--space-4);
+}
+.lp__actions { display: grid; gap: 9px; }
 .lp__cta, .lp__ghost {
   display: inline-flex; align-items: center; justify-content: center;
   width: 100%; min-height: 50px; padding: 14px var(--space-5);
@@ -4298,21 +4319,34 @@ a.gd-credit__name { text-decoration: none; }
 .lp__cta:hover { background: var(--accent-bright); }
 .lp__cta:active { transform: scale(0.99); }
 .lp__ghost {
-  /* Glass, not a flat panel: it sits on artwork, and a solid fill there
-     reads as a hole punched in the picture. */
-  background: rgba(255, 255, 255, 0.07); color: var(--ink);
-  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: transparent; color: var(--ink);
+  border: 1px solid var(--line-strong);
   font-weight: var(--weight-strong); font-size: var(--text-body);
 }
-.lp__ghost:hover { background: rgba(255, 255, 255, 0.11); }
+.lp__ghost:hover { background: var(--surface); }
 .lp__ghost:active { transform: scale(0.99); }
 .lp__cta:focus-visible, .lp__ghost:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 3px; }
 
-@media (max-height: 700px) {
-  .lp__content { padding-bottom: var(--space-4); }
-  .lp__tagline { margin-top: 9px; font-size: var(--text-body); }
-  .lp__actions { margin-top: var(--space-4); }
+/* A short screen has to fit the same five things: name, card, line and
+   two buttons. The card is what gives, because it is the only part that
+   can shrink without anything becoming unusable — the second button
+   getting pushed under the nav bar is not a trade worth making. */
+@media (max-height: 720px) {
+  .lp { padding-top: calc(var(--space-3) + env(safe-area-inset-top, 0px)); padding-bottom: var(--space-3); }
+  .lp__stage { padding: var(--space-2) 0; }
+  /* Narrowing the card stops helping past a point: the title and the
+     quote just wrap onto more lines, so the height comes back. On a
+     screen this short the review half is dropped instead — the cover,
+     the status and the title still say what the app does, and the
+     second button staying reachable matters more. */
+  .lp-entry { max-width: min(230px, 26vh); }
+  .lp-entry__review { display: none; }
+  .lp-entry__art { padding: 9px 9px 0; }
+  .lp-entry__meta { padding: 9px 11px 10px; gap: 2px; }
+  .lp-entry__review { padding: 9px 11px 11px; }
+  .lp-entry__quote { margin-top: 7px; font-size: var(--text-small); }
+  .lp__line { margin-bottom: var(--space-2); font-size: 19px; }
+  .lp__cta, .lp__ghost { min-height: 46px; padding: 12px var(--space-4); }
 }
 
 /* ---- feature tour ----------------------------------------------------
