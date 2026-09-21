@@ -1374,48 +1374,15 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    of a static one, so this row reads as "happening right now" rather
    than a third copy of the same rating-strip layout with nothing in
    the slot. */
-/* Font matches the rest of the game-info text (--font-body, Manrope) —
-   this used to be set in the mono face, which read wrong next to
-   everything around it. Colour is the app's own accent now too, not the
-   generic "online" green shared with every other presence dot in the
-   app. The live signal itself lives on the AVATAR now (a ring at rest,
-   .card-who__avatar-wrap--playing below) — a dot-plus-ring on the text
-   was tried first and didn't read well, so the word stands alone here.
-   Both changes chosen from a set of live comparisons the user reviewed
-   side by side rather than picked blind. */
-.card-who__playing {
-  font-family: var(--font-body); font-weight: 700; font-size: 11.5px;
-  color: var(--accent-bright); line-height: 11px;
-}
-
-/* A ring around the avatar. Same language as an Instagram story ring:
-   the ring alone says "something live is happening here" without
-   needing motion to say it twice over (the word "Playing" right next
-   to it already does). inset -3px keeps the ring off the avatar image
-   itself, echoing the ~2-3px gap real story rings use.
-
-   It's not fully static any more — the ring dips from the app's accent
-   to a near-white and back every 2s, a visible-but-not-loud "still
-   live" pulse rather than a flat outline. Chosen from a set of colour
-   pairs the user reviewed side by side; this one keeps the app's own
-   orange rather than switching to a generic status colour. */
+/* Just the avatar. There used to be a ring around it on the Currently
+   playing strip, pulsing between the accent and white every two
+   seconds to say "this is live". It was the only thing in the app that
+   moved on its own, and on a row of five faces it read as an alert
+   rather than as a status — so the face is now simply a face, and the
+   "Currently playing" heading above the strip carries the meaning on
+   its own. */
 .card-who__avatar-wrap {
   display: inline-flex; border-radius: 50%;
-}
-.card-who__avatar-wrap--playing {
-  position: relative;
-}
-.card-who__avatar-wrap--playing::before {
-  content: ''; position: absolute; inset: -3px; border-radius: 50%;
-  border: 2px solid var(--accent);
-  animation: card-who-ring-dip 2s ease-in-out infinite;
-}
-@keyframes card-who-ring-dip {
-  0%, 100% { border-color: var(--accent); }
-  50% { border-color: #ffffff; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .card-who__avatar-wrap--playing::before { animation: none; }
 }
 
 /* ---- a single review on its own page -------------------------------- */
