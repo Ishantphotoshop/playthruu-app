@@ -1,9 +1,9 @@
 import * as api from '../api.js';
 import { state } from '../state.js';
-import { topBar, avatarImg, posterFrame, spinner, iconHeart, iconSend, iconClose } from '../components.js';
+import { topBar, avatarImg, posterFrame, spinner, iconHeart, iconSend, iconFlag, iconBlock, openReportSheet } from '../components.js';
 import { esc, starRow, formatDate, timeAgo, qs, qsa, toast, tapFeedback, promptSignIn } from '../utils.js';
 
-// One person's review, on its own page — opened by tapping a review in
+// One person's review, on its own page — opened by tapping a poster in
 // the feed's "Friend's recent activity". It is a thread, not an entry in
 // a list: the review sits at the top as the thing being discussed, the
 // comments run underneath it, and the box you type into is pinned to the
@@ -13,23 +13,32 @@ import { esc, starRow, formatDate, timeAgo, qs, qsa, toast, tapFeedback, promptS
 // for the same reason: a composer belongs where the tab bar would sit,
 // and stacking one ON TOP of the tab bar leaves two bars competing for
 // the bottom of the screen and the thumb that reaches it.
+
+// The row above the box, the way a reaction bar works everywhere else.
+// Tapping one drops it into the field rather than posting immediately —
+// a one-tap irreversible post is how people send things they did not
+// mean to, and these are comments on somebody's writing.
+const QUICK_REACTIONS = ['❤️', '🔥', '👏', '😢', '😍', '😮', '😂'];
+
 export async function renderReviewView(root, { id }) {
   root.innerHTML = topBar('Review', { back: true }) +
     `<div class="view-body view-body--review" id="review-body">${spinner()}</div>`;
   const body = qs('#review-body', root);
 
   try {
-    const [log, likeInfo, comments] = await Promise.all([
-      api.getLogById(id),
+    const log = await api.getLogById(id);
+    const ownerId = log.user_id;
+    const [likeInfo, comments] = await Promise.all([
       api.getLikeInfo(id, state.user?.id).catch(() => ({ count: 0, liked: false })),
-      api.getComments(id).catch(() => []),
+      api.getComments(id, { ownerId }).catch(() => []),
     ]);
     const g = log.games || {};
     const a = log.profiles || {};
     const who = a.display_name || a.username || 'Someone';
-    // "Aditya's Review", not "Aditya Review" — and not "Aditya's's"
+    // "Aditya's review", not "Aditya review" — and not "Aditya's's"
     // either, for the names that already end in one.
     const possessive = /s$/i.test(who) ? `${who}’` : `${who}’s`;
+    const isOwner = !!state.user && state.user.id === ownerId;
 
     body.innerHTML = `
       <article class="rv">
@@ -39,63 +48,81 @@ export async function renderReviewView(root, { id }) {
           </a>
           <div class="rv__meta">
             <a href="#/profile/${esc(a.username)}" class="rv__by">
-              ${avatarImg(a, 26)}<span>${esc(possessive)} review</span>
+              ${avatarImg(a, 28)}<span class="rv__by-name">${esc(possessive)} review</span>
             </a>
             <a href="#/game/${g.id}" class="rv__game">
               <h1 class="rv__title">${esc(g.title || 'Untitled')}</h1>
               ${g.release_year ? `<span class="rv__year">${esc(String(g.release_year))}</span>` : ''}
             </a>
-            ${log.rating ? `<div class="rv__stars">${starRow(log.rating, { size: 19 })}</div>` : ''}
+            ${log.rating ? `<div class="rv__stars">${starRow(log.rating, { size: 18 })}</div>` : ''}
             ${log.played_date ? `<p class="rv__played">Played on ${formatDate(log.played_date)}</p>` : ''}
           </div>
         </div>
 
-        ${log.review
-          ? `<blockquote class="rv__quote${log.contains_spoilers ? ' rv__quote--spoiler' : ''}"${log.contains_spoilers ? ' data-spoiler' : ''}>
-               ${log.contains_spoilers ? '<span class="spoiler-tag">Spoilers — tap to reveal</span>' : ''}
-               <p class="rv__text">${esc(log.review)}</p>
-             </blockquote>`
-          : '<p class="rv__nowrite">No write-up — just logged and rated.</p>'}
+        ${reviewBodyHtml(log)}
 
         <button type="button" class="rv__like${likeInfo.liked ? ' rv__like--on' : ''}" id="review-like"
-                aria-pressed="${likeInfo.liked}">
-          ${iconHeart()}<span id="review-like-count">${likeLabel(likeInfo.count)}</span>
+                aria-pressed="${likeInfo.liked}" aria-label="${likeInfo.liked ? 'Unlike' : 'Like'} this review">
+          ${iconHeart()}<span id="review-like-count">${likeInfo.count || ''}</span>
         </button>
       </article>
 
       <section class="rv-comments">
-        <h2 class="rv-comments__head">Comments <span id="comment-count">(${comments.length})</span></h2>
+        <h2 class="rv-comments__head">Comments <span id="comment-count">${countLabel(visibleCount(comments))}</span></h2>
         <div class="comment-list" id="comment-list">
           ${comments.length
-            ? comments.map(commentHtml).join('')
+            ? comments.map((c) => commentHtml(c, ownerId)).join('')
             : '<p class="rv-comments__empty">No comments yet. Be the first.</p>'}
         </div>
       </section>`;
 
     root.insertAdjacentHTML('beforeend', composerHtml());
 
-    const spoiler = qs('[data-spoiler]', body);
-    if (spoiler) spoiler.addEventListener('click', () => spoiler.classList.add('is-revealed'), { once: true });
+    // The spoiler card is replaced by the writing, rather than the
+    // writing being un-blurred underneath it.
+    const gate = qs('#spoiler-gate', body);
+    if (gate) {
+      gate.addEventListener('click', () => {
+        const holder = gate.closest('.rv__quote');
+        holder.classList.add('is-revealed');
+        gate.remove();
+      }, { once: true });
+    }
 
     wireLike(qs('#review-like', body), id, likeInfo);
-    wireCommentDeletes(qs('#comment-list', body));
-    wireComposer(root, body, id);
+    wireCommentActions(root, body, { logId: id, ownerId, isOwner });
+    wireComposer(root, body, { logId: id, ownerId });
   } catch (err) {
     body.innerHTML = `<p class="muted" style="padding:24px">Couldn't load this review: ${esc(err.message)}</p>`;
   }
 }
 
-// "24 likes", not a bare number — the count means nothing on its own
-// next to a heart that is also the button you press.
-function likeLabel(n) {
-  return `${n} ${n === 1 ? 'like' : 'likes'}`;
+// The write-up. A review marked for spoilers is not shown blurred — a
+// blur is a picture of hidden text, it still takes the full height of
+// whatever is behind it, and every review ends up a different size. A
+// card of ONE fixed height says the same thing in the same space every
+// time, and the writing replaces it when you tap.
+function reviewBodyHtml(log) {
+  if (!log.review) return '<p class="rv__nowrite">No write-up — just logged and rated.</p>';
+  const text = `<p class="rv__text">${esc(log.review)}</p>`;
+  if (!log.contains_spoilers) return `<div class="rv__quote">${text}</div>`;
+  return `
+    <div class="rv__quote rv__quote--gated">
+      <button type="button" class="rv__spoiler" id="spoiler-gate">
+        <span class="rv__spoiler-title">This review may contain spoilers</span>
+        <span class="rv__spoiler-hint">Tap to read it anyway</span>
+      </button>
+      ${text}
+    </div>`;
 }
+
+const visibleCount = (comments) => comments.filter((c) => !c.deleted_at).length;
+// No "(0)" — a zero in brackets is a count of nothing dressed up as
+// information.
+const countLabel = (n) => (n ? `(${n})` : '');
 
 // Pinned to the bottom for the whole visit, which is the point: the
 // reply box should never be something you have to scroll to find.
-// Signed out it is still there, and still the full width of the bar —
-// it just asks you to sign in instead of pretending to take a comment
-// and refusing at the last moment.
 function composerHtml() {
   if (!state.user) {
     return `
@@ -105,15 +132,20 @@ function composerHtml() {
   }
   return `
     <div class="rv-composer">
+      <div class="rv-reactions" id="rv-reactions">
+        ${QUICK_REACTIONS.map((e) => `<button type="button" class="rv-reaction" data-emoji="${e}" aria-label="React ${e}">${e}</button>`).join('')}
+      </div>
       <form class="rv-composer__row" id="comment-form">
-        ${avatarImg(state.profile, 30)}
-        <input type="text" id="comment-input" maxlength="1000" placeholder="Add a comment" autocomplete="off" enterkeyhint="send">
-        <button type="submit" class="rv-composer__send" id="comment-send" aria-label="Post comment">${iconSend()}</button>
+        ${avatarImg(state.profile, 32)}
+        <div class="rv-composer__field">
+          <input type="text" id="comment-input" maxlength="1000" placeholder="What do you think of this?" autocomplete="off" enterkeyhint="send">
+          <button type="submit" class="rv-composer__send" id="comment-send" aria-label="Post comment">${iconSend()}</button>
+        </div>
       </form>
     </div>`;
 }
 
-function wireComposer(root, body, logId) {
+function wireComposer(root, body, { logId, ownerId }) {
   qs('#comment-signin', root)?.addEventListener('click', () => promptSignIn('Sign in to join the conversation.'));
 
   const form = qs('#comment-form', root);
@@ -121,10 +153,17 @@ function wireComposer(root, body, logId) {
   const input = qs('#comment-input', root);
   const send = qs('#comment-send', root);
 
-  // The send button only lights up once there is something to send.
   const sync = () => send.classList.toggle('is-ready', !!input.value.trim());
   input.addEventListener('input', sync);
   sync();
+
+  qsa('.rv-reaction', root).forEach((btn) => {
+    btn.addEventListener('click', () => {
+      input.value = (input.value + btn.dataset.emoji).slice(0, 1000);
+      input.focus();
+      sync();
+    });
+  });
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -137,14 +176,12 @@ function wireComposer(root, body, logId) {
       const list = qs('#comment-list', body);
       const empty = qs('.rv-comments__empty', list);
       if (empty) list.innerHTML = '';
-      list.insertAdjacentHTML('beforeend', commentHtml(saved));
-      wireCommentDeletes(list);
+      list.insertAdjacentHTML('beforeend', commentHtml(saved, ownerId));
       input.value = '';
       sync();
       bumpCommentCount(body, +1);
-      // Put the comment that was just written where it can be seen —
-      // it lands at the bottom of a list the composer is covering the
-      // end of.
+      // Put the comment that was just written where it can be seen — it
+      // lands at the bottom of a list the composer is covering the end of.
       list.lastElementChild?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     } catch (err) {
       toast(err.message || 'Could not post that comment. Try again in a moment.', 'error');
@@ -154,21 +191,170 @@ function wireComposer(root, body, logId) {
   });
 }
 
-function commentHtml(c) {
+// A deleted comment keeps its place and says what happened to it.
+function commentHtml(c, ownerId) {
   const p = c.profiles || {};
-  const own = state.user && c.user_id === state.user.id;
+  if (c.deleted_at) {
+    return `
+      <div class="comment comment--gone" data-id="${esc(c.id)}">
+        <span class="comment__avatar comment__avatar--gone" aria-hidden="true"></span>
+        <p class="comment__deleted">The author deleted this comment.</p>
+      </div>`;
+  }
   return `
-    <div class="comment" data-id="${esc(c.id)}">
-      <a href="#/profile/${esc(p.username)}" class="comment__avatar">${avatarImg(p, 32)}</a>
+    <div class="comment${c.pinned_at ? ' comment--pinned' : ''}" data-id="${esc(c.id)}" data-user="${esc(c.user_id)}" data-name="${esc(p.username || '')}">
+      <a href="#/profile/${esc(p.username)}" class="comment__avatar">${avatarImg(p, 34)}</a>
       <div class="comment__body">
+        ${c.pinned_at ? '<span class="comment__pin">Pinned</span>' : ''}
         <div class="comment__head">
           <a href="#/profile/${esc(p.username)}" class="comment__name">${esc(p.display_name || p.username)}</a>
           <span class="comment__time">${timeAgo(c.created_at)}</span>
+          ${c.restricted_at ? '<span class="comment__restricted">Only you and the author can see this</span>' : ''}
         </div>
-        <p class="comment__text">${esc(c.body)}</p>
+        <p class="comment__text">${linkMentions(c.body)}</p>
       </div>
-      ${own ? `<button type="button" class="comment__delete" data-del="${esc(c.id)}" aria-label="Delete comment">${iconClose()}</button>` : ''}
+      <button type="button" class="comment__like" data-like="${esc(c.id)}" aria-label="Like comment" aria-pressed="false">${iconHeart()}</button>
     </div>`;
+}
+
+// "@someone" becomes a link to that profile. Escaped FIRST and only then
+// scanned, so the pattern can never match anything a person typed as
+// markup — the handle characters are deliberately the same narrow set
+// usernames are restricted to at sign-up.
+function linkMentions(bodyText) {
+  return esc(bodyText).replace(/@([A-Za-z0-9._]{1,20})/g,
+    (m, handle) => `<a href="#/profile/${handle}" class="comment__mention">@${handle}</a>`);
+}
+
+// Press and hold a comment for everything you can do to it. A long
+// press rather than a visible row of icons: there are six actions here,
+// most of them rare, and six icons on every row would bury the reading.
+function wireCommentActions(root, body, { logId, ownerId, isOwner }) {
+  const list = qs('#comment-list', body);
+  if (!list) return;
+
+  // Liking is the one action common enough to earn its own target.
+  list.addEventListener('click', (e) => {
+    const likeBtn = e.target.closest('[data-like]');
+    if (!likeBtn) return;
+    if (!state.user) { promptSignIn('Sign in to like comments.'); return; }
+    const on = likeBtn.getAttribute('aria-pressed') !== 'true';
+    likeBtn.setAttribute('aria-pressed', String(on));
+    likeBtn.classList.toggle('is-on', on);
+    if (on) tapFeedback();
+  });
+
+  let timer = null;
+  let moved = false;
+
+  const start = (e) => {
+    const row = e.target.closest('.comment');
+    if (!row || row.classList.contains('comment--gone')) return;
+    if (e.target.closest('a, button')) return; // let links and the like button do their own thing
+    moved = false;
+    timer = setTimeout(() => {
+      if (moved) return;
+      tapFeedback();
+      openCommentSheet(row, { logId, ownerId, isOwner, body });
+    }, 420);
+  };
+  const cancel = () => { clearTimeout(timer); timer = null; };
+
+  list.addEventListener('pointerdown', start);
+  list.addEventListener('pointermove', () => { moved = true; cancel(); });
+  list.addEventListener('pointerup', cancel);
+  list.addEventListener('pointercancel', cancel);
+  // Right-click is the same intent with a mouse.
+  list.addEventListener('contextmenu', (e) => {
+    const row = e.target.closest('.comment');
+    if (!row || row.classList.contains('comment--gone')) return;
+    e.preventDefault();
+    openCommentSheet(row, { logId, ownerId, isOwner, body });
+  });
+}
+
+function openCommentSheet(row, { logId, ownerId, isOwner, body }) {
+  const commentId = row.dataset.id;
+  const authorId = row.dataset.user;
+  const handle = row.dataset.name;
+  const mine = state.user && state.user.id === authorId;
+  const pinned = row.classList.contains('comment--pinned');
+  const restricted = !!qs('.comment__restricted', row);
+
+  const actions = [];
+  actions.push({ id: 'reply', label: `Reply to @${handle}` });
+  if (isOwner) actions.push({ id: 'pin', label: pinned ? 'Unpin comment' : 'Pin to top' });
+  if (isOwner && !mine) actions.push({ id: 'restrict', label: restricted ? 'Un-restrict' : 'Restrict this comment' });
+  if (mine || isOwner) actions.push({ id: 'delete', label: 'Delete', danger: true });
+  if (!mine) {
+    actions.push({ id: 'report', label: 'Report', icon: iconFlag() });
+    actions.push({ id: 'block', label: `Block @${handle}`, icon: iconBlock(), danger: true });
+  }
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="sheet comment-sheet">
+      <div class="sheet__grip" aria-hidden="true"></div>
+      <div class="comment-sheet__list">
+        ${actions.map((x) => `
+          <button type="button" class="sheet-row${x.danger ? ' sheet-row--danger' : ''}" data-act="${x.id}">
+            ${x.icon || ''}<span>${esc(x.label)}</span>
+          </button>`).join('')}
+      </div>
+      <button type="button" class="sheet-row comment-sheet__cancel" data-act="cancel">Cancel</button>
+    </div>`;
+  document.body.appendChild(overlay);
+  document.body.style.overflow = 'hidden';
+  const close = () => { overlay.remove(); document.body.style.overflow = ''; };
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+
+  qsa('[data-act]', overlay).forEach((btn) => btn.addEventListener('click', async () => {
+    const act = btn.dataset.act;
+    if (act !== 'report') close();
+    try {
+      if (act === 'cancel') return;
+      if (act === 'reply') {
+        const input = qs('#comment-input');
+        if (!input) { promptSignIn('Sign in to reply.'); return; }
+        input.value = `@${handle} `;
+        input.focus();
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        return;
+      }
+      if (act === 'pin') {
+        await api.pinComment(commentId, logId, !pinned);
+        toast(pinned ? 'Unpinned.' : 'Pinned to the top.', 'success');
+        row.classList.toggle('comment--pinned', !pinned);
+        if (!pinned) row.parentElement.prepend(row);
+        return;
+      }
+      if (act === 'restrict') {
+        await api.restrictComment(commentId, !restricted);
+        toast(restricted ? 'No longer restricted.' : 'Restricted — only you and the author can see it.', 'success');
+        return;
+      }
+      if (act === 'delete') {
+        await api.deleteComment(commentId);
+        row.outerHTML = commentHtml({ id: commentId, deleted_at: new Date().toISOString() }, ownerId);
+        bumpCommentCount(body, -1);
+        return;
+      }
+      if (act === 'block') {
+        await api.blockUser(authorId);
+        toast(`Blocked @${handle}.`, 'success');
+        row.remove();
+        bumpCommentCount(body, -1);
+        return;
+      }
+      if (act === 'report') {
+        close();
+        openReportSheet({ targetType: 'comment', targetId: commentId, subject: qs('.comment__text', row)?.textContent || '' });
+      }
+    } catch (err) {
+      toast(err.message || 'That did not work.', 'error');
+    }
+  }));
 }
 
 function wireLike(btn, logId, likeInfo) {
@@ -185,7 +371,7 @@ function wireLike(btn, logId, likeInfo) {
       count += liked ? 1 : -1;
       btn.classList.toggle('rv__like--on', liked);
       btn.setAttribute('aria-pressed', String(liked));
-      qs('#review-like-count', btn).textContent = likeLabel(count);
+      qs('#review-like-count', btn).textContent = count || '';
     } catch (err) {
       toast(err.message || 'Could not update like.', 'error');
     } finally {
@@ -194,27 +380,9 @@ function wireLike(btn, logId, likeInfo) {
   });
 }
 
-function wireCommentDeletes(list) {
-  qsa('[data-del]', list).forEach((btn) => {
-    if (btn.dataset.wired) return;
-    btn.dataset.wired = '1';
-    btn.addEventListener('click', async () => {
-      if (!confirm('Delete this comment?')) return;
-      const row = btn.closest('.comment');
-      try {
-        await api.deleteComment(btn.dataset.del);
-        row?.remove();
-        bumpCommentCount(list.closest('.view-body'), -1);
-      } catch (err) {
-        toast(err.message || 'Could not delete that comment.', 'error');
-      }
-    });
-  });
-}
-
 function bumpCommentCount(scope, delta) {
   const el = qs('#comment-count', scope || document);
   if (!el) return;
   const cur = parseInt((el.textContent || '').replace(/\D/g, ''), 10) || 0;
-  el.textContent = `(${Math.max(0, cur + delta)})`;
+  el.textContent = countLabel(Math.max(0, cur + delta));
 }

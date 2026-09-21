@@ -1414,161 +1414,270 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 
    There is no tab bar on this screen (see renderReviewView) — the
    composer takes that place rather than stacking on top of it. */
-/* Clears the pinned composer with room to spare — at 86px the last
-   comment finished about 15px off the bar, which reads as the list
-   running out under it rather than ending. */
-.view-body--review { padding-bottom: calc(104px + var(--safe-bottom)); }
+.view-body--review { padding-bottom: calc(134px + var(--safe-bottom)); }
+/* The one page whose title is set in the brand face. It names the thing
+   you are looking at rather than a destination, so it reads as a
+   masthead. */
+#app:has(#review-body) .topbar__title {
+  font-family: var(--font-brand); font-weight: var(--weight-bold); letter-spacing: -0.02em;
+}
 
 /* ---- the review ---- */
 .rv { max-width: 640px; margin: 0 auto; }
-/* Cover on the left, everything about the review on the right — the
-   proportions of a shelf, which is what the page is about. */
 .rv__head { display: flex; gap: 16px; align-items: flex-start; }
-.rv__cover-link { display: block; width: 104px; flex-shrink: 0; }
+.rv__cover-link { display: block; width: 124px; flex-shrink: 0; }
 .rv__cover {
   display: block; width: 100%; aspect-ratio: var(--ratio-card);
   border-radius: 10px; overflow: hidden; background: var(--surface);
-  border: 1px solid var(--line); box-shadow: var(--shadow-card);
+  border: 1px solid var(--line-strong); box-shadow: var(--shadow-card);
 }
 .rv__cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.rv__meta { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 10px; }
+.rv__meta { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 9px; }
 
-/* Whose review this is, said first and said plainly — it is the one
-   fact that makes this page different from the game's own page. */
+/* Whose review this is, said first and said plainly. The avatar carries
+   the same hairline the poster beside it does, so the two read as one
+   pair of objects rather than a framed thing next to an unframed one. */
 .rv__by { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.rv__by .avatar, .rv__by img { flex-shrink: 0; }
-.rv__by span {
+.rv__by .avatar, .rv__by img {
+  flex-shrink: 0; border: 1px solid var(--line-strong); box-sizing: border-box;
+}
+.rv__by-name {
   font-family: var(--font-display); font-weight: var(--weight-bold); font-size: 15px;
   color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
+/* Usernames are stored lowercase; only the first letter is lifted, not
+   every word — capitalize would turn "the last of us" into a headline. */
+.rv__by-name::first-letter, .comment__name::first-letter { text-transform: uppercase; }
 
 .rv__game { display: block; min-width: 0; }
+/* The game's own name, set the way it is on the game's own page: the
+   display face, bold, not the brand face. The brand face belongs to the
+   app talking about itself, not to a title it is quoting. */
 .rv__title {
-  margin: 0; font-family: var(--font-brand); font-weight: var(--weight-bold);
-  font-size: 21px; line-height: 1.15; letter-spacing: -0.025em; color: var(--ink);
+  margin: 0; font-family: var(--font-display); font-weight: var(--weight-bold);
+  font-size: 17px; line-height: 1.3; letter-spacing: -0.01em; color: var(--ink);
 }
 .rv__year {
-  display: block; margin-top: 4px;
+  display: block; margin-top: 3px;
   font-family: var(--font-mono); font-size: var(--text-meta); color: var(--ink-dim);
 }
 .rv__stars { display: flex; }
 .rv__played { margin: 0; font-size: var(--text-meta); color: var(--ink-faint); }
 
-/* The write-up, set as the quotation it is: real typographic marks
-   rather than a decorative glyph parked in the corner, the app's ink
-   rather than the dimmed grey a caption gets, and enough leading to
-   read a paragraph at. */
+/* The write-up, at a measure of twelve words a line — measured, not
+   guessed: on a 358px column 16px fits eleven words, 15px twelve, 14px
+   thirteen. A review here runs to three thousand characters, and at the
+   17px it started on it was a narrow column rather than a paragraph. */
 .rv__quote { margin: var(--space-5) 0 0; padding: 0; }
 .rv__text {
-  margin: 0; font-size: 17px; line-height: 1.62; color: var(--ink);
+  margin: 0; font-size: 15px; line-height: 1.68; color: var(--ink);
   white-space: pre-wrap; word-break: break-word;
 }
 .rv__text::before { content: '\201C'; }
 .rv__text::after { content: '\201D'; }
-.rv__quote--spoiler { cursor: pointer; }
-.rv__quote--spoiler .rv__text { filter: blur(7px); transition: filter var(--dur) var(--ease); }
-.rv__quote--spoiler.is-revealed .rv__text { filter: none; }
-.rv__quote--spoiler .spoiler-tag { display: inline-block; margin-bottom: 10px; }
 .rv__nowrite { margin: var(--space-5) 0 0; font-size: 15px; color: var(--ink-faint); }
 
-/* "24 likes", not a bare 24 — a number on its own beside a heart that
-   is ALSO the button reads as ambiguous: is it a count, or is it what
-   pressing does? */
+/* A spoiler warning is a CARD, not a blur.
+   A blur is a picture of hidden text: it still takes exactly as much
+   room as whatever is behind it, so every gated review was a different
+   size, and a long one hid a whole screen of grey smudge. This says the
+   same thing in the same space every time, and the writing REPLACES it
+   when you tap rather than sharpening underneath it. */
+.rv__quote--gated .rv__text { display: none; }
+.rv__quote--gated.is-revealed .rv__text { display: block; }
+.rv__spoiler {
+  display: flex; flex-direction: column; align-items: flex-start; justify-content: center;
+  gap: 6px; width: 100%; height: 108px; padding: 0 20px; text-align: left;
+  border-radius: var(--radius-m); cursor: pointer;
+  background: var(--surface); border: 1px dashed var(--line-strong);
+  transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease);
+}
+.rv__spoiler:hover { background: var(--surface-raised); border-color: var(--accent-bright); }
+.rv__spoiler:active { transform: scale(0.995); }
+.rv__spoiler-title {
+  font-family: var(--font-display); font-weight: var(--weight-bold); font-size: 15px; color: var(--ink);
+}
+.rv__spoiler-hint {
+  font-family: var(--font-mono); font-size: var(--text-label);
+  letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent-bright);
+}
+
+/* No border, no pill. It sits directly under the writing, on the left,
+   where the eye already is when it finishes reading. */
 .rv__like {
   display: inline-flex; align-items: center; gap: 8px;
-  margin-top: var(--space-5); padding: 9px 16px 9px 13px;
-  border-radius: var(--radius-pill);
-  background: var(--surface); border: 1px solid var(--line);
+  margin: var(--space-4) 0 0; padding: 4px 2px;
+  background: none; border: none;
   color: var(--ink-dim); font-size: 14px; font-weight: var(--weight-strong);
-  cursor: pointer; transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+  cursor: pointer; transition: color var(--dur-fast) var(--ease);
 }
-.rv__like svg { width: 17px; height: 17px; }
-.rv__like:active { transform: scale(0.97); }
-.rv__like--on { color: var(--accent-bright); border-color: color-mix(in srgb, var(--accent-bright) 45%, transparent); }
+.rv__like svg { width: 21px; height: 21px; }
+.rv__like span:empty { display: none; }
+.rv__like:active { transform: scale(0.94); }
+.rv__like--on { color: var(--accent-bright); }
 .rv__like--on svg { fill: currentColor; }
 
-/* ---- the rule, and the comments under it ----
-   Full-bleed on purpose: the sketch has it running edge to edge, and
-   it is the only thing on the page that separates two different kinds
-   of content rather than two items of the same kind. */
+/* ---- the rule, and the comments under it ---- */
 .rv-comments {
   max-width: 640px; margin: var(--space-5) auto 0;
-  padding-top: var(--space-5);
-  position: relative;
+  padding-top: var(--space-5); position: relative;
 }
 .rv-comments::before {
   content: ''; position: absolute; top: 0;
   left: calc(-1 * var(--gutter)); right: calc(-1 * var(--gutter));
   height: 1px; background: var(--line);
 }
+/* The display face at its heaviest, not the brand face — this is a
+   label on a section, and the brand face is reserved for the app's own
+   voice. */
 .rv-comments__head {
   margin: 0 0 var(--space-4);
-  font-family: var(--font-brand); font-weight: var(--weight-bold);
-  font-size: var(--text-heading); letter-spacing: -0.01em; color: var(--ink);
+  font-family: var(--font-display); font-weight: var(--weight-black);
+  font-size: var(--text-heading); letter-spacing: -0.015em; color: var(--ink);
 }
-.rv-comments__head span { color: var(--ink-faint); font-weight: var(--weight-medium); }
+.rv-comments__head span { color: var(--ink-faint); font-weight: var(--weight-strong); }
 .rv-comments__empty { margin: 0; font-size: 15px; color: var(--ink-faint); }
 
-.comment-list { display: flex; flex-direction: column; gap: var(--space-4); }
-.comment { display: flex; gap: 10px; align-items: flex-start; }
+/* Air between comments, and nothing boxing them in. A thread reads as a
+   conversation when the rows breathe; borders and panels turn the same
+   rows into a table of records. */
+.comment-list { display: flex; flex-direction: column; gap: var(--space-5); }
+.comment { display: flex; gap: 12px; align-items: flex-start; }
 .comment__avatar { flex-shrink: 0; display: block; }
+.comment__avatar img, .comment__avatar .avatar { border: 1px solid var(--line); box-sizing: border-box; }
 .comment__body { flex: 1; min-width: 0; }
-.comment__head { display: flex; align-items: baseline; gap: 8px; }
-.comment__name { font-weight: var(--weight-bold); font-size: 14px; color: var(--ink); }
+.comment__head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+/* The heaviest weight in the ladder: in a list of short messages the
+   name is the thing you scan for. */
+.comment__name { font-family: var(--font-display); font-weight: var(--weight-black); font-size: 14px; color: var(--ink); }
 .comment__time { font-size: var(--text-label); color: var(--ink-faint); }
 .comment__text {
-  margin-top: 3px; font-size: 15px; line-height: 1.5; color: var(--ink-dim);
+  margin-top: 4px; font-size: 14.5px; line-height: 1.55; color: var(--ink-dim);
   white-space: pre-wrap; word-break: break-word;
 }
-.comment__delete {
-  flex-shrink: 0; width: 26px; height: 26px; display: grid; place-items: center;
-  color: var(--ink-faint); border-radius: 50%; background: none; border: none; cursor: pointer;
+.comment__mention { color: var(--accent-bright); font-weight: var(--weight-strong); }
+.comment__pin {
+  display: inline-block; margin-bottom: 4px;
+  font-family: var(--font-mono); font-size: var(--text-micro);
+  letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent-bright);
 }
-.comment__delete svg { width: 13px; height: 13px; }
-.comment__delete:active { background: var(--surface-high); }
+.comment__restricted {
+  font-family: var(--font-mono); font-size: var(--text-micro);
+  letter-spacing: 0.06em; color: var(--ink-faint);
+}
+/* Small, quiet, and on the right — the same place it sits in every
+   comment thread anyone has used. */
+.comment__like {
+  flex-shrink: 0; width: 28px; height: 28px; display: grid; place-items: center;
+  background: none; border: none; cursor: pointer; color: var(--ink-faint);
+  transition: color var(--dur-fast) var(--ease);
+}
+.comment__like svg { width: 15px; height: 15px; }
+.comment__like:active { transform: scale(0.88); }
+.comment__like.is-on { color: var(--accent-bright); }
+.comment__like.is-on svg { fill: currentColor; }
+
+/* A deleted comment keeps its place in the thread. One that simply
+   vanishes leaves the replies under it reading as non-sequiturs, and
+   whoever was talking to it wondering whether they imagined it. */
+.comment--gone { align-items: center; }
+.comment__avatar--gone {
+  width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
+  background: var(--surface); border: 1px dashed var(--line);
+}
+.comment__deleted { margin: 0; font-size: 14px; font-style: italic; color: var(--ink-faint); }
 
 /* ---- the composer ----
-   Where the tab bar would be. Same geometry as the messenger's, so the
-   two places in the app you type into a thread feel like one control. */
+   A reaction row over a single rounded field with the send button
+   inside it, sitting on the ground colour rather than in a box of its
+   own. The bar it replaces was a solid band with a border, which read
+   as a piece of furniture bolted to the bottom of the page. */
 .rv-composer {
   position: fixed; left: 50%; transform: translateX(-50%);
   bottom: 0; width: 100%; max-width: 560px; z-index: 30;
-  padding: 10px var(--gutter) calc(10px + var(--safe-bottom));
-  background: var(--surface-high);
-  border-top: 1px solid var(--line);
+  padding: 8px var(--gutter) calc(10px + var(--safe-bottom));
+  background: var(--bg);
 }
+.rv-reactions {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 2px; padding: 2px 4px 10px;
+}
+.rv-reaction {
+  background: none; border: none; cursor: pointer; padding: 2px;
+  font-size: 25px; line-height: 1;
+  transition: transform var(--dur-fast) var(--ease);
+}
+.rv-reaction:active { transform: scale(1.25); }
 .rv-composer__row { display: flex; align-items: center; gap: 10px; }
 .rv-composer__row .avatar, .rv-composer__row img { flex-shrink: 0; }
-.rv-composer input {
-  flex: 1; min-width: 0; height: 42px;
-  background: var(--surface); border: 1px solid var(--line);
-  border-radius: var(--radius-pill); padding: 0 16px;
-  font-family: var(--font-body); font-size: 15px; color: var(--ink);
+/* The field and its send button are ONE object — the button lives
+   inside the rounded field rather than beside it, which is what stops
+   the bar reading as three separate controls in a row. */
+.rv-composer__field {
+  flex: 1; min-width: 0; display: flex; align-items: center;
+  height: 44px; padding-right: 4px;
+  background: transparent; border: 1px solid var(--line-strong);
+  border-radius: var(--radius-pill);
   transition: border-color var(--dur-fast) var(--ease);
 }
-.rv-composer input::placeholder { color: var(--ink-faint); }
-.rv-composer input:focus { outline: none; border-color: var(--accent-bright); }
-/* Dimmed until there is something to send, so the button says whether
+.rv-composer__field:focus-within { border-color: var(--accent-bright); }
+.rv-composer input {
+  flex: 1; min-width: 0; height: 100%;
+  background: none; border: none; padding: 0 4px 0 18px;
+  font-family: var(--font-body); font-size: 15px; font-weight: var(--weight-medium); color: var(--ink);
+}
+.rv-composer input:focus { outline: none; }
+.rv-composer input::placeholder { color: var(--ink-faint); font-weight: var(--weight-medium); }
+/* Dim until there is something to send, so the button reports whether
    the form is ready rather than only what it does. */
 .rv-composer__send {
-  flex-shrink: 0; width: 42px; height: 42px; border-radius: 50%;
+  flex-shrink: 0; width: 36px; height: 36px; border-radius: 50%;
   display: grid; place-items: center; border: none; cursor: pointer;
-  background: var(--surface); color: var(--ink-faint);
+  background: none; color: var(--ink-faint);
   transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
 }
 .rv-composer__send svg { width: 18px; height: 18px; margin-left: 1px; }
 .rv-composer__send.is-ready { background: var(--accent); color: var(--bg); }
 .rv-composer__send:active { transform: scale(0.92); }
 .rv-composer__send:disabled { opacity: 0.6; }
-/* Signed out the bar stays, full width, and says what it is for rather
-   than taking a comment it is going to refuse. */
 .rv-composer__signin {
-  width: 100%; height: 42px; border-radius: var(--radius-pill);
-  background: var(--surface); border: 1px solid var(--line);
+  width: 100%; height: 44px; border-radius: var(--radius-pill);
+  background: var(--surface); border: 1px solid var(--line-strong);
   color: var(--ink-dim); font-family: var(--font-body); font-size: 15px;
   font-weight: var(--weight-strong); cursor: pointer;
 }
 .rv-composer__signin:active { background: var(--surface-raised); }
+
+/* ---- the long-press sheet ----
+   Six actions, most of them rare. A row of six icons on every comment
+   would bury the reading; press and hold is where the rare ones live. */
+.comment-sheet {
+  width: 100%; max-width: 560px;
+  background: var(--surface); border-radius: var(--radius-l) var(--radius-l) 0 0;
+  border-top: 1px solid var(--line-strong);
+  padding: 8px var(--space-4) calc(12px + var(--safe-bottom));
+  animation: sheet-rise 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes sheet-rise { from { transform: translateY(18px); } to { transform: none; } }
+.comment-sheet .sheet__grip {
+  width: 38px; height: 4px; border-radius: 2px; margin: 4px auto 10px;
+  background: var(--line-strong);
+}
+.comment-sheet__list { display: flex; flex-direction: column; }
+.comment-sheet .sheet-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: var(--space-3) var(--space-2);
+}
+.comment-sheet .sheet-row svg { width: 18px; height: 18px; flex-shrink: 0; }
+.comment-sheet .sheet-row--danger { color: var(--coral); }
+.comment-sheet__cancel {
+  margin-top: 8px; justify-content: center; text-align: center;
+  font-weight: var(--weight-bold); border-top: 1px solid var(--line);
+  border-radius: 0; color: var(--ink-dim);
+}
+@media (prefers-reduced-motion: reduce) {
+  .comment-sheet { animation: none; }
+}
 .game-card { display: block; transition: transform 0.12s ease, opacity 0.12s ease; }
 .game-card:active { transform: scale(0.96); opacity: 0.9; }
 .game-card--import { width: 100%; text-align: left; padding: 0; position: relative; }

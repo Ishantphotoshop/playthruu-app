@@ -2942,14 +2942,92 @@ export async function getCommentCountsForLogs(logIds) {
   return counts;
 }
 
-export async function getComments(logId) {
+/**
+ * Every comment on a review, oldest first, with the pinned one lifted to
+ * the top.
+ *
+ * `ownerId` is the person whose review it is, and it decides who sees a
+ * RESTRICTED comment: its author (so they never learn they were
+ * restricted — the whole point of the feature) and the review's owner
+ * (who did the restricting), nobody else.
+ *
+ * A DELETED comment is still returned. It renders as a tombstone rather
+ * than disappearing, because a comment that simply vanishes leaves the
+ * replies under it reading as non-sequiturs.
+ */
+export async function getComments(logId, { ownerId = null } = {}) {
   const { data, error } = await supabase
     .from('comments')
     .select('*, profiles!comments_user_id_fkey(*)')
     .eq('log_id', logId)
     .order('created_at', { ascending: true });
   if (error) throw error;
-  return filterBlocked(data || []); // hide comments from people you've blocked
+
+  const { data: { user } } = await supabase.auth.getUser();
+  const me = user?.id || null;
+  const rows = (data || []).filter((c) => {
+    if (!c.restricted_at) return true;
+    return me && (me === c.user_id || me === ownerId);
+  });
+
+  const visible = await filterBlocked(rows); // hide comments from people you've blocked
+  // Pinned first, and the rest left in the order they were written.
+  return visible.sort((x, y) => (y.pinned_at ? 1 : 0) - (x.pinned_at ? 1 : 0));
+}
+
+/**
+ * Take a comment back. An UPDATE, not a DELETE — see the tombstone note
+ * on getComments.
+ *
+ * Falls back to a real delete if the column is not there yet, so the app
+ * keeps working on a database that has not had
+ * migrations/2026-09-21_comment_moderation.sql run against it.
+ */
+export async function deleteComment(id) {
+  const { error } = await supabase
+    .from('comments')
+    .update({ deleted_at: new Date().toISOString(), body: '[deleted]' })
+    .eq('id', id);
+  if (!error) return;
+  if (!isMissingColumn(error)) throw error;
+  const { error: hardErr } = await supabase.from('comments').delete().eq('id', id);
+  if (hardErr) throw hardErr;
+}
+
+// Both of these are the review owner's to use, enforced by the update
+// policy in that same migration rather than by asking nicely here.
+export async function pinComment(id, logId, on) {
+  if (on) {
+    // One pin per review — clear the old one first, since the unique
+    // index would otherwise reject the new one.
+    await supabase.from('comments').update({ pinned_at: null }).eq('log_id', logId).not('pinned_at', 'is', null);
+  }
+  const { error } = await supabase
+    .from('comments')
+    .update({ pinned_at: on ? new Date().toISOString() : null })
+    .eq('id', id);
+  if (error) throw needsMigration(error);
+}
+
+export async function restrictComment(id, on) {
+  const { error } = await supabase
+    .from('comments')
+    .update({ restricted_at: on ? new Date().toISOString() : null })
+    .eq('id', id);
+  if (error) throw needsMigration(error);
+}
+
+// PostgREST says PGRST204 for a column it does not know about, and
+// Postgres says 42703. Either one here means the migration has not been
+// run, which is worth saying plainly rather than showing the raw error.
+function isMissingColumn(error) {
+  return error?.code === 'PGRST204' || error?.code === '42703'
+    || /column .* does not exist/i.test(error?.message || '');
+}
+function needsMigration(error) {
+  return isMissingColumn(error)
+    ? new Error('Run migrations/2026-09-21_comment_moderation.sql in Supabase first.')
+    : error;
 }
 
 export async function addComment(logId, userId, body) {
@@ -2960,11 +3038,6 @@ export async function addComment(logId, userId, body) {
     .single();
   if (error) throw error;
   return data;
-}
-
-export async function deleteComment(id) {
-  const { error } = await supabase.from('comments').delete().eq('id', id);
-  if (error) throw error;
 }
 
 // ------------------------------------------------------------
