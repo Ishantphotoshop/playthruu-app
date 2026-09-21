@@ -3,7 +3,7 @@ import {
   posterFrame, avatarImg, spinner, emptyState, iconSearch,
   iconUserFilled, iconBrowseNavFilled, iconCompassNavFilled, iconSearchFilled,
 } from '../components.js';
-import { backdropHtml, tourArtHtml, artCreditHtml, stickHtml, wireSticks, drawTourArt, preloadTourArt, resolveShowcase } from './landing-art.js';
+import { backdropHtml, tourArtHtml, artCreditHtml, drawTourArt, preloadTourArt, resolveShowcase } from './landing-art.js';
 import { esc, starRow, qs, qsa, toast } from '../utils.js';
 import { renderAuthView } from './auth-view.js';
 import { navigate } from '../router.js';
@@ -197,7 +197,6 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
   // (which happens on every slide) would reshuffle the artwork under
   // the person mid-swipe.
   let tourShots = [];
-  let unwireSticks = null;
   let tourDirection = null;   // 'forward' | 'backward' | null — which way the next tourHtml() paint should glide in from
 
   const goToAuth = (startMode = 'signin') => renderAuthView(root, { startMode });
@@ -528,11 +527,7 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
           </div>
         </div>
         <div class="tour__foot">
-          <div class="tour__pad">
-            ${stickHtml('left')}
-            <button type="button" class="lp__cta tour__next" id="tour-next">${last ? 'Create account' : 'Continue'}</button>
-            ${stickHtml('right')}
-          </div>
+          <button type="button" class="lp__cta tour__next" id="tour-next">${last ? 'Create account' : 'Continue'}</button>
           ${last ? '<p class="tour__hint">Takes about a minute</p>' : ''}
         </div>
       </div>`;
@@ -556,27 +551,6 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
     qs('#tour-skip', stage).addEventListener('click', () => goToAuth('signup'));
     qs('#tour-next', stage).addEventListener('click', advanceTour);
     wireTourSwipe(stage);
-
-    // The slide's whole DOM is replaced on every step, so the previous
-    // paint's pointer capture has to go with it.
-    if (unwireSticks) unwireSticks();
-    const art = qs('.tour-art', stage);
-    unwireSticks = wireSticks(stage, {
-      onStep: (dir) => { if (dir > 0) advanceTour(); else goBackTour(); },
-      // The artwork follows the right stick: hold the cap over and the
-      // poster leans that way, roll it round the well and the poster
-      // walks a circle. Written as custom properties rather than a
-      // transform string so the CSS keeps ownership of the scale and
-      // the easing, and this only has to say where.
-      onAim: (x, y) => {
-        if (!art) return;
-        const held = x !== 0 || y !== 0;
-        art.classList.toggle('tour-art--aiming', held);
-        art.style.setProperty('--aim-x', `${(x * 22).toFixed(2)}px`);
-        art.style.setProperty('--aim-y', `${(y * 22).toFixed(2)}px`);
-        art.style.setProperty('--aim-r', `${(x * 2.4).toFixed(2)}deg`);
-      },
-    });
   }
 
   // Swipe left/right between slides — a carousel that only advances via
