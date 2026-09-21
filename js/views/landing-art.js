@@ -132,59 +132,45 @@ export function backdropHtml({ glow = '70% 12%', extraClass = '' } = {}) {
 }
 
 // ---- the tour's artwork ----------------------------------------------
-// One piece of real key art per slide, each named by an exact IGDB
-// image id rather than "whatever that game's first artwork is".
+// Drawn from the same shelf the login screen rotates through: thirty-odd
+// pieces of game art sitting in images/backdrops/, each already paired
+// with the game's title and its id in our own catalogue.
 //
-// Hand-picked, because neither of IGDB's two image sources is safe to
-// take blind: `artworks` is very often the marketing key art complete
-// with the logo and a tagline burnt into it, and `screenshots` are
-// usually mid-combat with the HUD up. Every id below was checked by
-// eye against two rules — no text anywhere in the frame, and a face or
-// a figure near the middle, which is what survives being cropped to a
-// phone and faded out at the bottom.
-// A third rule joined the two above after the first build: no
-// CINEMATIC BARS. Ghost of Tsushima's shot was from a cutscene, which
-// the game renders letterboxed, so the black stripes were pixels in
-// the JPEG — they read exactly like a broken CSS fade across the top
-// and bottom of the panel, and no amount of object-fit can crop what
-// is part of the picture.
-const ART = {
-  hellblade2: 'ar2cjv',   // Senua, hands to her face
-  lastofus2: 'scpkht',    // Joel, close, lit from one side
-  ff7rebirth: 'scmwdg',   // Aerith, in profile
-  alanwake2: 'ar3nui',    // the red forest
-  wukong: 'sc8i9c',       // the Monkey King, armoured
-};
-
-// t_1080p, not t_original. The transform keeps the source's aspect
-// ratio (it does not pad), and it is the difference between a 296 KB
-// image and a 5 MB one for Alan Wake's artwork alone — measured, for
-// all five.
-const artUrl = (id) => `https://images.igdb.com/igdb/image/upload/t_1080p/${id}.jpg`;
+// It used to be five IGDB image ids hardcoded here — the same five games
+// in the same order on every single open, and every one of them a
+// cross-origin fetch off IGDB's CDN. The shelf fixes both: it is local,
+// so it is on screen in a frame rather than after a round trip, and
+// api.drawBackdrops shuffles it, so a person who opens the tour twice
+// does not see the same five games twice.
+//
+// Nothing here has to be hand-checked for burnt-in text or cinematic
+// bars any more either — that shelf was curated by hand for exactly
+// this kind of use.
+export function drawTourArt(count) {
+  return api.drawBackdrops(count);
+}
 
 /**
  * The full-bleed panel at the top of a tour slide.
  *
- * The art is desaturated and re-tinted rather than shown as-is: five
- * slides of five games' own colour grading would be five different
- * looking screens, and the point of this sequence is that it is one
- * place. `mix-blend-mode: color` takes hue and saturation from the
- * navy gradient above it and luminosity from the photograph below, so
- * what comes out is a real duotone of the original image, not a navy
- * sheet laid over it.
+ * Grainy noir rather than a straight duotone. The image is pushed most
+ * of the way to black-and-white and its contrast lifted, a layer of the
+ * same film grain the ground carries is laid over it, and only a little
+ * of the navy remains — enough to keep the screen one colour, not
+ * enough to make every game the same colour.
  *
- * `eager` on the first slide only: that image is on screen the instant
- * the tour opens, and the other four are a swipe away at best.
+ * `eager` on the slide that is already on screen; the rest are a swipe
+ * away at best.
  */
-export function tourArtHtml(key, { eager = false } = {}) {
-  const id = ART[key];
-  if (!id) return '';
+export function tourArtHtml({ url, eager = false } = {}) {
+  if (!url) return '';
   return `
     <div class="tour-art" aria-hidden="true">
-      <img class="tour-art__img" src="${artUrl(id)}" alt=""
+      <img class="tour-art__img" src="${esc(url)}" alt=""
            ${eager ? 'fetchpriority="high"' : 'loading="lazy"'} decoding="async">
       <span class="tour-art__duo"></span>
       <span class="tour-art__warm"></span>
+      <span class="tour-art__grain" style="background-image:url(&quot;${GRAIN}&quot;)"></span>
       <span class="tour-art__scrim"></span>
       <span class="tour-art__fade"></span>
     </div>`;
@@ -193,53 +179,135 @@ export function tourArtHtml(key, { eager = false } = {}) {
 // The credit under each slide's artwork. Deliberately not a link: the
 // whole slide is a swipe target, and a tappable strip inside it either
 // swallows the gesture or fires on the end of one.
-export function artCreditHtml(key, games) {
-  const g = (games || {})[key];
-  if (!g?.title) return '';
-  return `<p class="tour-art__credit">Art from ${esc(g.title)}</p>`;
+export function artCreditHtml(title) {
+  if (!title) return '';
+  return `<p class="tour-art__credit">Art from <b>${esc(title)}</b></p>`;
+}
+
+// Every image the tour will show, fetched while someone is still reading
+// the entry screen. They are local files, so this is the browser cache
+// doing the work rather than a network trip.
+export function preloadTourArt(shots) {
+  for (const s of shots || []) {
+    if (!s?.url) continue;
+    const img = new Image();
+    img.decoding = 'async';
+    img.src = s.url;
+  }
 }
 
 // ---- the analog sticks ------------------------------------------------
-// Two thumbsticks flanking Continue, which turns the bottom of the slide
-// into the shape of a controller — the one object every person looking
-// at this app already knows the feel of.
+// Two working thumbsticks flanking Continue, which turns the bottom of
+// the slide into the shape of a controller — the one object every person
+// looking at this app already knows the feel of.
 //
-// The LEFT one is pushed off-centre, toward the middle of the screen.
-// That is the swipe cue, and it replaces the words "or swipe": a stick
-// held over means "this is the direction things move", which is the
-// same instruction without asking anyone to read it. The right one sits
-// neutral, so the pair reads as a resting controller rather than as two
-// identical ornaments.
+// They are real controls, not ornaments. The LEFT one moves the tour:
+// push it right for the next slide, left for the previous, and it
+// springs back to centre on release. The RIGHT one moves the picture:
+// the artwork follows wherever the cap is held, so rolling the cap
+// around its well walks the poster around in a circle behind the words.
 //
-// Drawn rather than animated. The app's chrome does not move on its own
-// (see the entry screen and the tour, which are deliberately still), and
-// a stick that wobbles would be the only thing on the screen doing so.
+// Both rest dead centre. A cap parked off to one side reads as a stick
+// someone is already holding, which is exactly wrong for a control
+// nobody has touched yet.
 //
-// `push` is how far the cap leans, in the SVG's own 64-unit box.
-function analogStick({ push = 0, extraClass = '' } = {}) {
-  const cap = 32 + push;
+// aria-hidden, and deliberately so: everything they do is already
+// reachable — Continue is a real button, the slide takes a swipe, and
+// neither of those needs a pointer that can drag. These are a third way
+// in for the people who enjoy them, not the only way in for anyone.
+export function stickHtml(side) {
   return `
-    <span class="tour-stick ${extraClass}" aria-hidden="true">
-      <svg viewBox="0 0 64 64" fill="none">
-        <circle cx="32" cy="32" r="29" fill="rgba(0,8,20,0.34)" stroke="rgba(255,255,255,0.14)" stroke-width="1.4"/>
-        <circle cx="32" cy="32" r="22" fill="rgba(0,8,20,0.42)" stroke="rgba(255,255,255,0.09)" stroke-width="1"/>
-        <circle cx="${cap}" cy="32" r="15.5" fill="rgba(255,255,255,0.09)" stroke="rgba(255,255,255,0.26)" stroke-width="1.6"/>
-        <circle cx="${cap}" cy="32" r="8" fill="none" stroke="rgba(255,255,255,0.16)" stroke-width="1"/>
-      </svg>
+    <span class="tour-stick tour-stick--${side}" data-stick="${side}" aria-hidden="true">
+      <span class="tour-stick__well"></span>
+      <span class="tour-stick__cap"></span>
     </span>`;
 }
 
-// The pair, as one row the Continue button sits inside.
-export function stickHtml(side) {
-  return side === 'left'
-    ? analogStick({ push: 7, extraClass: 'tour-stick--left' })
-    : analogStick({ push: 0, extraClass: 'tour-stick--right' });
-}
+/**
+ * Makes both sticks live.
+ *
+ * `onStep(+1 | -1)` fires once per throw of the left stick. `onAim(x, y)`
+ * runs continuously while the right stick is held, with x and y as -1..1
+ * of its travel, and once more with (0, 0) when it is let go.
+ *
+ * Returns a teardown, because the tour repaints its whole DOM on every
+ * slide and the pointer capture has to be released with it.
+ */
+export function wireSticks(root, { onStep, onAim } = {}) {
+  const cleanups = [];
 
-export function preloadTourArt() {
-  for (const id of Object.values(ART)) {
-    const img = new Image();
-    img.decoding = 'async';
-    img.src = artUrl(id);
+  for (const stick of root.querySelectorAll('.tour-stick')) {
+    const cap = stick.querySelector('.tour-stick__cap');
+    const side = stick.dataset.stick;
+    // How far the cap travels from centre. Small on purpose: a real
+    // stick moves a few millimetres, and a cap that wanders across the
+    // whole well reads as a slider.
+    const R = 13;
+    // A throw has to clear most of the well to count, so resting a
+    // thumb on the stick never advances a slide by accident.
+    const THROW = R * 0.66;
+    let active = false, fired = false, startX = 0, startY = 0;
+
+    const place = (x, y) => { cap.style.transform = `translate(${x}px, ${y}px)`; };
+    const home = () => {
+      stick.classList.remove('is-held');
+      cap.style.transform = '';
+      if (side === 'right' && onAim) onAim(0, 0);
+    };
+
+    const down = (e) => {
+      // The tour listens for swipes on the whole screen. Without this,
+      // a throw of the left stick is also a page swipe, and the slide
+      // advances twice.
+      e.stopPropagation();
+      active = true; fired = false;
+      startX = e.clientX; startY = e.clientY;
+      stick.classList.add('is-held');
+      try { stick.setPointerCapture(e.pointerId); } catch { /* fine */ }
+    };
+
+    const move = (e) => {
+      if (!active) return;
+      e.stopPropagation();
+      e.preventDefault();
+      let dx = e.clientX - startX;
+      let dy = e.clientY - startY;
+      // Clamp into the well, keeping the ANGLE — that is what lets the
+      // right stick be rolled around its rim rather than only pushed
+      // along the two axes.
+      const dist = Math.hypot(dx, dy);
+      if (dist > R) { dx = (dx / dist) * R; dy = (dy / dist) * R; }
+      place(dx, dy);
+
+      if (side === 'right') {
+        if (onAim) onAim(dx / R, dy / R);
+      } else if (!fired && Math.abs(dx) >= THROW && Math.abs(dx) > Math.abs(dy)) {
+        // Once per throw: holding the stick over should not step through
+        // every slide in the tour.
+        fired = true;
+        if (onStep) onStep(dx > 0 ? 1 : -1);
+      }
+    };
+
+    const up = (e) => {
+      if (!active) return;
+      active = false;
+      e.stopPropagation();
+      try { stick.releasePointerCapture(e.pointerId); } catch { /* already gone */ }
+      home();
+    };
+
+    stick.addEventListener('pointerdown', down);
+    stick.addEventListener('pointermove', move, { passive: false });
+    stick.addEventListener('pointerup', up);
+    stick.addEventListener('pointercancel', up);
+    cleanups.push(() => {
+      stick.removeEventListener('pointerdown', down);
+      stick.removeEventListener('pointermove', move);
+      stick.removeEventListener('pointerup', up);
+      stick.removeEventListener('pointercancel', up);
+    });
   }
+
+  return () => cleanups.forEach((fn) => fn());
 }

@@ -4459,12 +4459,32 @@ a.gd-credit__name { text-decoration: none; }
   mask-image: linear-gradient(to bottom, #000 26%, rgba(0, 0, 0, 0.62) 58%, rgba(0, 0, 0, 0.18) 82%, transparent 100%);
 }
 .tour-art > span { position: absolute; inset: 0; display: block; }
+/* Grainy noir. Most of the way to black-and-white with the contrast
+   lifted, which is what leaves the grain something to sit in — over a
+   flat, low-contrast image noise just looks like a dirty screen.
+   Slightly overscaled so the right stick has somewhere to move it to
+   without dragging an edge into frame. */
 .tour-art__img {
   width: 100%; height: 100%; object-fit: cover;
   /* Faces sit high in most key art, and the bottom third of this panel
      is being faded out anyway. */
   object-position: 50% 32%;
   display: block;
+  filter: grayscale(0.66) contrast(1.24) brightness(0.92);
+  transform: scale(1.08)
+             translate(var(--aim-x, 0px), var(--aim-y, 0px))
+             rotate(var(--aim-r, 0deg));
+  transition: transform 300ms cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform;
+}
+/* While the stick is held the picture has to track the thumb exactly;
+   the easing above is only for the spring back to rest. */
+.tour-art--aiming .tour-art__img { transition: none; }
+/* The same film grain the ground carries, laid over the picture so the
+   two read as one surface rather than as a photograph sitting on a
+   textured page. */
+.tour-art__grain {
+  opacity: 0.5; mix-blend-mode: overlay; background-size: 200px;
 }
 /* A real duotone, not a navy sheet laid on top: `color` takes hue and
    saturation from this gradient and luminosity from the photograph
@@ -4472,7 +4492,7 @@ a.gd-credit__name { text-decoration: none; }
    out as five images of the same place. */
 .tour-art__duo {
   background: linear-gradient(160deg, #0a5aa0, var(--surface) 70%, var(--bg));
-  mix-blend-mode: color; opacity: 0.44;
+  mix-blend-mode: color; opacity: 0.2;
 }
 /* The same warm bloom the ground carries, picked back up on the art so
    the panel and the page below it share one light. */
@@ -4549,16 +4569,23 @@ a.gd-credit__name { text-decoration: none; }
 /* Bolder and looser. At regular weight on --leading-body it sat as
    grey filler under a very heavy headline; at medium weight with prose
    leading it reads as the second half of the same statement. */
+.tour__body .stars { display: inline-flex; vertical-align: -2px; margin: 0 2px; }
 .tour__body {
   margin: 18px 0 0; max-width: 22em;
   font-size: var(--text-body); font-weight: var(--weight-strong);
   line-height: var(--leading-prose); letter-spacing: -0.005em; color: var(--ink-dim);
 }
+/* Sentence case in the body face, with the game's name carrying the
+   weight. As tracked-out mono capitals it read as a file path — and it
+   was competing with the body line directly above it, which is the
+   sentence that actually matters here. */
 .tour-art__credit {
   margin: var(--space-3) 0 0;
-  font-family: var(--font-mono); font-size: var(--text-micro);
-  letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-faint);
+  font-family: var(--font-body); font-size: var(--text-small);
+  font-weight: var(--weight-body); letter-spacing: 0; text-transform: none;
+  color: var(--ink-faint);
 }
+.tour-art__credit b { font-weight: var(--weight-strong); color: var(--ink-dim); }
 
 .tour__foot { position: relative; z-index: 1; flex-shrink: 0; display: flex; flex-direction: column; gap: 10px; }
 /* Continue sits BETWEEN the two sticks, so the bottom of the slide is
@@ -4573,16 +4600,48 @@ a.gd-credit__name { text-decoration: none; }
   flex: 1; min-width: 0; padding-left: 12px; padding-right: 12px;
   white-space: nowrap;
 }
+/* Live controls, not ornaments — so they take pointer events, and they
+   claim the gesture from the browser (touch-action: none) or a drag
+   down the stick scrolls the page instead of moving the cap. */
 .tour-stick {
-  flex-shrink: 0; width: 46px; height: 46px; display: block;
-  pointer-events: none; opacity: 0.85;
+  position: relative; flex-shrink: 0;
+  width: 46px; height: 46px; display: block;
+  touch-action: none; cursor: grab; -webkit-tap-highlight-color: transparent;
 }
-.tour-stick svg { width: 100%; height: 100%; display: block; }
+.tour-stick.is-held { cursor: grabbing; }
+.tour-stick__well, .tour-stick__cap { position: absolute; border-radius: 50%; display: block; }
+/* The recess. Two rings: the housing, and a darker dish inside it. */
+.tour-stick__well {
+  inset: 0;
+  background: rgba(0, 8, 20, 0.38);
+  border: 1.4px solid rgba(255, 255, 255, 0.14);
+  box-shadow: inset 0 0 0 5px rgba(0, 8, 20, 0.34);
+}
+/* The thumbstick top, at rest dead centre. A cap parked off to one side
+   reads as a stick somebody is already holding, which is the wrong
+   thing to say about a control nobody has touched. */
+.tour-stick__cap {
+  left: 50%; top: 50%; width: 30px; height: 30px; margin: -15px 0 0 -15px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1.6px solid rgba(255, 255, 255, 0.3);
+  transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+/* Follow the thumb exactly while held; spring back when let go. */
+.tour-stick.is-held .tour-stick__cap {
+  transition: none; background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.42);
+}
+/* The dished centre of the cap. */
+.tour-stick__cap::after {
+  content: ''; position: absolute; inset: 6px; border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
 /* Smaller on a narrow phone: every pixel the sticks take is one the
    button's label does not have, and the label is the part that has to
    be readable. */
 @media (max-width: 355px) {
-  .tour-stick { width: 36px; height: 36px; }
+  .tour-stick { width: 38px; height: 38px; }
+  .tour-stick__cap { width: 25px; height: 25px; margin: -12.5px 0 0 -12.5px; }
   .tour__pad { gap: 8px; }
   .tour__next { font-size: var(--text-body); padding-left: 10px; padding-right: 10px; }
 }
@@ -4594,6 +4653,10 @@ a.gd-credit__name { text-decoration: none; }
   .tour__content--enter-forward, .tour__content--enter-backward,
   .tour__plate--enter-forward, .tour__plate--enter-backward { animation: none; }
   .lp-bg__glow { transition: none; }
+  /* The sticks keep working — they are controls, and a control that
+     does not track the thumb is broken rather than calm. What goes is
+     the easing on the way back to rest. */
+  .tour-stick__cap, .tour-art__img { transition: none; }
 }
 
 /* Short screens (a 640-tall phone, a laptop in landscape). The artwork

@@ -987,6 +987,23 @@ function drawBackdrop() {
   return next;
 }
 
+// `count` distinct entries off the same shuffle bag, for a screen that
+// shows several at once (the tour's five slides) rather than one at a
+// time. Distinct within the call: drawBackdrop only guarantees it does
+// not repeat back-to-back, which is not the same thing when five are
+// drawn in a row.
+export function drawBackdrops(count) {
+  const out = [];
+  const seen = new Set();
+  for (let i = 0; i < count * 4 && out.length < count; i++) {
+    const e = drawBackdrop();
+    if (seen.has(e.file)) continue;
+    seen.add(e.file);
+    out.push({ url: `images/backdrops/${encodeURIComponent(e.file)}`, title: e.title, gameId: e.gameId || null });
+  }
+  return out;
+}
+
 export async function getLoginBackground() {
   const entry = drawBackdrop();
   return { url: `images/backdrops/${encodeURIComponent(entry.file)}`, title: entry.title, gameId: entry.gameId || null };

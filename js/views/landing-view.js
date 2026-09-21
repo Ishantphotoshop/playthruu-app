@@ -3,7 +3,7 @@ import {
   posterFrame, avatarImg, spinner, emptyState, iconSearch,
   iconUserFilled, iconBrowseNavFilled, iconCompassNavFilled, iconSearchFilled,
 } from '../components.js';
-import { backdropHtml, tourArtHtml, artCreditHtml, stickHtml, preloadTourArt, resolveShowcase } from './landing-art.js';
+import { backdropHtml, tourArtHtml, artCreditHtml, stickHtml, wireSticks, drawTourArt, preloadTourArt, resolveShowcase } from './landing-art.js';
 import { esc, starRow, qs, qsa, toast } from '../utils.js';
 import { renderAuthView } from './auth-view.js';
 import { navigate } from '../router.js';
@@ -43,27 +43,31 @@ import { state } from '../state.js';
 // names an entry in landing-art's hand-checked set.
 const TOUR_SLIDES = [
   {
-    art: 'hellblade2', glow: '72% 10%',
+    glow: '72% 10%',
     head: 'Log every<br>game you<br><em>finish.</em>',
     body: 'The moment you put it down — or the moment you pick it up.',
   },
   {
-    art: 'lastofus2', glow: '24% 16%',
+    glow: '24% 16%',
     head: 'Rate it,<br><em>half-stars</em><br>and all.',
-    body: 'From a rough 2½ to a perfect 5. No rounding up.',
+    // The one slide whose line is worth SHOWING rather than saying. It
+    // is the app's own star row, at the size it renders everywhere
+    // else, so the half-star this slide is about is the actual glyph a
+    // person will tap rather than a description of one.
+    bodyHtml: `From a rough ${starRow(2.5, { size: 15 })} to a perfect ${starRow(5, { size: 15 })}.`,
   },
   {
-    art: 'alanwake2', glow: '80% 24%',
+    glow: '80% 24%',
     head: 'Say what<br>you <em>actually</em><br>thought.',
     body: 'One line or a full write-up — whatever the game deserves.',
   },
   {
-    art: 'ff7rebirth', glow: '18% 8%',
+    glow: '18% 8%',
     head: 'See what<br>your friends<br>are <em>playing.</em>',
     body: 'A feed built from the people you actually care about.',
   },
   {
-    art: 'wukong', glow: '62% 18%',
+    glow: '62% 18%',
     head: 'Line up<br>what you<br>play <em>next.</em>',
     body: 'Rank your favourites. Queue the rest.',
   },
@@ -188,6 +192,12 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
   let screen = startScreen;   // 'entry' | 'browse' | 'search' | 'tour'
   let browseTab = 'games';    // 'games' | 'reviews', only used on the browse screen
   let tourIndex = 0;
+  // One draw per opening of the tour, five distinct games off the local
+  // shelf. Held here rather than recomputed per paint, or every repaint
+  // (which happens on every slide) would reshuffle the artwork under
+  // the person mid-swipe.
+  let tourShots = [];
+  let unwireSticks = null;
   let tourDirection = null;   // 'forward' | 'backward' | null — which way the next tourHtml() paint should glide in from
 
   const goToAuth = (startMode = 'signin') => renderAuthView(root, { startMode });
@@ -263,9 +273,9 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
       showcase = games;
       if (screen === 'tour') {
         const slot = qs('#tour-art', root);
-        // Only the credit line depends on the resolved titles now; the
-        // artwork itself is addressed by image id and never waits.
-        if (slot) slot.innerHTML = artCreditHtml(TOUR_SLIDES[tourIndex].art, showcase);
+        // Nothing on a tour slide waits on the IGDB lookup any more:
+        // the artwork is a local file and its credit came with it.
+        void slot;
       }
     }).catch(() => { /* placeholders stay; nothing to recover from */ });
   }
@@ -297,12 +307,19 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
   }
   function wireEntry(stage) {
     loadShowcase();
-    // Warm the tour's five images while someone is still reading the
-    // front door. They are 1080p key art off IGDB's CDN; fetched only
-    // when a slide mounts, the first two slides visibly pop in.
-    preloadTourArt();
+    // Warm the images the tour will use while someone is still reading
+    // the front door. Drawn here rather than on the tap so the fetch has
+    // already started by the time Get started is pressed — and drawn
+    // again on that tap only if this one went stale.
+    tourShots = drawTourArt(TOUR_SLIDES.length);
+    preloadTourArt(tourShots);
     qs('#entry-signin', stage).addEventListener('click', () => goToAuth('signin'));
-    qs('#entry-tour', stage).addEventListener('click', () => { screen = 'tour'; tourIndex = 0; paint(); });
+    qs('#entry-tour', stage).addEventListener('click', () => {
+    screen = 'tour';
+    tourIndex = 0;
+    tourShots = drawTourArt(TOUR_SLIDES.length);
+    paint();
+  });
   }
 
   // ---- browse: a real poster wall + real reviews ---------------------
@@ -490,11 +507,12 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
     // on the index so the browser treats each slide's panel as a new
     // element and replays the entrance, rather than reusing the last
     // one and cross-fading a src swap.
+    const shot = tourShots[tourIndex] || {};
     return `
       <div class="tour">
         ${backdropHtml({ glow: slide.glow })}
         <div class="tour__plate${enterClass ? ` tour__plate--enter-${enterDir}` : ''}" data-slide="${tourIndex}">
-          ${tourArtHtml(slide.art, { eager: tourIndex === 0 })}
+          ${tourArtHtml({ url: shot.url, eager: tourIndex === 0 })}
         </div>
         <div class="tour__progress">
           ${TOUR_SLIDES.map((_, i) => `<span class="tour__seg${i < tourIndex ? ' tour__seg--done' : ''}${i === tourIndex ? ' tour__seg--active' : ''}"></span>`).join('')}
@@ -505,8 +523,8 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
         <div class="tour__stage">
           <div class="tour__content${enterClass}" id="tour-slide">
             <h2 class="tour__title">${slide.head}</h2>
-            <p class="tour__body">${esc(slide.body)}</p>
-            ${artCreditHtml(slide.art, showcase)}
+            <p class="tour__body">${slide.bodyHtml || esc(slide.body)}</p>
+            ${artCreditHtml(shot.title)}
           </div>
         </div>
         <div class="tour__foot">
@@ -525,11 +543,40 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
     tourIndex += 1;
     paintScreen();
   }
+  // Pulled out of the swipe handler so the left stick can step back the
+  // same way a right-swipe does, rather than the two growing apart.
+  function goBackTour() {
+    if (tourIndex === 0) return;
+    tourDirection = 'backward';
+    tourIndex -= 1;
+    paintScreen();
+  }
   function wireTour(stage) {
     loadShowcase();
     qs('#tour-skip', stage).addEventListener('click', () => goToAuth('signup'));
     qs('#tour-next', stage).addEventListener('click', advanceTour);
     wireTourSwipe(stage);
+
+    // The slide's whole DOM is replaced on every step, so the previous
+    // paint's pointer capture has to go with it.
+    if (unwireSticks) unwireSticks();
+    const art = qs('.tour-art', stage);
+    unwireSticks = wireSticks(stage, {
+      onStep: (dir) => { if (dir > 0) advanceTour(); else goBackTour(); },
+      // The artwork follows the right stick: hold the cap over and the
+      // poster leans that way, roll it round the well and the poster
+      // walks a circle. Written as custom properties rather than a
+      // transform string so the CSS keeps ownership of the scale and
+      // the easing, and this only has to say where.
+      onAim: (x, y) => {
+        if (!art) return;
+        const held = x !== 0 || y !== 0;
+        art.classList.toggle('tour-art--aiming', held);
+        art.style.setProperty('--aim-x', `${(x * 22).toFixed(2)}px`);
+        art.style.setProperty('--aim-y', `${(y * 22).toFixed(2)}px`);
+        art.style.setProperty('--aim-r', `${(x * 2.4).toFixed(2)}deg`);
+      },
+    });
   }
 
   // Swipe left/right between slides — a carousel that only advances via
@@ -572,9 +619,7 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
       if (dx <= -SWIPE_THRESHOLD) {
         advanceTour();
       } else if (dx >= SWIPE_THRESHOLD && tourIndex > 0) {
-        tourDirection = 'backward';
-        tourIndex -= 1;
-        paintScreen();
+        goBackTour();
       } else {
         // Didn't cross the threshold — spring the same slide back to
         // rest instead of advancing. paintScreen() isn't called on this
