@@ -2552,7 +2552,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
      drops from about 72 mean luminance to 61, while Shadow of the
      Erdtree moves 10 to 13 and stays a picture. The scrim above
      handles what is left, where it matters — under the chips. */
-  filter: brightness(0.85) saturate(0.65) contrast(1.02);
+  filter: brightness(0.85) saturate(0.92) contrast(1.02);
 }
 .auth-screen__art.is-active { opacity: 1; }
 .auth-screen__art-wrap > span { position: absolute; inset: 0; display: block; }
@@ -2562,7 +2562,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
    gradings never shifts the screen's palette. */
 .auth-screen__duo {
   background: linear-gradient(160deg, #0a5aa0, var(--surface) 70%, var(--bg));
-  mix-blend-mode: color;
+  mix-blend-mode: color; opacity: 0.44;
 }
 .auth-screen__warm {
   background: radial-gradient(62% 58% at 72% 22%, rgba(255, 214, 10, 0.34), transparent 70%);
@@ -2665,9 +2665,9 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 }
 .auth-screen__head em { font-style: normal; color: var(--accent); }
 .auth-screen__tag {
-  margin: 10px 0 0; max-width: 24em;
-  font-family: var(--font-body); font-style: normal; font-weight: var(--weight-body);
-  font-size: var(--text-small); line-height: var(--leading-body); color: var(--ink-dim);
+  margin: 12px 0 0; max-width: 24em;
+  font-family: var(--font-body); font-style: normal; font-weight: var(--weight-strong);
+  font-size: var(--text-small); line-height: var(--leading-prose); color: var(--ink-dim);
   text-shadow: 0 1px 10px rgba(0, 8, 20, 0.85);
 }
 
@@ -4377,8 +4377,9 @@ a.gd-credit__name { text-decoration: none; }
 .lp__word em { font-style: normal; color: var(--accent); }
 
 .lp__sub {
-  margin: var(--space-4) 0 0; max-width: 22em;
-  font-size: var(--text-body); line-height: var(--leading-body); color: var(--ink-dim);
+  margin: 18px 0 0; max-width: 22em;
+  font-size: var(--text-body); font-weight: var(--weight-strong);
+  line-height: var(--leading-prose); letter-spacing: -0.005em; color: var(--ink-dim);
 }
 
 .lp__actions { margin-top: var(--space-5); display: grid; gap: 9px; }
@@ -4414,7 +4415,7 @@ a.gd-credit__name { text-decoration: none; }
 
 @media (max-height: 720px) {
   .lp__word { font-size: clamp(30px, 9.6vw, 40px); }
-  .lp__sub { margin-top: var(--space-3); font-size: var(--text-small); }
+  .lp__sub { margin-top: 13px; font-size: var(--text-small); }
   .lp__actions { margin-top: var(--space-4); }
 }
 
@@ -4471,7 +4472,7 @@ a.gd-credit__name { text-decoration: none; }
    out as five images of the same place. */
 .tour-art__duo {
   background: linear-gradient(160deg, #0a5aa0, var(--surface) 70%, var(--bg));
-  mix-blend-mode: color;
+  mix-blend-mode: color; opacity: 0.44;
 }
 /* The same warm bloom the ground carries, picked back up on the art so
    the panel and the page below it share one light. */
@@ -4511,10 +4512,13 @@ a.gd-credit__name { text-decoration: none; }
   position: absolute; top: calc(var(--space-4) + env(safe-area-inset-top, 0px) + 14px);
   right: 26px; z-index: 3;
 }
+/* The body face at its normal size, sentence case, no tracking. As
+   tracked-out mono capitals it read as a system label rather than as a
+   word you can tap. */
 .tour__skip {
   background: none; border: none; cursor: pointer; padding: 6px 2px;
-  font-family: var(--font-mono); font-size: var(--text-micro); font-weight: var(--weight-medium);
-  letter-spacing: 0.16em; text-transform: uppercase; color: rgba(255, 255, 255, 0.72);
+  font-family: var(--font-body); font-size: var(--text-body); font-weight: var(--weight-medium);
+  letter-spacing: 0; text-transform: none; color: rgba(255, 255, 255, 0.78);
 }
 .tour__skip:hover { color: var(--ink); }
 
@@ -4542,9 +4546,13 @@ a.gd-credit__name { text-decoration: none; }
   color: var(--ink);
 }
 .tour__title em { font-style: normal; color: var(--accent); }
+/* Bolder and looser. At regular weight on --leading-body it sat as
+   grey filler under a very heavy headline; at medium weight with prose
+   leading it reads as the second half of the same statement. */
 .tour__body {
-  margin: var(--space-4) 0 0; max-width: 22em;
-  font-size: var(--text-body); line-height: var(--leading-body); color: var(--ink-dim);
+  margin: 18px 0 0; max-width: 22em;
+  font-size: var(--text-body); font-weight: var(--weight-strong);
+  line-height: var(--leading-prose); letter-spacing: -0.005em; color: var(--ink-dim);
 }
 .tour-art__credit {
   margin: var(--space-3) 0 0;
@@ -4553,7 +4561,31 @@ a.gd-credit__name { text-decoration: none; }
 }
 
 .tour__foot { position: relative; z-index: 1; flex-shrink: 0; display: flex; flex-direction: column; gap: 10px; }
-.tour__next { width: 100%; }
+/* Continue sits BETWEEN the two sticks, so the bottom of the slide is
+   laid out like the face of a controller. */
+.tour__pad { display: flex; align-items: center; gap: 12px; }
+/* Less side padding than the standalone CTA, and no wrapping. As a
+   flex:1 child between two sticks the button's own 28px gutters buy
+   nothing — they were just narrowing the label until "Create your
+   account" broke onto a second line and that one button came out
+   taller than the other four. */
+.tour__next {
+  flex: 1; min-width: 0; padding-left: 12px; padding-right: 12px;
+  white-space: nowrap;
+}
+.tour-stick {
+  flex-shrink: 0; width: 46px; height: 46px; display: block;
+  pointer-events: none; opacity: 0.85;
+}
+.tour-stick svg { width: 100%; height: 100%; display: block; }
+/* Smaller on a narrow phone: every pixel the sticks take is one the
+   button's label does not have, and the label is the part that has to
+   be readable. */
+@media (max-width: 355px) {
+  .tour-stick { width: 36px; height: 36px; }
+  .tour__pad { gap: 8px; }
+  .tour__next { font-size: var(--text-body); padding-left: 10px; padding-right: 10px; }
+}
 .tour__hint {
   text-align: center; font-family: var(--font-mono); font-size: var(--text-micro);
   letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-faint);
@@ -4570,7 +4602,7 @@ a.gd-credit__name { text-decoration: none; }
 @media (max-height: 720px) {
   .tour__plate { height: 52%; }
   .tour__title { font-size: clamp(24px, 7.4vw, 30px); }
-  .tour__body { margin-top: var(--space-3); font-size: var(--text-small); }
+  .tour__body { margin-top: 13px; font-size: var(--text-small); }
   .tour__stage { padding-bottom: var(--space-4); }
   .tour-art__credit { display: none; }
   .tour__hint { display: none; }

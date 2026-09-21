@@ -3,7 +3,7 @@ import {
   posterFrame, avatarImg, spinner, emptyState, iconSearch,
   iconUserFilled, iconBrowseNavFilled, iconCompassNavFilled, iconSearchFilled,
 } from '../components.js';
-import { backdropHtml, tourArtHtml, artCreditHtml, preloadTourArt, resolveShowcase } from './landing-art.js';
+import { backdropHtml, tourArtHtml, artCreditHtml, stickHtml, preloadTourArt, resolveShowcase } from './landing-art.js';
 import { esc, starRow, qs, qsa, toast } from '../utils.js';
 import { renderAuthView } from './auth-view.js';
 import { navigate } from '../router.js';
@@ -510,8 +510,12 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
           </div>
         </div>
         <div class="tour__foot">
-          <button type="button" class="lp__cta tour__next" id="tour-next">${last ? 'Create your account' : 'Continue'}</button>
-          <p class="tour__hint">${last ? 'Takes about a minute' : 'or swipe'}</p>
+          <div class="tour__pad">
+            ${stickHtml('left')}
+            <button type="button" class="lp__cta tour__next" id="tour-next">${last ? 'Create account' : 'Continue'}</button>
+            ${stickHtml('right')}
+          </div>
+          ${last ? '<p class="tour__hint">Takes about a minute</p>' : ''}
         </div>
       </div>`;
   }

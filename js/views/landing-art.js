@@ -199,6 +199,43 @@ export function artCreditHtml(key, games) {
   return `<p class="tour-art__credit">Art from ${esc(g.title)}</p>`;
 }
 
+// ---- the analog sticks ------------------------------------------------
+// Two thumbsticks flanking Continue, which turns the bottom of the slide
+// into the shape of a controller — the one object every person looking
+// at this app already knows the feel of.
+//
+// The LEFT one is pushed off-centre, toward the middle of the screen.
+// That is the swipe cue, and it replaces the words "or swipe": a stick
+// held over means "this is the direction things move", which is the
+// same instruction without asking anyone to read it. The right one sits
+// neutral, so the pair reads as a resting controller rather than as two
+// identical ornaments.
+//
+// Drawn rather than animated. The app's chrome does not move on its own
+// (see the entry screen and the tour, which are deliberately still), and
+// a stick that wobbles would be the only thing on the screen doing so.
+//
+// `push` is how far the cap leans, in the SVG's own 64-unit box.
+function analogStick({ push = 0, extraClass = '' } = {}) {
+  const cap = 32 + push;
+  return `
+    <span class="tour-stick ${extraClass}" aria-hidden="true">
+      <svg viewBox="0 0 64 64" fill="none">
+        <circle cx="32" cy="32" r="29" fill="rgba(0,8,20,0.34)" stroke="rgba(255,255,255,0.14)" stroke-width="1.4"/>
+        <circle cx="32" cy="32" r="22" fill="rgba(0,8,20,0.42)" stroke="rgba(255,255,255,0.09)" stroke-width="1"/>
+        <circle cx="${cap}" cy="32" r="15.5" fill="rgba(255,255,255,0.09)" stroke="rgba(255,255,255,0.26)" stroke-width="1.6"/>
+        <circle cx="${cap}" cy="32" r="8" fill="none" stroke="rgba(255,255,255,0.16)" stroke-width="1"/>
+      </svg>
+    </span>`;
+}
+
+// The pair, as one row the Continue button sits inside.
+export function stickHtml(side) {
+  return side === 'left'
+    ? analogStick({ push: 7, extraClass: 'tour-stick--left' })
+    : analogStick({ push: 0, extraClass: 'tour-stick--right' });
+}
+
 export function preloadTourArt() {
   for (const id of Object.values(ART)) {
     const img = new Image();
