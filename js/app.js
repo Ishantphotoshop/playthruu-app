@@ -27,7 +27,7 @@ import { renderDirectorView } from './views/director-view.js';
 import { renderStudioView } from './views/studio-view.js';
 import { renderSettingsView } from './views/settings-view.js';
 import { renderNotificationsView } from './views/notifications-view.js';
-import { openLogModal } from './views/log-modal.js';
+import { openLogComposer } from './views/log-composer.js';
 import { toast, qs } from './utils.js';
 import { clearViewCache, setCached, getCached, CACHE_KEYS } from './cache.js';
 import { iconClose, iconLock } from './components.js';
@@ -241,7 +241,7 @@ function registerRoutes() {
   route('/people', () => renderSearchView(appEl, { initialTab: 'people' }));
   route('/log', () => {
     history.replaceState(null, '', '#/feed');
-    renderFeedView(appEl).then(() => openLogModal({ onSaved: refreshCurrentView }));
+    renderFeedView(appEl).then(() => openLogComposer({ onSaved: refreshCurrentView }));
   });
   setNotFound(() => navigate('/feed'));
 }
@@ -273,7 +273,7 @@ function wireGlobalChrome() {
     const wantsLog = e.target.closest('[data-action="log"]');
     if (wantsLog) {
       e.preventDefault();
-      openLogModal({ onSaved: refreshCurrentView });
+      openLogComposer({ onSaved: refreshCurrentView });
     }
 
     // Tapping Search again while already on it: an <a href="#/search">
@@ -314,10 +314,20 @@ const OVERLAY_SELECTOR = '.modal-overlay, .poster-viewer, .avatar-viewer, .image
 // This is the same cleanup wireHardwareBack already did for Android's
 // physical back button below — just generalized to every hashchange, so
 // the browser's native back/forward buttons on web get it too.
+// An overlay may have work to do on the way out — the game page's log
+// sheet writes the draft you set before it goes. Yanking the node
+// skipped that entirely, which is why backing out of that sheet lost
+// whatever you had just tapped. Anything that sets `__dismiss` gets
+// asked; anything that doesn't is removed as before.
+function dismissOverlay(el) {
+  if (typeof el.__dismiss === 'function') { el.__dismiss(); return; }
+  el.remove();
+}
+
 function closeStrayOverlays() {
   const overlays = document.querySelectorAll(OVERLAY_SELECTOR);
   if (!overlays.length) return;
-  overlays.forEach((el) => el.remove());
+  overlays.forEach(dismissOverlay);
   document.body.style.overflow = '';
 }
 
@@ -346,7 +356,7 @@ async function wireHardwareBack() {
       // querySelector's first match happened to be.
       const overlays = document.querySelectorAll(OVERLAY_SELECTOR);
       if (overlays.length) {
-        overlays[overlays.length - 1].remove();
+        dismissOverlay(overlays[overlays.length - 1]);
         if (overlays.length === 1) document.body.style.overflow = '';
         return;
       }

@@ -5,7 +5,7 @@ import {
   trendingStrip, wireTrendingStrip, friendsPlayingCard, posterFrame, openReportSheet, iconChevronRight,
 } from '../components.js';
 import { toast, qs, qsa, esc, timeAgo, enableSwipeToDismiss, promptSignIn, tapFeedback, pulseLogTab } from '../utils.js';
-import { openLogModal } from './log-modal.js';
+import { openLogComposer } from './log-composer.js';
 import { refreshCurrentView, navigate } from '../router.js';
 import { paintStoryRail } from './stories.js';
 import { getCached, setCached } from '../cache.js';
@@ -578,7 +578,7 @@ function wireStamp(root) {
   if (logTab) {
     logTab.addEventListener('click', (e) => {
       e.preventDefault();
-      openLogModal({ onSaved: () => refreshCurrentView() });
+      openLogComposer({ onSaved: () => refreshCurrentView() });
     });
   }
 }
@@ -690,7 +690,7 @@ export function wireLogCards(container, logs) {
     btn.addEventListener('click', () => {
       const log = logs.find(l => l.id === btn.dataset.logId);
       if (!log) return;
-      openLogModal({
+      openLogComposer({
         existingLog: log,
         onSaved: () => refreshCurrentView(),
       });

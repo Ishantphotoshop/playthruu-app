@@ -4,8 +4,8 @@ import {
   navBar, spinner, emptyState, posterFrame, iconUser, iconBack, avatarImg,
   likeButton, iconReply, iconFlag, iconChevronRight,
 } from '../components.js';
-import { esc, starRow, formatDate, timeAgo, qs, qsa, toast, promptSignIn, recordRecentlyViewed, pulseLogTab } from '../utils.js';
-import { openLogModal } from './log-modal.js';
+import { esc, starRow, formatDate, timeAgo, qs, qsa, toast, promptSignIn, recordRecentlyViewed, pulseLogTab, enableSwipeToDismiss } from '../utils.js';
+import { openLogComposer } from './log-composer.js';
 import { openAddToListPicker } from './lists-view.js';
 import { refreshCurrentView, navigate } from '../router.js';
 import { wireLogCards } from './feed-view.js';
@@ -1186,6 +1186,12 @@ function openLogSheet({ game, ownLog, replayCount, ensureSavedGame, onChanged, o
     document.body.style.overflow = '';
     if (isDirty()) commit({ silent: true });
   }
+  // Back — the browser's button, Android's gesture, any hashchange —
+  // is handled centrally in app.js, which used to simply .remove() the
+  // overlay. That skipped close() entirely, so backing out of the sheet
+  // threw away the status you had just tapped instead of filing it.
+  // app.js now calls this hook when an overlay has one.
+  overlay.__dismiss = close;
 
   function shortDate(iso) {
     if (!iso) return '';
@@ -1244,7 +1250,7 @@ function openLogSheet({ game, ownLog, replayCount, ensureSavedGame, onChanged, o
         <div class="lg-body">
         <div class="lg-label">Rate</div>
         <div class="lg-group lg-group--rate">
-          <div class="lg-rate" id="lg-rating">${starRow(draft.rating, { interactive: true, size: 27 })}</div>
+          <div class="lg-rate" id="lg-rating">${starRow(draft.rating, { interactive: true, size: 32 })}</div>
           <button type="button" class="lg-love" data-act="love" aria-pressed="${draft.loved}"
                   aria-label="${draft.loved ? 'Remove from loved' : 'Mark as loved'}">
             ${draft.loved ? iconHeartSolid() : iconHeartLine()}
@@ -1296,15 +1302,20 @@ function openLogSheet({ game, ownLog, replayCount, ensureSavedGame, onChanged, o
       </div>`;
 
     wireRating();
+    // Drag the head downwards to put the sheet away — the same gesture
+    // every other sheet in the app answers to.
+    enableSwipeToDismiss(qs('.modal', overlay), close);
+    syncPageRow();
+  }
 
-    // Keep the row on the page underneath in sync as we go, so closing
-    // the sheet never shows a stale sentence for the moment it takes
-    // the reconcile to land.
+  // Keeps the row on the page underneath in step as the draft changes,
+  // so closing the sheet never shows a stale sentence for the moment
+  // the reconcile takes.
+  function syncPageRow() {
     const rowText = document.querySelector('#open-log-sheet .gd-log__text');
-    if (rowText) {
-      const preview = draft.status ? { ...(log || {}), status: draft.status, rating: draft.rating } : null;
-      rowText.innerHTML = logRowLabel(preview, preview ? replayCount + 1 : 0);
-    }
+    if (!rowText) return;
+    const preview = draft.status ? { ...(log || {}), status: draft.status, rating: draft.rating } : null;
+    rowText.innerHTML = logRowLabel(preview, preview ? replayCount + 1 : 0);
   }
 
   // Press anywhere on the stars and slide without lifting; the rating
@@ -1334,7 +1345,7 @@ function openLogSheet({ game, ownLog, replayCount, ensureSavedGame, onChanged, o
     const paint = (v) => {
       if (v === draft.rating) return;
       draft.rating = v;
-      picker.innerHTML = starRow(v, { interactive: true, size: 27 });
+      picker.innerHTML = starRow(v, { interactive: true, size: 32 });
       buzz();
     };
 
@@ -1392,7 +1403,16 @@ function openLogSheet({ game, ownLog, replayCount, ensureSavedGame, onChanged, o
       }
       draft.status = clearing ? null : next;
       buzz();
-      render();
+      // In place, not a repaint. render() rebuilds the sheet's whole
+      // innerHTML, and replacing every node under an open sheet to move
+      // one highlight reads exactly like the sheet closing and opening
+      // again — which is what it looked like. Only the pills change, so
+      // only the pills are touched; the row underneath is kept in step
+      // separately.
+      qsa('.lg-pill', overlay).forEach((b) => {
+        b.classList.toggle('lg-pill--on', b.dataset.status === draft.status);
+      });
+      syncPageRow();
       return;
     }
 
@@ -1403,7 +1423,9 @@ function openLogSheet({ game, ownLog, replayCount, ensureSavedGame, onChanged, o
     if (act === 'love') {
       draft.loved = !draft.loved;
       buzz();
-      render();
+      actBtn.setAttribute('aria-pressed', String(draft.loved));
+      actBtn.setAttribute('aria-label', draft.loved ? 'Remove from loved' : 'Mark as loved');
+      actBtn.innerHTML = draft.loved ? iconHeartSolid() : iconHeartLine();
       return;
     }
 
@@ -1420,13 +1442,13 @@ function openLogSheet({ game, ownLog, replayCount, ensureSavedGame, onChanged, o
       close();
       if (act === 'again') {
         const saved = await ensureSavedGame();
-        if (saved) openLogModal({ game, defaultReplay: true, onSaved: onChanged });
+        if (saved) openLogComposer({ game, defaultReplay: true, onSaved: onChanged });
         return;
       }
-      if (current) openLogModal({ existingLog: current, onSaved: onChanged });
+      if (current) openLogComposer({ existingLog: current, onSaved: onChanged });
       else {
         const saved = await ensureSavedGame();
-        if (saved) openLogModal({ game, onSaved: onChanged });
+        if (saved) openLogComposer({ game, onSaved: onChanged });
       }
       return;
     }
@@ -1467,8 +1489,14 @@ function iconPlusSm() { return `<svg viewBox="0 0 24 24" fill="none" stroke="cur
 function iconLinkSm() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M10 13.5a4 4 0 0 0 5.7 0l2.8-2.8a4 4 0 0 0-5.7-5.7L11.5 6.3"/><path d="M14 10.5a4 4 0 0 0-5.7 0l-2.8 2.8a4 4 0 0 0 5.7 5.7l1.3-1.3"/></svg>`; }
 function iconCalendarSm() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3.2v3.6M16 3.2v3.6"/></svg>`; }
 function iconClockSm() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.8"/><path d="M12 7.2V12l3.2 2"/></svg>`; }
-function iconHeartLine() { return `<svg viewBox="3 4 18 18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M12 20.3 4.3 12.6A4.7 4.7 0 0 1 11 6l1 1 1-1a4.7 4.7 0 0 1 6.7 6.6z"/></svg>`; }
-function iconHeartSolid() { return `<svg viewBox="3 4 18 18" fill="currentColor"><path d="M12 20.3 4.3 12.6A4.7 4.7 0 0 1 11 6l1 1 1-1a4.7 4.7 0 0 1 6.7 6.6z"/></svg>`; }
+// Measured, this path runs from x 2.95 to 21.05 — so the 3 4 18 18 box
+// the rest of the app uses for it shaves a sliver off both sides. That
+// is invisible at the 10px a feed byline renders it at and plain to see
+// at 26px here. The outline needs more room again: a 1.9 stroke puts
+// another 0.95 beyond the path on every side. Both weights share one
+// box so the mark does not resize when it is toggled.
+function iconHeartLine() { return `<svg viewBox="1.8 2.2 20.4 20.4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M12 20.3 4.3 12.6A4.7 4.7 0 0 1 11 6l1 1 1-1a4.7 4.7 0 0 1 6.7 6.6z"/></svg>`; }
+function iconHeartSolid() { return `<svg viewBox="1.8 2.2 20.4 20.4" fill="currentColor"><path d="M12 20.3 4.3 12.6A4.7 4.7 0 0 1 11 6l1 1 1-1a4.7 4.7 0 0 1 6.7 6.6z"/></svg>`; }
 function iconTrashSm() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h14M9.5 7V5a1.5 1.5 0 0 1 1.5-1.5h2A1.5 1.5 0 0 1 14.5 5v2M6.5 7l1 12.5A1.5 1.5 0 0 0 9 21h6a1.5 1.5 0 0 0 1.5-1.5L17.5 7"/></svg>`; }
 
 // Full-screen artwork viewer. Single tap on the cover opens it; inside,

@@ -146,7 +146,7 @@ export function igdbSized(url, size) {
 // instead of being left stuck mid-fade).
 export function enableSwipeToDismiss(modal, close, onDrag) {
   if (!modal) return;
-  const header = modal.querySelector('.modal__header, .log-sheet__head, header');
+  const header = modal.querySelector('.modal__header, .lg-head, header');
   if (!header) return;
   header.style.touchAction = 'none';
   header.style.cursor = 'grab';
