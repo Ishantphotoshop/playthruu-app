@@ -1097,187 +1097,362 @@ function openLogSheet({ game, ownLog, replayCount, ensureSavedGame, onChanged, o
   document.body.appendChild(overlay);
   document.body.style.overflow = 'hidden';
 
-  // Local truth. Every tap updates this and repaints immediately, then
-  // the write goes out behind it — a status toggle that waits on a
-  // round trip before it moves feels broken even when it isn't. On a
-  // failed write this is rolled back to `before` and repainted.
+  // Everything the sheet can set is held here until it is committed —
+  // status, rating, loved, the date and the hours. The previous version
+  // wrote on every single tap and rolled back on failure, which meant
+  // four round trips to set four things and a visible flicker between
+  // each. One write at the end is both fewer requests and a simpler
+  // thing to reason about.
   let log = ownLog;
-  let dirty = false;
+  let draft = {
+    status: log?.status || null,
+    rating: Number(log?.rating) || 0,
+    loved: !!log?.loved,
+    played_date: log?.played_date || null,
+    hours: log?.hours_played ?? null,
+  };
+  // What the draft looked like when it was last in sync with the row in
+  // the database. Anything else means there is something to write.
+  let committed = JSON.stringify(draft);
+  const isDirty = () => JSON.stringify(draft) !== committed;
 
+  let saving = false;
+  let closed = false;
+
+  // The same light detent the log modal uses, so setting a rating feels
+  // identical wherever you do it.
+  const haptics = window.Capacitor?.Plugins?.Haptics || null;
+  const buzz = () => {
+    if (haptics) haptics.impact({ style: 'LIGHT' }).catch(() => {});
+    else { try { navigator.vibrate?.(10); } catch { /* not supported here */ } }
+  };
+
+  async function commit({ silent = false } = {}) {
+    if (saving || !isDirty()) return log;
+    saving = true;
+    try {
+      if (!draft.status && log) {
+        // Clearing the status is the only way a game comes back OUT of
+        // your diary, and the log is the diary entry — so clearing it
+        // deletes the row. A log carrying a rating or a review never
+        // gets here: the guard is on the tap, below, so the refusal
+        // arrives while you are still looking at the control.
+        await api.deleteLog(log.id);
+        log = null;
+      } else {
+        // Tap a status on, tap it off, hit Save: there is no log to
+        // delete and nothing worth making one out of, so this writes
+        // nothing rather than quietly filing a "played" entry nobody
+        // asked for. Anything actually set — a rating, a love, a date,
+        // an hour count — still earns a log, with "played" as the
+        // status, which is the same default the old star handler used.
+        const empty = !draft.status && !draft.rating && !draft.loved
+          && !draft.played_date && draft.hours == null;
+        if (empty) { committed = JSON.stringify(draft); return log; }
+        const saved = await ensureSavedGame();
+        if (!saved) return log;
+        const fields = {
+          status: draft.status || 'played',
+          rating: draft.rating || null,
+          loved: draft.loved,
+          played_date: draft.played_date,
+          hours_played: draft.hours,
+        };
+        log = log?.id
+          ? await api.updateLog(log.id, fields)
+          : await api.createLog({ game_id: game.id, user_id: state.user.id, is_public: true, ...fields });
+      }
+      committed = JSON.stringify(draft);
+      pulseLogTab();
+      onChanged?.();
+      return log;
+    } catch (err) {
+      if (!silent) toast(err.message || 'Could not save that.', 'error');
+      return log;
+    } finally {
+      saving = false;
+    }
+  }
+
+  // Dismissing is not cancelling. In a diary app, silently throwing away
+  // a rating somebody just tapped is a worse failure than an entry they
+  // did not mean to make — and an unwanted entry is one tap to undo
+  // (tap the star or the status again), while a lost one is gone. So the
+  // sheet leaves the screen at once and the write follows it out.
   function close() {
+    if (closed) return;
+    closed = true;
     overlay.remove();
     document.body.style.overflow = '';
-    // One reconcile on the way out instead of one per tap: the rest of
-    // the page (Played by, the ratings chart, the review list) has to
-    // catch up, but it doesn't have to do it four times while someone
-    // sets a status and then a rating.
-    if (dirty) onChanged?.();
+    if (isDirty()) commit({ silent: true });
+  }
+
+  function shortDate(iso) {
+    if (!iso) return '';
+    const d = new Date(iso + (iso.length === 10 ? 'T00:00:00' : ''));
+    if (isNaN(d)) return '';
+    const thisYear = d.getFullYear() === new Date().getFullYear();
+    return d.toLocaleDateString(undefined, thisYear
+      ? { month: 'short', day: 'numeric' }
+      : { year: 'numeric', month: 'short', day: 'numeric' });
+  }
+
+  // "Resident Evil 4 (2005)" with a 2005 line under it says the year
+  // twice. Drop the bracket only when it repeats the year being shown.
+  function headTitle() {
+    const t = String(game.title || '');
+    if (!game.release_year) return t;
+    // Built from a plain string, not a template literal: `\s` inside
+    // backticks is an unknown escape that collapses to a bare "s", so
+    // the pattern silently became s*(2005)s*$ and matched nothing.
+    return t.replace(new RegExp('\\s*\\(' + game.release_year + '\\)\\s*$'), '');
+  }
+
+  function reviewNote() {
+    const text = (log?.review || '').trim();
+    if (!text) return 'none yet';
+    const words = text.split(/\s+/).length;
+    return `${words} word${words === 1 ? '' : 's'}`;
   }
 
   function render() {
-    const status = log?.status || null;
-    const rating = log?.rating || 0;
+    const today = new Date().toISOString().slice(0, 10);
 
-    const tg = (key, label, icon) => `
-      <button type="button" class="lg-tg${status === key ? ' lg-tg--on' : ''}" data-status="${key}">
-        <span class="lg-tg__icon">${icon}</span>
-        <span>${esc(label)}</span>
+    const pill = (key, text, icon) => `
+      <button type="button" class="lg-pill${draft.status === key ? ' lg-pill--on' : ''}" data-status="${key}">
+        <span class="lg-pill__icon">${icon}</span>${esc(text)}
       </button>`;
 
-    const row = (act, label, icon, opts = {}) => `
-      <button type="button" class="lg-row${opts.danger ? ' lg-row--danger' : ''}" data-act="${act}">
+    const row = (act, text, icon, { note = '', arrow = false, danger = false } = {}) => `
+      <button type="button" class="lg-row${danger ? ' lg-row--danger' : ''}" data-act="${act}">
         <span class="lg-row__icon">${icon}</span>
-        <span class="lg-row__label">${esc(label)}</span>
-        ${opts.note ? `<span class="lg-row__note">${esc(opts.note)}</span>` : ''}
+        <span class="lg-row__label">${esc(text)}</span>
+        ${note ? `<span class="lg-row__note">${esc(note)}</span>` : ''}
+        ${arrow ? `<span class="lg-row__go">${iconChevronRight()}</span>` : ''}
       </button>`;
 
     overlay.innerHTML = `
       <div class="modal lg-sheet">
-        <div class="lg-head">
-          <h2 class="lg-head__title">${esc(game.title)}</h2>
-          ${game.release_year ? `<p class="lg-head__year">${esc(String(game.release_year))}</p>` : ''}
-        </div>
-
-        <div class="lg-toggles">
-          ${tg('played', 'Played', iconController())}
-          ${tg('playing', 'Playing', iconPlay())}
-          ${tg('backlog', 'Backlog', iconBookmarkSm())}
-        </div>
-
-        <div class="lg-rate">
-          <div class="lg-rate__stars">
-            ${[1, 2, 3, 4, 5].map((n) => `
-              <button type="button" class="lg-star${n <= rating ? ' lg-star--on' : ''}" data-star="${n}" aria-label="${n} star${n === 1 ? '' : 's'}"></button>`).join('')}
+        <header class="lg-head">
+          ${game.cover_url ? `<img class="lg-head__cover" src="${esc(game.cover_url)}" alt="">` : ''}
+          <div class="lg-head__text">
+            <h2 class="lg-head__title">${esc(headTitle())}</h2>
+            ${game.release_year ? `<p class="lg-head__year">${esc(String(game.release_year))}</p>` : ''}
           </div>
-          <span class="lg-rate__label">${rating ? `Rated ${rating}` : 'Rate'}</span>
+        </header>
+
+        <div class="lg-body">
+        <div class="lg-label">Rate</div>
+        <div class="lg-group lg-group--rate">
+          <div class="lg-rate" id="lg-rating">${starRow(draft.rating, { interactive: true, size: 27 })}</div>
+          <button type="button" class="lg-love" data-act="love" aria-pressed="${draft.loved}"
+                  aria-label="${draft.loved ? 'Remove from loved' : 'Mark as loved'}">
+            ${draft.loved ? iconHeartSolid() : iconHeartLine()}
+          </button>
         </div>
 
-        <div class="lg-list">
-          ${row('review', log?.review ? 'Edit your review' : 'Write a review', iconPencilSm())}
-          ${log ? row('again', 'Log again', iconPlusSm(), { note: replayCount ? `${replayCount} replay${replayCount === 1 ? '' : 's'}` : '' }) : ''}
-          ${row('list', 'Add to lists', iconStack())}
+        <div class="lg-label">Track</div>
+        <div class="lg-group lg-group--track">
+          ${pill('played', 'Played', iconController())}
+          ${pill('playing', 'Playing', iconPlay())}
+          ${pill('backlog', 'Backlog', iconBookmarkSm())}
+        </div>
+
+        <div class="lg-label">Detail</div>
+        <div class="lg-group">
+          ${row('review', log?.review ? 'Edit your review' : 'Write a review', iconPencilSm(),
+            { note: reviewNote(), arrow: true })}
+          <label class="lg-row lg-row--field">
+            <span class="lg-row__icon">${iconCalendarSm()}</span>
+            <span class="lg-row__label">Played on</span>
+            <span class="lg-row__note">${draft.played_date ? esc(shortDate(draft.played_date)) : 'add'}</span>
+            <span class="lg-row__go">${iconChevronRight()}</span>
+            <input type="date" class="lg-row__input" id="lg-date" aria-label="Date played"
+                   value="${esc(draft.played_date || '')}" min="${esc(game.release_date || '')}" max="${today}">
+          </label>
+          <label class="lg-row lg-row--field">
+            <span class="lg-row__icon">${iconClockSm()}</span>
+            <span class="lg-row__label">Hours</span>
+            <input type="number" class="lg-num" id="lg-hours" aria-label="Hours played" placeholder="add"
+                   inputmode="numeric" min="0" max="20000" step="1" value="${draft.hours ?? ''}">
+            <span class="lg-row__go">${iconChevronRight()}</span>
+          </label>
+          ${log ? row('again', 'Log it again', iconLogAgain(),
+            { note: replayCount ? `${replayCount} replay${replayCount === 1 ? '' : 's'}` : '', arrow: true }) : ''}
+        </div>
+
+        <div class="lg-label">Share</div>
+        <div class="lg-group">
+          ${row('list', 'Add to lists', iconStack(), { arrow: true })}
           ${row('share', 'Copy link', iconLinkSm())}
-          ${log ? row('delete', 'Delete this log', iconTrashSm(), { danger: true }) : ''}
+        </div>
+
+        ${log ? row('delete', 'Delete this log', iconTrashSm(), { danger: true }) : ''}
+        </div>
+
+        <div class="lg-foot">
+          <button type="button" class="lg-save" data-act="save">Save entry</button>
         </div>
       </div>`;
+
+    wireRating();
 
     // Keep the row on the page underneath in sync as we go, so closing
     // the sheet never shows a stale sentence for the moment it takes
     // the reconcile to land.
     const rowText = document.querySelector('#open-log-sheet .gd-log__text');
-    // One entry plus however many replays sit behind it — the same
-    // total the initial render counts from ownLogs.
-    if (rowText) rowText.innerHTML = logRowLabel(log, log ? replayCount + 1 : 0);
+    if (rowText) {
+      const preview = draft.status ? { ...(log || {}), status: draft.status, rating: draft.rating } : null;
+      rowText.innerHTML = logRowLabel(preview, preview ? replayCount + 1 : 0);
+    }
+  }
+
+  // Press anywhere on the stars and slide without lifting; the rating
+  // tracks the finger in half-star steps. Lifted wholesale from the log
+  // modal so the two rating controls behave identically — a tap is just
+  // a zero-length swipe, and tapping the star already set clears it.
+  function wireRating() {
+    const picker = qs('#lg-rating', overlay);
+    if (!picker) return;
+    const ratingFromX = (clientX) => {
+      const stars = qsa('.star', picker);
+      if (!stars.length) return draft.rating;
+      const first = stars[0].getBoundingClientRect();
+      if (clientX < first.left + 2) return 0.5;
+      let val = 0.5;
+      for (const st of stars) {
+        const box = st.getBoundingClientRect();
+        const idx = Number(st.dataset.star);
+        if (clientX >= box.right) { val = idx; continue; }
+        if (clientX >= box.left) {
+          val = (clientX - box.left) < box.width / 2 ? idx - 0.5 : idx;
+          break;
+        }
+      }
+      return val;
+    };
+    const paint = (v) => {
+      if (v === draft.rating) return;
+      draft.rating = v;
+      picker.innerHTML = starRow(v, { interactive: true, size: 27 });
+      buzz();
+    };
+
+    let dragging = false;
+    let pressed = 0;
+    picker.addEventListener('pointerdown', (e) => {
+      dragging = true;
+      pressed = ratingFromX(e.clientX);
+      try { picker.setPointerCapture(e.pointerId); } catch { /* fine without capture */ }
+      // A press on the value already set is a clear, not a re-set — the
+      // same "tap it again to undo" the status pills have.
+      if (pressed === draft.rating) paint(0);
+      else paint(pressed);
+      e.preventDefault();
+    });
+    picker.addEventListener('pointermove', (e) => {
+      if (!dragging) return;
+      paint(ratingFromX(e.clientX));
+    });
+    const end = (e) => {
+      if (!dragging) return;
+      dragging = false;
+      try { picker.releasePointerCapture(e.pointerId); } catch { /* already gone */ }
+    };
+    picker.addEventListener('pointerup', end);
+    picker.addEventListener('pointercancel', end);
   }
 
   render();
 
-  // Tapping the status you're already on clears it — that's the only way
-  // to take a game back out of your backlog, and without it the toggles
-  // are one-way. Clearing means deleting the log, so a log carrying a
-  // rating or a review is refused here and sent to "Delete this log",
-  // which is explicit about what it destroys.
-  // Guards the window between an optimistic repaint and its write
-  // landing: during it `log` is a local object with no id yet, so a
-  // second tap would try to update or delete a row it can't name.
-  let inFlight = false;
-
-  async function setStatus(next) {
-    if (inFlight) return;
-    const before = log;
-    const clearing = !!log && log.status === next;
-    if (clearing && (log.rating || log.review)) {
-      toast('Your rating and review live on this log — use Delete this log.', 'info');
-      return;
+  overlay.addEventListener('input', (e) => {
+    if (e.target.id === 'lg-date') {
+      draft.played_date = e.target.value || null;
+      const note = e.target.closest('.lg-row')?.querySelector('.lg-row__note');
+      if (note) note.textContent = draft.played_date ? shortDate(draft.played_date) : 'add';
     }
-
-    const saved = await ensureSavedGame();
-    if (!saved) return;
-
-    log = clearing ? null : { ...(log || {}), status: next };
-    dirty = true;
-    inFlight = true;
-    render();
-
-    try {
-      if (clearing) await api.deleteLog(before.id);
-      else if (before?.id) log = await api.updateLog(before.id, { status: next });
-      else log = await api.createLog({ game_id: game.id, user_id: state.user.id, status: next, is_public: true });
-      pulseLogTab();
-      render();
-    } catch (err) {
-      log = before;
-      render();
-      toast(err.message || 'Could not save that.', 'error');
-    } finally {
-      inFlight = false;
+    if (e.target.id === 'lg-hours') {
+      const n = Number(e.target.value);
+      draft.hours = e.target.value === '' || isNaN(n) ? null : Math.max(0, Math.min(20000, Math.round(n)));
     }
-  }
-
-  async function setRating(n) {
-    if (inFlight) return;
-    const before = log;
-    // Tapping the star you're already on clears the rating rather than
-    // re-setting it — the same "tap it again to undo" the status
-    // toggles have, so the two behave alike.
-    const clearing = !!log && log.rating === n;
-
-    const saved = await ensureSavedGame();
-    if (!saved) return;
-
-    log = { ...(log || {}), rating: clearing ? null : n, status: log?.status || 'played' };
-    dirty = true;
-    inFlight = true;
-    render();
-
-    try {
-      if (before?.id) log = await api.updateLog(before.id, { rating: clearing ? null : n, status: before.status || 'played' });
-      else log = await api.createLog({ game_id: game.id, user_id: state.user.id, status: 'played', rating: n, is_public: true });
-      pulseLogTab();
-      render();
-    } catch (err) {
-      log = before;
-      render();
-      toast(err.message || 'Could not save that rating.', 'error');
-    } finally {
-      inFlight = false;
-    }
-  }
+  });
 
   overlay.addEventListener('click', async (e) => {
     if (e.target === overlay) return close();
 
-    const star = e.target.closest('[data-star]');
-    if (star) return setRating(Number(star.dataset.star));
-
-    const tgBtn = e.target.closest('[data-status]');
-    if (tgBtn) return setStatus(tgBtn.dataset.status);
+    const stBtn = e.target.closest('[data-status]');
+    if (stBtn) {
+      const next = stBtn.dataset.status;
+      const clearing = draft.status === next;
+      // Refuse here rather than at write time, so the answer arrives
+      // while the control that asked the question is still on screen.
+      if (clearing && log && (log.rating || log.review)) {
+        toast('Your rating and review live on this log — use Delete this log.', 'info');
+        return;
+      }
+      draft.status = clearing ? null : next;
+      buzz();
+      render();
+      return;
+    }
 
     const actBtn = e.target.closest('[data-act]');
     if (!actBtn) return;
     const act = actBtn.dataset.act;
-    const current = log;
-    close();
-    if (act === 'review') {
+
+    if (act === 'love') {
+      draft.loved = !draft.loved;
+      buzz();
+      render();
+      return;
+    }
+
+    if (act === 'save') {
+      await commit();
+      return close();
+    }
+
+    // Everything below leaves the sheet, so the draft goes to the
+    // database first — otherwise opening the review composer would
+    // discard a rating set moments earlier.
+    if (act === 'review' || act === 'again') {
+      const current = await commit();
+      close();
+      if (act === 'again') {
+        const saved = await ensureSavedGame();
+        if (saved) openLogModal({ game, defaultReplay: true, onSaved: onChanged });
+        return;
+      }
       if (current) openLogModal({ existingLog: current, onSaved: onChanged });
       else {
         const saved = await ensureSavedGame();
         if (saved) openLogModal({ game, onSaved: onChanged });
       }
+      return;
     }
-    if (act === 'again') {
-      const saved = await ensureSavedGame();
-      if (saved) openLogModal({ game, defaultReplay: true, onSaved: onChanged });
+
+    if (act === 'list') {
+      await commit();
+      close();
+      await onAddToList?.();
+      return;
     }
-    if (act === 'list') await onAddToList?.();
+
     if (act === 'share') {
       const url = `${location.origin}${location.pathname}#/game/${game.id}`;
       try { await navigator.clipboard.writeText(url); toast('Link copied.', 'success'); }
       catch { toast('Could not copy that link.', 'error'); }
+      return;
     }
-    if (act === 'delete' && current) {
+
+    if (act === 'delete' && log) {
+      const doomed = log;
+      // Nothing left to write — the row is about to stop existing.
+      draft = { status: null, rating: 0, loved: false, played_date: null, hours: null };
+      committed = JSON.stringify(draft);
+      close();
       try {
-        await api.deleteLog(current.id);
+        await api.deleteLog(doomed.id);
         toast('Log deleted.', 'success');
         onChanged?.();
       } catch (err) { toast(err.message || 'Could not delete that.', 'error'); }
@@ -1290,6 +1465,10 @@ function iconBookmarkSm() { return `<svg viewBox="0 0 24 24" fill="none" stroke=
 function iconPencilSm() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L20 8l-4-4L4 16z"/></svg>`; }
 function iconPlusSm() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>`; }
 function iconLinkSm() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M10 13.5a4 4 0 0 0 5.7 0l2.8-2.8a4 4 0 0 0-5.7-5.7L11.5 6.3"/><path d="M14 10.5a4 4 0 0 0-5.7 0l-2.8 2.8a4 4 0 0 0 5.7 5.7l1.3-1.3"/></svg>`; }
+function iconCalendarSm() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3.2v3.6M16 3.2v3.6"/></svg>`; }
+function iconClockSm() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.8"/><path d="M12 7.2V12l3.2 2"/></svg>`; }
+function iconHeartLine() { return `<svg viewBox="3 4 18 18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M12 20.3 4.3 12.6A4.7 4.7 0 0 1 11 6l1 1 1-1a4.7 4.7 0 0 1 6.7 6.6z"/></svg>`; }
+function iconHeartSolid() { return `<svg viewBox="3 4 18 18" fill="currentColor"><path d="M12 20.3 4.3 12.6A4.7 4.7 0 0 1 11 6l1 1 1-1a4.7 4.7 0 0 1 6.7 6.6z"/></svg>`; }
 function iconTrashSm() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h14M9.5 7V5a1.5 1.5 0 0 1 1.5-1.5h2A1.5 1.5 0 0 1 14.5 5v2M6.5 7l1 12.5A1.5 1.5 0 0 0 9 21h6a1.5 1.5 0 0 0 1.5-1.5L17.5 7"/></svg>`; }
 
 // Full-screen artwork viewer. Single tap on the cover opens it; inside,
