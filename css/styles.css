@@ -349,6 +349,18 @@ ul { list-style: none; margin: 0; padding: 0; }
 #app::-webkit-scrollbar { display: none; }
 
 .boot-loader { flex: 1; display: grid; place-items: center; position: relative; }
+/* Shown by the watchdog in index.html when app.js never ran — see the
+   comment there. Styled without any token this file might itself have
+   failed to define, since the whole point is that something did not
+   load. */
+.boot-fail { max-width: 300px; padding: 0 24px; text-align: center; color: #ffffff; }
+.boot-fail__title { margin: 0; font-size: 17px; font-weight: 800; }
+.boot-fail__body { margin: 10px 0 0; font-size: 14px; line-height: 1.5; color: #9fb4cd; }
+.boot-fail__btn {
+  margin-top: 20px; width: 100%; min-height: 46px; border: none; cursor: pointer;
+  border-radius: 999px; background: #ffd60a; color: #000814;
+  font-size: 15px; font-weight: 800;
+}
 /* A soft ambient glow breathing behind the mark — the same --accent
    halo the real entry screen already puts behind this exact mark
    (.landing-entry__mark's drop-shadow, and the live-wallpaper orbs
