@@ -153,6 +153,12 @@ export function drawTourArt(count) {
 /**
  * The full-bleed panel at the top of a tour slide.
  *
+ * Full bleed: the picture is the slide. It runs edge to edge behind
+ * everything, and a single scrim carries it — dark across the top so
+ * the progress bar and Skip stay legible, open through the middle where
+ * the picture is worth looking at, then down to the ground colour
+ * behind the words. No panel, no fade line, no second background.
+ *
  * Grainy noir rather than a straight duotone. The image is pushed most
  * of the way to black-and-white and its contrast lifted, a layer of the
  * same film grain the ground carries is laid over it, and only a little
@@ -169,10 +175,8 @@ export function tourArtHtml({ url, eager = false } = {}) {
       <img class="tour-art__img" src="${esc(url)}" alt=""
            ${eager ? 'fetchpriority="high"' : 'loading="lazy"'} decoding="async">
       <span class="tour-art__duo"></span>
-      <span class="tour-art__warm"></span>
       <span class="tour-art__grain" style="background-image:url(&quot;${GRAIN}&quot;)"></span>
       <span class="tour-art__scrim"></span>
-      <span class="tour-art__fade"></span>
     </div>`;
 }
 

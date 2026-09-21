@@ -4439,10 +4439,12 @@ a.gd-credit__name { text-decoration: none; }
   touch-action: pan-y; background: var(--bg);
 }
 
-/* The artwork panel. Absolutely placed and full-bleed, so it ignores
-   the tour's own side padding and runs to the true screen edges. */
+/* The artwork IS the slide — edge to edge, behind everything, ignoring
+   the tour's own side padding. It spent a version as a 62%-tall panel
+   masked into a separate gradient ground; one picture carrying the
+   whole screen is the version that got picked. */
 .tour__plate {
-  position: absolute; top: 0; left: 0; right: 0; height: 62%;
+  position: absolute; inset: 0;
   z-index: 0; pointer-events: none;
 }
 /* The panel is MASKED out towards its bottom rather than covered by a
@@ -4453,11 +4455,10 @@ a.gd-credit__name { text-decoration: none; }
    and the join showed as a hard horizontal line straight across the
    slide. Masking cannot have that problem: the panel really does
    become transparent and the real ground shows through it. */
-.tour-art {
-  position: absolute; inset: 0; overflow: hidden;
-  -webkit-mask-image: linear-gradient(to bottom, #000 26%, rgba(0, 0, 0, 0.62) 58%, rgba(0, 0, 0, 0.18) 82%, transparent 100%);
-  mask-image: linear-gradient(to bottom, #000 26%, rgba(0, 0, 0, 0.62) 58%, rgba(0, 0, 0, 0.18) 82%, transparent 100%);
-}
+/* No mask any more. A mask existed to dissolve a panel into the ground
+   below it; there is no ground below it now, so the scrim alone does
+   the work. */
+.tour-art { position: absolute; inset: 0; overflow: hidden; }
 .tour-art > span { position: absolute; inset: 0; display: block; }
 /* Grainy noir. Most of the way to black-and-white with the contrast
    lifted, which is what leaves the grain something to sit in — over a
@@ -4467,7 +4468,10 @@ a.gd-credit__name { text-decoration: none; }
   width: 100%; height: 100%; object-fit: cover;
   /* Faces sit high in most key art, and the bottom third of this panel
      is being faded out anyway. */
-  object-position: 50% 32%;
+  /* A little lower than the old panel wanted: with the picture running
+     the full height, the interesting part of it should land in the open
+     middle of the scrim rather than up behind the progress bar. */
+  object-position: 50% 40%;
   display: block;
   filter: grayscale(0.66) contrast(1.24) brightness(0.92);
 }
@@ -4475,7 +4479,7 @@ a.gd-credit__name { text-decoration: none; }
    two read as one surface rather than as a photograph sitting on a
    textured page. */
 .tour-art__grain {
-  opacity: 0.5; mix-blend-mode: overlay; background-size: 200px;
+  opacity: 0.45; mix-blend-mode: overlay; background-size: 200px;
 }
 /* A real duotone, not a navy sheet laid on top: `color` takes hue and
    saturation from this gradient and luminosity from the photograph
@@ -4483,32 +4487,31 @@ a.gd-credit__name { text-decoration: none; }
    out as five images of the same place. */
 .tour-art__duo {
   background: linear-gradient(160deg, #0a5aa0, var(--surface) 70%, var(--bg));
-  mix-blend-mode: color; opacity: 0.2;
+  mix-blend-mode: color; opacity: 0.24;
 }
-/* The same warm bloom the ground carries, picked back up on the art so
-   the panel and the page below it share one light. */
-.tour-art__warm {
-  background: radial-gradient(62% 58% at 72% 22%, rgba(255, 214, 10, 0.34), transparent 70%);
-  mix-blend-mode: soft-light;
-}
-/* Keeps Skip and the progress bar legible whatever the artwork is
-   doing up there — without it they sit on whichever game happens to
-   have a bright sky. */
+/* The only thing between the picture and the words, so it has to do
+   three jobs in one pass: dark at the very top, where Skip and the
+   progress bar sit on whichever game happens to have a bright sky;
+   fully open through the upper middle, which is the part of the
+   picture worth looking at; then down to the ground colour under the
+   headline, the body and the button. */
 .tour-art__scrim {
-  background: linear-gradient(to bottom, rgba(0, 8, 20, 0.66), rgba(0, 8, 20, 0.34) 9%, rgba(0, 8, 20, 0.12) 20%, transparent 34%);
-}
-/* Only where masks are not available does the panel need a painted
-   fade — it is the lesser of the two, since it has to guess the colour
-   behind it, so it is the fallback rather than the default. */
-.tour-art__fade { display: none; }
-@supports not ((-webkit-mask-image: linear-gradient(#000, transparent)) or (mask-image: linear-gradient(#000, transparent))) {
-  .tour-art__fade { display: block; background: linear-gradient(to bottom, transparent 34%, rgba(0, 8, 20, 0.72) 74%, var(--bg)); }
+  background: linear-gradient(to bottom,
+    rgba(0, 8, 20, 0.62) 0%,
+    transparent 22%,
+    transparent 38%,
+    rgba(0, 8, 20, 0.88) 72%,
+    var(--bg) 96%);
 }
 
-.tour__plate--enter-forward  { animation: plate-enter-forward 460ms cubic-bezier(0.16, 1, 0.3, 1) both; }
-.tour__plate--enter-backward { animation: plate-enter-backward 460ms cubic-bezier(0.16, 1, 0.3, 1) both; }
-@keyframes plate-enter-forward  { from { opacity: 0; transform: translateX(46px) scale(1.04); } to { opacity: 1; transform: none; } }
-@keyframes plate-enter-backward { from { opacity: 0; transform: translateX(-46px) scale(1.04); } to { opacity: 1; transform: none; } }
+/* Both directions settle the same way. A full-screen picture translated
+   46px sideways shows the ground behind the edge it left, which a
+   62%-tall panel never did — so it fades and settles out of a slight
+   scale instead. The words still slide, and they are what reads as the
+   carousel. */
+.tour__plate--enter-forward,
+.tour__plate--enter-backward { animation: plate-enter 480ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+@keyframes plate-enter { from { opacity: 0; transform: scale(1.06); } to { opacity: 1; transform: none; } }
 
 /* Progress and Skip ride over the artwork's own scrim, so they are
    always white — there is no light-ground case left to handle. */
@@ -4539,7 +4542,7 @@ a.gd-credit__name { text-decoration: none; }
 .tour__stage {
   position: relative; z-index: 1;
   flex: 1; display: flex; flex-direction: column; justify-content: flex-end;
-  min-height: 0; padding-bottom: var(--space-5);
+  min-height: 0; padding-bottom: 26px;
 }
 .tour__content { display: flex; flex-direction: column; align-items: flex-start; text-align: left; }
 .tour__content--enter-forward  { animation: tour-enter-forward 380ms cubic-bezier(0.16, 1, 0.3, 1) both; }
@@ -4594,7 +4597,6 @@ a.gd-credit__name { text-decoration: none; }
    gives up the most room, since it is the one element here with no
    information in it. */
 @media (max-height: 720px) {
-  .tour__plate { height: 52%; }
   .tour__title { font-size: clamp(24px, 7.4vw, 30px); }
   .tour__body { margin-top: 13px; font-size: var(--text-small); }
   .tour__stage { padding-bottom: var(--space-4); }
