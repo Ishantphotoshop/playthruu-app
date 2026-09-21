@@ -133,10 +133,20 @@
         // controllerchange only fires when an update REPLACES an already-
         // active worker, never on a page's first-ever install, so this
         // can't loop or fire on a fresh visit.
-        var refreshedForUpdate = false;
+        // The guard used to be a plain variable, which is reset by the
+        // very reload it is guarding: if controllerchange ever fired
+        // again on the fresh page, nothing stopped it reloading again,
+        // and a wedged worker could hold the app in a reload loop that
+        // looks exactly like "it won't open". sessionStorage survives
+        // the reload, so the app can now only ever refresh itself ONCE
+        // per tab, whatever the worker does.
+        var RELOAD_KEY = 'playthruu:sw-refreshed';
+        var alreadyRefreshed = false;
+        try { alreadyRefreshed = sessionStorage.getItem(RELOAD_KEY) === '1'; } catch (e) {}
         navigator.serviceWorker.addEventListener('controllerchange', function () {
-          if (refreshedForUpdate) return;
-          refreshedForUpdate = true;
+          if (alreadyRefreshed) return;
+          alreadyRefreshed = true;
+          try { sessionStorage.setItem(RELOAD_KEY, '1'); } catch (e) {}
           window.location.reload();
         });
       });
