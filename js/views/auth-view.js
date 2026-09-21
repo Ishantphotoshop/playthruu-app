@@ -4,6 +4,7 @@ import { configured } from '../supabase-client.js';
 import { getLoginBackground, openCreditedGame } from '../api.js';
 import { iconUser, iconLock, iconMail, iconEye, iconEyeOff, iconClose, iconBack } from '../components.js';
 import { renderLandingView } from './landing-view.js';
+import { backdropHtml } from './landing-art.js';
 import { navigate } from '../router.js';
 
 // Only providers actually switched on in Supabase belong here — a button
@@ -309,11 +310,24 @@ export function renderAuthView(root, { startMode = 'signin' } = {}) {
   }
 
   function paint() {
+    // Built as one more slide in the signed-out sequence: the same
+    // duotone ground underneath, the rotating art as a panel across the
+    // top that dissolves into it, and the words left-aligned and low in
+    // the entry screen's own face and tracking. It used to be a
+    // full-bleed photograph at full saturation with solid white fields
+    // on top of it — a good-looking screen, but visibly from a
+    // different app than the one you had just swiped through.
     root.innerHTML = `
       <div class="auth-screen">
-        <div class="auth-screen__art-wrap">
-          <div class="auth-screen__art auth-screen__art--a is-active"></div>
-          <div class="auth-screen__art auth-screen__art--b"></div>
+        ${backdropHtml({ glow: '72% 10%' })}
+        <div class="auth-screen__plate">
+          <div class="auth-screen__art-wrap">
+            <div class="auth-screen__art auth-screen__art--a is-active"></div>
+            <div class="auth-screen__art auth-screen__art--b"></div>
+            <span class="auth-screen__duo"></span>
+            <span class="auth-screen__warm"></span>
+            <span class="auth-screen__scrim"></span>
+          </div>
         </div>
 
         <button type="button" class="auth-screen__back" id="auth-back-to-landing" aria-label="Back">${iconBack()}</button>
@@ -323,9 +337,10 @@ export function renderAuthView(root, { startMode = 'signin' } = {}) {
         <div class="auth-screen__brand">
           <div class="auth-screen__brand-row">
             <img src="icons/mark-blue.svg" alt="" class="auth-screen__mark">
-            <h1>PlayThruu</h1>
+            <span class="auth-screen__name">PlayThruu</span>
           </div>
-          <p>LOG it. Rate it. Review it. Remember it</p>
+          <h1 class="auth-screen__head">${mode === 'signup' ? 'Start your<br><em>diary.</em>' : 'Welcome<br><em>back.</em>'}</h1>
+          <p class="auth-screen__tag">LOG it. Rate it. Review it. Remember it</p>
         </div>
 
         ${!configured ? `

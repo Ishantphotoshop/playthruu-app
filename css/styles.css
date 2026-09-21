@@ -2497,126 +2497,231 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 
 .muted { color: var(--ink-dim); font-size: 13.5px; }
 
-/* ------------------------------------------------------------ auth screen */
+/* ------------------------------------------------------------ auth screen
+   The last screen in the signed-out sequence, and built like the ones
+   before it: the shared duotone ground (see .lp-bg), the rotating game
+   art as a panel across the top that dissolves into it, and the words
+   left-aligned and low in the entry screen's own face and tracking.
+
+   It used to be a full-bleed photograph at full saturation with solid
+   white fields sitting on it. That looked good on its own and looked
+   like a different app the moment you arrived from the tour. */
 .auth-screen {
   position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column;
-  justify-content: flex-end; background: var(--bg); overflow: hidden;
+  justify-content: flex-end; background: var(--bg); overflow: hidden; isolation: isolate;
   transition: filter 320ms ease;
 }
 /* Whole screen blurs while the "Continue with" popup is open — art,
-   wordmark, form fields, everything — not just the backdrop art
-   layer (.auth-screen--blurred, toggled by openProviderPopup() in
-   auth-view.js). A plain filter on the actual screen, not backdrop-
-   filter on the popup, which never composited reliably. No saturate
-   boost here — a saturate(1.6) "glow" version of this read as too
-   bright/vivid once actually seen, so it's back to plain blur, at 9px,
-   plus a modest brightness dip so the backdrop settles down rather
-   than staying glaring behind a much more transparent glass sheet (see
-   .modal--providers below). While the sheet is being dragged down, JS
-   overrides this filter inline (see openProviderPopup's onDrag) so
-   blur and brightness ease back out together in step with the swipe,
-   landing on a fully unfiltered screen right as the sheet is dismissed. */
-.auth-screen--blurred {
-  filter: blur(9px) brightness(0.85);
+   wordmark, form fields, everything — not just the backdrop art layer
+   (.auth-screen--blurred, toggled by openProviderPopup() in
+   auth-view.js). A plain filter on the actual screen, not
+   backdrop-filter on the popup, which never composited reliably. */
+.auth-screen--blurred { filter: blur(9px) brightness(0.85); }
+
+/* The art panel. Shorter than the tour's, because a form has to fit
+   underneath it — and anchored to the top rather than bleeding behind
+   everything, which is what stopped the fields ever having to fight a
+   photograph for contrast. */
+.auth-screen__plate {
+  position: absolute; top: 0; left: 0; right: 0; height: 42%;
+  z-index: 0; pointer-events: none;
 }
-/* Full-bleed now — the image covers the entire screen behind
-   everything, not just a capped-height band up top. */
 .auth-screen__art-wrap {
-  position: absolute; inset: 0; z-index: 0;
+  position: absolute; inset: 0; overflow: hidden;
+  /* Masked out towards the bottom rather than faded to a colour: the
+     ground behind is itself a gradient, so a fade has to guess what it
+     is landing on and gets it wrong at every height but one. */
+  -webkit-mask-image: linear-gradient(to bottom, #000 30%, rgba(0, 0, 0, 0.6) 62%, rgba(0, 0, 0, 0.16) 84%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 30%, rgba(0, 0, 0, 0.6) 62%, rgba(0, 0, 0, 0.16) 84%, transparent 100%);
 }
-/* Two stacked layers crossfade between images (Netflix-style rotation).
-   Full-bleed cover across the entire screen — the trade-off is a little
-   cropping on the edges for images whose proportions don't exactly
-   match the screen, in exchange for zero letterboxing/empty space. */
+/* Two stacked layers crossfade between images (Netflix-style rotation),
+   both sitting under the duotone treatment so a swap never changes the
+   screen's colour, only its picture. */
 .auth-screen__art {
   position: absolute; inset: 0;
-  background-color: var(--bg); background-size: cover; background-position: center 22%; background-repeat: no-repeat;
+  background-size: cover; background-position: center 26%; background-repeat: no-repeat;
   opacity: 0; transition: opacity 1.1s ease;
+  /* Darkened and desaturated BEFORE the duotone layer blends with it.
+     The tour picks its five images by hand; this screen rotates
+     through a whole shelf of them, and they run from near-black key
+     art to Undertale, which is mostly white. mix-blend-mode: color
+     replaces hue and saturation but keeps luminosity, so a white
+     image stays a white image and the top of the screen blew out
+     while the credit chip on it became unreadable.
+
+     A light touch on purpose. Measured across the shelf, the bright
+     end sits at roughly five times the luminance of the dark end, and
+     no single multiplier closes a ratio — pulled far enough down to
+     calm Undertale, the genuinely dark art (Shadow of the Erdtree)
+     went to almost nothing. So this only takes the top off: Undertale
+     drops from about 72 mean luminance to 61, while Shadow of the
+     Erdtree moves 10 to 13 and stays a picture. The scrim above
+     handles what is left, where it matters — under the chips. */
+  filter: brightness(0.85) saturate(0.65) contrast(1.02);
 }
 .auth-screen__art.is-active { opacity: 1; }
-.auth-screen__content { position: relative; z-index: 2; padding: 12px 24px calc(32px + env(safe-area-inset-bottom)); }
-/* Returns to the landing funnel — the only way here now, so it's never a
-   dead end if someone taps Sign up/Log in just to look. Dark translucent
-   circle so it reads over whatever photo happens to be behind it. */
+.auth-screen__art-wrap > span { position: absolute; inset: 0; display: block; }
+/* The same real duotone the tour slides use: `color` takes hue and
+   saturation from this gradient and luminosity from the photograph, so
+   a rotation through a dozen games with a dozen different colour
+   gradings never shifts the screen's palette. */
+.auth-screen__duo {
+  background: linear-gradient(160deg, #0a5aa0, var(--surface) 70%, var(--bg));
+  mix-blend-mode: color;
+}
+.auth-screen__warm {
+  background: radial-gradient(62% 58% at 72% 22%, rgba(255, 214, 10, 0.34), transparent 70%);
+  mix-blend-mode: soft-light;
+}
+/* Keeps the back chevron and the credit chip legible whatever image is
+   up there at the time. */
+.auth-screen__scrim {
+  background: linear-gradient(to bottom, rgba(0, 8, 20, 0.66), rgba(0, 8, 20, 0.34) 9%, rgba(0, 8, 20, 0.12) 20%, transparent 34%);
+}
+
+.auth-screen__content {
+  position: relative; z-index: 2;
+  padding: 12px 26px calc(32px + env(safe-area-inset-bottom));
+}
+
+/* Back and the art credit: the same round glass chips the rest of the
+   signed-out run uses, not the near-opaque black discs they needed
+   when they sat directly on an untreated photograph. */
 .auth-screen__back {
   position: absolute; z-index: 3;
-  top: calc(var(--space-3) + var(--safe-top)); left: var(--space-4);
+  top: calc(var(--space-3) + var(--safe-top)); left: 26px;
   width: 36px; height: 36px; display: grid; place-items: center;
-  border-radius: 50%; background: rgba(8,8,12,0.55); border: 1px solid rgba(255,255,255,0.14);
-  color: #fff; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.18);
+  color: var(--ink); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
 }
 .auth-screen__back svg { width: 18px; height: 18px; }
-.auth-screen__back:active { transform: scale(0.92); background: rgba(8,8,12,0.7); }
-/* Credits the game whose art is currently showing and links to its
-   real page in-app — small and out of the way, top-right so it never
-   competes with the back button or the form below it. */
+.auth-screen__back:active { transform: scale(0.92); background: rgba(255, 255, 255, 0.14); }
+/* Credits the game whose art is showing and links to its real page —
+   small and out of the way, top-right so it never competes with the
+   back button or the form below it. */
 .auth-screen__credit {
   position: absolute; z-index: 3;
-  top: calc(var(--space-3) + var(--safe-top)); right: var(--space-4);
+  top: calc(var(--space-3) + var(--safe-top)); right: 26px;
   max-width: 62%; display: flex; align-items: center; gap: 4px;
-  padding: 7px 12px; border-radius: 999px;
-  background: rgba(8,8,12,0.55); border: 1px solid rgba(255,255,255,0.14);
-  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
-  color: rgba(255,255,255,0.75); font-family: var(--font-body); font-size: 11.5px; font-weight: 600;
+  padding: 7px 12px; border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  color: var(--ink-dim); font-family: var(--font-mono); font-size: var(--text-micro);
+  letter-spacing: 0.06em; text-transform: uppercase;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   opacity: 1; transition: opacity 0.65s ease;
 }
 .auth-screen__credit.is-fading { opacity: 0; }
-.auth-screen__credit:active { background: rgba(8,8,12,0.7); }
+.auth-screen__credit:active { background: rgba(255, 255, 255, 0.14); }
 .auth-screen__credit[disabled] { opacity: 0.7; }
-.auth-screen__credit #auth-credit-game { color: #fff; overflow: hidden; text-overflow: ellipsis; }
+.auth-screen__credit #auth-credit-game { color: var(--ink); overflow: hidden; text-overflow: ellipsis; }
 @media (prefers-reduced-motion: reduce) {
   .auth-screen__credit { transition: none; }
 }
-.auth-screen__brand { text-align: center; margin-bottom: 22px; position: relative; }
-.auth-screen__brand-row { display: flex; align-items: center; justify-content: center; gap: 10px; }
-.auth-screen__mark {
-  width: 40px; height: 40px; border-radius: 11px;
-  filter: drop-shadow(0 2px 10px rgba(0,0,0,0.55));
+
+/* The lockup, the sentence and the line under it — the same three-part
+   arrangement, the same sizes and the same left edge as the entry
+   screen and every tour slide. Left-aligned, not centred: this is the
+   fourth screen in a row, and the other three read down the left. */
+.auth-screen__brand { text-align: left; margin-bottom: var(--space-5); }
+.auth-screen__brand-row { display: flex; align-items: center; gap: 9px; }
+.auth-screen__mark { width: 24px; height: 24px; border-radius: 0; display: block; flex-shrink: 0; }
+.auth-screen__name {
+  font-family: var(--font-brand); font-weight: var(--weight-bold);
+  font-size: 15px; line-height: 1; letter-spacing: -0.03em; color: var(--ink);
 }
-.auth-screen__brand h1 {
-  /* 'Anton' was referenced here but never actually loaded by any font
-     link in index.html, so it was silently falling back the whole time.
-     Switched to the real brand font (--font-brand) — bold and lowercase
-     now, a chunkier geometric mark instead of thin tracked-out capitals. */
-  font-family: var(--font-brand); font-weight: 800; font-style: normal; font-size: 36px;
-  color: #fff; letter-spacing: -0.015em; text-transform: none;
-  text-shadow: 0 2px 14px rgba(0,0,0,0.9), 0 1px 3px rgba(0,0,0,0.9);
+.auth-screen__head {
+  margin: var(--space-4) 0 0;
+  font-family: var(--font-brand); font-weight: var(--weight-black);
+  font-size: clamp(30px, 9.6vw, 40px); line-height: 0.94; letter-spacing: -0.05em;
+  color: var(--ink);
 }
-.auth-screen__brand p {
-  font-family: var(--font-body); font-style: italic; font-weight: 500;
-  color: rgba(255,255,255,0.85); font-size: 13.5px; margin-top: 6px; letter-spacing: 0.01em;
-  text-shadow: 0 2px 10px rgba(0,0,0,0.9), 0 1px 3px rgba(0,0,0,0.9);
+.auth-screen__head em { font-style: normal; color: var(--accent); }
+.auth-screen__tag {
+  margin: 14px 0 0; max-width: 24em;
+  font-family: var(--font-body); font-style: normal; font-weight: var(--weight-body);
+  font-size: var(--text-body); line-height: var(--leading-body); color: var(--ink-dim);
 }
+
+/* Fields as glass on the duotone rather than solid white blocks. White
+   fields were right when the ground was a full-saturation photograph
+   and nothing else would have been legible; on this ground they read
+   as three holes punched through the screen. */
 .auth-form .field span {
-  display: block; font-family: var(--font-body); font-weight: 600;
-  color: rgba(255,255,255,0.75); font-size: 11.5px; margin-bottom: 8px;
-  text-transform: uppercase; letter-spacing: 0.08em;
-  text-shadow: 0 2px 8px rgba(0,0,0,0.85);
+  display: block; font-family: var(--font-mono); font-weight: var(--weight-medium);
+  color: var(--ink-faint); font-size: var(--text-micro); margin-bottom: 8px;
+  text-transform: uppercase; letter-spacing: 0.14em;
 }
 .auth-form .field input {
-  width: 100%; background: #fff; color: #001d3d; border: none; border-radius: 12px;
-  padding: 15px 16px; font-family: var(--font-body); font-size: 15px;
-  box-shadow: 0 0 0 0 transparent; transition: box-shadow 0.15s ease;
+  width: 100%; border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.07); color: var(--ink);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  padding: 15px 18px; font-family: var(--font-body); font-size: 15px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
 }
 .auth-form .field--icon .field__input-wrap { position: relative; }
-.auth-form .field--icon input { padding-left: 38px; }
-.auth-form .field--password input { padding-right: 44px; }
+.auth-form .field--icon input { padding-left: 42px; }
+.auth-form .field--password input { padding-right: 46px; }
 .auth-form .field__icon {
-  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
-  width: 17px; height: 17px; color: #929292; pointer-events: none;
+  position: absolute; left: 16px; top: 50%; transform: translateY(-50%);
+  width: 17px; height: 17px; color: var(--ink-faint); pointer-events: none;
 }
 .auth-form .field__icon svg { width: 100%; height: 100%; display: block; }
 .auth-form .field__toggle {
-  position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+  position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
   width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
-  background: none; border: none; padding: 0; color: #929292; cursor: pointer; border-radius: 8px;
+  background: none; border: none; padding: 0; color: var(--ink-faint); cursor: pointer; border-radius: 50%;
 }
 .auth-form .field__toggle svg { width: 18px; height: 18px; display: block; }
-.auth-form .field__toggle:active { color: #001d3d; background: rgba(0,0,0,0.06); }
-/* Content fades/rises in on mount rather than just popping into place.
-   Respects reduced-motion — no animation at all in that case, content
-   just appears instantly in its final position. */
+.auth-form .field__toggle:active { color: var(--ink); background: rgba(255, 255, 255, 0.1); }
+.auth-form .field input:focus {
+  outline: none; background: rgba(255, 255, 255, 0.11);
+  border-color: var(--accent-bright); box-shadow: 0 0 0 3px rgba(255, 214, 10, 0.22);
+}
+.auth-form .field input::placeholder { color: var(--ink-faint); }
+.auth-form .field { margin-bottom: 12px; display: block; }
+
+/* Where a browser cannot blur what is behind an element, a see-through
+   field is an unreadable grey box — so it becomes a solid raised
+   surface instead, which is the same idea honestly expressed. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .auth-form .field input { background: var(--surface-raised); }
+  .auth-screen__back, .auth-screen__credit { background: var(--surface-raised); }
+}
+
+/* The same yellow pill as Get started and Continue, from the same
+   tokens — it was on --gold with its own letter-spacing, which read as
+   a slightly different button than the one three screens earlier. */
+.auth-screen .btn--accent {
+  background: var(--accent); color: var(--bg); border-radius: var(--radius-pill); border: none;
+  padding: 15px; font-family: var(--font-display); font-weight: var(--weight-black);
+  font-size: var(--text-button); letter-spacing: -0.005em; width: 100%; min-height: 50px;
+  margin-top: var(--space-2);
+}
+.auth-screen .btn--accent:hover { background: var(--accent-bright); }
+.auth-screen .btn--accent:active { transform: scale(0.99); }
+
+.auth-screen__switch {
+  display: block; width: 100%; text-align: center; margin-top: var(--space-4);
+  font-size: 13.5px; font-family: var(--font-body); color: var(--ink-dim);
+}
+/* Only the action word is the tappable target — the lead-in is plain
+   text. */
+.auth-screen__switch-link {
+  background: none; border: none; padding: 0 0 0 4px; cursor: pointer;
+  font: inherit; font-weight: var(--weight-bold); font-size: 15px; color: var(--accent);
+}
+.auth-screen__switch-link:hover { text-decoration: underline; }
+.auth-screen__switch-link:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 2px; border-radius: 4px; }
+.auth-screen__warning {
+  background: color-mix(in srgb, var(--coral) 12%, var(--surface)); border: 1px solid color-mix(in srgb, var(--coral) 40%, transparent);
+  border-radius: var(--radius-s); padding: 12px 14px; font-size: 12.5px; color: var(--ink-dim); margin-bottom: 20px; line-height: 1.5;
+}
+.auth-screen__warning code { font-family: var(--font-mono); color: var(--coral); }
+
+/* Content fades/rises in on mount rather than popping into place. */
 @media (prefers-reduced-motion: no-preference) {
   .auth-screen__content { animation: authContentIn 0.55s cubic-bezier(0.16, 1, 0.3, 1) both; }
 }
@@ -2627,32 +2732,29 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 @media (prefers-reduced-motion: reduce) {
   .auth-screen__art { transition: none; }
 }
-.auth-form .field input:focus { outline: none; box-shadow: 0 0 0 3px rgba(242,183,5,0.55); }
-.auth-form .field input::placeholder { color: #a0a0a0; }
-.auth-form .field { margin-bottom: 14px; display: block; }
-.auth-screen .btn--accent {
-  background: var(--gold); color: var(--bg); border-radius: 999px; border: none;
-  padding: 16px; font-family: var(--font-display); font-weight: 800; font-size: 17px;
-  letter-spacing: 0.02em; width: 100%;
+
+/* Short screens, and the sign-up form, which carries a third field:
+   the art gives up the room, since it is the one element here with no
+   information in it. */
+@media (max-height: 760px) {
+  .auth-screen__plate { height: 32%; }
+  .auth-screen__head { font-size: clamp(24px, 7.4vw, 30px); }
+  .auth-screen__tag { display: none; }
+  .auth-screen__brand { margin-bottom: var(--space-3); }
+  /* The content is bottom-anchored, so anything it cannot fit overflows
+     the TOP — where the back chevron and the art credit live. On a
+     640-tall phone the sign-up form (three fields, not two) pushed the
+     wordmark straight up underneath both of them. Padding cannot fix
+     that, since padding only makes the block taller; the rows
+     themselves have to give up the space. */
+  .auth-form .field { margin-bottom: 8px; }
+  .auth-form .field span { margin-bottom: 5px; }
+  .auth-form .field input { padding-top: 13px; padding-bottom: 13px; }
+  .auth-divider { margin: var(--space-3) 0; }
+  .auth-screen .btn--accent { margin-top: 0; }
+  .auth-screen__switch { margin-top: var(--space-3); }
+  .auth-screen__content { padding-bottom: calc(20px + env(safe-area-inset-bottom)); }
 }
-.auth-screen__switch {
-  display: block; width: 100%; text-align: center; margin-top: 20px; font-size: 13.5px;
-  font-family: var(--font-body); color: rgba(255,255,255,0.75);
-  text-shadow: 0 1px 4px rgba(0,0,0,0.7);
-}
-/* Only the action word is the tappable target now — the lead-in is plain
-   text. */
-.auth-screen__switch-link {
-  background: none; border: none; padding: 0 0 0 4px; cursor: pointer;
-  font: inherit; font-weight: 700; font-size: 15px; color: var(--gold);
-}
-.auth-screen__switch-link:hover { text-decoration: underline; }
-.auth-screen__switch-link:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 2px; border-radius: 4px; }
-.auth-screen__warning {
-  background: color-mix(in srgb, var(--coral) 12%, var(--surface)); border: 1px solid color-mix(in srgb, var(--coral) 40%, transparent);
-  border-radius: var(--radius-s); padding: 12px 14px; font-size: 12.5px; color: var(--ink-dim); margin-bottom: 20px; line-height: 1.5;
-}
-.auth-screen__warning code { font-family: var(--font-mono); color: var(--coral); }
 
 /* ------------------------------------------------------------ small screens */
 @media (max-width: 360px) {
@@ -3839,15 +3941,17 @@ a.gd-credit__name { text-decoration: none; }
 /* "OR" divider above the social button, matching the rest of the login
    art — a hairline on each side of the word, sitting straight on the
    poster. */
+/* No text-shadow any more: it was there to hold this legible against a
+   full-saturation photograph, and on the duotone ground it just makes
+   small type look smudged. */
 .auth-divider {
   display: flex; align-items: center; gap: var(--space-3);
   margin: var(--space-4) 0;
-  color: rgba(255,255,255,0.6); font-size: var(--text-label);
-  text-transform: uppercase; letter-spacing: 0.1em;
-  text-shadow: 0 1px 4px rgba(0,0,0,0.9);
+  color: var(--ink-faint); font-family: var(--font-mono); font-size: var(--text-micro);
+  text-transform: uppercase; letter-spacing: 0.14em;
 }
 .auth-divider::before, .auth-divider::after {
-  content: ''; flex: 1; height: 1px; background: rgba(255,255,255,0.18);
+  content: ''; flex: 1; height: 1px; background: rgba(255, 255, 255, 0.14);
 }
 
 /* One full-width bordered "Continue with" button on the login art, with
@@ -3855,17 +3959,25 @@ a.gd-credit__name { text-decoration: none; }
    anywhere on it opens the popup with the actual choices; the discs
    inside are just a preview (pointer-events off, so the click always
    lands on the button). */
+/* The same pane of glass as the entry screen's "I already have an
+   account" — same fill, same border, same blur — so the secondary
+   action looks the same on the screen you arrived from and the one you
+   arrived at. */
 .auth-continue {
   display: flex; align-items: center; justify-content: center; gap: 14px;
-  width: 100%; min-height: 56px; padding: 0 var(--space-4);
+  width: 100%; min-height: 50px; padding: 0 var(--space-4);
   border-radius: var(--radius-pill);
-  background: var(--surface-high);
-  border: 1px solid var(--line);
-  color: var(--ink); font-family: var(--font-display), serif;
-  font-size: 16px; font-weight: 600; cursor: pointer;
+  background: rgba(255, 255, 255, 0.07);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: var(--ink); font-family: var(--font-display);
+  font-size: var(--text-body); font-weight: var(--weight-strong); cursor: pointer;
   transition: background var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
 }
-.auth-continue:hover { background: var(--surface-raised); }
+.auth-continue:hover { background: rgba(255, 255, 255, 0.12); }
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .auth-continue { background: var(--surface-raised); }
+}
 .auth-continue:active { transform: scale(0.98); }
 .auth-continue:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 2px; }
 .auth-continue__label { white-space: nowrap; }
