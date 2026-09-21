@@ -1,6 +1,5 @@
 import * as api from '../api.js';
-import { posterFrame, avatarImg } from '../components.js';
-import { esc, starRow } from '../utils.js';
+import { esc } from '../utils.js';
 
 // The artwork for the signed-out screens: real game covers, shown in the
 // same poster frames, stamps, star rows and review cards the rest of the
@@ -106,144 +105,104 @@ export async function resolveShowcase() {
   return showcaseCache;
 }
 
-// A game to draw, resolved or not. The fallback keeps the real title, so
-// a slot still waiting on IGDB renders the app's own titled placeholder
-// instead of an empty box.
-function pick(games, key) {
-  return (games && games[key]) || { title: SHOWCASE[key], cover_url: null };
-}
-
-function poster(game, extraClass = '', inner = '') {
-  return `<div class="lp-poster ${extraClass}">
-    ${posterFrame(game.cover_url, game.title, 'lp-poster__frame')}
-    ${inner}
-  </div>`;
-}
-
-// ---- the paper ------------------------------------------------------
-// Layers of colour hanging from the top of the screen, each ending in a
-// single curve, stacked so the front one covers the ones behind it.
+// ---- the ground everything signed-out stands on ----------------------
+// Three layers over a near-black navy, which together are the whole
+// look: a long diagonal wash from the palette's mid blue down into the
+// dark, film grain across all of it, and one warm bloom of the accent
+// sitting off-centre near the top.
 //
-// Built from divs with an elliptical bottom radius rather than an SVG
-// path, and that is the whole point: the arc's DEPTH is a pixel value,
-// so it is identical at any width and can never be squashed. The first
-// version of this drew an SVG stretched to fit its box, which flattened
-// every curve to about seventy per cent of its drawn depth and made the
-// top of the screen look subtly wrong in a way that was hard to name.
+// The grain is what stops this reading as a stock gradient. Large, soft
+// fields of colour band visibly on a phone screen; the noise breaks the
+// steps up and gives the whole thing a printed surface rather than a
+// rendered one. It is a data-URI of SVG fractalNoise rather than an
+// image file, so it costs nothing to load and cannot fail to arrive.
 //
-// Each layer's height is a percentage of the block, so one CSS height
-// scales the whole stack — a short screen shrinks it without touching
-// the curves.
-const PAPER_FRONT = ['#001D3D', '#002A52', '#003566', '#FFC300', '#FFD60A'];
+// `glow` moves the bloom per screen. That is what makes swiping the
+// tour feel like a carousel: the light on the page moves with the
+// slide, not just the words.
+const GRAIN = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E";
 
-// One per step of the tour, so swiping changes the whole top of the
-// screen rather than just the words under it — the thing a carousel
-// does that a slideshow does not.
-// `chrome` is what the progress bar and Skip are drawn in, and it has
-// to be stated per step rather than fixed: the LAST colour in each
-// palette is the band across the very top of the screen, and dark
-// chrome on the yellow steps is white chrome on the navy ones. Set once
-// and forgotten, Skip simply disappeared on every step whose top band
-// was navy.
-export const PAPER_STEPS = [
-  { palette: PAPER_FRONT, heights: [82, 66, 51, 37, 23], chrome: 'dark' },
-  { palette: ['#FFD60A', '#FFC300', '#003566', '#002A52', '#001D3D'], heights: [80, 62, 46, 31, 17], chrome: 'light' },
-  { palette: ['#001D3D', '#FFC300', '#002A52', '#FFD60A', '#003566'], heights: [86, 70, 54, 38, 20], chrome: 'light' },
-  { palette: ['#003566', '#002A52', '#001D3D', '#FFD60A', '#FFC300'], heights: [78, 64, 50, 34, 18], chrome: 'dark' },
-  { palette: ['#001D3D', '#003566', '#FFC300', '#FFD60A', '#FFE45C'], heights: [88, 72, 56, 40, 24], chrome: 'dark' },
-];
-
-export function paperHtml({ palette = PAPER_FRONT, heights = [82, 66, 51, 37, 23], extraClass = '' } = {}) {
-  // `chrome` is read by the caller, not here.
-  const layers = palette.map((fill, i) => (
-    `<span class="lp-paper__layer" style="height:${heights[i]}%;background:${fill}"></span>`
-  )).join('');
-  return `<div class="lp-paper ${extraClass}" aria-hidden="true">${layers}</div>`;
-}
-
-// ---- tour scenes ------------------------------------------------------
-// Reviews written the way a real one reads: one line, said like a person
-// rather than a blurb, short enough to land before anyone decides
-// whether to keep swiping.
-const REVIEWS = {
-  lastofus2: { who: 'Aditya', rating: 5, text: 'Made me hate a character then feel awful about it.' },
-  tsushima: { who: 'Ritika', rating: 4.5, text: 'Forty hours in and I still stop to look at the sky.' },
-  ragnarok: { who: 'Jiyan', rating: 4, text: 'Best combat I have played. Lost me a bit in act three.' },
-};
-
-export function reviewCardHtml(games, key) {
-  const g = pick(games, key);
-  const r = REVIEWS[key];
+export function backdropHtml({ glow = '70% 12%', extraClass = '' } = {}) {
   return `
-    <div class="landing-review-card lp-review">
-      ${posterFrame(g.cover_url, g.title, 'landing-review-card__cover')}
-      <div class="landing-review-card__body">
-        <div class="landing-review-card__game">${esc(g.title)}</div>
-        <div class="landing-review-card__by">
-          ${avatarImg({ display_name: r.who, username: r.who }, 22)}
-          <span>${esc(r.who)}</span>
-        </div>
-        <div class="landing-review-card__stars">${starRow(r.rating, { size: 13 })}</div>
-        <p class="landing-review-card__text">${esc(r.text)}</p>
-      </div>
+    <div class="lp-bg ${extraClass}" aria-hidden="true">
+      <span class="lp-bg__wash"></span>
+      <span class="lp-bg__grain" style="background-image:url(&quot;${GRAIN}&quot;)"></span>
+      <span class="lp-bg__glow" style="--glow: ${glow}"></span>
     </div>`;
 }
 
-const SCENES = {
-  // Logging: a cover, stamped.
-  log: (games) => `
-    <div class="lp-scene lp-scene--log">
-      <div class="lp-scene__row">
-        ${poster(pick(games, 'eldenring'))}
-        ${poster(pick(games, 'rdr2'), 'lp-poster--hero')}
-      </div>
-      <span class="lp-poster__caption">
-        ${starRow(5, { size: 12 })}
-        <span class="lp-poster__stamp">Played</span>
-      </span>
-    </div>`,
-
-  // Rating: the star row at a size nobody can miss.
-  rate: (games) => `
-    <div class="lp-scene lp-scene--rate">
-      ${poster(pick(games, 'ragnarok'), 'lp-poster--hero')}
-      <div class="lp-scene__stars">${starRow(4.5, { size: 28 })}</div>
-    </div>`,
-
-  // Reviewing: the app's own review card, with real reviews in it.
-  review: (games) => `
-    <div class="lp-scene lp-scene--review">
-      ${reviewCardHtml(games, 'lastofus2')}
-      ${reviewCardHtml(games, 'tsushima')}
-    </div>`,
-
-  // Friends: faces over what they have been playing.
-  people: (games) => `
-    <div class="lp-scene lp-scene--people">
-      <div class="lp-scene__row">
-        ${['cyberpunk', 'tsushima', 'spiderman2'].map((k) => poster(pick(games, k), 'lp-poster--small')).join('')}
-      </div>
-      <div class="lp-scene__faces">
-        ${[{ display_name: 'Ritika' }, { display_name: 'Aditya' }, { display_name: 'Jiyan' }, { display_name: 'Vishal' }]
-          .map((p) => `<span class="lp-face">${avatarImg(p, 44)}</span>`).join('')}
-      </div>
-    </div>`,
-
-  // Lists: a ranked stack, the same shape a real list row has.
-  list: (games) => `
-    <div class="lp-scene lp-scene--list">
-      ${[['eldenring', 1], ['lastofus2', 2], ['wolverine', 3]].map(([k, n]) => {
-        const g = pick(games, k);
-        return `
-          <div class="lp-listrow">
-            <span class="lp-listrow__rank">${n}</span>
-            ${posterFrame(g.cover_url, g.title, 'lp-listrow__cover')}
-            <span class="lp-listrow__title">${esc(g.title)}</span>
-          </div>`;
-      }).join('')}
-    </div>`,
+// ---- the tour's artwork ----------------------------------------------
+// One piece of real key art per slide, each named by an exact IGDB
+// image id rather than "whatever that game's first artwork is".
+//
+// Hand-picked, because neither of IGDB's two image sources is safe to
+// take blind: `artworks` is very often the marketing key art complete
+// with the logo and a tagline burnt into it, and `screenshots` are
+// usually mid-combat with the HUD up. Every id below was checked by
+// eye against two rules — no text anywhere in the frame, and a face or
+// a figure near the middle, which is what survives being cropped to a
+// phone and faded out at the bottom.
+// A third rule joined the two above after the first build: no
+// CINEMATIC BARS. Ghost of Tsushima's shot was from a cutscene, which
+// the game renders letterboxed, so the black stripes were pixels in
+// the JPEG — they read exactly like a broken CSS fade across the top
+// and bottom of the panel, and no amount of object-fit can crop what
+// is part of the picture.
+const ART = {
+  hellblade2: 'ar2cjv',   // Senua, hands to her face
+  lastofus2: 'scpkht',    // Joel, close, lit from one side
+  ff7rebirth: 'scmwdg',   // Aerith, in profile
+  alanwake2: 'ar3nui',    // the red forest
+  wukong: 'sc8i9c',       // the Monkey King, armoured
 };
 
-export function tourSceneHtml(kind, games) {
-  return (SCENES[kind] || SCENES.log)(games);
+// t_1080p, not t_original. The transform keeps the source's aspect
+// ratio (it does not pad), and it is the difference between a 296 KB
+// image and a 5 MB one for Alan Wake's artwork alone — measured, for
+// all five.
+const artUrl = (id) => `https://images.igdb.com/igdb/image/upload/t_1080p/${id}.jpg`;
+
+/**
+ * The full-bleed panel at the top of a tour slide.
+ *
+ * The art is desaturated and re-tinted rather than shown as-is: five
+ * slides of five games' own colour grading would be five different
+ * looking screens, and the point of this sequence is that it is one
+ * place. `mix-blend-mode: color` takes hue and saturation from the
+ * navy gradient above it and luminosity from the photograph below, so
+ * what comes out is a real duotone of the original image, not a navy
+ * sheet laid over it.
+ *
+ * `eager` on the first slide only: that image is on screen the instant
+ * the tour opens, and the other four are a swipe away at best.
+ */
+export function tourArtHtml(key, { eager = false } = {}) {
+  const id = ART[key];
+  if (!id) return '';
+  return `
+    <div class="tour-art" aria-hidden="true">
+      <img class="tour-art__img" src="${artUrl(id)}" alt=""
+           ${eager ? 'fetchpriority="high"' : 'loading="lazy"'} decoding="async">
+      <span class="tour-art__duo"></span>
+      <span class="tour-art__warm"></span>
+      <span class="tour-art__scrim"></span>
+      <span class="tour-art__fade"></span>
+    </div>`;
+}
+
+// The credit under each slide's artwork. Deliberately not a link: the
+// whole slide is a swipe target, and a tappable strip inside it either
+// swallows the gesture or fires on the end of one.
+export function artCreditHtml(key, games) {
+  const g = (games || {})[key];
+  if (!g?.title) return '';
+  return `<p class="tour-art__credit">Art from ${esc(g.title)}</p>`;
+}
+
+export function preloadTourArt() {
+  for (const id of Object.values(ART)) {
+    const img = new Image();
+    img.decoding = 'async';
+    img.src = artUrl(id);
+  }
 }

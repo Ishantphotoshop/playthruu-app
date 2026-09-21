@@ -3,7 +3,7 @@ import {
   posterFrame, avatarImg, spinner, emptyState, iconSearch,
   iconUserFilled, iconBrowseNavFilled, iconCompassNavFilled, iconSearchFilled,
 } from '../components.js';
-import { paperHtml, PAPER_STEPS, tourSceneHtml, resolveShowcase } from './landing-art.js';
+import { backdropHtml, tourArtHtml, artCreditHtml, preloadTourArt, resolveShowcase } from './landing-art.js';
 import { esc, starRow, qs, qsa, toast } from '../utils.js';
 import { renderAuthView } from './auth-view.js';
 import { navigate } from '../router.js';
@@ -30,12 +30,43 @@ import { state } from '../state.js';
 // browsing/search/Discover are already open to anyone without an account
 // (see the routing changes above) — it didn't fit a carousel whose whole
 // point is "here's what having an account actually gets you."
+// Five slides built the same way the entry screen is: one piece of real
+// key art bleeding off the top and dissolving into the ground, then a
+// short headline set large with a single word carried in the accent.
+//
+// `head` is the only field here that is not escaped on the way out — it
+// carries one <em> and nothing else, and it is a constant in this file,
+// never anything a person typed.
+//
+// `glow` moves the warm bloom to a different corner on every slide, so
+// swiping changes the light on the page and not only the words. `art`
+// names an entry in landing-art's hand-checked set.
 const TOUR_SLIDES = [
-  { scene: 'log', title: 'Log everything you play', body: 'Every game, the moment you finish it — or the moment you start.' },
-  { scene: 'rate', title: 'Rate it, half-stars and all', body: 'From a rough 2½ to a perfect 5 — say exactly what you thought.' },
-  { scene: 'review', title: 'Write reviews, read theirs', body: 'Short thoughts or a full write-up — whatever the game deserves.' },
-  { scene: 'people', title: "Follow friends, see what they're playing", body: 'Your feed, built from the people you actually care about.' },
-  { scene: 'list', title: 'Build lists & a want-to-play queue', body: "Rank your favourites, queue up what's next." },
+  {
+    art: 'hellblade2', glow: '72% 10%',
+    head: 'Log every<br>game you<br><em>finish.</em>',
+    body: 'The moment you put it down — or the moment you pick it up.',
+  },
+  {
+    art: 'lastofus2', glow: '24% 16%',
+    head: 'Rate it,<br><em>half-stars</em><br>and all.',
+    body: 'From a rough 2½ to a perfect 5. No rounding up.',
+  },
+  {
+    art: 'alanwake2', glow: '80% 24%',
+    head: 'Say what<br>you <em>actually</em><br>thought.',
+    body: 'One line or a full write-up — whatever the game deserves.',
+  },
+  {
+    art: 'ff7rebirth', glow: '18% 8%',
+    head: 'See what<br>your friends<br>are <em>playing.</em>',
+    body: 'A feed built from the people you actually care about.',
+  },
+  {
+    art: 'wukong', glow: '62% 18%',
+    head: 'Line up<br>what you<br>play <em>next.</em>',
+    body: 'Rank your favourites. Queue the rest.',
+  },
 ];
 
 // Curated titles mixed into the front of the Games tab's newest-first
@@ -232,20 +263,24 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
       showcase = games;
       if (screen === 'tour') {
         const slot = qs('#tour-art', root);
-        if (slot) slot.innerHTML = tourSceneHtml(TOUR_SLIDES[tourIndex].scene, showcase);
+        // Only the credit line depends on the resolved titles now; the
+        // artwork itself is addressed by image id and never waits.
+        if (slot) slot.innerHTML = artCreditHtml(TOUR_SLIDES[tourIndex].art, showcase);
       }
     }).catch(() => { /* placeholders stay; nothing to recover from */ });
   }
 
-  // ---- entry: the statement, under cut paper ------------------------
-  // Five layers of colour hang from the top of the screen and the words
-  // sit under them. The paper is a flow element, not a backdrop: its own
-  // height is what clears the content of the lowest curve, so the two
-  // never have to be kept in sync by hand.
+  // ---- entry: one sentence on a duotone ground ----------------------
+  // No imagery and nothing moving. Everything the screen has to say is
+  // said in type, which is why the type runs four lines deep at nearly
+  // the full width with the last line in the accent — and why the
+  // ground it sits on has to be worth looking at on its own. That is
+  // the grain's job (see backdropHtml): a gradient this large bands on
+  // a phone, and noise over it reads as a printed surface instead.
   function entryHtml() {
     return `
       <div class="lp">
-        ${paperHtml()}
+        ${backdropHtml()}
         <div class="lp__content">
           <div class="lp__brand">
             <img src="icons/mark-blue.svg" alt="" class="lp__mark">
@@ -262,6 +297,10 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
   }
   function wireEntry(stage) {
     loadShowcase();
+    // Warm the tour's five images while someone is still reading the
+    // front door. They are 1080p key art off IGDB's CDN; fetched only
+    // when a slide mounts, the first two slides visibly pop in.
+    preloadTourArt();
     qs('#entry-signin', stage).addEventListener('click', () => goToAuth('signin'));
     qs('#entry-tour', stage).addEventListener('click', () => { screen = 'tour'; tourIndex = 0; paint(); });
   }
@@ -447,10 +486,16 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
     const enterDir = tourDirection;
     const enterClass = enterDir ? ` tour__content--enter-${enterDir}` : '';
     tourDirection = null;
-    const step = PAPER_STEPS[tourIndex % PAPER_STEPS.length];
+    // The artwork and the ground change together with the words. Keyed
+    // on the index so the browser treats each slide's panel as a new
+    // element and replays the entrance, rather than reusing the last
+    // one and cross-fading a src swap.
     return `
-      <div class="tour tour--chrome-${step.chrome}">
-        ${paperHtml({ ...step, extraClass: enterDir ? `lp-paper--enter-${enterDir}` : '' })}
+      <div class="tour">
+        ${backdropHtml({ glow: slide.glow })}
+        <div class="tour__plate${enterClass ? ` tour__plate--enter-${enterDir}` : ''}" data-slide="${tourIndex}">
+          ${tourArtHtml(slide.art, { eager: tourIndex === 0 })}
+        </div>
         <div class="tour__progress">
           ${TOUR_SLIDES.map((_, i) => `<span class="tour__seg${i < tourIndex ? ' tour__seg--done' : ''}${i === tourIndex ? ' tour__seg--active' : ''}"></span>`).join('')}
         </div>
@@ -459,9 +504,9 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
         </div>
         <div class="tour__stage">
           <div class="tour__content${enterClass}" id="tour-slide">
-            <div class="tour__art" id="tour-art">${tourSceneHtml(slide.scene, showcase)}</div>
-            <h2 class="tour__title">${esc(slide.title)}</h2>
+            <h2 class="tour__title">${slide.head}</h2>
             <p class="tour__body">${esc(slide.body)}</p>
+            ${artCreditHtml(slide.art, showcase)}
           </div>
         </div>
         <div class="tour__foot">
