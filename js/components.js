@@ -534,19 +534,31 @@ function cardWho(profile, rating, { playing = false, loved = false, hasReview = 
     // (the feed strip and its see-more page) already sit under a
     // "Currently playing" heading, so the word was the same fact
     // printed twice on every tile — and it was the thing making that
-    // row taller and busier than the ones around it. The ring on the
-    // avatar still carries the signal on its own.
+    // row taller and busier than the ones around it.
   } else {
     if (rating) bits.push(starRow(rating, { size: 12 }));
     if (loved) bits.push(`<span class="card-who__icon card-who__icon--loved">${iconHeartFilled()}</span>`);
     if (hasReview) bits.push(`<span class="card-who__icon card-who__icon--review">${iconReviewLines()}</span>`);
   }
+  // The second line is rendered even when it is empty — that reserve is
+  // what keeps every card in a strip the same height when some logs are
+  // rated and some are not. Currently playing is the one strip where it
+  // can never fill: the game is not finished, so there is no rating, no
+  // love and no review on ANY card in the row. There it buys no
+  // alignment and costs some: .card-who centres the 24px avatar against
+  // the whole meta block, so a blank 14px line under the name drops the
+  // face ~7px below the name it belongs to — measured, not guessed —
+  // and that offset is the entire reason this footer read as a
+  // different component from the identical one under Friend's recent
+  // activity. With the line gone the meta is one line, the avatar and
+  // the name share a centre, and the two strips match.
+  const second = playing ? '' : `<span class="card-who__stars">${bits.join('')}</span>`;
   return `
     <a href="#/profile/${esc(profile.username)}" class="card-who">
       <span class="card-who__avatar-wrap">${avatarImg(profile, 24)}</span>
       <span class="card-who__meta">
         <span class="card-who__name">${esc(profile.display_name || profile.username)}</span>
-        <span class="card-who__stars">${bits.join('')}</span>
+        ${second}
       </span>
     </a>`;
 }
