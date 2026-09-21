@@ -353,28 +353,28 @@ export function renderAuthView(root, { startMode = 'signin' } = {}) {
         <form class="auth-form" id="auth-form">
           ${mode === 'signup' ? `
             <label class="field field--icon">
-              <span>Username</span>
+              <span class="sr-only">Username</span>
               <div class="field__input-wrap">
                 <span class="field__icon">${iconUser()}</span>
                 <input type="text" name="username" placeholder="yourusername" autocomplete="username" required minlength="1" maxlength="20" pattern="[a-zA-Z0-9._]+">
               </div>
             </label>` : ''}
           <label class="field field--icon">
-            <span>${mode === 'signup' ? 'Email' : 'Username/Email'}</span>
+            <span class="sr-only">${mode === 'signup' ? 'Email' : 'Username/Email'}</span>
             <div class="field__input-wrap">
               <span class="field__icon">${mode === 'signup' ? iconMail() : iconUser()}</span>
               <input type="text" name="identifier" placeholder="${mode === 'signup' ? 'you@example.com' : 'Username or email'}" autocomplete="${mode === 'signup' ? 'email' : 'username'}" required>
             </div>
           </label>
           <label class="field field--icon field--password">
-            <span>Password</span>
+            <span class="sr-only">Password</span>
             <div class="field__input-wrap">
               <span class="field__icon">${iconLock()}</span>
               <input type="${passwordVisible ? 'text' : 'password'}" name="password" id="password-input" placeholder="••••••••" autocomplete="${mode === 'signup' ? 'new-password' : 'current-password'}" required minlength="6">
               <button type="button" class="field__toggle" id="toggle-password" aria-label="${passwordVisible ? 'Hide password' : 'Show password'}">${passwordVisible ? iconEyeOff() : iconEye()}</button>
             </div>
           </label>
-          ${mode === 'signin' ? `<button type="button" class="auth-form__forgot" id="forgot-password">Forgot password?</button>` : ''}
+          ${mode === 'signin' ? `<button type="button" class="auth-form__forgot" id="forgot-password" hidden>Forgot password?</button>` : ''}
           <button type="submit" class="btn btn--accent btn--block">${mode === 'signup' ? 'Settle in' : 'LOGin'}</button>
         </form>
 
@@ -445,6 +445,12 @@ export function renderAuthView(root, { startMode = 'signin' } = {}) {
         toast(err.message || 'Something went wrong.', 'error');
         btn.disabled = false;
         btn.textContent = originalLabel;
+        // Offered only once it is useful. Sitting under the password
+        // box on arrival, it is a permanent suggestion that you have
+        // probably forgotten it; after a rejected sign-in it is the
+        // next thing you actually want.
+        const forgot = qs('#forgot-password', root);
+        if (forgot && mode === 'signin') forgot.hidden = false;
       }
     });
   }
