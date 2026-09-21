@@ -2518,22 +2518,17 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
    backdrop-filter on the popup, which never composited reliably. */
 .auth-screen--blurred { filter: blur(9px) brightness(0.85); }
 
-/* The art panel. Shorter than the tour's, because a form has to fit
-   underneath it — and anchored to the top rather than bleeding behind
-   everything, which is what stopped the fields ever having to fight a
-   photograph for contrast. */
+/* Full-bleed, behind everything — the size it always was. It spent one
+   version as a 42%-tall panel at the top, matching the tour slides
+   exactly, and on a real phone that read as a small picture stranded
+   above a form rather than as a screen with art on it. The duotone is
+   what ties this to the tour now; the art does not have to be the same
+   SHAPE as well. */
 .auth-screen__plate {
-  position: absolute; top: 0; left: 0; right: 0; height: 42%;
+  position: absolute; inset: 0;
   z-index: 0; pointer-events: none;
 }
-.auth-screen__art-wrap {
-  position: absolute; inset: 0; overflow: hidden;
-  /* Masked out towards the bottom rather than faded to a colour: the
-     ground behind is itself a gradient, so a fade has to guess what it
-     is landing on and gets it wrong at every height but one. */
-  -webkit-mask-image: linear-gradient(to bottom, #000 30%, rgba(0, 0, 0, 0.6) 62%, rgba(0, 0, 0, 0.16) 84%, transparent 100%);
-  mask-image: linear-gradient(to bottom, #000 30%, rgba(0, 0, 0, 0.6) 62%, rgba(0, 0, 0, 0.16) 84%, transparent 100%);
-}
+.auth-screen__art-wrap { position: absolute; inset: 0; overflow: hidden; }
 /* Two stacked layers crossfade between images (Netflix-style rotation),
    both sitting under the duotone treatment so a swap never changes the
    screen's colour, only its picture. */
@@ -2578,11 +2573,32 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 .auth-screen__scrim {
   background: linear-gradient(to bottom, rgba(0, 8, 20, 0.66), rgba(0, 8, 20, 0.34) 9%, rgba(0, 8, 20, 0.12) 20%, transparent 34%);
 }
+/* The floor the form stands on. With the art running the full height
+   again, the fields sit ON the picture, and glass over a photograph is
+   only legible if the photograph is dark where the glass is. Ends on
+   --bg so the bottom of the screen is the same colour the rest of the
+   signed-out run ends on. */
+.auth-screen__floor {
+  background: linear-gradient(to bottom,
+    transparent 16%,
+    rgba(0, 8, 20, 0.42) 34%,
+    rgba(0, 8, 20, 0.84) 52%,
+    rgba(0, 8, 20, 0.96) 66%,
+    var(--bg) 78%);
+}
 
 .auth-screen__content {
   position: relative; z-index: 2;
-  padding: 12px 26px calc(32px + env(safe-area-inset-bottom));
+  padding: 12px 26px calc(20px + env(safe-area-inset-bottom));
+  /* A last-resort escape hatch, not the plan. The tiers below are sized
+     so everything down to "Don't have an account? Sign up" fits without
+     it; this only exists so that on some phone none of us has, the last
+     line is reachable rather than cut off under the edge of the
+     screen. */
+  max-height: 100%; overflow-y: auto;
+  scrollbar-width: none; -ms-overflow-style: none;
 }
+.auth-screen__content::-webkit-scrollbar { display: none; }
 
 /* Back and the art credit: the same round glass chips the rest of the
    signed-out run uses, not the near-opaque black discs they needed
@@ -2624,24 +2640,33 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
    arrangement, the same sizes and the same left edge as the entry
    screen and every tour slide. Left-aligned, not centred: this is the
    fourth screen in a row, and the other three read down the left. */
-.auth-screen__brand { text-align: left; margin-bottom: var(--space-5); }
+.auth-screen__brand { text-align: left; margin-bottom: var(--space-4); }
 .auth-screen__brand-row { display: flex; align-items: center; gap: 9px; }
 .auth-screen__mark { width: 24px; height: 24px; border-radius: 0; display: block; flex-shrink: 0; }
+/* A soft shadow on the three text elements that sit over the artwork.
+   It was dropped while the art was a panel at the top — nothing was
+   ever on the picture then. Full-bleed again, the lockup and the
+   sentence land wherever that image happens to be light, and on the
+   brightest backdrop on the shelf white-on-light was down to roughly
+   4:1. Much softer than the old triple-shadow this screen used to
+   carry, which made everything look embossed. */
 .auth-screen__name {
   font-family: var(--font-brand); font-weight: var(--weight-bold);
   font-size: 15px; line-height: 1; letter-spacing: -0.03em; color: var(--ink);
+  text-shadow: 0 2px 12px rgba(0, 8, 20, 0.8);
 }
 .auth-screen__head {
-  margin: var(--space-4) 0 0;
+  margin: 14px 0 0;
   font-family: var(--font-brand); font-weight: var(--weight-black);
-  font-size: clamp(30px, 9.6vw, 40px); line-height: 0.94; letter-spacing: -0.05em;
-  color: var(--ink);
+  font-size: clamp(27px, 8.4vw, 34px); line-height: 0.96; letter-spacing: -0.05em;
+  color: var(--ink); text-shadow: 0 2px 16px rgba(0, 8, 20, 0.8);
 }
 .auth-screen__head em { font-style: normal; color: var(--accent); }
 .auth-screen__tag {
-  margin: 14px 0 0; max-width: 24em;
+  margin: 10px 0 0; max-width: 24em;
   font-family: var(--font-body); font-style: normal; font-weight: var(--weight-body);
-  font-size: var(--text-body); line-height: var(--leading-body); color: var(--ink-dim);
+  font-size: var(--text-small); line-height: var(--leading-body); color: var(--ink-dim);
+  text-shadow: 0 1px 10px rgba(0, 8, 20, 0.85);
 }
 
 /* Fields as glass on the duotone rather than solid white blocks. White
@@ -2650,15 +2675,15 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
    as three holes punched through the screen. */
 .auth-form .field span {
   display: block; font-family: var(--font-mono); font-weight: var(--weight-medium);
-  color: var(--ink-faint); font-size: var(--text-micro); margin-bottom: 8px;
-  text-transform: uppercase; letter-spacing: 0.14em;
+  color: var(--ink-faint); font-size: 10px; margin-bottom: 6px;
+  text-transform: uppercase; letter-spacing: 0.12em;
 }
 .auth-form .field input {
   width: 100%; border-radius: var(--radius-pill);
   background: rgba(255, 255, 255, 0.07); color: var(--ink);
   border: 1px solid rgba(255, 255, 255, 0.18);
   backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-  padding: 15px 18px; font-family: var(--font-body); font-size: 15px;
+  padding: 13px 18px; font-family: var(--font-body); font-size: 15px;
   transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
 }
 .auth-form .field--icon .field__input-wrap { position: relative; }
@@ -2681,7 +2706,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
   border-color: var(--accent-bright); box-shadow: 0 0 0 3px rgba(255, 214, 10, 0.22);
 }
 .auth-form .field input::placeholder { color: var(--ink-faint); }
-.auth-form .field { margin-bottom: 12px; display: block; }
+.auth-form .field { margin-bottom: 10px; display: block; }
 
 /* Where a browser cannot blur what is behind an element, a see-through
    field is an unreadable grey box — so it becomes a solid raised
@@ -2696,15 +2721,15 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
    a slightly different button than the one three screens earlier. */
 .auth-screen .btn--accent {
   background: var(--accent); color: var(--bg); border-radius: var(--radius-pill); border: none;
-  padding: 15px; font-family: var(--font-display); font-weight: var(--weight-black);
-  font-size: var(--text-button); letter-spacing: -0.005em; width: 100%; min-height: 50px;
-  margin-top: var(--space-2);
+  padding: 13px; font-family: var(--font-display); font-weight: var(--weight-black);
+  font-size: var(--text-button); letter-spacing: -0.005em; width: 100%; min-height: 48px;
+  margin-top: 6px;
 }
 .auth-screen .btn--accent:hover { background: var(--accent-bright); }
 .auth-screen .btn--accent:active { transform: scale(0.99); }
 
 .auth-screen__switch {
-  display: block; width: 100%; text-align: center; margin-top: var(--space-4);
+  display: block; width: 100%; text-align: center; margin-top: 14px;
   font-size: 13.5px; font-family: var(--font-body); color: var(--ink-dim);
 }
 /* Only the action word is the tappable target — the lead-in is plain
@@ -2736,8 +2761,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 /* Short screens, and the sign-up form, which carries a third field:
    the art gives up the room, since it is the one element here with no
    information in it. */
-@media (max-height: 760px) {
-  .auth-screen__plate { height: 32%; }
+@media (max-height: 880px) {
   .auth-screen__head { font-size: clamp(24px, 7.4vw, 30px); }
   .auth-screen__tag { display: none; }
   .auth-screen__brand { margin-bottom: var(--space-3); }
@@ -2748,12 +2772,28 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
      that, since padding only makes the block taller; the rows
      themselves have to give up the space. */
   .auth-form .field { margin-bottom: 8px; }
-  .auth-form .field span { margin-bottom: 5px; }
-  .auth-form .field input { padding-top: 13px; padding-bottom: 13px; }
-  .auth-divider { margin: var(--space-3) 0; }
-  .auth-screen .btn--accent { margin-top: 0; }
-  .auth-screen__switch { margin-top: var(--space-3); }
-  .auth-screen__content { padding-bottom: calc(20px + env(safe-area-inset-bottom)); }
+  .auth-form .field span { margin-bottom: 4px; }
+  .auth-form .field input { padding-top: 12px; padding-bottom: 12px; }
+  .auth-divider { margin: 12px 0; }
+  .auth-screen .btn--accent { margin-top: 2px; }
+  .auth-continue { min-height: 46px; }
+  .auth-screen__switch { margin-top: 10px; }
+  .auth-screen__content { padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
+}
+
+/* The genuinely short case: a 360x640-class phone, or any phone whose
+   browser chrome has eaten a third of the screen. Everything that is
+   not a control gives up its room, in that order — the tagline first,
+   then the sentence, then the lockup. */
+@media (max-height: 700px) {
+  .auth-screen__head { font-size: clamp(21px, 6.4vw, 26px); margin-top: 10px; }
+  .auth-screen__brand { margin-bottom: 12px; }
+  .auth-form .field { margin-bottom: 6px; }
+  .auth-form .field input { padding-top: 11px; padding-bottom: 11px; }
+  .auth-divider { margin: 9px 0; }
+  .auth-continue { min-height: 44px; }
+  .auth-screen .btn--accent { min-height: 46px; }
+  .auth-screen__content { padding-top: 8px; }
 }
 
 /* ------------------------------------------------------------ small screens */

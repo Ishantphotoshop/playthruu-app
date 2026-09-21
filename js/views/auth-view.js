@@ -327,6 +327,7 @@ export function renderAuthView(root, { startMode = 'signin' } = {}) {
             <span class="auth-screen__duo"></span>
             <span class="auth-screen__warm"></span>
             <span class="auth-screen__scrim"></span>
+            <span class="auth-screen__floor"></span>
           </div>
         </div>
 
