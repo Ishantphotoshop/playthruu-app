@@ -1407,6 +1407,44 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 }
 
 /* ---- a single review on its own page -------------------------------- */
+/* ---------------------------------------------------- page transitions
+   Every route swap cross-fades, through the View Transitions API (see
+   paint() in router.js). The browser photographs the screen, lets the
+   router replace the DOM, photographs it again, and animates between
+   the two — so this is the entire animation, and no view had to change
+   to get it.
+
+   Short and shallow on purpose. A page transition is feedback that a
+   tap landed, not a performance: long enough to see, over before it
+   can be waited on. The old screen leaves faster than the new one
+   arrives, which is what stops the two reading as a dissolve and makes
+   it read as one replacing the other. */
+::view-transition-old(root) {
+  animation: page-leave 130ms var(--ease) both;
+}
+::view-transition-new(root) {
+  animation: page-enter 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes page-leave { to { opacity: 0; } }
+@keyframes page-enter { from { opacity: 0; transform: translateY(10px); } }
+
+/* The tab bar is the one thing on screen that does NOT change between
+   pages, so it is captured as its own element and left alone. Without
+   this it is part of the page snapshot and cross-fades into an
+   identical copy of itself on every single navigation — a bar that
+   flickers while everything above it moves. */
+.tabbar { view-transition-name: tabbar; }
+::view-transition-group(tabbar) { animation-duration: 0ms; }
+::view-transition-old(tabbar), ::view-transition-new(tabbar) { animation: none; mix-blend-mode: normal; }
+
+/* The pinned composer on a review thread is the same case. */
+.rv-composer { view-transition-name: composer; }
+::view-transition-old(composer), ::view-transition-new(composer) { animation: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root), ::view-transition-new(root) { animation: none; }
+}
+
 /* ------------------------------------------------------- review thread
    One review, read as a thread: the review itself at the top, a rule
    across the full width of the screen, the comments under it, and the

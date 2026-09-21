@@ -28,6 +28,55 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Playthruu">
 <link rel="stylesheet" href="css/styles.css">
+<!-- Every module below is imported statically by app.js, so all of them
+     load on startup whatever happens. Without these the browser can only
+     DISCOVER them a level at a time — index.html, then app.js, then its
+     imports, then theirs — which is three round trips of waiting before
+     the last file is even requested. Naming them here starts all of them
+     at once, so the DEPTH of the import graph stops costing latency.
+     Ordered with the modules the first paint needs at the top. If a
+     module is added or removed this list goes stale but never wrong: a
+     preload nobody imports is one wasted request, and a missing one is
+     simply discovered the old way. -->
+<link rel="modulepreload" href="js/config.js">
+<link rel="modulepreload" href="js/supabase-client.js">
+<link rel="modulepreload" href="js/state.js">
+<link rel="modulepreload" href="js/utils.js">
+<link rel="modulepreload" href="js/router.js">
+<link rel="modulepreload" href="js/api.js">
+<link rel="modulepreload" href="js/auth.js">
+<link rel="modulepreload" href="js/components.js">
+<link rel="modulepreload" href="js/cache.js">
+<link rel="modulepreload" href="js/emoji-data.js">
+<link rel="modulepreload" href="js/views/activity-view.js">
+<link rel="modulepreload" href="js/views/auth-view.js">
+<link rel="modulepreload" href="js/views/avatar-crop.js">
+<link rel="modulepreload" href="js/views/connections-view.js">
+<link rel="modulepreload" href="js/views/currently-playing-view.js">
+<link rel="modulepreload" href="js/views/director-view.js">
+<link rel="modulepreload" href="js/views/discover-view.js">
+<link rel="modulepreload" href="js/views/feed-view.js">
+<link rel="modulepreload" href="js/views/friends-playing-view.js">
+<link rel="modulepreload" href="js/views/game-reviews-view.js">
+<link rel="modulepreload" href="js/views/game-view.js">
+<link rel="modulepreload" href="js/views/landing-art.js">
+<link rel="modulepreload" href="js/views/landing-view.js">
+<link rel="modulepreload" href="js/views/lists-view.js">
+<link rel="modulepreload" href="js/views/log-list-view.js">
+<link rel="modulepreload" href="js/views/log-modal.js">
+<link rel="modulepreload" href="js/views/message-thread-view.js">
+<link rel="modulepreload" href="js/views/messages-view.js">
+<link rel="modulepreload" href="js/views/notifications-view.js">
+<link rel="modulepreload" href="js/views/person-view.js">
+<link rel="modulepreload" href="js/views/profile-view.js">
+<link rel="modulepreload" href="js/views/psn-import-sheet.js">
+<link rel="modulepreload" href="js/views/review-view.js">
+<link rel="modulepreload" href="js/views/search-view.js">
+<link rel="modulepreload" href="js/views/settings-view.js">
+<link rel="modulepreload" href="js/views/stories.js">
+<link rel="modulepreload" href="js/views/studio-view.js">
+<link rel="modulepreload" href="js/views/trending-view.js">
+
 </head>
 <body>
 <div id="app">
