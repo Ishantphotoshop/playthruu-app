@@ -47,15 +47,39 @@ const prefersReducedMotion = window.matchMedia
   ? window.matchMedia('(prefers-reduced-motion: reduce)')
   : { matches: false };
 
-// The first paint has nothing to cross-fade FROM — it would fade in from
-// an empty page, which is a flash on app start rather than a transition.
+// The first paint has nothing to slide in FROM — it would fly in over an
+// empty page, which is a lurch on app start rather than a transition.
 let skipNextTransition = true;
 
-function paint(run) {
+// Which way the pages move. A push slides the new screen in from the
+// right; going back sends it the other way, so the gesture and the
+// picture agree.
+//
+// Worked out from a trail of visited paths rather than from history
+// state, because this is a HASH router: every navigation is
+// location.hash = path, and the browser's own back button produces a
+// hashchange indistinguishable from a forward one. If the path we have
+// arrived at is the one BEFORE the current entry in the trail, we went
+// back; anything else is a push.
+const trail = [];
+
+function trackDirection(path) {
+  if (trail.length && trail[trail.length - 1] === path) return; // a re-render, not a move
+  if (trail.length > 1 && trail[trail.length - 2] === path) {
+    trail.pop();
+    return 'back';
+  }
+  trail.push(path);
+  return 'forward';
+}
+
+function paint(run, direction) {
   const animate = typeof document.startViewTransition === 'function'
     && !prefersReducedMotion.matches
     && !skipNextTransition;
   skipNextTransition = false;
+  // The CSS reads this to decide which way the two screens travel.
+  document.documentElement.dataset.nav = direction === 'back' ? 'back' : 'forward';
   if (!animate) { run(); return; }
   try {
     const t = document.startViewTransition(() => { run(); });
@@ -97,6 +121,7 @@ function resolve() {
       // listener with no visible error state, unlike every other
       // boundary in the app. Falls back to whatever notFoundHandler
       // currently points at (the signed-in default is /feed).
+      const direction = trackDirection(cleanPath);
       paint(() => {
         try {
           r.handler(params);
@@ -104,7 +129,7 @@ function resolve() {
           notFoundHandler();
         }
         updateNav(cleanPath);
-      });
+      }, direction);
       return;
     }
   }

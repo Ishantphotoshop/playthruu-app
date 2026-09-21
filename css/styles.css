@@ -1426,19 +1426,44 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    the two — so this is the entire animation, and no view had to change
    to get it.
 
-   Short and shallow on purpose. A page transition is feedback that a
-   tap landed, not a performance: long enough to see, over before it
-   can be waited on. The old screen leaves faster than the new one
-   arrives, which is what stops the two reading as a dissolve and makes
-   it read as one replacing the other. */
+   The new screen comes IN from the right and pushes the old one off to
+   the left, the way a stack of pages works everywhere else on a phone.
+   Going back runs the same thing in reverse — router.js puts the
+   direction on <html data-nav> and the only difference between the two
+   is the sign of the translate.
+
+   The outgoing screen only travels a fraction of the distance the
+   incoming one does. Sliding both the full width reads as a carousel,
+   where a stack should read as one page ARRIVING over another: the old
+   one drifts and dims, the new one does the moving.
+
+   Short on purpose: a page transition is feedback that a tap landed,
+   not a performance. */
 ::view-transition-old(root) {
-  animation: page-leave 130ms var(--ease) both;
+  animation: page-exit-fwd 240ms cubic-bezier(0.32, 0.72, 0, 1) both;
 }
 ::view-transition-new(root) {
-  animation: page-enter 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: page-in-fwd 300ms cubic-bezier(0.32, 0.72, 0, 1) both;
 }
-@keyframes page-leave { to { opacity: 0; } }
-@keyframes page-enter { from { opacity: 0; transform: translateY(10px); } }
+[data-nav='back']::view-transition-old(root) {
+  animation: page-exit-back 240ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+[data-nav='back']::view-transition-new(root) {
+  animation: page-in-back 300ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+@keyframes page-in-fwd    { from { transform: translateX(100%); } }
+@keyframes page-exit-fwd  { to   { transform: translateX(-24%); opacity: 0.45; } }
+@keyframes page-in-back   { from { transform: translateX(-100%); } }
+@keyframes page-exit-back { to   { transform: translateX(24%); opacity: 0.45; } }
+
+/* The two snapshots have to be stacked, not blended — the default
+   cross-fade would show one THROUGH the other while they slide, which
+   is what makes a slide look like a ghost passing over the screen. */
+::view-transition-old(root), ::view-transition-new(root) {
+  mix-blend-mode: normal;
+  backface-visibility: hidden;
+}
+::view-transition-image-pair(root) { isolation: auto; }
 
 /* The tab bar is the one thing on screen that does NOT change between
    pages, so it is captured as its own element and left alone. Without

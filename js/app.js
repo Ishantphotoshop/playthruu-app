@@ -463,7 +463,21 @@ async function loadSession(user) {
 // for the screen someone is actually looking at. Failures are ignored
 // outright — a warm that doesn't land just means that tab loads the way
 // it always used to.
+//
+// One more thing it will not do: spend somebody's mobile data on a
+// screen they have not asked for. Data Saver on, or a connection the
+// browser rates 2g, and none of this runs — the tabs then load exactly
+// the way they did before any of it existed, which is the whole point
+// of it being spare-capacity work.
+function warmingIsWelcome() {
+  const c = navigator.connection;
+  if (!c) return true; // no information: assume a normal connection
+  if (c.saveData) return false;
+  return !['slow-2g', '2g'].includes(c.effectiveType);
+}
+
 function warmOtherTabs() {
+  if (!warmingIsWelcome()) return;
   const idle = window.requestIdleCallback || ((fn) => setTimeout(fn, 800));
   idle(() => {
     if (!getCached(CACHE_KEYS.searchTrending)) {
@@ -473,6 +487,24 @@ function warmOtherTabs() {
     }
     warmDiscover();
     warmOwnProfile(state.profile);
+
+    // The bell. Its first page is the same query for everybody with the
+    // filters off, so it warms cleanly — and it is the tab people check
+    // most often after the feed.
+    if (state.user && !getCached(CACHE_KEYS.notifications)) {
+      api.getActivityFeed(state.user.id, { scope: 'friends', includeYou: false, includeIncoming: false })
+        .then((res) => setCached(CACHE_KEYS.notifications, res))
+        .catch(() => {});
+    }
+
+    // "See more" off the feed's Trending strip. A wide IGDB query and
+    // the slowest page in the app to open cold, which makes it the one
+    // most worth having in hand before it is asked for.
+    if (!getCached(CACHE_KEYS.trendingPage)) {
+      api.getWorldTrending(36, 30)
+        .then((games) => setCached(CACHE_KEYS.trendingPage, games))
+        .catch(() => {});
+    }
   });
 }
 

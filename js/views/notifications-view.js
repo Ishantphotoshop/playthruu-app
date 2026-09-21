@@ -4,6 +4,7 @@ import { navBar, avatarImg, emptyState, spinner, iconBell, iconFilter, iconBack,
 import { esc, timeAgo, starRow, qs, qsa } from '../utils.js';
 import { navigate } from '../router.js';
 import { wirePullToRefresh } from './feed-view.js';
+import { getCached, setCached, CACHE_KEYS } from '../cache.js';
 
 // One screen for everything happening in the app: what the people you
 // follow have logged, liked and followed, what you have done yourself,
@@ -280,7 +281,25 @@ export async function renderNotificationsView(root) {
       cursor = null;
       hasMore = false;
       if (sentinelObserver) { sentinelObserver.disconnect(); sentinelObserver = null; }
-      if (slot()) slot().innerHTML = spinner();
+      // A spinner ONLY when there is nothing to show yet. Warmed rows
+      // are already on screen by the time the refetch runs, and
+      // replacing them with a spinner to fetch the same thing again is
+      // the flash the warming exists to avoid.
+      if (slot() && !slot().querySelector('.act')) slot().innerHTML = spinner();
+    }
+
+    // The default view — Friends, filters off, first page — is what
+    // warmOtherTabs() fetches in the background while you are still on
+    // the feed. Painting it before the network answers is the whole
+    // reason for warming it.
+    const isDefaultView = reset && activeTab === 'friends'
+      && !filters.includeYou && !filters.includeIncoming;
+    if (isDefaultView) {
+      const warm = getCached(CACHE_KEYS.notifications);
+      if (warm?.rows?.length) {
+        rows = warm.rows; cursor = warm.cursor; hasMore = warm.hasMore;
+        paintList();
+      }
     }
 
     try {
@@ -290,6 +309,7 @@ export async function renderNotificationsView(root) {
         includeIncoming: filters.includeIncoming,
         before: reset ? null : cursor,
       });
+      if (isDefaultView) setCached(CACHE_KEYS.notifications, res);
       rows = reset ? res.rows : rows.concat(res.rows);
       cursor = res.cursor;
       hasMore = res.hasMore;

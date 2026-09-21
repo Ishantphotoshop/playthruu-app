@@ -25,6 +25,7 @@ export const CACHE_KEYS = {
   messages: 'messages',
   searchTrending: 'search-idle-trending',
   trendingPage: 'trending-page',
+  notifications: 'notifications-friends',
 };
 
 export function getCached(key) {
