@@ -37,24 +37,30 @@
      the three in between are interpolated so elevation reads as one
      continuous climb rather than three jumps.
 
-     This replaces a deliberately zero-chroma grey ramp, and the reason
-     that ramp existed is worth keeping in mind: a base with no chroma
-     cannot tint the cover art sitting on it, and this app's screens are
-     mostly cover art. A navy base does lean, and every poster inherits
-     a little of that lean. The trade is taken knowingly — the lean is
-     slight because the base is nearly black, and a night-blue ground
-     gives the app somewhere to stand that grey never did. */
-  --bg: #000814;
-  --bg-deep: #00040d;
-  --bg-lift: #00122a;
-  --surface: #001d3d;
-  --surface-raised: #002a52;
-  --surface-high: #003566;
+     Three of these are sampled straight off the reference — #05291C as
+     the page, #0B412D as the first raised surface, #1F543F as the
+     highest — and the steps between are interpolated so elevation
+     reads as one continuous climb rather than three jumps.
+
+     This replaces a navy ramp, which replaced a zero-chroma grey one,
+     and the reason the grey existed is still worth knowing: a base
+     with no chroma cannot tint the cover art sitting on it, and this
+     app's screens are mostly cover art. Green leans further than navy
+     did, so every poster inherits a little of it. The trade is taken
+     knowingly: the base is dark enough that the lean is slight, and a
+     forest ground gives the warm coral something to be warm against,
+     which is the whole point of the pairing. */
+  --bg: #05291c;
+  --bg-deep: #021a11;
+  --bg-lift: #073522;
+  --surface: #0b412d;
+  --surface-raised: #144a35;
+  --surface-high: #1f543f;
 
   /* --- glass --- */
   --glass-fill: rgba(255, 255, 255, 0.03);
   --glass-fill-strong: rgba(255, 255, 255, 0.08);
-  --glass-tint: rgba(0, 8, 20, 0.14);
+  --glass-tint: rgba(5, 41, 28, 0.14);
   --glass-filter: blur(22px) saturate(240%) brightness(1.24) contrast(1.05);
   --glass-filter-strong: blur(34px) saturate(230%) brightness(1.16) contrast(1.04);
   --glass-light: rgba(255, 255, 255, 0.045);
@@ -64,57 +70,97 @@
   --blur: 30px;
   --blur-strong: 42px;
   --glass: rgba(255, 255, 255, 0.05);
-  --glass-strong: rgba(0, 8, 20, 0.74);
+  --glass-strong: rgba(5, 41, 28, 0.74);
 
-  /* --- text: white, then two steps of the same blue the ground is ---
-     Secondary text carries a little of the base's own hue rather than
-     being neutral grey on a blue field, which reads as a different
-     material laid on top. Both steps are kept light enough to stay
-     legible on #000814 rather than being chosen for looks. --- */
-  --ink: #ffffff;
-  --ink-dim: #9fb4cd;
-  --ink-faint: #7692b3;
+  /* --- text: a mint white, then two steps of the ground's own green ---
+     Secondary text carries the base's hue rather than being neutral
+     grey on a green field, which reads as a different material laid on
+     top. Both steps are far more saturated than the navy theme's were,
+     which is this palette's whole character: the dim step is a real
+     mint (10.3:1 on the ground, 7.6:1 on a raised surface), the faint
+     one a deeper green (6.3:1 and 5.0:1). Both were a step darker
+     until the numbers came back: the faint one measured 3.72 against
+     --surface, and it carries 11-12.5px metadata that sits on raised
+     surfaces constantly, so it was failing exactly where it is used
+     most. --- */
+  --ink: #d8ffec;
+  --ink-dim: #4deab3;
+  --ink-faint: #43c592;
 
-  /* --- accent: the palette's yellow, and only it ---
-     #FFD60A over a #000814 ground is the highest-contrast pair the
-     palette contains, which is what an accent is for: it is never in
-     doubt what the primary action on a screen is. --accent-deep is the
-     palette's other yellow, #FFC300, used where the accent needs to sit
-     back a step rather than be invented darker.
+  /* --- accent: one coral, and only it ---
+     #FF8A6B over a #05291C ground is a 6.2:1 pair, which is what an
+     accent is for: it is never in doubt what the primary action on a
+     screen is, and it is light enough to take the page colour as
+     button text (see .btn--accent), which anything deeper would not be.
 
-     Warm against a cool ground, so it separates from the base the way
-     the old cyan separated from grey — and it is light enough to take
-     the page colour as button text (see .btn--accent), which anything
-     deeper would not be. */
-  --accent: #ffd60a;
-  --accent-bright: #ffe45c;
-  --accent-deep: #ffc300;
-  --accent-dim: rgba(255, 214, 10, 0.15);
-  --gold: #ffc300;
+     Warm against a cool ground, the same job the yellow did against
+     navy — but a green base is the complement of a coral rather than
+     merely a contrast to it, so the pair sits together instead of
+     shouting past each other. --gold is the cream the reference uses
+     for a rating's own marks, which is why the stars below are cream
+     and not white: on green, white reads as a hole. */
+  --accent: #ff8a6b;
+  --accent-bright: #ffa281;
+  --accent-deep: #f4714f;
+  --accent-dim: rgba(255, 138, 107, 0.15);
+  --gold: #ffe9a8;
   /* Warm orange — the Messenger's status accent (Playing / send).
      Online presence stays green (--success); orange is for status. */
-  --orange: #ffc300;
-  /* White, not gold. With the accent doing all the colour work, a
-     second warm tone on ratings would read as a competing signal —
-     and against a neutral grey a pure-white star is the sharper,
-     more editorial mark anyway. Empty stars fall back to --ink-faint,
-     which is what keeps filled-vs-empty legible. */
-  --star-fill: #ffffff;
-  --coral: #ff6b6b;
-  --teal: #4dabff;
-  --violet: #a78bfa;
+  --orange: #ff8a6b;
+  /* Cream, not white. Against the navy ramp a pure-white star was the
+     sharper mark; against green it reads as a gap punched in the
+     surface rather than as a filled shape. The reference draws its
+     stars in exactly this cream, and it sits close enough to the
+     coral accent to belong to it without competing for the primary
+     action. Empty stars use --star-empty just below, which is what keeps
+     filled-vs-empty legible.
+
+     --coral IS the accent here. On the reference the love mark and the
+     primary button are the same hue, and splitting them would invent a
+     distinction the palette does not make. */
+  --star-fill: #fff5b1;
+  /* The unfilled half of a rating. It used to be --ink-faint, which
+     worked when that token was a muted blue-grey: on the navy ramp an
+     empty star read as empty. --ink-faint is now a bright mint, and at
+     32px a row of five of them reads as five FILLED stars — the rating
+     control looked permanently set to five. This is a desaturated
+     green a clear 5.5:1 below the cream fill, so empty is unmistakably
+     empty at every size the app draws a star. */
+  --star-empty: #2d6e53;
+  /* Placeholder text, one step below --ink-faint. On the navy ramp the
+     faint step was a muted blue-grey and doubled as a placeholder
+     happily; on green it is a saturated mint, and "What did you think?"
+     sitting in a review box at that weight reads as something already
+     typed rather than as a prompt. A placeholder is the one piece of
+     text that is supposed to sit under the reading threshold. */
+  --ink-ghost: #2f8f68;
+  --coral: #ff8a6b;
+  --teal: #2b946d;
+  --violet: #e0b0ff;
+  /* The reference's shelf chips, kept as real tokens so a status
+     colour is never typed twice: wishlist pink beside the backlog
+     violet above. */
+  --pink: #ffa3c4;
 
   /* --- semantic --- */
   --line: rgba(255, 255, 255, 0.09);
   --line-strong: rgba(255, 255, 255, 0.18);
-  /* Rose, not the old #ff6b6b. Against an orange primary a plain red
-     sits ~20 degrees away in hue and reads as the same colour at a
-     glance, which is how "delete account" ends up looking like "log
-     it". This is ~33 degrees off the accent — far enough to separate
-     by hue rather than relying on brightness alone. */
-  --danger: #f43f5e;
-  --success: #3ddc97;
-  --warning: #ffc300;
+  /* The rose this used to be (#F43F5E) sat 23 degrees off the new
+     coral — inside exactly the range the old note warned about, where
+     "delete account" starts to look like "log it". Measured rather
+     than guessed: coral is hue 13, that rose was hue 350. This is hue
+     345 but far hotter and more saturated, so it separates on two
+     axes at once instead of leaning on hue alone. Lightened once from
+     #FF2E63 (4.34 on the page) and again from #FF4D7A, which passed
+     there but measured 3.65 against --surface — and a sheet's "Delete
+     this entry" row sits on exactly that. It reads pinker than a
+     destructive colour usually does; on a green ground that is what
+     it takes to be both alarming and legible, and the separation from
+     the coral is carried by hue (32 degrees) and by form (this is
+     always text, the accent is always a fill). */
+  --danger: #ff80a0;
+  --success: #45d9a3;
+  --warning: #ffe9a8;
 
   /* --- type ---
      Manrope throughout: a cleaner, more even geometric sans than the
@@ -203,7 +249,7 @@
   --shadow-accent: 0 6px 22px rgba(0,0,0,0.34);
   /* The console focus ring: a soft accent bloom, the cue that tells
      you where you are on a screen you're navigating, not clicking. */
-  --glow-focus: 0 0 0 2px rgba(255,255,255,0.85), 0 0 26px rgba(39, 210, 239,0.5);
+  --glow-focus: 0 0 0 2px rgba(255,255,255,0.85), 0 0 26px rgba(255, 138, 107, 0.5);
 
   /* Leading, five rungs: tight for numerals and icon rows, through
      titles, to body copy and long-form reading. There were eighteen
@@ -355,10 +401,10 @@ ul { list-style: none; margin: 0; padding: 0; }
    load. */
 .boot-fail { max-width: 300px; padding: 0 24px; text-align: center; color: #ffffff; }
 .boot-fail__title { margin: 0; font-size: 17px; font-weight: 800; }
-.boot-fail__body { margin: 10px 0 0; font-size: 14px; line-height: 1.5; color: #9fb4cd; }
+.boot-fail__body { margin: 10px 0 0; font-size: 14px; line-height: 1.5; color: #45d9a3; }
 .boot-fail__btn {
   margin-top: 20px; width: 100%; min-height: 46px; border: none; cursor: pointer;
-  border-radius: 999px; background: #ffd60a; color: #000814;
+  border-radius: 999px; background: #ff8a6b; color: #05291c;
   font-size: 15px; font-weight: 800;
 }
 /* A soft ambient glow breathing behind the mark — the same --accent
@@ -1122,7 +1168,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .recent-search-row { position: relative; overflow: hidden; border-radius: var(--radius-s); }
 .recent-search-row__delete {
   position: absolute; inset: 0; left: auto; width: 84px;
-  background: #e5484d; color: #fff; font-size: 13.5px; font-weight: 700;
+  background: var(--danger); color: var(--bg); font-size: 13.5px; font-weight: 700;
 }
 .recent-search-row__content {
   position: relative; z-index: 1; width: 100%;
@@ -1139,7 +1185,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   box-shadow: var(--shadow-card); transition: box-shadow var(--dur) var(--ease);
 }
 .discovery-tile:hover { transform: translateY(-4px) scale(1.03); }
-.discovery-tile:hover .discovery-tile__cover { box-shadow: 0 14px 40px rgba(0,0,0,0.5), 0 0 22px rgba(39, 210, 239,0.22); }
+.discovery-tile:hover .discovery-tile__cover { box-shadow: 0 14px 40px rgba(0,0,0,0.5), 0 0 22px rgba(255, 138, 107, 0.22); }
 .discovery-tile:focus-visible { outline: none; transform: translateY(-4px) scale(1.03); }
 .discovery-tile:focus-visible .discovery-tile__cover { box-shadow: var(--glow-focus); }
 .discovery-tile:focus-visible .discovery-tile__cover { box-shadow: var(--glow-focus); }
@@ -1162,15 +1208,14 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   -webkit-mask: var(--star-mask) center / contain no-repeat;
   mask: var(--star-mask) center / contain no-repeat;
 }
-/* Was var(--line) (8% opacity) — nearly invisible against the app's
-   near-black surfaces, so a half-filled star's unfilled remainder all
-   but disappeared instead of reading as "half of a full-sized star",
-   making that one star look shrunken next to a neighbouring full 5-star
-   rating. --ink-faint is what the interactive rating picker already
-   used for this exact same "empty star" layer — this just brings the
-   read-only display in line with it instead of a fainter, separate
-   value nobody had a reason to keep different. */
-.star::before { background: var(--ink-faint); }
+/* Its own token (--star-empty), not --line and not --ink-faint. --line
+   at 8% opacity was nearly invisible, so a half-filled star's unfilled
+   remainder disappeared instead of reading as "half of a full-sized
+   star". --ink-faint fixed that on the navy ramp but broke it on green,
+   where the faint step is a bright mint and five empty stars read as
+   five filled ones. A dedicated value is the only thing that stays
+   correct through a palette change. */
+.star::before { background: var(--star-empty); }
 .star::after { background: var(--star-fill, var(--gold)); clip-path: inset(0 100% 0 0); }
 .star--half::after { clip-path: inset(0 50% 0 0); }
 .star--full::after { clip-path: inset(0 0 0 0); }
@@ -1345,7 +1390,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    elements, plus a slight gap inside the star run so the stars sit a touch
    looser than flush (flex gap, not a per-star margin — that rounded
    unevenly before). */
-.card-who__stars { display: flex; align-items: center; gap: 3px; min-height: 14px; line-height: 14px; --star-fill: var(--ink); }
+.card-who__stars { display: flex; align-items: center; gap: 3px; min-height: 14px; line-height: 14px; }
 .card-who__stars .stars { gap: 1.5px; }
 /* Loved + review marks: a touch smaller than the 12px stars, tight
    viewBoxes (see components.js) so the glyphs fill their box like a star
@@ -1669,7 +1714,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   font-family: var(--font-body); font-size: 15px; font-weight: var(--weight-medium); color: var(--ink);
 }
 .rv-composer input:focus { outline: none; }
-.rv-composer input::placeholder { color: var(--ink-faint); font-weight: var(--weight-medium); }
+.rv-composer input::placeholder { color: var(--ink-ghost); font-weight: var(--weight-medium); }
 /* Dim until there is something to send, so the button reports whether
    the form is ready rather than only what it does. */
 .rv-composer__send {
@@ -2823,17 +2868,17 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
    a rotation through a dozen games with a dozen different colour
    gradings never shifts the screen's palette. */
 .auth-screen__duo {
-  background: linear-gradient(160deg, #0a5aa0, var(--surface) 70%, var(--bg));
+  background: linear-gradient(160deg, #12704d, var(--surface) 70%, var(--bg));
   mix-blend-mode: color; opacity: 0.44;
 }
 .auth-screen__warm {
-  background: radial-gradient(62% 58% at 72% 22%, rgba(255, 214, 10, 0.34), transparent 70%);
+  background: radial-gradient(62% 58% at 72% 22%, rgba(255, 138, 107, 0.34), transparent 70%);
   mix-blend-mode: soft-light;
 }
 /* Keeps the back chevron and the credit chip legible whatever image is
    up there at the time. */
 .auth-screen__scrim {
-  background: linear-gradient(to bottom, rgba(0, 8, 20, 0.66), rgba(0, 8, 20, 0.34) 9%, rgba(0, 8, 20, 0.12) 20%, transparent 34%);
+  background: linear-gradient(to bottom, rgba(5, 41, 28, 0.66), rgba(5, 41, 28, 0.34) 9%, rgba(5, 41, 28, 0.12) 20%, transparent 34%);
 }
 /* The floor the form stands on. With the art running the full height
    again, the fields sit ON the picture, and glass over a photograph is
@@ -2843,9 +2888,9 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 .auth-screen__floor {
   background: linear-gradient(to bottom,
     transparent 16%,
-    rgba(0, 8, 20, 0.42) 34%,
-    rgba(0, 8, 20, 0.84) 52%,
-    rgba(0, 8, 20, 0.96) 66%,
+    rgba(5, 41, 28, 0.42) 34%,
+    rgba(5, 41, 28, 0.84) 52%,
+    rgba(5, 41, 28, 0.96) 66%,
     var(--bg) 78%);
 }
 
@@ -2917,20 +2962,20 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 .auth-screen__name {
   font-family: var(--font-brand); font-weight: var(--weight-bold);
   font-size: 20px; line-height: 1; letter-spacing: -0.035em; color: var(--ink);
-  text-shadow: 0 2px 12px rgba(0, 8, 20, 0.8);
+  text-shadow: 0 2px 12px rgba(5, 41, 28, 0.8);
 }
 .auth-screen__head {
   margin: 14px 0 0;
   font-family: var(--font-brand); font-weight: var(--weight-black);
   font-size: clamp(27px, 8.4vw, 34px); line-height: 0.96; letter-spacing: -0.05em;
-  color: var(--ink); text-shadow: 0 2px 16px rgba(0, 8, 20, 0.8);
+  color: var(--ink); text-shadow: 0 2px 16px rgba(5, 41, 28, 0.8);
 }
 .auth-screen__head em { font-style: normal; color: var(--accent); }
 .auth-screen__tag {
   margin: 12px 0 0; max-width: 24em;
   font-family: var(--font-body); font-style: normal; font-weight: var(--weight-strong);
   font-size: var(--text-small); line-height: var(--leading-prose); color: var(--ink-dim);
-  text-shadow: 0 1px 10px rgba(0, 8, 20, 0.85);
+  text-shadow: 0 1px 10px rgba(5, 41, 28, 0.85);
 }
 
 /* Fields as glass on the duotone rather than solid white blocks. White
@@ -2966,9 +3011,9 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 .auth-form .field__toggle:active { color: var(--ink); background: rgba(255, 255, 255, 0.1); }
 .auth-form .field input:focus {
   outline: none; background: rgba(255, 255, 255, 0.11);
-  border-color: var(--accent-bright); box-shadow: 0 0 0 3px rgba(255, 214, 10, 0.22);
+  border-color: var(--accent-bright); box-shadow: 0 0 0 3px rgba(255, 138, 107, 0.22);
 }
-.auth-form .field input::placeholder { color: var(--ink-faint); }
+.auth-form .field input::placeholder { color: var(--ink-ghost); }
 .auth-form .field { margin-bottom: 8px; display: block; }
 
 /* Where a browser cannot blur what is behind an element, a see-through
@@ -3857,7 +3902,7 @@ a.gd-credit__name { text-decoration: none; }
   color: var(--ink); font-family: var(--font-mono); font-size: 12.5px;
   letter-spacing: 0.04em; -moz-appearance: textfield;
 }
-.lg-num::placeholder { color: var(--ink-faint); }
+.lg-num::placeholder { color: var(--ink-ghost); }
 .lg-num::-webkit-outer-spin-button,
 .lg-num::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 
@@ -3897,7 +3942,7 @@ a.gd-credit__name { text-decoration: none; }
   flex: 1; min-width: 0; background: none; border: none; padding: 0;
   color: var(--ink); font-family: inherit; font-size: 15px;
 }
-.lg-search input::placeholder { color: var(--ink-faint); }
+.lg-search input::placeholder { color: var(--ink-ghost); }
 
 .lg-group--review { padding: 12px var(--space-4) 10px; }
 /* No box inside a box: the band is already a surface, so the field is
@@ -3910,7 +3955,7 @@ a.gd-credit__name { text-decoration: none; }
   color: var(--ink); font-family: inherit; font-size: 15px; line-height: 1.6;
   min-height: 92px;
 }
-.lg-text::placeholder { color: var(--ink-faint); }
+.lg-text::placeholder { color: var(--ink-ghost); }
 .lg-text:focus { outline: none; }
 .lg-count {
   text-align: right; min-height: 14px;
@@ -4528,7 +4573,7 @@ a.gd-credit__name { text-decoration: none; }
    the tour is swiped, so the light on the page travels with the slide
    instead of only the words changing. */
 .lp-bg__glow {
-  background: radial-gradient(70% 40% at var(--glow, 70% 12%), rgba(255, 214, 10, 0.22), transparent 68%);
+  background: radial-gradient(70% 40% at var(--glow, 70% 12%), rgba(255, 138, 107, 0.22), transparent 68%);
   transition: background 420ms var(--ease);
 }
 
@@ -4678,7 +4723,7 @@ a.gd-credit__name { text-decoration: none; }
    underneath, so five games with five different colour gradings come
    out as five images of the same place. */
 .tour-art__duo {
-  background: linear-gradient(160deg, #0a5aa0, var(--surface) 70%, var(--bg));
+  background: linear-gradient(160deg, #12704d, var(--surface) 70%, var(--bg));
   mix-blend-mode: color; opacity: 0.24;
 }
 /* The only thing between the picture and the words, so it has to do
@@ -4689,10 +4734,10 @@ a.gd-credit__name { text-decoration: none; }
    headline, the body and the button. */
 .tour-art__scrim {
   background: linear-gradient(to bottom,
-    rgba(0, 8, 20, 0.62) 0%,
+    rgba(5, 41, 28, 0.62) 0%,
     transparent 22%,
     transparent 38%,
-    rgba(0, 8, 20, 0.88) 72%,
+    rgba(5, 41, 28, 0.88) 72%,
     var(--bg) 96%);
 }
 
@@ -4941,7 +4986,7 @@ a.gd-credit__name { text-decoration: none; }
 }
 .convo-search svg { width: 16px; height: 16px; flex-shrink: 0; }
 .convo-search input { flex: 1; min-width: 0; background: none; border: none; color: var(--ink); font-size: 15px; }
-.convo-search input::placeholder { color: var(--ink-faint); }
+.convo-search input::placeholder { color: var(--ink-ghost); }
 
 .convo-list { display: flex; flex-direction: column; gap: 2px; padding-top: 4px; }
 .convo-row {
@@ -5131,7 +5176,7 @@ a.gd-credit__name { text-decoration: none; }
 .convo-row__av:has(.convo-stack)::before { content: none; }
 .compose-mode { margin-bottom: 14px; }
 .compose-name { width: 100%; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-m); padding: 11px 14px; font-size: 15px; color: var(--ink); margin-bottom: 10px; }
-.compose-name::placeholder { color: var(--ink-faint); }
+.compose-name::placeholder { color: var(--ink-ghost); }
 .compose-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
 .compose-chips:empty { display: none; }
 .compose-chip { display: inline-flex; align-items: center; gap: 3px; padding: 5px 5px 5px 11px; background: var(--surface-high); border-radius: 999px; font-size: 13.5px; font-weight: 600; }
@@ -5396,7 +5441,7 @@ a.gd-credit__name { text-decoration: none; }
   flex: 1; min-width: 0; background: var(--surface); border: 1px solid var(--line);
   border-radius: 999px; padding: 10px 16px; font-size: 15px; color: var(--ink);
 }
-.thread-composer input::placeholder { color: var(--ink-faint); }
+.thread-composer input::placeholder { color: var(--ink-ghost); }
 .thread-composer__send {
   flex-shrink: 0; width: 40px; height: 40px; border-radius: 50%;
   display: grid; place-items: center; border: none;
@@ -5439,7 +5484,7 @@ a.gd-credit__name { text-decoration: none; }
 }
 .emoji-picker__search svg { width: 16px; height: 16px; color: var(--ink-faint); flex-shrink: 0; }
 .emoji-picker__search input { flex: 1; min-width: 0; background: none; border: none; font-size: 14px; color: var(--ink); }
-.emoji-picker__search input::placeholder { color: var(--ink-faint); }
+.emoji-picker__search input::placeholder { color: var(--ink-ghost); }
 .emoji-picker__label {
   font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
   color: var(--ink-faint); margin: var(--space-2) 2px 6px;
