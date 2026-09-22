@@ -37,30 +37,31 @@
      the three in between are interpolated so elevation reads as one
      continuous climb rather than three jumps.
 
-     Three of these are sampled straight off the reference — #05291C as
-     the page, #0B412D as the first raised surface, #1F543F as the
+     Three of these are sampled straight off the reference — #190B28 as
+     the page, #28163C as the first raised surface, #3D2152 as the
      highest — and the steps between are interpolated so elevation
      reads as one continuous climb rather than three jumps.
 
-     This replaces a navy ramp, which replaced a zero-chroma grey one,
-     and the reason the grey existed is still worth knowing: a base
-     with no chroma cannot tint the cover art sitting on it, and this
-     app's screens are mostly cover art. Green leans further than navy
-     did, so every poster inherits a little of it. The trade is taken
-     knowingly: the base is dark enough that the lean is slight, and a
-     forest ground gives the warm coral something to be warm against,
-     which is the whole point of the pairing. */
-  --bg: #05291c;
-  --bg-deep: #021a11;
-  --bg-lift: #073522;
-  --surface: #0b412d;
-  --surface-raised: #144a35;
-  --surface-high: #1f543f;
+     Fourth ramp this app has had: grey, then navy, then forest green,
+     now aubergine. The reason the original grey existed is still worth
+     knowing — a base with no chroma cannot tint the cover art sitting
+     on it, and this app's screens are mostly cover art. Every coloured
+     ground since has leaned, and every poster inherits a little of it.
+     The trade is taken knowingly: this base is the darkest of the four
+     (luminance 0.006, against green's 0.017), so the lean is slighter
+     than it looks, and a near-black violet gives the gold the deepest
+     ground it has ever had to sit on. */
+  --bg: #190b28;
+  --bg-deep: #0f0619;
+  --bg-lift: #1f1031;
+  --surface: #28163c;
+  --surface-raised: #311c4a;
+  --surface-high: #3d2152;
 
   /* --- glass --- */
   --glass-fill: rgba(255, 255, 255, 0.03);
   --glass-fill-strong: rgba(255, 255, 255, 0.08);
-  --glass-tint: rgba(5, 41, 28, 0.14);
+  --glass-tint: rgba(25, 11, 40, 0.14);
   --glass-filter: blur(22px) saturate(240%) brightness(1.24) contrast(1.05);
   --glass-filter-strong: blur(34px) saturate(230%) brightness(1.16) contrast(1.04);
   --glass-light: rgba(255, 255, 255, 0.045);
@@ -70,97 +71,99 @@
   --blur: 30px;
   --blur-strong: 42px;
   --glass: rgba(255, 255, 255, 0.05);
-  --glass-strong: rgba(5, 41, 28, 0.74);
+  --glass-strong: rgba(25, 11, 40, 0.74);
 
-  /* --- text: a mint white, then two steps of the ground's own green ---
+  /* --- text: a lilac white, then two steps of the ground's own violet ---
      Secondary text carries the base's hue rather than being neutral
-     grey on a green field, which reads as a different material laid on
-     top. Both steps are far more saturated than the navy theme's were,
-     which is this palette's whole character: the dim step is a real
-     mint (10.3:1 on the ground, 7.6:1 on a raised surface), the faint
-     one a deeper green (6.3:1 and 5.0:1). Both were a step darker
-     until the numbers came back: the faint one measured 3.72 against
-     --surface, and it carries 11-12.5px metadata that sits on raised
-     surfaces constantly, so it was failing exactly where it is used
-     most. --- */
-  --ink: #d8ffec;
-  --ink-dim: #4deab3;
-  --ink-faint: #43c592;
+     grey on a violet field, which reads as a different material laid
+     on top. Both steps sit above the reference's own: it draws its
+     secondary text at #AB7DDF and its axis labels at #78569E, and
+     measured against --surface-raised those come out at 4.9 and 3.5.
+     --ink-faint carries 11-12.5px metadata that sits on raised
+     surfaces constantly, so the reference's value was failing exactly
+     where the token is used most. Lifted until both clear: dim 8.5:1
+     on the ground and 7.0:1 on a surface, faint 5.6:1 and 4.9:1. --- */
+  --ink: #f9dfff;
+  --ink-dim: #bb8af3;
+  --ink-faint: #a17dc9;
 
-  /* --- accent: one coral, and only it ---
-     #FF8A6B over a #05291C ground is a 6.2:1 pair, which is what an
-     accent is for: it is never in doubt what the primary action on a
-     screen is, and it is light enough to take the page colour as
-     button text (see .btn--accent), which anything deeper would not be.
+  /* --- accent: one gold, and only it ---
+     #F5C542 over a #190B28 ground is an 11.5:1 pair — the highest
+     contrast any accent in this app has had, because the ground is the
+     darkest. There is never a question which control on a screen is
+     the primary one, and it takes the page colour as button text (see
+     .btn--accent) with room to spare.
 
-     Warm against a cool ground, the same job the yellow did against
-     navy — but a green base is the complement of a coral rather than
-     merely a contrast to it, so the pair sits together instead of
-     shouting past each other. --gold is the cream the reference uses
-     for a rating's own marks, which is why the stars below are cream
-     and not white: on green, white reads as a hole. */
-  --accent: #ff8a6b;
-  --accent-bright: #ffa281;
-  --accent-deep: #f4714f;
-  --accent-dim: rgba(255, 138, 107, 0.15);
-  --gold: #ffe9a8;
+     Warm against a cool ground, the same job the coral did against
+     green and the yellow did against navy. What is different here is
+     the distance: gold sits almost opposite a violet ground on the
+     wheel, so it separates by hue as much as by brightness, and the
+     surfaces can stay close in tone without the accent ever getting
+     lost in them. */
+  --accent: #f5c542;
+  --accent-bright: #ffe343;
+  --accent-deep: #e0b02f;
+  --accent-dim: rgba(245, 197, 66, 0.15);
+  --gold: #ffd845;
   /* Warm orange — the Messenger's status accent (Playing / send).
      Online presence stays green (--success); orange is for status. */
-  --orange: #ff8a6b;
-  /* Cream, not white. Against the navy ramp a pure-white star was the
-     sharper mark; against green it reads as a gap punched in the
-     surface rather than as a filled shape. The reference draws its
-     stars in exactly this cream, and it sits close enough to the
-     coral accent to belong to it without competing for the primary
-     action. Empty stars use --star-empty just below, which is what keeps
+  --orange: #f5c542;
+  /* A pale pink, not white and not the accent. Against the navy ramp a
+     pure-white star was the sharper mark; against a coloured ground it
+     reads as a gap punched in the surface rather than as a filled
+     shape. The reference draws its stars, its love mark and its
+     "2h ago" in this one pink, which is what keeps a rating legible
+     without it competing with the gold for the primary action. Empty stars use --star-empty just below, which is what keeps
      filled-vs-empty legible.
 
-     --coral IS the accent here. On the reference the love mark and the
-     primary button are the same hue, and splitting them would invent a
-     distinction the palette does not make. */
-  --star-fill: #fff5b1;
+     --coral is the reference's pale pink. Under the last palette it
+     was the accent itself, because there the love mark and the primary
+     button really were one hue; here they are not, so the love mark
+     goes back to being its own colour. */
+  --star-fill: #ffdfee;
   /* The unfilled half of a rating. It used to be --ink-faint, which
      worked when that token was a muted blue-grey: on the navy ramp an
-     empty star read as empty. --ink-faint is now a bright mint, and at
-     32px a row of five of them reads as five FILLED stars — the rating
-     control looked permanently set to five. This is a desaturated
-     green a clear 5.5:1 below the cream fill, so empty is unmistakably
-     empty at every size the app draws a star. */
-  --star-empty: #2d6e53;
+     empty star read as empty. Every palette since has made the faint
+     step a saturated colour, and at 32px a row of five of those reads
+     as five FILLED stars — the rating control looks permanently set to
+     five. This is a muted violet a clear 7:1 below the pink fill, so
+     empty is unmistakably empty at every size the app draws a star.
+
+     The reference draws its own empty star in the page colour exactly,
+     which works in a still image and not in a control: a half star
+     needs its unfilled half to be visible or it reads as a whole star
+     at the wrong size. */
+  --star-empty: #6e4c96;
   /* Placeholder text, one step below --ink-faint. On the navy ramp the
      faint step was a muted blue-grey and doubled as a placeholder
-     happily; on green it is a saturated mint, and "What did you think?"
-     sitting in a review box at that weight reads as something already
-     typed rather than as a prompt. A placeholder is the one piece of
-     text that is supposed to sit under the reading threshold. */
-  --ink-ghost: #2f8f68;
-  --coral: #ff8a6b;
-  --teal: #2b946d;
+     happily; on every coloured ramp since it is a saturated colour, and
+     "What did you think?" sitting in a review box at that weight reads
+     as something already typed rather than as a prompt. A placeholder
+     is the one piece of text that is supposed to sit under the reading
+     threshold. */
+  --ink-ghost: #8460ab;
+  --coral: #ffc9d9;
+  --teal: #8fe3c8;
   --violet: #e0b0ff;
   /* The reference's shelf chips, kept as real tokens so a status
      colour is never typed twice: wishlist pink beside the backlog
      violet above. */
-  --pink: #ffa3c4;
+  --pink: #ffc9d9;
 
   /* --- semantic --- */
   --line: rgba(255, 255, 255, 0.09);
   --line-strong: rgba(255, 255, 255, 0.18);
-  /* The rose this used to be (#F43F5E) sat 23 degrees off the new
-     coral — inside exactly the range the old note warned about, where
-     "delete account" starts to look like "log it". Measured rather
-     than guessed: coral is hue 13, that rose was hue 350. This is hue
-     345 but far hotter and more saturated, so it separates on two
-     axes at once instead of leaning on hue alone. Lightened once from
-     #FF2E63 (4.34 on the page) and again from #FF4D7A, which passed
-     there but measured 3.65 against --surface — and a sheet's "Delete
-     this entry" row sits on exactly that. It reads pinker than a
-     destructive colour usually does; on a green ground that is what
-     it takes to be both alarming and legible, and the separation from
-     the coral is carried by hue (32 degrees) and by form (this is
-     always text, the accent is always a fill). */
-  --danger: #ff80a0;
-  --success: #45d9a3;
-  --warning: #ffe9a8;
+  /* The reference's own "dropped" red. Under the coral palette this
+     token had to be forced into a hot pink to stay clear of the
+     primary — coral and red sit ~13 degrees apart and "delete account"
+     started to look like "log it". A gold primary removes that
+     problem entirely: hue 0 against hue 48 is unmistakable, so danger
+     can go back to reading as a plain red. Measured, it is 6.8:1 on
+     the page and 6.0:1 on a surface, which is where a sheet's "Delete
+     this entry" row actually sits. */
+  --danger: #ff6b6b;
+  --success: #8fe3c8;
+  --warning: #ffd845;
 
   /* --- type ---
      Manrope throughout: a cleaner, more even geometric sans than the
@@ -249,7 +252,7 @@
   --shadow-accent: 0 6px 22px rgba(0,0,0,0.34);
   /* The console focus ring: a soft accent bloom, the cue that tells
      you where you are on a screen you're navigating, not clicking. */
-  --glow-focus: 0 0 0 2px rgba(255,255,255,0.85), 0 0 26px rgba(255, 138, 107, 0.5);
+  --glow-focus: 0 0 0 2px rgba(255,255,255,0.85), 0 0 26px rgba(245, 197, 66, 0.5);
 
   /* Leading, five rungs: tight for numerals and icon rows, through
      titles, to body copy and long-form reading. There were eighteen
@@ -401,10 +404,10 @@ ul { list-style: none; margin: 0; padding: 0; }
    load. */
 .boot-fail { max-width: 300px; padding: 0 24px; text-align: center; color: #ffffff; }
 .boot-fail__title { margin: 0; font-size: 17px; font-weight: 800; }
-.boot-fail__body { margin: 10px 0 0; font-size: 14px; line-height: 1.5; color: #45d9a3; }
+.boot-fail__body { margin: 10px 0 0; font-size: 14px; line-height: 1.5; color: #bb8af3; }
 .boot-fail__btn {
   margin-top: 20px; width: 100%; min-height: 46px; border: none; cursor: pointer;
-  border-radius: 999px; background: #ff8a6b; color: #05291c;
+  border-radius: 999px; background: #f5c542; color: #190b28;
   font-size: 15px; font-weight: 800;
 }
 /* A soft ambient glow breathing behind the mark — the same --accent
@@ -1185,7 +1188,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   box-shadow: var(--shadow-card); transition: box-shadow var(--dur) var(--ease);
 }
 .discovery-tile:hover { transform: translateY(-4px) scale(1.03); }
-.discovery-tile:hover .discovery-tile__cover { box-shadow: 0 14px 40px rgba(0,0,0,0.5), 0 0 22px rgba(255, 138, 107, 0.22); }
+.discovery-tile:hover .discovery-tile__cover { box-shadow: 0 14px 40px rgba(0,0,0,0.5), 0 0 22px rgba(245, 197, 66, 0.22); }
 .discovery-tile:focus-visible { outline: none; transform: translateY(-4px) scale(1.03); }
 .discovery-tile:focus-visible .discovery-tile__cover { box-shadow: var(--glow-focus); }
 .discovery-tile:focus-visible .discovery-tile__cover { box-shadow: var(--glow-focus); }
@@ -2868,17 +2871,17 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
    a rotation through a dozen games with a dozen different colour
    gradings never shifts the screen's palette. */
 .auth-screen__duo {
-  background: linear-gradient(160deg, #12704d, var(--surface) 70%, var(--bg));
+  background: linear-gradient(160deg, #5a2f8f, var(--surface) 70%, var(--bg));
   mix-blend-mode: color; opacity: 0.44;
 }
 .auth-screen__warm {
-  background: radial-gradient(62% 58% at 72% 22%, rgba(255, 138, 107, 0.34), transparent 70%);
+  background: radial-gradient(62% 58% at 72% 22%, rgba(245, 197, 66, 0.34), transparent 70%);
   mix-blend-mode: soft-light;
 }
 /* Keeps the back chevron and the credit chip legible whatever image is
    up there at the time. */
 .auth-screen__scrim {
-  background: linear-gradient(to bottom, rgba(5, 41, 28, 0.66), rgba(5, 41, 28, 0.34) 9%, rgba(5, 41, 28, 0.12) 20%, transparent 34%);
+  background: linear-gradient(to bottom, rgba(25, 11, 40, 0.66), rgba(25, 11, 40, 0.34) 9%, rgba(25, 11, 40, 0.12) 20%, transparent 34%);
 }
 /* The floor the form stands on. With the art running the full height
    again, the fields sit ON the picture, and glass over a photograph is
@@ -2888,9 +2891,9 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 .auth-screen__floor {
   background: linear-gradient(to bottom,
     transparent 16%,
-    rgba(5, 41, 28, 0.42) 34%,
-    rgba(5, 41, 28, 0.84) 52%,
-    rgba(5, 41, 28, 0.96) 66%,
+    rgba(25, 11, 40, 0.42) 34%,
+    rgba(25, 11, 40, 0.84) 52%,
+    rgba(25, 11, 40, 0.96) 66%,
     var(--bg) 78%);
 }
 
@@ -2962,20 +2965,20 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 .auth-screen__name {
   font-family: var(--font-brand); font-weight: var(--weight-bold);
   font-size: 20px; line-height: 1; letter-spacing: -0.035em; color: var(--ink);
-  text-shadow: 0 2px 12px rgba(5, 41, 28, 0.8);
+  text-shadow: 0 2px 12px rgba(25, 11, 40, 0.8);
 }
 .auth-screen__head {
   margin: 14px 0 0;
   font-family: var(--font-brand); font-weight: var(--weight-black);
   font-size: clamp(27px, 8.4vw, 34px); line-height: 0.96; letter-spacing: -0.05em;
-  color: var(--ink); text-shadow: 0 2px 16px rgba(5, 41, 28, 0.8);
+  color: var(--ink); text-shadow: 0 2px 16px rgba(25, 11, 40, 0.8);
 }
 .auth-screen__head em { font-style: normal; color: var(--accent); }
 .auth-screen__tag {
   margin: 12px 0 0; max-width: 24em;
   font-family: var(--font-body); font-style: normal; font-weight: var(--weight-strong);
   font-size: var(--text-small); line-height: var(--leading-prose); color: var(--ink-dim);
-  text-shadow: 0 1px 10px rgba(5, 41, 28, 0.85);
+  text-shadow: 0 1px 10px rgba(25, 11, 40, 0.85);
 }
 
 /* Fields as glass on the duotone rather than solid white blocks. White
@@ -3011,7 +3014,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 .auth-form .field__toggle:active { color: var(--ink); background: rgba(255, 255, 255, 0.1); }
 .auth-form .field input:focus {
   outline: none; background: rgba(255, 255, 255, 0.11);
-  border-color: var(--accent-bright); box-shadow: 0 0 0 3px rgba(255, 138, 107, 0.22);
+  border-color: var(--accent-bright); box-shadow: 0 0 0 3px rgba(245, 197, 66, 0.22);
 }
 .auth-form .field input::placeholder { color: var(--ink-ghost); }
 .auth-form .field { margin-bottom: 8px; display: block; }
@@ -4573,7 +4576,7 @@ a.gd-credit__name { text-decoration: none; }
    the tour is swiped, so the light on the page travels with the slide
    instead of only the words changing. */
 .lp-bg__glow {
-  background: radial-gradient(70% 40% at var(--glow, 70% 12%), rgba(255, 138, 107, 0.22), transparent 68%);
+  background: radial-gradient(70% 40% at var(--glow, 70% 12%), rgba(245, 197, 66, 0.22), transparent 68%);
   transition: background 420ms var(--ease);
 }
 
@@ -4723,7 +4726,7 @@ a.gd-credit__name { text-decoration: none; }
    underneath, so five games with five different colour gradings come
    out as five images of the same place. */
 .tour-art__duo {
-  background: linear-gradient(160deg, #12704d, var(--surface) 70%, var(--bg));
+  background: linear-gradient(160deg, #5a2f8f, var(--surface) 70%, var(--bg));
   mix-blend-mode: color; opacity: 0.24;
 }
 /* The only thing between the picture and the words, so it has to do
@@ -4734,10 +4737,10 @@ a.gd-credit__name { text-decoration: none; }
    headline, the body and the button. */
 .tour-art__scrim {
   background: linear-gradient(to bottom,
-    rgba(5, 41, 28, 0.62) 0%,
+    rgba(25, 11, 40, 0.62) 0%,
     transparent 22%,
     transparent 38%,
-    rgba(5, 41, 28, 0.88) 72%,
+    rgba(25, 11, 40, 0.88) 72%,
     var(--bg) 96%);
 }
 
