@@ -5,7 +5,7 @@
 // also has the side effect of dropping every old "questlog-*" cache on
 // people's phones, which is exactly right: those held Questlog-branded
 // assets that no longer exist.
-const CACHE_VERSION = 'playthruu-v23';
+const CACHE_VERSION = 'playthruu-v24';
 const PRECACHE = [
   './',
   './index.html',
@@ -36,6 +36,7 @@ const PRECACHE = [
   './js/views/stories.js',
   './js/views/log-composer.js',
   './icons/icon-192.png',
+  './icons/badge-96.png',
   './icons/icon-512.png',
 ];
 
@@ -107,7 +108,14 @@ self.addEventListener('push', (event) => {
     self.registration.showNotification(title, {
       body: payload.body || '',
       icon: './icons/icon-192.png',
-      badge: './icons/icon-192.png',
+      // Android does not draw the badge, it draws its ALPHA: whatever
+      // you pass is flattened to a silhouette and tinted, then shown at
+      // about 24dp in the status bar. Passing the 192px full-colour
+      // icon here meant passing a solid opaque square, so the status
+      // bar showed a grey block instead of the mark. badge-96.png is
+      // the mark itself as white-on-transparent, which is the only
+      // shape that survives that treatment.
+      badge: './icons/badge-96.png',
       // Collapses a run of notifications from the same source into one
       // entry in the tray instead of stacking five of them.
       tag: payload.tag || 'playthruu',
