@@ -1782,16 +1782,6 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   padding: 8px var(--gutter) calc(10px + var(--safe-bottom));
   background: var(--bg);
 }
-.rv-reactions {
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 2px; padding: 2px 4px 10px;
-}
-.rv-reaction {
-  background: none; border: none; cursor: pointer; padding: 2px;
-  font-size: 25px; line-height: 1;
-  transition: transform var(--dur-fast) var(--ease);
-}
-.rv-reaction:active { transform: scale(1.25); }
 .rv-composer__row { display: flex; align-items: center; gap: 10px; }
 .rv-composer__row .avatar, .rv-composer__row img { flex-shrink: 0; }
 /* The field and its send button are ONE object — the button lives

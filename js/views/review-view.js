@@ -14,12 +14,6 @@ import { esc, starRow, formatDate, timeAgo, qs, qsa, toast, tapFeedback, promptS
 // and stacking one ON TOP of the tab bar leaves two bars competing for
 // the bottom of the screen and the thumb that reaches it.
 
-// The row above the box, the way a reaction bar works everywhere else.
-// Tapping one drops it into the field rather than posting immediately —
-// a one-tap irreversible post is how people send things they did not
-// mean to, and these are comments on somebody's writing.
-const QUICK_REACTIONS = ['❤️', '🔥', '👏', '😢', '😍', '😮', '😂'];
-
 export async function renderReviewView(root, { id }) {
   root.innerHTML = topBar('Review', { back: true }) +
     `<div class="view-body view-body--review" id="review-body">${spinner()}</div>`;
@@ -132,9 +126,6 @@ function composerHtml() {
   }
   return `
     <div class="rv-composer">
-      <div class="rv-reactions" id="rv-reactions">
-        ${QUICK_REACTIONS.map((e) => `<button type="button" class="rv-reaction" data-emoji="${e}" aria-label="React ${e}">${e}</button>`).join('')}
-      </div>
       <form class="rv-composer__row" id="comment-form">
         ${avatarImg(state.profile, 32)}
         <div class="rv-composer__field">
@@ -156,14 +147,6 @@ function wireComposer(root, body, { logId, ownerId }) {
   const sync = () => send.classList.toggle('is-ready', !!input.value.trim());
   input.addEventListener('input', sync);
   sync();
-
-  qsa('.rv-reaction', root).forEach((btn) => {
-    btn.addEventListener('click', () => {
-      input.value = (input.value + btn.dataset.emoji).slice(0, 1000);
-      input.focus();
-      sync();
-    });
-  });
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
