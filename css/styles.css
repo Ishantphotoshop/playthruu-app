@@ -1451,9 +1451,16 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    so it actually overrides them — a media query adds no specificity, so
    an equal-specificity rule only wins if it comes later in the file. */
 @media (max-width: 560px) {
-  .card-who__stars { gap: 1px; }
-  /* A real 1px, now that the glyph has no margin of its own to hide
-     behind. This is board 03 of the spacing set. */
+  /* Between the star RUN, the love mark and the review mark. This was
+     1px, which looked like three while the star glyph still carried
+     12.8% of its own width as margin. Cropping the mask took that away
+     and left the row genuinely touching: a half star (5px wide now)
+     ran straight into the heart, and the heart into the review lines,
+     so the three read as one smudge. The padding that was doing this
+     job invisibly is now doing it on purpose. */
+  .card-who__stars { gap: 3px; }
+  /* A real 1px between stars, now that the glyph has no margin of its
+     own to hide behind. This is board 03 of the spacing set. */
   .card-who__stars .stars { gap: 1px; }
   /* The SIZE TOKEN, not a literal width: the half-star rule derives its
      width from --star-size, so overriding .star's width here left the
@@ -1466,7 +1473,10 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
      separately, which is two places to keep in step and is exactly the
      drift that produced the mismatch above. */
   .card-who__stars .stars { --star-size: 10px !important; }
-  .card-who__icon { width: 9px; height: 9px; }
+  /* Matched to the star height. At 9px they read as undersized next
+     to stars that now fill their full 10px box, where before the
+     stars' own margin made the two look the same size. */
+  .card-who__icon { width: 10px; height: 10px; }
 }
 /* Currently Playing's footer, in place of a rating that can never
    exist there (the game isn't finished) — a small pulsing dot instead
