@@ -278,7 +278,21 @@
      sharpest of the set. Same construction as the very first version
      (outer radius 11, centred in the 24x24 box) — only the ratio
      changed, from 0.52 down to 0.38. */
-  --star-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 1L14.46 8.62L22.46 8.6L15.98 13.29L18.47 20.9L12 16.18L5.53 20.9L8.02 13.29L1.54 8.6L9.54 8.62Z'/%3E%3C/svg%3E");
+  /* The viewBox is the path's OWN bounds (x 1.54 to 22.46, y 1 to
+     20.9), not the 24-unit square it was drawn in. Measured: that
+     square left 1.54 units of empty margin on each side, so 12.8% of
+     every star was blank space and adjacent stars could never touch
+     however far the CSS gap was wound down — a row of five at gap 0
+     still read as five stars with air between them. Cropping the box
+     is the only thing that closes it; the gap below is now a real
+     gap, in pixels, rather than a correction on top of a margin
+     nobody could see. */
+  --star-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='1.54 1 20.92 19.9'%3E%3Cpath d='M12 1L14.46 8.62L22.46 8.6L15.98 13.29L18.47 20.9L12 16.18L5.53 20.9L8.02 13.29L1.54 8.6L9.54 8.62Z'/%3E%3C/svg%3E");
+  /* The same path in a box cropped to its LEFT HALF. A half star in a
+     display row is drawn with this and nothing underneath it, so half
+     a star is half a shape rather than a whole one with its right
+     side greyed out. */
+  --star-mask-half: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='1.54 1 10.46 19.9'%3E%3Cpath d='M12 1L14.46 8.62L22.46 8.6L15.98 13.29L18.47 20.9L12 16.18L5.53 20.9L8.02 13.29L1.54 8.6L9.54 8.62Z'/%3E%3C/svg%3E");
   /* 3:4 (e.g. 264x352). Covers arrive from IGDB at assorted shapes, so
      the frame is a fixed 3:4 box and the artwork is fitted INSIDE it
      rather than filled to it — see .poster-frame__img. */
@@ -1222,6 +1236,31 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .star::after { background: var(--star-fill, var(--gold)); clip-path: inset(0 100% 0 0); }
 .star--half::after { clip-path: inset(0 50% 0 0); }
 .star--full::after { clip-path: inset(0 0 0 0); }
+
+/* A half star, in a row that DISPLAYS a rating: half the width, the left
+   half of the glyph, and no empty layer beneath it. The clip-path
+   version above is still what draws it — this narrows the box it is
+   drawn in and swaps the mask for one cropped to the same half, so the
+   shape is sliced down the middle instead of scaled into a thin star.
+   Nothing renders to its right.
+
+   Deliberately NOT applied to .stars--interactive. The rating picker
+   measures each star's getBoundingClientRect() to work out what a drag
+   is pointing at (see wireRating in game-view.js and log-composer.js),
+   and a box that changes width as the value passes through a half step
+   would move the hit zones under the finger mid-drag. The picker keeps
+   uniform full-width stars and the grey remainder, which is also what
+   you want while aiming: you can see the half you have not filled yet. */
+.stars:not(.stars--interactive) .star--half {
+  width: calc(var(--star-size, 18px) / 2);
+}
+.stars:not(.stars--interactive) .star--half::before { content: none; }
+.stars:not(.stars--interactive) .star--half::after {
+  clip-path: none;
+  -webkit-mask-image: var(--star-mask-half);
+  mask-image: var(--star-mask-half);
+}
+
 .stars--interactive .star { cursor: pointer; }
 /* Swipe-to-rate: the row owns horizontal drags so sliding across the
    stars sets the rating instead of scrolling the sheet, and never
@@ -1413,8 +1452,20 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    an equal-specificity rule only wins if it comes later in the file. */
 @media (max-width: 560px) {
   .card-who__stars { gap: 1px; }
-  .card-who__stars .stars { gap: 0; }
-  .card-who__stars .star { width: 10px; height: 10px; }
+  /* A real 1px, now that the glyph has no margin of its own to hide
+     behind. This is board 03 of the spacing set. */
+  .card-who__stars .stars { gap: 1px; }
+  /* The SIZE TOKEN, not a literal width: the half-star rule derives its
+     width from --star-size, so overriding .star's width here left the
+     halves sized off a value the full stars no longer used (10px full
+     against a 6px half).
+
+     !important because starRow() writes style="--star-size:12px"
+     inline on .stars, and an inline custom property beats any selector.
+     The alternative is overriding .star's width AND .star--half's width
+     separately, which is two places to keep in step and is exactly the
+     drift that produced the mismatch above. */
+  .card-who__stars .stars { --star-size: 10px !important; }
   .card-who__icon { width: 9px; height: 9px; }
 }
 /* Currently Playing's footer, in place of a rating that can never
