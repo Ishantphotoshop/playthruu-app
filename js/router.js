@@ -63,8 +63,23 @@ let skipNextTransition = true;
 // back; anything else is a push.
 const trail = [];
 
+// The bottom bar's own destinations. These are SIBLINGS, not a stack:
+// nobody drills from Search into Notifications, they just switch. A
+// directional slide between them claims a hierarchy that is not there,
+// and reads as the app throwing a screen away rather than swapping one.
+const TAB_ROOTS = new Set(['/feed', '/search', '/log', '/notifications', '/messages', '/me']);
+
 function trackDirection(path) {
   if (trail.length && trail[trail.length - 1] === path) return; // a re-render, not a move
+  const from = trail[trail.length - 1];
+  if (from && TAB_ROOTS.has(from) && TAB_ROOTS.has(path)) {
+    // Switching tabs starts a fresh stack. Without the reset, going
+    // Feed -> game -> Search -> back would try to pop its way through a
+    // trail that still had the game in it.
+    trail.length = 0;
+    trail.push(path);
+    return 'tab';
+  }
   if (trail.length > 1 && trail[trail.length - 2] === path) {
     trail.pop();
     return 'back';
@@ -78,8 +93,10 @@ function paint(run, direction) {
     && !prefersReducedMotion.matches
     && !skipNextTransition;
   skipNextTransition = false;
-  // The CSS reads this to decide which way the two screens travel.
-  document.documentElement.dataset.nav = direction === 'back' ? 'back' : 'forward';
+  // The CSS reads this to decide how the two screens move: a stack push
+  // slides, a pop slides the other way, a tab switch does neither.
+  document.documentElement.dataset.nav =
+    direction === 'back' ? 'back' : direction === 'tab' ? 'tab' : 'forward';
   if (!animate) { run(); return; }
   try {
     const t = document.startViewTransition(() => { run(); });

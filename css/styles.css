@@ -1528,13 +1528,42 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   animation: page-in-back 300ms cubic-bezier(0.32, 0.72, 0, 1) both;
 }
 @keyframes page-in-fwd    { from { transform: translateX(100%); } }
-@keyframes page-exit-fwd  { to   { transform: translateX(-24%); opacity: 0.45; } }
+@keyframes page-exit-fwd  { to   { transform: translateX(-24%); } }
 @keyframes page-in-back   { from { transform: translateX(-100%); } }
-@keyframes page-exit-back { to   { transform: translateX(24%); opacity: 0.45; } }
+@keyframes page-exit-back { to   { transform: translateX(24%); } }
 
-/* The two snapshots have to be stacked, not blended — the default
-   cross-fade would show one THROUGH the other while they slide, which
-   is what makes a slide look like a ghost passing over the screen. */
+/* Tab switches. The outgoing screen holds exactly where it is, at full
+   opacity, and the incoming one fades in on top of it — which is both
+   the right gesture for siblings and the only safe way to fade at all
+   here. See the note on white below. */
+[data-nav='tab']::view-transition-old(root) { animation: none; }
+[data-nav='tab']::view-transition-new(root) {
+  animation: tab-in 170ms cubic-bezier(0.33, 1, 0.68, 1) both;
+}
+@keyframes tab-in { from { opacity: 0; } }
+
+/* The two snapshots are stacked, not blended. Two separate reasons,
+   and the second one is what was making tab switches flash.
+
+   1. The default cross-fade would show one snapshot THROUGH the other
+      while they slide, which makes a slide look like a ghost passing
+      over the screen.
+
+   2. The browser's own default here is mix-blend-mode: plus-lighter,
+      which ADDS the two layers. That is correct only while the two
+      opacities sum to exactly 1 — the default cross-fade. Any custom
+      animation where they do not (ours had the incoming screen at 1
+      throughout) pulses toward white.
+
+   Turning blending off fixes 2 but not the whole problem, because the
+   snapshots composite over the PAGE, and body is deliberately #ffffff
+   (the margin either side of the app column on a desktop). So an
+   outgoing snapshot at opacity 0.45 was 55% white body — the entire
+   screen going pale for a fifth of a second on every navigation, which
+   is the "flash". The rule that keeps it fixed is not a colour, it is:
+   the OUTGOING snapshot never drops below opacity 1. It slides, it
+   holds, it does not fade. Anything that wants to fade fades IN, on
+   top of an opaque layer, where there is nothing behind it to show. */
 ::view-transition-old(root), ::view-transition-new(root) {
   mix-blend-mode: normal;
   backface-visibility: hidden;
@@ -1555,7 +1584,11 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 ::view-transition-old(composer), ::view-transition-new(composer) { animation: none; }
 
 @media (prefers-reduced-motion: reduce) {
-  ::view-transition-old(root), ::view-transition-new(root) { animation: none; }
+  /* The [data-nav] variants are listed too: an attribute selector beats
+     a bare pseudo-element, so without them the tab rules above would
+     keep animating for somebody who asked for no motion. */
+  ::view-transition-old(root), ::view-transition-new(root),
+  [data-nav]::view-transition-old(root), [data-nav]::view-transition-new(root) { animation: none; }
 }
 
 /* ------------------------------------------------------- review thread
