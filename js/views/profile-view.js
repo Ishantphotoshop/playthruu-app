@@ -168,7 +168,8 @@ export async function renderProfileView(root, { username }) {
           <div class="profile-header__bio-wrap">
             <p class="profile-header__bio" id="profile-bio">${esc(profile.bio)}</p>
             <button type="button" class="profile-header__bio-more" id="profile-bio-more"
-                    aria-controls="profile-bio" aria-expanded="false" hidden>more</button>
+                    aria-controls="profile-bio" aria-expanded="false"
+                    aria-label="Show full bio" hidden><span></span><span></span><span></span></button>
           </div>` : ''}
         ${stats.totalHours > 0 || stats.streak >= 2 ? `
           <div class="profile-header__badges">
@@ -416,8 +417,10 @@ export async function renderProfileView(root, { username }) {
       const toggle = () => {
         expanded = !expanded;
         bioEl.classList.toggle('is-expanded', expanded);
-        bioMore.textContent = expanded ? 'less' : 'more';
         bioMore.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+        // The control is three dots either way, so the state it is in has
+        // to be said rather than drawn.
+        bioMore.setAttribute('aria-label', expanded ? 'Show less of bio' : 'Show full bio');
       };
       const measure = () => {
         if (expanded) return;

@@ -2389,11 +2389,21 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
    two lines is just text, and a pointer cursor on it would promise
    something that does not happen. */
 .profile-header--hero .profile-header__bio.is-clampable { cursor: pointer; }
+/* Three dots rather than the word "more". Measured off the reference
+   screenshot at 2x: the dots are 8 device px across on 16px centres, so
+   4px on a 4px gap here, and their core samples #f4f4f5 against bio
+   text at #a4a99f — the affordance is BRIGHTER than the text it sits
+   under, not dimmer, which is the opposite of where a muted "more"
+   label would have put it. Hence --ink, the top of the text ramp.
+   The padding is touch target, not spacing: it keeps a 4px dot row
+   tappable while leaving the visible gap under the bio at 14px. */
 .profile-header__bio-more {
-  display: inline-block; margin-top: 2px; padding: 7px 12px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+  margin-top: 4px; padding: 10px 14px;
   background: none; border: 0; cursor: pointer;
-  font-family: var(--font-body); font-size: 12px; font-weight: var(--weight-bold);
-  color: var(--ink-faint); letter-spacing: 0.01em;
+}
+.profile-header__bio-more span {
+  display: block; width: 4px; height: 4px; border-radius: 50%; background: var(--ink);
 }
 .profile-header__bio-more[hidden] { display: none; }
 /* Total hours + current streak — numbers that feel earned rather than
