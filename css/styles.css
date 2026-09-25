@@ -558,8 +558,11 @@ ul { list-style: none; margin: 0; padding: 0; }
    entirely (see the !isOwn check around the old <h1>). Gear and menu
    are grouped at the trailing edge instead of pinned to either end. */
 .profile-top__name {
-  font-family: var(--font-display); font-weight: var(--weight-black);
-  font-size: 24px; letter-spacing: -0.02em; line-height: 1.2;
+  /* Unbounded — only loaded at 700/800 (index.html), so 800 stays.
+     A much wider face than Manrope, so the size drops from 24 to 19
+     to hold roughly the same run of pixels at long usernames. */
+  font-family: var(--font-brand); font-weight: var(--weight-black);
+  font-size: 19px; letter-spacing: -0.01em; line-height: 1.25;
   color: var(--ink); min-width: 0; overflow: hidden;
   text-overflow: ellipsis; white-space: nowrap;
 }
