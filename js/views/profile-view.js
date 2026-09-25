@@ -164,7 +164,7 @@ export async function renderProfileView(root, { username }) {
         <button class="profile-header__avatar-btn" id="avatar-enlarge" aria-label="View profile photo">
           ${avatarImg(profile, 96)}
         </button>
-        <h1>${esc(profile.display_name || profile.username)}${pronounLabel ? `<span class="profile-header__pronouns">${esc(pronounLabel)}</span>` : ''}</h1>
+        <h1><span class="profile-header__name-text">${esc(profile.display_name || profile.username)}</span>${pronounLabel ? `<span class="profile-header__pronouns">${esc(pronounLabel)}</span>` : ''}</h1>
         ${isOwn ? '' : `<p class="profile-header__username">@${esc(profile.username)}</p>`}
         ${profile.bio ? `
           <div class="profile-header__bio-wrap">
