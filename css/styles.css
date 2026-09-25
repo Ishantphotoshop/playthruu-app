@@ -51,17 +51,17 @@
      (luminance 0.006, against green's 0.017), so the lean is slighter
      than it looks, and a near-black violet gives the gold the deepest
      ground it has ever had to sit on. */
-  --bg: #190b28;
-  --bg-deep: #0f0619;
-  --bg-lift: #1f1031;
-  --surface: #28163c;
-  --surface-raised: #311c4a;
-  --surface-high: #3d2152;
+  --bg: #14181c;
+  --bg-deep: #0e1216;
+  --bg-lift: #1d242c;
+  --surface: #2c3440;
+  --surface-raised: #354250;
+  --surface-high: #445566;
 
   /* --- glass --- */
   --glass-fill: rgba(255, 255, 255, 0.03);
   --glass-fill-strong: rgba(255, 255, 255, 0.08);
-  --glass-tint: rgba(25, 11, 40, 0.14);
+  --glass-tint: rgba(20, 24, 28, 0.14);
   --glass-filter: blur(22px) saturate(240%) brightness(1.24) contrast(1.05);
   --glass-filter-strong: blur(34px) saturate(230%) brightness(1.16) contrast(1.04);
   --glass-light: rgba(255, 255, 255, 0.045);
@@ -71,7 +71,7 @@
   --blur: 30px;
   --blur-strong: 42px;
   --glass: rgba(255, 255, 255, 0.05);
-  --glass-strong: rgba(25, 11, 40, 0.74);
+  --glass-strong: rgba(20, 24, 28, 0.74);
 
   /* --- text: a lilac white, then two steps of the ground's own violet ---
      Secondary text carries the base's hue rather than being neutral
@@ -83,9 +83,9 @@
      surfaces constantly, so the reference's value was failing exactly
      where the token is used most. Lifted until both clear: dim 8.5:1
      on the ground and 7.0:1 on a surface, faint 5.6:1 and 4.9:1. --- */
-  --ink: #f9dfff;
-  --ink-dim: #bb8af3;
-  --ink-faint: #a17dc9;
+  --ink: #ccddee;
+  --ink-dim: #99aabb;
+  --ink-faint: #8899aa;
 
   /* --- accent: one gold, and only it ---
      #F5C542 over a #190B28 ground is an 11.5:1 pair — the highest
@@ -100,14 +100,14 @@
      wheel, so it separates by hue as much as by brightness, and the
      surfaces can stay close in tone without the accent ever getting
      lost in them. */
-  --accent: #f5c542;
-  --accent-bright: #ffe343;
-  --accent-deep: #e0b02f;
-  --accent-dim: rgba(245, 197, 66, 0.15);
-  --gold: #ffd845;
+  --accent: #00e054;
+  --accent-bright: #00ff62;
+  --accent-deep: #00c030;
+  --accent-dim: rgba(0, 224, 84, 0.15);
+  --gold: #00e054;
   /* Warm orange — the Messenger's status accent (Playing / send).
      Online presence stays green (--success); orange is for status. */
-  --orange: #f5c542;
+  --orange: #ff9933;
   /* A pale pink, not white and not the accent. Against the navy ramp a
      pure-white star was the sharper mark; against a coloured ground it
      reads as a gap punched in the surface rather than as a filled
@@ -120,7 +120,7 @@
      was the accent itself, because there the love mark and the primary
      button really were one hue; here they are not, so the love mark
      goes back to being its own colour. */
-  --star-fill: #ffdfee;
+  --star-fill: #00e054;
   /* The unfilled half of a rating. It used to be --ink-faint, which
      worked when that token was a muted blue-grey: on the navy ramp an
      empty star read as empty. Every palette since has made the faint
@@ -133,7 +133,7 @@
      which works in a still image and not in a control: a half star
      needs its unfilled half to be visible or it reads as a whole star
      at the wrong size. */
-  --star-empty: #6e4c96;
+  --star-empty: #445566;
   /* Placeholder text, one step below --ink-faint. On the navy ramp the
      faint step was a muted blue-grey and doubled as a placeholder
      happily; on every coloured ramp since it is a saturated colour, and
@@ -141,18 +141,18 @@
      as something already typed rather than as a prompt. A placeholder
      is the one piece of text that is supposed to sit under the reading
      threshold. */
-  --ink-ghost: #8460ab;
-  --coral: #ffc9d9;
-  --teal: #8fe3c8;
-  --violet: #e0b0ff;
+  --ink-ghost: #667788;
+  --coral: #ff9933;
+  --teal: #40bcf4;
+  --violet: #40bcf4;
   /* The reference's shelf chips, kept as real tokens so a status
      colour is never typed twice: wishlist pink beside the backlog
      violet above. */
-  --pink: #ffc9d9;
+  --pink: #ff9933;
 
   /* --- semantic --- */
-  --line: rgba(255, 255, 255, 0.09);
-  --line-strong: rgba(255, 255, 255, 0.18);
+  --line: rgba(170, 187, 204, 0.14);
+  --line-strong: rgba(170, 187, 204, 0.26);
   /* The reference's own "dropped" red. Under the coral palette this
      token had to be forced into a hot pink to stay clear of the
      primary — coral and red sit ~13 degrees apart and "delete account"
@@ -161,9 +161,9 @@
      can go back to reading as a plain red. Measured, it is 6.8:1 on
      the page and 6.0:1 on a surface, which is where a sheet's "Delete
      this entry" row actually sits. */
-  --danger: #ff6b6b;
-  --success: #8fe3c8;
-  --warning: #ffd845;
+  --danger: #ff5a5f;
+  --success: #00e054;
+  --warning: #ff9933;
 
   /* --- type ---
      Manrope throughout: a cleaner, more even geometric sans than the
@@ -252,7 +252,7 @@
   --shadow-accent: 0 6px 22px rgba(0,0,0,0.34);
   /* The console focus ring: a soft accent bloom, the cue that tells
      you where you are on a screen you're navigating, not clicking. */
-  --glow-focus: 0 0 0 2px rgba(255,255,255,0.85), 0 0 26px rgba(245, 197, 66, 0.5);
+  --glow-focus: 0 0 0 2px rgba(255,255,255,0.85), 0 0 26px rgba(0, 224, 84, 0.5);
 
   /* Leading, five rungs: tight for numerals and icon rows, through
      titles, to body copy and long-form reading. There were eighteen
@@ -418,10 +418,10 @@ ul { list-style: none; margin: 0; padding: 0; }
    load. */
 .boot-fail { max-width: 300px; padding: 0 24px; text-align: center; color: #ffffff; }
 .boot-fail__title { margin: 0; font-size: 17px; font-weight: 800; }
-.boot-fail__body { margin: 10px 0 0; font-size: 14px; line-height: 1.5; color: #bb8af3; }
+.boot-fail__body { margin: 10px 0 0; font-size: 14px; line-height: 1.5; color: #99aabb; }
 .boot-fail__btn {
   margin-top: 20px; width: 100%; min-height: 46px; border: none; cursor: pointer;
-  border-radius: 999px; background: #f5c542; color: #190b28;
+  border-radius: 999px; background: #00e054; color: #14181c;
   font-size: 15px; font-weight: 800;
 }
 /* A soft ambient glow breathing behind the mark — the same --accent
@@ -1483,7 +1483,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    colour and reads as one evenly-spaced group. */
 .card-who__icon { width: 10px; height: 10px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
 .card-who__icon svg { width: 100%; height: 100%; display: block; }
-.card-who__icon--loved { color: var(--star-fill); }
+.card-who__icon--loved { color: var(--coral); }
 .card-who__icon--review { color: var(--star-fill); }
 /* Phone: these feed cards are far narrower than on desktop, so the whole
    row is sized down to fit. The widest case — 5 stars + loved + review —
@@ -3024,7 +3024,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
    a rotation through a dozen games with a dozen different colour
    gradings never shifts the screen's palette. */
 .auth-screen__duo {
-  background: linear-gradient(160deg, #5a2f8f, var(--surface) 70%, var(--bg));
+  background: linear-gradient(160deg, #334455, var(--surface) 70%, var(--bg));
   mix-blend-mode: color; opacity: 0.44;
 }
 .auth-screen__warm {
@@ -4879,7 +4879,7 @@ a.gd-credit__name { text-decoration: none; }
    underneath, so five games with five different colour gradings come
    out as five images of the same place. */
 .tour-art__duo {
-  background: linear-gradient(160deg, #5a2f8f, var(--surface) 70%, var(--bg));
+  background: linear-gradient(160deg, #334455, var(--surface) 70%, var(--bg));
   mix-blend-mode: color; opacity: 0.24;
 }
 /* The only thing between the picture and the words, so it has to do
@@ -5278,7 +5278,7 @@ a.gd-credit__name { text-decoration: none; }
 }
 .psn-pick__tick svg { width: 15px; height: 15px; }
 .psn-pick__tick svg path {
-  fill: none; stroke: var(--bg, #0b0b0f); stroke-width: 3;
+  fill: none; stroke: var(--bg, #14181c); stroke-width: 3;
   stroke-linecap: round; stroke-linejoin: round;
   stroke-dasharray: 22; stroke-dashoffset: 22;
   transition: stroke-dashoffset 180ms ease 40ms;
@@ -6165,7 +6165,7 @@ a.gd-credit__name { text-decoration: none; }
 /* ---- the viewer ---- */
 .story-viewer {
   position: fixed; inset: 0; z-index: 120;
-  background: #08080a; color: #fff;
+  background: #0e1216; color: #fff;
   display: flex; flex-direction: column;
   padding: calc(var(--safe-top) + 10px) 14px calc(var(--safe-bottom) + 18px);
 }
