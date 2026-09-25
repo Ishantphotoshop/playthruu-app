@@ -146,7 +146,15 @@ export function igdbSized(url, size) {
 // instead of being left stuck mid-fade).
 export function enableSwipeToDismiss(modal, close, onDrag) {
   if (!modal) return;
-  const header = modal.querySelector('.modal__header, .lg-head, header');
+  // An explicit handle wins over the guess. A sheet with no header —
+  // the action sheets, which are a grip and a few rows — has nothing
+  // for the selector below to find, and its 38x4 grip is far too
+  // small to drag anyway, so those mark the whole sheet instead. A
+  // tap is still a tap: the drag only starts after 5px of downward
+  // movement, and settle() returns early when there was none.
+  const header = (modal.matches('[data-swipe-handle]') ? modal : null)
+    || modal.querySelector('[data-swipe-handle]')
+    || modal.querySelector('.modal__header, .lg-head, header');
   if (!header) return;
   header.style.touchAction = 'none';
   header.style.cursor = 'grab';

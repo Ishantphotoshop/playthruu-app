@@ -530,6 +530,12 @@ ul { list-style: none; margin: 0; padding: 0; }
    edge — a 36px icon inside a 38px circle with a 1px border. 19px is
    what every other icon button in the app draws at. */
 .view-body__corner-action svg { width: 19px; height: 19px; }
+/* No chip behind the glyph — just the mark. The 38px box stays, because
+   that is the touch target; only the fill and the ring go. A modifier
+   rather than a change to the class itself: Messages' compose button
+   wears the same class and still wants its chip. It has to sit AFTER
+   the base rule — same specificity, so source order is what decides. */
+.view-body__corner-action--bare { background: none; border: none; }
 /* A page's real content is only ever hidden BEHIND this, never inside
    it — it has to sit outside whatever gets faded to opacity:0 while
    data loads (see .feed-body--loading), or it would vanish along with
@@ -2299,10 +2305,20 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
   flex-direction: column;
   text-align: center;
   gap: 4px;
-  padding: 8px 0 22px;
+  /* 8px before. The two corner controls sit on the 8px line above, and
+     with the chips gone there is nothing to separate them from the
+     face but space. */
+  padding: 30px 0 22px;
 }
-.profile-header--hero .avatar { width: 96px; height: 96px; margin-bottom: 10px; box-shadow: 0 0 0 3px var(--surface); }
-.profile-header--hero h1 { font-family: var(--font-display); font-weight: var(--weight-heading); font-size: var(--text-display); letter-spacing: -0.02em; }
+.profile-header--hero .avatar { width: 80px; height: 80px; margin-bottom: 12px; box-shadow: 0 0 0 3px var(--surface); }
+/* Unbounded, the wordmark's face. It is a much wider design than
+   Manrope, so --text-display (34px) would run a long display name
+   off a 390px screen — 26px is where a name of a dozen characters
+   still fits inside the gutters. */
+.profile-header--hero h1 {
+  font-family: var(--font-brand); font-weight: 400; font-size: 26px;
+  letter-spacing: -0.02em; line-height: 1.2;
+}
 .profile-header--hero .profile-header__username { margin-top: 0; }
 .profile-header--hero .profile-header__bio {
   max-width: 420px; margin: 10px auto 0; text-align: center;

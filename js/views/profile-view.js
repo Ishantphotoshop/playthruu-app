@@ -6,7 +6,7 @@ import {
   emptyState, iconStamp, iconSettings, iconShare, iconQr, iconClose, iconSearch, iconPlus, listCard, iconFlame, iconMessage, iconDotsMenu,
   combinedGameResults, wireCombinedGameResults, openReportSheet, iconFlag, iconBlock,
 } from '../components.js';
-import { esc, formatDate, statusStamp, starRow, qs, qsa, toast, debounce, pulseLogTab, igdbSized } from '../utils.js';
+import { esc, formatDate, statusStamp, starRow, qs, qsa, toast, debounce, pulseLogTab, igdbSized, enableSwipeToDismiss } from '../utils.js';
 import { refreshCurrentView, navigate } from '../router.js';
 import { wirePullToRefresh } from './feed-view.js';
 import { openNewListForm } from './lists-view.js';
@@ -114,8 +114,8 @@ export async function renderProfileView(root, { username }) {
   // for and it is shown straight away.
   root.innerHTML = (isOwn ? '' : topBar(username, { back: true })) +
     (isOwn ? `
-      <a class="view-body__corner-action view-body__corner-action--left${cachedProfile ? '' : ' view-body__corner-action--pending'}" href="#/settings" aria-label="Settings">${iconSettings()}</a>
-      <button type="button" class="view-body__corner-action${cachedProfile ? '' : ' view-body__corner-action--pending'}" id="profile-menu" aria-label="More">${iconDotsMenu()}</button>` : '') +
+      <a class="view-body__corner-action view-body__corner-action--bare view-body__corner-action--left${cachedProfile ? '' : ' view-body__corner-action--pending'}" href="#/settings" aria-label="Settings">${iconSettings()}</a>
+      <button type="button" class="view-body__corner-action view-body__corner-action--bare${cachedProfile ? '' : ' view-body__corner-action--pending'}" id="profile-menu" aria-label="More">${iconDotsMenu()}</button>` : '') +
     `<div class="view-body${isOwn ? ' view-body--no-topbar' : ''}" id="profile-body">
        ${cachedProfile || spinner()}
      </div>` + navBar(isOwn ? '/me' : '');
@@ -160,7 +160,7 @@ export async function renderProfileView(root, { username }) {
     body.innerHTML = `
       <div class="profile-header profile-header--hero">
         <button class="profile-header__avatar-btn" id="avatar-enlarge" aria-label="View profile photo">
-          ${avatarImg(profile, 96)}
+          ${avatarImg(profile, 80)}
         </button>
         <h1>${esc(profile.display_name || profile.username)}</h1>
         <p class="profile-header__username">@${esc(profile.username)}${pronounLabel ? ` · ${esc(pronounLabel)}` : ''}</p>
@@ -368,14 +368,16 @@ export async function renderProfileView(root, { username }) {
     qs('#profile-menu', root)?.addEventListener('click', () => {
       const overlay = document.createElement('div');
       overlay.className = 'modal-overlay';
+      // No Cancel row. There are three ways out already — drag it down,
+      // tap the backdrop, or press back — and a row that only closes the
+      // sheet is a fourth that takes up the space of a real action.
       overlay.innerHTML = `
-        <div class="sheet comment-sheet">
+        <div class="sheet comment-sheet" data-swipe-handle>
           <div class="sheet__grip" aria-hidden="true"></div>
           <div class="comment-sheet__list">
             <button type="button" class="sheet-row" data-act="share">${iconShare()}<span>Share profile</span></button>
             <button type="button" class="sheet-row" data-act="qr">${iconQr()}<span>Show QR code</span></button>
           </div>
-          <button type="button" class="sheet-row comment-sheet__cancel" data-act="cancel">Cancel</button>
         </div>`;
       document.body.appendChild(overlay);
       document.body.style.overflow = 'hidden';
@@ -383,6 +385,7 @@ export async function renderProfileView(root, { username }) {
       // Back tears overlays down centrally without calling close(), so
       // the hook is what puts body scroll back. See app.js.
       overlay.__dismiss = close;
+      enableSwipeToDismiss(qs('.comment-sheet', overlay), close);
       overlay.addEventListener('click', (e) => {
         if (e.target === overlay) return close();
         const btn = e.target.closest('[data-act]');
