@@ -2337,7 +2337,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
      face but space. */
   padding: 36px 0 28px;
 }
-.profile-header--hero .avatar { width: 96px; height: 96px; margin-bottom: 18px; box-shadow: 0 0 0 3px var(--surface); }
+.profile-header--hero .avatar { width: 96px; height: 96px; margin-bottom: 8px; box-shadow: 0 0 0 3px var(--surface); }
 .profile-header--hero h1 { margin: 0; }
 /* Manrope at its heaviest, not the light --weight-heading this used to
    carry and not Unbounded either. Bold gives the name the weight the
@@ -2352,7 +2352,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 /* The bio and its toggle move together, so the wrapper carries the
    width and the spacing the bio itself used to. */
 .profile-header--hero .profile-header__bio-wrap {
-  width: 100%; max-width: 420px; margin: 15px auto 0;
+  width: 100%; max-width: 420px; margin: 8px auto 0;
 }
 .profile-header--hero .profile-header__bio {
   margin: 0; text-align: center;
@@ -2395,7 +2395,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 /* Total hours + current streak — numbers that feel earned rather than
    administrative, so they get their own quiet badges instead of blending
    into the stat-link list below. */
-.profile-header__badges { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+.profile-header__badges { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
 .profile-header__hours, .profile-header__streak {
   display: inline-flex; align-items: center; gap: 5px;
   padding: 5px 14px; border-radius: var(--radius-pill);
