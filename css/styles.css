@@ -2132,21 +2132,21 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 /* Same pull-up as the feed's strips, for the same reason — the 2px top
    padding stays so the posters' shadow isn't clipped. */
 .recent-played-row {
-  display: flex; gap: 10px; overflow-x: auto; padding: 2px 2px 6px;
+  display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 6px;
   margin-top: -3px;
   scrollbar-width: none; -ms-overflow-style: none;
 }
 .recent-played-row::-webkit-scrollbar { display: none; }
-/* Sized the way the feed's trending strip is, rather than a fixed 90px:
-   three posters fully visible with the fourth clipped, so the row reads
-   as scrollable instead of as a row that happens to end mid-poster at
-   whatever width the phone is. The 30px is the three inter-card gaps
-   that sit inside those 3.2 cards; /3.2 leaves the 20% peek. Percentages
-   resolve against the flex container's VISIBLE width, so this scales
-   with the device instead of being tuned to one screen. */
+/* Same width a Top 3 poster resolves to at this width — 3 filling the
+   row exactly, same 8px gap .showcase-grid uses, rather than the old
+   /3.2 peek that left a sliver of a fourth poster showing and made
+   these read as a visibly smaller size than Top 3 right above them.
+   Still a flex row with overflow-x scroll (not a wrapping grid), so a
+   row of more than three — this one can hold ten — still scrolls
+   instead of wrapping to a second line. */
 .recent-played-item {
   display: block; position: relative; flex-shrink: 0;
-  width: calc((100% - 30px) / 3.2);
+  width: calc((100% - 16px) / 3);
   transition: transform 0.12s ease;
 }
 .recent-played-item:active { transform: scale(0.95); }
@@ -2171,7 +2171,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
    already-3-across slot and applying the same shrink a second time,
    squeezing the poster down to a fraction of its real size. */
 .recent-played-row .playing-slot {
-  flex-shrink: 0; width: calc((100% - 30px) / 3.2);
+  flex-shrink: 0; width: calc((100% - 16px) / 3);
 }
 .recent-played-row .playing-slot .recent-played-item { width: 100%; }
 
