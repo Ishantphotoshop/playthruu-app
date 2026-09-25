@@ -114,8 +114,11 @@ export async function renderProfileView(root, { username }) {
   // for and it is shown straight away.
   root.innerHTML = (isOwn ? '' : topBar(username, { back: true })) +
     (isOwn ? `
-      <a class="view-body__corner-action view-body__corner-action--bare view-body__corner-action--left${cachedProfile ? '' : ' view-body__corner-action--pending'}" href="#/settings" aria-label="Settings">${iconSettings()}</a>
-      <button type="button" class="view-body__corner-action view-body__corner-action--bare${cachedProfile ? '' : ' view-body__corner-action--pending'}" id="profile-menu" aria-label="More">${iconDotsMenu()}</button>` : '') +
+      <div class="profile-top${cachedProfile ? '' : ' profile-top--pending'}">
+        <a class="profile-top__btn profile-top__btn--start" href="#/settings" aria-label="Settings">${iconSettings()}</a>
+        <span class="profile-top__handle">@${esc(username)}</span>
+        <button type="button" class="profile-top__btn profile-top__btn--end" id="profile-menu" aria-label="More">${iconDotsMenu()}</button>
+      </div>` : '') +
     `<div class="view-body${isOwn ? ' view-body--no-topbar' : ''}" id="profile-body">
        ${cachedProfile || spinner()}
      </div>` + navBar(isOwn ? '/me' : '');
@@ -125,10 +128,7 @@ export async function renderProfileView(root, { username }) {
   // Whatever happens next — real data or an error — the gear becomes
   // usable. Kept in one place so no later branch can strand it faded.
   const revealCornerAction = () => {
-    // qsa, not qs: there are TWO corner controls now (settings left,
-    // menu right) and qs returns only the first, which left the menu
-    // stuck at opacity 0 forever.
-    qsa('.view-body__corner-action', root).forEach((el) => el.classList.remove('view-body__corner-action--pending'));
+    qs('.profile-top', root)?.classList.remove('profile-top--pending');
   };
 
   try {
@@ -160,10 +160,10 @@ export async function renderProfileView(root, { username }) {
     body.innerHTML = `
       <div class="profile-header profile-header--hero">
         <button class="profile-header__avatar-btn" id="avatar-enlarge" aria-label="View profile photo">
-          ${avatarImg(profile, 80)}
+          ${avatarImg(profile, 96)}
         </button>
-        <h1>${esc(profile.display_name || profile.username)}</h1>
-        <p class="profile-header__username">@${esc(profile.username)}${pronounLabel ? ` · ${esc(pronounLabel)}` : ''}</p>
+        <h1>${esc(profile.display_name || profile.username)}${pronounLabel ? `<span class="profile-header__pronouns">${esc(pronounLabel)}</span>` : ''}</h1>
+        ${isOwn ? '' : `<p class="profile-header__username">@${esc(profile.username)}</p>`}
         ${profile.bio ? `<p class="profile-header__bio">${esc(profile.bio)}</p>` : ''}
         ${stats.totalHours > 0 || stats.streak >= 2 ? `
           <div class="profile-header__badges">

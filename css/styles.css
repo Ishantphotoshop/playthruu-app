@@ -513,7 +513,6 @@ ul { list-style: none; margin: 0; padding: 0; }
    takes the right, which is the arrangement the sketch asks for and
    the one every other app puts them in. Messages still has a single
    right-hand chip and is untouched. */
-.view-body__corner-action--left { left: var(--space-4); right: auto; }
 .view-body__corner-action {
   position: absolute; top: calc(var(--safe-top) + 8px); right: var(--space-4);
   width: 38px; height: 38px; display: grid; place-items: center;
@@ -530,12 +529,38 @@ ul { list-style: none; margin: 0; padding: 0; }
    edge — a 36px icon inside a 38px circle with a 1px border. 19px is
    what every other icon button in the app draws at. */
 .view-body__corner-action svg { width: 19px; height: 19px; }
-/* No chip behind the glyph — just the mark. The 38px box stays, because
-   that is the touch target; only the fill and the ring go. A modifier
-   rather than a change to the class itself: Messages' compose button
-   wears the same class and still wants its chip. It has to sit AFTER
-   the base rule — same specificity, so source order is what decides. */
-.view-body__corner-action--bare { background: none; border: none; }
+
+/* The own-profile top row. One flex row rather than two absolutely
+   placed chips, because the two ends have to line up with something:
+   the segmented tab bar below is a plain block inside .view-body, so it
+   runs gutter to gutter (16px either side). This row uses the same two
+   values, and each button pushes its glyph to its own outer edge —
+   justify-items, not a negative margin — so what lines up is the MARK,
+   not the invisible 38px box around it. The box stays 38px because that
+   is the touch target. */
+.profile-top {
+  position: absolute; top: calc(var(--safe-top) + 8px);
+  left: var(--gutter); right: var(--gutter);
+  display: flex; align-items: center; gap: 10px; z-index: 5;
+  transition: opacity var(--dur) var(--ease);
+}
+.profile-top--pending { opacity: 0; pointer-events: none; }
+.profile-top__btn {
+  width: 38px; height: 38px; flex-shrink: 0; padding: 0;
+  display: grid; place-items: center;
+  background: none; border: none; color: var(--ink); cursor: pointer;
+}
+.profile-top__btn svg { width: 19px; height: 19px; }
+.profile-top__btn--start { justify-items: start; }
+.profile-top__btn--end { justify-items: end; margin-left: auto; }
+/* The handle, up here next to settings instead of under the name. Mono
+   because it is an identifier, and dim because the name below it is the
+   thing being read. */
+.profile-top__handle {
+  font-family: var(--font-mono); font-size: 12.5px; color: var(--ink-faint);
+  letter-spacing: 0.01em; min-width: 0; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap;
+}
 /* A page's real content is only ever hidden BEHIND this, never inside
    it — it has to sit outside whatever gets faded to opacity:0 while
    data loads (see .feed-body--loading), or it would vanish along with
@@ -2310,18 +2335,31 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
      face but space. */
   padding: 30px 0 22px;
 }
-.profile-header--hero .avatar { width: 80px; height: 80px; margin-bottom: 12px; box-shadow: 0 0 0 3px var(--surface); }
-/* Unbounded, the wordmark's face. It is a much wider design than
-   Manrope, so --text-display (34px) would run a long display name
-   off a 390px screen — 26px is where a name of a dozen characters
-   still fits inside the gutters. */
+.profile-header--hero .avatar { width: 96px; height: 96px; margin-bottom: 12px; box-shadow: 0 0 0 3px var(--surface); }
+/* Manrope at its heaviest, not the light --weight-heading this used to
+   carry and not Unbounded either. Bold gives the name the weight the
+   sketch draws it with while staying in the app's one UI typeface, and
+   without Unbounded's width — which is what forced the size down to
+   26px and would do so again. */
 .profile-header--hero h1 {
-  font-family: var(--font-brand); font-weight: 400; font-size: 26px;
-  letter-spacing: -0.02em; line-height: 1.2;
+  font-family: var(--font-display); font-weight: var(--weight-black);
+  font-size: 30px; letter-spacing: -0.025em; line-height: 1.15;
+}
+/* Pronouns ride the name rather than the handle, which has gone up to
+   the top row. Small and dim so it reads as an aside on the name, not
+   as part of it. */
+.profile-header__pronouns {
+  font-family: var(--font-body); font-size: 12px; font-weight: 600;
+  color: var(--ink-faint); letter-spacing: 0; margin-left: 8px;
+  vertical-align: 5px;
 }
 .profile-header--hero .profile-header__username { margin-top: 0; }
 .profile-header--hero .profile-header__bio {
   max-width: 420px; margin: 10px auto 0; text-align: center;
+  /* pre-line, so a bio written with line breaks keeps them and each
+     line stays centred. Without it HTML collapses every newline to a
+     space and three deliberate lines arrive as one paragraph. */
+  white-space: pre-line;
 }
 /* Total hours + current streak — numbers that feel earned rather than
    administrative, so they get their own quiet badges instead of blending
