@@ -2345,7 +2345,12 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
    spacing a margin used to. */
 .profile-header--hero h1 {
   display: flex; align-items: baseline; justify-content: center;
-  gap: 9px; margin: 0;
+  gap: 9px; margin: -34px 0 0;
+  /* Pulled up to overlap the avatar's own lower half instead of
+     sitting clear below it — a real overlap, not a nudge, so the text
+     needs its own shadow to stay legible over whatever the photo is
+     doing underneath it. */
+  position: relative; z-index: 1;
 }
 /* Manrope at its heaviest, not the light --weight-heading this used to
    carry and not Unbounded either. Bold gives the name the weight the
@@ -2355,6 +2360,11 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 .profile-header__name-text {
   font-family: var(--font-display); font-weight: var(--weight-black);
   font-size: 30px; letter-spacing: -0.025em; line-height: 1.15;
+  /* The name overlaps the avatar's own lower half now, so it needs to
+     stay readable over a photo the app has no control over — a dark
+     double shadow rather than a solid backing panel, so the overlap
+     still reads as text over a face, not a text over a box. */
+  text-shadow: 0 1px 4px rgba(0,0,0,0.65), 0 0 18px rgba(0,0,0,0.55);
 }
 /* Same face as the handle, small and dim so it reads as an aside on
    the name, not as part of it — sized up from 11 to 13px now that it
@@ -2362,6 +2372,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 .profile-header__pronouns {
   font-family: var(--font-brand); font-size: 13px; font-weight: 700;
   color: var(--ink-dim); letter-spacing: -0.01em;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.65), 0 0 18px rgba(0,0,0,0.55);
 }
 .profile-header--hero .profile-header__username { margin-top: 0; }
 /* The bio and its toggle move together, so the wrapper carries the
