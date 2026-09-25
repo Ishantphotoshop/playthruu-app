@@ -509,6 +509,11 @@ ul { list-style: none; margin: 0; padding: 0; }
    right-side action, it floats in the corner of the content itself
    instead — same round chip as .icon-btn, positioned in the reserved
    row above (not beside) the segmented tabs so it never overlaps them. */
+/* The mirrored one. Settings sits top LEFT on a profile and the menu
+   takes the right, which is the arrangement the sketch asks for and
+   the one every other app puts them in. Messages still has a single
+   right-hand chip and is untouched. */
+.view-body__corner-action--left { left: var(--space-4); right: auto; }
 .view-body__corner-action {
   position: absolute; top: calc(var(--safe-top) + 8px); right: var(--space-4);
   width: 38px; height: 38px; display: grid; place-items: center;
@@ -521,6 +526,10 @@ ul { list-style: none; margin: 0; padding: 0; }
    profile landed. It waits here instead and fades in with the content
    it belongs to; a warm cache never gets this class at all. */
 .view-body__corner-action--pending { opacity: 0; pointer-events: none; }
+/* There was never a size here, so the glyph filled the chip edge to
+   edge — a 36px icon inside a 38px circle with a 1px border. 19px is
+   what every other icon button in the app draws at. */
+.view-body__corner-action svg { width: 19px; height: 19px; }
 /* A page's real content is only ever hidden BEHIND this, never inside
    it — it has to sit outside whatever gets faded to opacity:0 while
    data loads (see .feed-body--loading), or it would vanish along with
@@ -2327,9 +2336,6 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 }
 .profile-header__avatar-btn { background: none; border: none; padding: 0; cursor: pointer; }
 .profile-header__share-row { display: flex; gap: 8px; justify-content: center; margin-top: 10px; }
-.profile-header__share-row--corner {
-  position: absolute; top: 0; right: 0; margin-top: 0;
-}
 
 .director-header { text-align: center; padding: 8px 0 20px; }
 .director-header__photo {

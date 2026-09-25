@@ -3,7 +3,7 @@ import { state } from '../state.js';
 import { MESSENGER_ARCHIVED } from '../config.js';
 import {
   topBar, navBar, spinner, avatarImg, gameCard, showcaseGrid, SHOWCASE_MAX, ratingHistogram, wireRatingHistogram, posterFrame,
-  emptyState, iconStamp, iconSettings, iconShare, iconQr, iconClose, iconSearch, iconPlus, listCard, iconFlame, iconMessage,
+  emptyState, iconStamp, iconSettings, iconShare, iconQr, iconClose, iconSearch, iconPlus, listCard, iconFlame, iconMessage, iconDotsMenu,
   combinedGameResults, wireCombinedGameResults, openReportSheet, iconFlag, iconBlock,
 } from '../components.js';
 import { esc, formatDate, statusStamp, starRow, qs, qsa, toast, debounce, pulseLogTab, igdbSized } from '../utils.js';
@@ -113,7 +113,9 @@ export async function renderProfileView(root, { username }) {
   // cache paints real content immediately, so there is nothing to wait
   // for and it is shown straight away.
   root.innerHTML = (isOwn ? '' : topBar(username, { back: true })) +
-    (isOwn ? `<a class="view-body__corner-action${cachedProfile ? '' : ' view-body__corner-action--pending'}" href="#/settings" aria-label="Settings">${iconSettings()}</a>` : '') +
+    (isOwn ? `
+      <a class="view-body__corner-action view-body__corner-action--left${cachedProfile ? '' : ' view-body__corner-action--pending'}" href="#/settings" aria-label="Settings">${iconSettings()}</a>
+      <button type="button" class="view-body__corner-action${cachedProfile ? '' : ' view-body__corner-action--pending'}" id="profile-menu" aria-label="More">${iconDotsMenu()}</button>` : '') +
     `<div class="view-body${isOwn ? ' view-body--no-topbar' : ''}" id="profile-body">
        ${cachedProfile || spinner()}
      </div>` + navBar(isOwn ? '/me' : '');
@@ -123,7 +125,10 @@ export async function renderProfileView(root, { username }) {
   // Whatever happens next — real data or an error — the gear becomes
   // usable. Kept in one place so no later branch can strand it faded.
   const revealCornerAction = () => {
-    qs('.view-body__corner-action', root)?.classList.remove('view-body__corner-action--pending');
+    // qsa, not qs: there are TWO corner controls now (settings left,
+    // menu right) and qs returns only the first, which left the menu
+    // stuck at opacity 0 forever.
+    qsa('.view-body__corner-action', root).forEach((el) => el.classList.remove('view-body__corner-action--pending'));
   };
 
   try {
@@ -154,10 +159,6 @@ export async function renderProfileView(root, { username }) {
 
     body.innerHTML = `
       <div class="profile-header profile-header--hero">
-        <div class="profile-header__share-row profile-header__share-row--corner">
-          <button class="icon-btn" id="share-profile" aria-label="Share profile">${iconShare()}</button>
-          <button class="icon-btn" id="show-qr" aria-label="Show QR code">${iconQr()}</button>
-        </div>
         <button class="profile-header__avatar-btn" id="avatar-enlarge" aria-label="View profile photo">
           ${avatarImg(profile, 96)}
         </button>
@@ -349,7 +350,8 @@ export async function renderProfileView(root, { username }) {
 
     // ---- header actions ----
     const shareUrl = `${location.origin}${location.pathname}#/profile/${profile.username}`;
-    qs('#share-profile', body).addEventListener('click', async () => {
+
+    const shareProfile = async () => {
       if (navigator.share) {
         try { await navigator.share({ title: `${profile.display_name || profile.username} on Playthruu`, url: shareUrl }); }
         catch { /* user cancelled the share sheet — nothing to do */ }
@@ -357,9 +359,39 @@ export async function renderProfileView(root, { username }) {
         try { await navigator.clipboard.writeText(shareUrl); toast('Profile link copied.', 'success'); }
         catch { toast(shareUrl, 'info'); }
       }
-    });
+    };
 
-    qs('#show-qr', body).addEventListener('click', () => openQrModal(shareUrl, profile));
+    // Share and the QR code used to be two chips pinned to the top right
+    // of the header itself. They are behind the menu now, which is what
+    // frees that corner — and what lets settings have the left one
+    // without three controls fighting over the same strip.
+    qs('#profile-menu', root)?.addEventListener('click', () => {
+      const overlay = document.createElement('div');
+      overlay.className = 'modal-overlay';
+      overlay.innerHTML = `
+        <div class="sheet comment-sheet">
+          <div class="sheet__grip" aria-hidden="true"></div>
+          <div class="comment-sheet__list">
+            <button type="button" class="sheet-row" data-act="share">${iconShare()}<span>Share profile</span></button>
+            <button type="button" class="sheet-row" data-act="qr">${iconQr()}<span>Show QR code</span></button>
+          </div>
+          <button type="button" class="sheet-row comment-sheet__cancel" data-act="cancel">Cancel</button>
+        </div>`;
+      document.body.appendChild(overlay);
+      document.body.style.overflow = 'hidden';
+      const close = () => { overlay.remove(); document.body.style.overflow = ''; };
+      // Back tears overlays down centrally without calling close(), so
+      // the hook is what puts body scroll back. See app.js.
+      overlay.__dismiss = close;
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) return close();
+        const btn = e.target.closest('[data-act]');
+        if (!btn) return;
+        close();
+        if (btn.dataset.act === 'share') shareProfile();
+        if (btn.dataset.act === 'qr') openQrModal(shareUrl, profile);
+      });
+    });
     qs('#avatar-enlarge', body).addEventListener('click', () => openAvatarLightbox(profile));
 
     if (!MESSENGER_ARCHIVED) {
