@@ -166,7 +166,8 @@ export async function renderProfileView(root, { username }) {
         </button>
         ${!isOwn ? `
         <h1>${esc(profile.display_name || profile.username)}${pronounLabel ? `<span class="profile-header__pronouns">${esc(pronounLabel)}</span>` : ''}</h1>
-        <p class="profile-header__username">@${esc(profile.username)}</p>` : ''}
+        <p class="profile-header__username">@${esc(profile.username)}</p>`
+        : `<p class="profile-header__handle">@${esc(profile.username)}</p>`}
         ${profile.bio ? `
           <div class="profile-header__bio-wrap">
             <p class="profile-header__bio" id="profile-bio">${esc(profile.bio)}</p>

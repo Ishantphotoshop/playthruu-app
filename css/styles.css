@@ -2370,6 +2370,14 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
   vertical-align: -3px;
 }
 .profile-header--hero .profile-header__username { margin-top: 0; }
+/* The owner's own page: the masthead bar already carries the big
+   username, so this is a small confirming line under the face rather
+   than a second h1 — same Unbounded/dim treatment the top bar's own
+   handle used to carry before it became the masthead text itself. */
+.profile-header__handle {
+  font-family: var(--font-brand); font-weight: 700; font-size: 12px;
+  letter-spacing: -0.01em; color: var(--ink-faint); margin: 2px 0 0;
+}
 /* The bio and its toggle move together, so the wrapper carries the
    width and the spacing the bio itself used to. */
 .profile-header--hero .profile-header__bio-wrap {
@@ -2381,12 +2389,12 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
      line stays centred. Without it HTML collapses every newline to a
      space and three deliberate lines arrive as one paragraph. */
   white-space: pre-line;
-  /* Two lines, then it is cut. -webkit-box is still the only thing that
-     clamps by LINE rather than by height — a max-height in px would
-     have to assume a line-height and would cut the third line in half
-     at the wrong font size. Every engine the app runs on supports it
-     unprefixed-in-all-but-name. */
-  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+  /* Three lines, then it is cut. -webkit-box is still the only thing
+     that clamps by LINE rather than by height — a max-height in px
+     would have to assume a line-height and would cut the fourth line
+     in half at the wrong font size. Every engine the app runs on
+     supports it unprefixed-in-all-but-name. */
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3;
   overflow: hidden;
 }
 .profile-header--hero .profile-header__bio.is-expanded {
