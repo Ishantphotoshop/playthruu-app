@@ -1297,6 +1297,7 @@ SCREENS.people = function people() {
         <button class="segmented__item" data-sort="seen">Last seen</button>
         <button class="segmented__item" data-sort="new">Newest</button>
         <button class="segmented__item" data-sort="name">A–Z</button>
+        <button class="segmented__item" data-sort="usage">Most active</button>
       </div>
       <label class="field adm-search"><span>Search</span>
         <input type="search" id="u-q" placeholder="Username or name…" autocomplete="off" value="${esc(peopleView.query)}">
@@ -1336,7 +1337,7 @@ SCREENS.people = function people() {
   paintPeople();
 };
 
-let lastPeople = { rows: [], seen: {} };
+let lastPeople = { rows: [], seen: {}, usage: {} };
 
 async function exportPeople() {
   downloadCsv(`playthruu-people-${new Date().toISOString().slice(0, 10)}.csv`,
@@ -1344,6 +1345,8 @@ async function exportPeople() {
       id: p.id, username: p.username, display_name: p.display_name ?? '',
       admin: p.is_admin ? 'yes' : 'no', suspended: p.is_suspended ? 'yes' : 'no',
       joined: p.created_at, last_seen: lastPeople.seen[p.id] ?? '',
+      total_seconds_in_app: lastPeople.usage[p.id] ?? 0,
+      time_in_app: formatDuration(lastPeople.usage[p.id] ?? 0),
     })));
 }
 
@@ -1363,10 +1366,12 @@ async function paintPeople() {
   const { data, error } = await q;
   if (error) { host.innerHTML = emptyState(error.message); return; }
 
-  // Presence comes from a second query keyed on the ids just returned,
-  // rather than a PostgREST embed — the embed needs the exact foreign
-  // key constraint name, and this doesn't care what it's called.
-  const seen = await getPresenceFor((data || []).map((p) => p.id));
+  // Presence and usage both come from a second/third query keyed on the
+  // ids just returned, rather than a PostgREST embed — the embed needs
+  // the exact foreign key constraint name, and neither of these cares
+  // what it's called.
+  const ids = (data || []).map((p) => p.id);
+  const [seen, usage] = await Promise.all([getPresenceFor(ids), getUsageFor(ids)]);
 
   let rows = [...(data || [])];
   if (filter === 'online') rows = rows.filter((p) => presenceOf(seen[p.id]).online);
@@ -1377,9 +1382,11 @@ async function paintPeople() {
     rows.sort((a, b) => new Date(seen[b.id] || 0) - new Date(seen[a.id] || 0));
   } else if (sort === 'name') {
     rows.sort((a, b) => (a.display_name || a.username || '').localeCompare(b.display_name || b.username || ''));
+  } else if (sort === 'usage') {
+    rows.sort((a, b) => (usage[b.id] || 0) - (usage[a.id] || 0));
   }
 
-  lastPeople = { rows, seen };
+  lastPeople = { rows, seen, usage };
   const countEl = qs('#u-count');
   if (countEl) {
     const onlineNow = rows.filter((p) => presenceOf(seen[p.id]).online).length;
@@ -1395,7 +1402,7 @@ async function paintPeople() {
       <span class="adm-row__body">
         <span class="adm-row__title">${esc(p.display_name || p.username)}${p.is_admin ? ' · ADMIN' : ''}${p.is_suspended ? ' · SUSPENDED' : ''}</span>
         <span class="adm-row__meta">@${esc(p.username)} · joined ${esc(timeAgo(p.created_at))} ago</span>
-        <span class="adm-row__meta"${timeTitle(seen[p.id])}>${presenceHtml(seen[p.id])}</span>
+        <span class="adm-row__meta"${timeTitle(seen[p.id])}>${presenceHtml(seen[p.id])} · ${esc(formatDuration(usage[p.id] || 0))} in app</span>
       </span>
       <span class="adm-row__actions">
         <button class="icon-btn icon-btn--small" data-manage aria-label="Manage">${iconChevronRight()}</button>
@@ -1432,11 +1439,11 @@ async function paintPeople() {
 
   qsa('[data-manage]', host).forEach((btn) => btn.addEventListener('click', () => {
     const id = btn.closest('.adm-row').dataset.id;
-    openUserSheet(rows.find((p) => p.id === id), seen[id]);
+    openUserSheet(rows.find((p) => p.id === id), seen[id], usage[id]);
   }));
 }
 
-function openUserSheet(user, lastSeenAt) {
+function openUserSheet(user, lastSeenAt, totalSeconds) {
   const isSelf = user.id === state.user.id;
   openSheet(user.display_name || user.username, `
     <p class="modal__hint">@${esc(user.username)} · ${presenceHtml(lastSeenAt)} · joined ${esc(timeAgo(user.created_at))} ago</p>
@@ -1446,7 +1453,7 @@ function openUserSheet(user, lastSeenAt) {
       <div class="stat-card stat-card--grey"><b>—</b><span>Lists</span></div>
     </div>
     <div class="stat-card-row" style="grid-template-columns:1fr;margin-top:calc(-1 * var(--space-3))">
-      <div class="stat-card stat-card--blue"><b id="u-usage">—</b><span>Time in the app</span></div>
+      <div class="stat-card stat-card--blue"><b>${esc(formatDuration(totalSeconds))}</b><span>Time in the app</span></div>
     </div>
     <div class="adm-btn-row" style="margin-top:0">
       <button class="btn btn--pill" id="u-view">Open profile</button>
@@ -1488,16 +1495,6 @@ function openUserSheet(user, lastSeenAt) {
       [logs.count, reviews.count, lists.count].forEach((n, i) => {
         if (cells[i]) countUp(cells[i], n ?? 0, { format: fmtNum });
       });
-    })();
-
-    // Total foreground time (user_usage.total_seconds), the one figure
-    // on this sheet nobody but an admin can see anywhere in the app —
-    // it isn't a count of rows, so it doesn't belong in u-stats above.
-    (async () => {
-      const usage = await getUsageFor([user.id]);
-      const cell = qs('#u-usage', sheet);
-      if (!cell) return; // sheet closed while this was in flight
-      cell.textContent = formatDuration(usage[user.id]);
     })();
 
     if (isSelf) return;
