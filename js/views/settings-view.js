@@ -8,8 +8,6 @@ import { invalidateProfileBundleCache } from './profile-view.js';
 import { openPsnImportSheet } from './psn-import-sheet.js';
 import { VAPID_PUBLIC_KEY } from '../config.js';
 
-const PRONOUN_OPTIONS = ['he/his', 'she/her', 'they/their', 'custom'];
-
 export function renderSettingsView(root) {
   const p = state.profile;
   // Local working copy of favorites (game rows), reordered/edited in
@@ -37,17 +35,6 @@ export function renderSettingsView(root) {
           <label class="set-field"><span class="set-field__label">Display name</span><input name="display_name" value="${esc(p.display_name || '')}" maxlength="40" placeholder="Your name"></label>
           <label class="set-field"><span class="set-field__label">Email</span><input name="email" type="email" value="${esc(state.user?.email || '')}" placeholder="you@example.com"></label>
           <label class="set-field"><span class="set-field__label">Bio</span><textarea name="bio" rows="3" maxlength="200" placeholder="A line about you">${esc(p.bio || '')}</textarea></label>
-          <label class="set-field">
-            <span class="set-field__label">Pronouns</span>
-            <select name="pronouns" id="pronouns-select">
-              <option value="">Prefer not to say</option>
-              ${PRONOUN_OPTIONS.map(o => `<option value="${o}" ${p.pronouns === o ? 'selected' : ''}>${o === 'custom' ? 'Custom' : o}</option>`).join('')}
-            </select>
-          </label>
-          <label class="set-field" id="pronouns-custom-field" style="${p.pronouns === 'custom' ? '' : 'display:none'}">
-            <span class="set-field__label">Custom pronouns</span>
-            <input name="pronouns_custom" value="${esc(p.pronouns_custom || '')}" placeholder="e.g. xe/xem" maxlength="30">
-          </label>
           <button type="submit" class="btn btn--accent btn--block">Save profile</button>
         </form>
       </div>
@@ -454,10 +441,6 @@ export function renderSettingsView(root) {
   });
 
   // ---- personal info ----
-  qs('#pronouns-select', body).addEventListener('change', (e) => {
-    qs('#pronouns-custom-field', body).style.display = e.target.value === 'custom' ? '' : 'none';
-  });
-
   qs('#info-form', body).addEventListener('submit', async (e) => {
     e.preventDefault();
     const form = new FormData(e.target);
@@ -465,8 +448,6 @@ export function renderSettingsView(root) {
     const profileUpdates = {
       display_name: form.get('display_name')?.trim() || null,
       bio: form.get('bio')?.trim() || null,
-      pronouns: form.get('pronouns') || null,
-      pronouns_custom: form.get('pronouns') === 'custom' ? (form.get('pronouns_custom')?.trim() || null) : null,
     };
     const btn = qs('button[type="submit"]', e.target);
     btn.disabled = true;

@@ -2338,15 +2338,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
   padding: 36px 0 28px;
 }
 .profile-header--hero .avatar { width: 96px; height: 96px; margin-bottom: 18px; box-shadow: 0 0 0 3px var(--surface); }
-/* The name and its pronoun are two flex children sharing one baseline
-   (align-items: baseline) rather than one text node with a smaller
-   word vertical-aligned against it — V07 of the placement review: no
-   raise, no drop, they just sit next to each other. gap does the
-   spacing a margin used to. */
-.profile-header--hero h1 {
-  display: flex; align-items: baseline; justify-content: center;
-  gap: 9px; margin: 0;
-}
+.profile-header--hero h1 { margin: 0; }
 /* Manrope at its heaviest, not the light --weight-heading this used to
    carry and not Unbounded either. Bold gives the name the weight the
    sketch draws it with while staying in the app's one UI typeface, and
@@ -2355,13 +2347,6 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 .profile-header__name-text {
   font-family: var(--font-display); font-weight: var(--weight-black);
   font-size: 30px; letter-spacing: -0.025em; line-height: 1.15;
-}
-/* Same face as the handle, small and dim so it reads as an aside on
-   the name, not as part of it — sized up from 11 to 13px now that it
-   is sitting ON the name's own baseline instead of tucked under it. */
-.profile-header__pronouns {
-  font-family: var(--font-brand); font-size: 13px; font-weight: 700;
-  color: var(--ink-dim); letter-spacing: -0.01em;
 }
 .profile-header--hero .profile-header__username { margin-top: 0; }
 /* The bio and its toggle move together, so the wrapper carries the
