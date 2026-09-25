@@ -1359,6 +1359,40 @@ export async function getPresenceFor(userIds) {
   }
 }
 
+// ------------------------------------------------------------
+// USAGE TIME
+// ------------------------------------------------------------
+// Same fire-and-forget contract as touchPresence just above: a failed
+// bump is nothing anyone using the app should ever see, so this
+// swallows everything. The actual add happens server-side, inside
+// bump_usage (see migrations/2026-09-25_usage_time.sql) — this just
+// hands over how many seconds of foreground time to bank.
+export async function bumpUsage(seconds) {
+  const n = Math.round(seconds);
+  if (!n || n <= 0) return;
+  try {
+    await supabase.rpc('bump_usage', { p_seconds: n });
+  } catch {
+    /* usage tracking is best-effort */
+  }
+}
+
+// Admin-only in practice: the RLS policy on user_usage only returns
+// your own row unless you're an admin.
+export async function getUsageFor(userIds) {
+  if (!userIds?.length) return {};
+  try {
+    const { data, error } = await supabase
+      .from('user_usage')
+      .select('user_id, total_seconds')
+      .in('user_id', userIds);
+    if (error) return {};
+    return Object.fromEntries((data || []).map((r) => [r.user_id, r.total_seconds]));
+  } catch {
+    return {};
+  }
+}
+
 // Hydrates game cards sent in a conversation (kind='game', body=game id)
 // — one query for every game referenced in the open thread.
 export async function getGamesByIds(ids) {

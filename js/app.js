@@ -519,33 +519,61 @@ function warmOtherTabs() {
 }
 
 // Records that this account is currently using the app, so the admin
-// build can show who's online and when everyone else was last around.
+// build can show who's online, when everyone else was last around, and
+// — the usage half below — how many hours each account has spent in
+// the app in total.
 //
-// Three things keep this cheap. It only writes every PRESENCE_EVERY ms
-// however often it's poked; it stops writing entirely while the app is
-// in the background (a phone left on the feed overnight shouldn't look
-// "online" until morning); and it's deliberately started AFTER the
-// suspended-account check above returns, so a banned account never
-// registers as present.
+// Three things keep the presence half cheap. It only writes every
+// PRESENCE_EVERY ms however often it's poked; it stops writing entirely
+// while the app is in the background (a phone left on the feed overnight
+// shouldn't look "online" until morning); and it's deliberately started
+// AFTER the suspended-account check above returns, so a banned account
+// never registers as present.
+//
+// Usage rides the same cadence rather than running its own timer.
+// usageActiveSince marks when the tab last became visible; each tick
+// (or the moment it goes hidden) banks the seconds since then via
+// api.bumpUsage and resets the marker. Killing the tab outright rather
+// than backgrounding it first loses at most the last few seconds —
+// the same best-effort trade touchPresence already makes.
 const PRESENCE_EVERY = 60_000;
 let presenceTimer = null;
 let lastPresenceWrite = 0;
+let usageActiveSince = null;
 
 function startPresenceHeartbeat(userId) {
+  const flushUsage = () => {
+    if (usageActiveSince == null) return;
+    const seconds = Math.round((Date.now() - usageActiveSince) / 1000);
+    usageActiveSince = document.visibilityState === 'visible' ? Date.now() : null;
+    if (seconds > 0) api.bumpUsage(seconds);
+  };
+
   const beat = (force = false) => {
     if (document.visibilityState !== 'visible') return;
     const now = Date.now();
     if (!force && now - lastPresenceWrite < PRESENCE_EVERY) return;
     lastPresenceWrite = now;
     api.touchPresence(userId);
+    flushUsage();
   };
 
+  usageActiveSince = document.visibilityState === 'visible' ? Date.now() : null;
   beat(true);
   clearInterval(presenceTimer);
   presenceTimer = setInterval(beat, PRESENCE_EVERY);
   // Coming back to the app should register immediately rather than
-  // waiting out the rest of an interval that ticked while hidden.
-  document.addEventListener('visibilitychange', () => beat());
+  // waiting out the rest of an interval that ticked while hidden; going
+  // to the background banks whatever usage time is owed before the
+  // timer stops ticking on it.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      usageActiveSince = Date.now();
+      beat();
+    } else {
+      flushUsage();
+    }
+  });
 }
 
 // Shown in place of the whole app when the signed-in account is

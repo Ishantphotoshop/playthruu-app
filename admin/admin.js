@@ -15,7 +15,7 @@
 // built from the app's own .stamp component.
 
 import { supabase } from '../js/supabase-client.js';
-import { searchGamesEverywhere, addGame, getPresenceFor } from '../js/api.js';
+import { searchGamesEverywhere, addGame, getPresenceFor, getUsageFor } from '../js/api.js';
 import { esc, qs, qsa, toast, timeAgo } from '../js/utils.js';
 import {
   emptyState, spinner, avatarImg, ratingHistogram, wireRatingHistogram,
@@ -44,6 +44,7 @@ const MIGRATIONS = [
   { path: '../migrations/2026-09-02_admin_toolkit.sql', check: () => tableExists('app_settings') },
   { path: '../migrations/2026-09-02_presence_and_moderation.sql', check: () => tableExists('user_presence') },
   { path: '../migrations/2026-09-02_admin_analytics_access.sql', check: () => settingExists('analytics_ready') },
+  { path: '../migrations/2026-09-25_usage_time.sql', check: () => tableExists('user_usage') },
 ];
 
 // Anyone whose last heartbeat landed inside this window counts as on the
@@ -83,6 +84,21 @@ function presenceHtml(lastSeenAt) {
   const { online, label } = presenceOf(lastSeenAt);
   return `<span class="adm-presence${online ? ' adm-presence--online' : ''}">
     <span class="adm-presence__dot"></span>${esc(label)}</span>`;
+}
+
+// Total foreground time, from user_usage.total_seconds (see
+// migrations/2026-09-25_usage_time.sql) — days and hours for a heavy
+// account, hours and minutes for anyone under a day, and honest about
+// having nothing yet rather than showing "0m" for a brand new account.
+function formatDuration(totalSeconds) {
+  const s = Math.max(0, Math.round(totalSeconds || 0));
+  if (s < 60) return 'none yet';
+  const days = Math.floor(s / 86400);
+  const hours = Math.floor((s % 86400) / 3600);
+  const mins = Math.floor((s % 3600) / 60);
+  if (days > 0) return `${days}d ${hours}h`;
+  if (hours > 0) return `${hours}h ${mins}m`;
+  return `${mins}m`;
 }
 
 async function copy(text, label = 'Copied') {
@@ -1429,6 +1445,9 @@ function openUserSheet(user, lastSeenAt) {
       <div class="stat-card stat-card--grey"><b>—</b><span>Reviews</span></div>
       <div class="stat-card stat-card--grey"><b>—</b><span>Lists</span></div>
     </div>
+    <div class="stat-card-row" style="grid-template-columns:1fr;margin-top:calc(-1 * var(--space-3))">
+      <div class="stat-card stat-card--blue"><b id="u-usage">—</b><span>Time in the app</span></div>
+    </div>
     <div class="adm-btn-row" style="margin-top:0">
       <button class="btn btn--pill" id="u-view">Open profile</button>
       <button class="btn btn--pill" id="u-copy">Copy id</button>
@@ -1469,6 +1488,16 @@ function openUserSheet(user, lastSeenAt) {
       [logs.count, reviews.count, lists.count].forEach((n, i) => {
         if (cells[i]) countUp(cells[i], n ?? 0, { format: fmtNum });
       });
+    })();
+
+    // Total foreground time (user_usage.total_seconds), the one figure
+    // on this sheet nobody but an admin can see anywhere in the app —
+    // it isn't a count of rows, so it doesn't belong in u-stats above.
+    (async () => {
+      const usage = await getUsageFor([user.id]);
+      const cell = qs('#u-usage', sheet);
+      if (!cell) return; // sheet closed while this was in flight
+      cell.textContent = formatDuration(usage[user.id]);
     })();
 
     if (isSelf) return;
