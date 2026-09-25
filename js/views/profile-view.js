@@ -164,7 +164,12 @@ export async function renderProfileView(root, { username }) {
         </button>
         <h1>${esc(profile.display_name || profile.username)}${pronounLabel ? `<span class="profile-header__pronouns">${esc(pronounLabel)}</span>` : ''}</h1>
         ${isOwn ? '' : `<p class="profile-header__username">@${esc(profile.username)}</p>`}
-        ${profile.bio ? `<p class="profile-header__bio">${esc(profile.bio)}</p>` : ''}
+        ${profile.bio ? `
+          <div class="profile-header__bio-wrap">
+            <p class="profile-header__bio" id="profile-bio">${esc(profile.bio)}</p>
+            <button type="button" class="profile-header__bio-more" id="profile-bio-more"
+                    aria-controls="profile-bio" aria-expanded="false" hidden>more</button>
+          </div>` : ''}
         ${stats.totalHours > 0 || stats.streak >= 2 ? `
           <div class="profile-header__badges">
             ${stats.totalHours > 0 ? `<span class="profile-header__hours">${stats.totalHours.toLocaleString('en-US')}h logged</span>` : ''}
@@ -396,6 +401,38 @@ export async function renderProfileView(root, { username }) {
       });
     });
     qs('#avatar-enlarge', body).addEventListener('click', () => openAvatarLightbox(profile));
+
+    // The bio clamps to two lines. Whether there is a third to reveal is
+    // not something the markup can know — it depends on the rendered line
+    // count, which depends on the viewport AND on whether Manrope has
+    // finished loading, since the fallback face sets to a different
+    // width. So the toggle is offered only after measuring, and measured
+    // again once fonts settle; a bio that fits stays a plain paragraph
+    // with nothing to tap.
+    const bioEl = qs('#profile-bio', body);
+    const bioMore = qs('#profile-bio-more', body);
+    if (bioEl && bioMore) {
+      let expanded = false;
+      const toggle = () => {
+        expanded = !expanded;
+        bioEl.classList.toggle('is-expanded', expanded);
+        bioMore.textContent = expanded ? 'less' : 'more';
+        bioMore.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+      };
+      const measure = () => {
+        if (expanded) return;
+        const overflows = bioEl.scrollHeight - bioEl.clientHeight > 1;
+        bioMore.hidden = !overflows;
+        bioEl.classList.toggle('is-clampable', overflows);
+      };
+      bioMore.addEventListener('click', toggle);
+      // Tapping the text itself does the same thing, which is what was
+      // asked for; the button is what keeps it reachable by keyboard.
+      bioEl.addEventListener('click', () => { if (!bioMore.hidden) toggle(); });
+      measure();
+      if (document.fonts && document.fonts.ready) document.fonts.ready.then(measure);
+      window.addEventListener('resize', measure);
+    }
 
     if (!MESSENGER_ARCHIVED) {
       qs('#message-user', body)?.addEventListener('click', () => navigate(`/messages/new/${profile.id}`));

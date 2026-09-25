@@ -2363,13 +2363,39 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
   vertical-align: -3px;
 }
 .profile-header--hero .profile-header__username { margin-top: 0; }
+/* The bio and its toggle move together, so the wrapper carries the
+   width and the spacing the bio itself used to. */
+.profile-header--hero .profile-header__bio-wrap {
+  width: 100%; max-width: 420px; margin: 15px auto 0;
+}
 .profile-header--hero .profile-header__bio {
-  max-width: 420px; margin: 15px auto 0; text-align: center;
+  margin: 0; text-align: center;
   /* pre-line, so a bio written with line breaks keeps them and each
      line stays centred. Without it HTML collapses every newline to a
      space and three deliberate lines arrive as one paragraph. */
   white-space: pre-line;
+  /* Two lines, then it is cut. -webkit-box is still the only thing that
+     clamps by LINE rather than by height — a max-height in px would
+     have to assume a line-height and would cut the third line in half
+     at the wrong font size. Every engine the app runs on supports it
+     unprefixed-in-all-but-name. */
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+  overflow: hidden;
 }
+.profile-header--hero .profile-header__bio.is-expanded {
+  display: block; -webkit-line-clamp: none; overflow: visible;
+}
+/* Only a bio that actually overflows becomes tappable; one that fits in
+   two lines is just text, and a pointer cursor on it would promise
+   something that does not happen. */
+.profile-header--hero .profile-header__bio.is-clampable { cursor: pointer; }
+.profile-header__bio-more {
+  display: inline-block; margin-top: 2px; padding: 7px 12px;
+  background: none; border: 0; cursor: pointer;
+  font-family: var(--font-body); font-size: 12px; font-weight: var(--weight-bold);
+  color: var(--ink-faint); letter-spacing: 0.01em;
+}
+.profile-header__bio-more[hidden] { display: none; }
 /* Total hours + current streak — numbers that feel earned rather than
    administrative, so they get their own quiet badges instead of blending
    into the stat-link list below. */
