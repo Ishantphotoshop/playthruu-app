@@ -115,7 +115,7 @@ export async function renderProfileView(root, { username }) {
   root.innerHTML = (isOwn ? '' : topBar(username, { back: true })) +
     (isOwn ? `
       <div class="profile-top profile-top--masthead${cachedProfile ? '' : ' profile-top--pending'}">
-        <span class="profile-top__name">${esc(username)}</span>
+        <span class="profile-top__name">@${esc(username)}</span>
         <span class="profile-top__actions">
           <a class="profile-top__btn" href="#/settings" aria-label="Settings">${iconSettings()}</a>
           <button type="button" class="profile-top__btn" id="profile-menu" aria-label="More">${iconDotsMenu()}</button>
@@ -160,14 +160,12 @@ export async function renderProfileView(root, { username }) {
     const pronounLabel = profile.pronouns === 'custom' ? profile.pronouns_custom : profile.pronouns;
 
     body.innerHTML = `
-      <div class="profile-header profile-header--hero${isOwn ? ' profile-header--masthead' : ''}">
+      <div class="profile-header profile-header--hero">
         <button class="profile-header__avatar-btn" id="avatar-enlarge" aria-label="View profile photo">
           ${avatarImg(profile, 96)}
         </button>
-        ${!isOwn ? `
         <h1>${esc(profile.display_name || profile.username)}${pronounLabel ? `<span class="profile-header__pronouns">${esc(pronounLabel)}</span>` : ''}</h1>
-        <p class="profile-header__username">@${esc(profile.username)}</p>`
-        : `<p class="profile-header__handle">@${esc(profile.username)}</p>`}
+        ${isOwn ? '' : `<p class="profile-header__username">@${esc(profile.username)}</p>`}
         ${profile.bio ? `
           <div class="profile-header__bio-wrap">
             <p class="profile-header__bio" id="profile-bio">${esc(profile.bio)}</p>

@@ -551,19 +551,15 @@ ul { list-style: none; margin: 0; padding: 0; }
   background: none; border: none; color: var(--ink); cursor: pointer;
 }
 .profile-top__btn svg { width: 19px; height: 19px; }
-/* Masthead: the username takes the bar over, left-ranged and set at
-   the size the display name used to carry as an h1 below the avatar —
-   the bar isn't chrome sitting above the identity any more, it IS the
-   identity, which is why the h1 it replaces is gone from the header
-   entirely (see the !isOwn check around the old <h1>). Gear and menu
-   are grouped at the trailing edge instead of pinned to either end. */
+/* The masthead layout stays (username left, gear + menu grouped at the
+   trailing edge) but the username here is the @handle — the "userid",
+   a secondary identifier — not the main name. The main name is the h1
+   under the avatar (below), same as it always was; this is back to
+   being closer to the original top bar's own small handle. */
 .profile-top__name {
-  /* Unbounded — only loaded at 700/800 (index.html), so 800 stays.
-     A much wider face than Manrope, so the size drops from 24 to 19
-     to hold roughly the same run of pixels at long usernames. */
-  font-family: var(--font-brand); font-weight: var(--weight-black);
-  font-size: 19px; letter-spacing: -0.01em; line-height: 1.25;
-  color: var(--ink); min-width: 0; overflow: hidden;
+  font-family: var(--font-brand); font-weight: 700;
+  font-size: 12.5px; letter-spacing: -0.01em; line-height: 1.25;
+  color: var(--ink-faint); min-width: 0; overflow: hidden;
   text-overflow: ellipsis; white-space: nowrap;
 }
 .profile-top__actions { display: flex; align-items: center; gap: 10px; margin-left: auto; flex-shrink: 0; }
@@ -2341,10 +2337,6 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
      face but space. */
   padding: 36px 0 28px;
 }
-/* The owner's own page: the masthead bar above carries the name now,
-   so the header that used to lead with an h1 leads with the avatar
-   instead, and gets back the height the h1 + its gap used to take. */
-.profile-header--masthead { padding-top: 20px; }
 .profile-header--hero .avatar { width: 96px; height: 96px; margin-bottom: 18px; box-shadow: 0 0 0 3px var(--surface); }
 /* Manrope at its heaviest, not the light --weight-heading this used to
    carry and not Unbounded either. Bold gives the name the weight the
@@ -2370,14 +2362,6 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
   vertical-align: -3px;
 }
 .profile-header--hero .profile-header__username { margin-top: 0; }
-/* The owner's own page: the masthead bar already carries the big
-   username, so this is a small confirming line under the face rather
-   than a second h1 — same Unbounded/dim treatment the top bar's own
-   handle used to carry before it became the masthead text itself. */
-.profile-header__handle {
-  font-family: var(--font-brand); font-weight: 700; font-size: 12px;
-  letter-spacing: -0.01em; color: var(--ink-faint); margin: 2px 0 0;
-}
 /* The bio and its toggle move together, so the wrapper carries the
    width and the spacing the bio itself used to. */
 .profile-header--hero .profile-header__bio-wrap {
