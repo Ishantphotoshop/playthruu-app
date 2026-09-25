@@ -551,19 +551,19 @@ ul { list-style: none; margin: 0; padding: 0; }
   background: none; border: none; color: var(--ink); cursor: pointer;
 }
 .profile-top__btn svg { width: 19px; height: 19px; }
-.profile-top__btn--start { justify-items: start; }
-.profile-top__btn--end { justify-items: end; margin-left: auto; }
-/* The handle, up here next to settings instead of under the name. Mono
-   because it is an identifier, and dim because the name below it is the
-   thing being read. */
-.profile-top__handle {
-  /* Unbounded, the face the tab row and every section heading already
-     use. It is a much wider design than the mono this replaced, so the
-     size drops from 12.5 to 11 to occupy the same run of pixels. */
-  font-family: var(--font-brand); font-size: 11px; font-weight: 700;
-  color: var(--ink-faint); letter-spacing: -0.01em; min-width: 0;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+/* Masthead: the username takes the bar over, left-ranged and set at
+   the size the display name used to carry as an h1 below the avatar —
+   the bar isn't chrome sitting above the identity any more, it IS the
+   identity, which is why the h1 it replaces is gone from the header
+   entirely (see the !isOwn check around the old <h1>). Gear and menu
+   are grouped at the trailing edge instead of pinned to either end. */
+.profile-top__name {
+  font-family: var(--font-display); font-weight: var(--weight-black);
+  font-size: 24px; letter-spacing: -0.02em; line-height: 1.2;
+  color: var(--ink); min-width: 0; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap;
 }
+.profile-top__actions { display: flex; align-items: center; gap: 10px; margin-left: auto; flex-shrink: 0; }
 /* A page's real content is only ever hidden BEHIND this, never inside
    it — it has to sit outside whatever gets faded to opacity:0 while
    data loads (see .feed-body--loading), or it would vanish along with
@@ -2338,6 +2338,10 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
      face but space. */
   padding: 36px 0 28px;
 }
+/* The owner's own page: the masthead bar above carries the name now,
+   so the header that used to lead with an h1 leads with the avatar
+   instead, and gets back the height the h1 + its gap used to take. */
+.profile-header--masthead { padding-top: 20px; }
 .profile-header--hero .avatar { width: 96px; height: 96px; margin-bottom: 18px; box-shadow: 0 0 0 3px var(--surface); }
 /* Manrope at its heaviest, not the light --weight-heading this used to
    carry and not Unbounded either. Bold gives the name the weight the

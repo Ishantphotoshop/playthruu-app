@@ -114,10 +114,12 @@ export async function renderProfileView(root, { username }) {
   // for and it is shown straight away.
   root.innerHTML = (isOwn ? '' : topBar(username, { back: true })) +
     (isOwn ? `
-      <div class="profile-top${cachedProfile ? '' : ' profile-top--pending'}">
-        <a class="profile-top__btn profile-top__btn--start" href="#/settings" aria-label="Settings">${iconSettings()}</a>
-        <span class="profile-top__handle">@${esc(username)}</span>
-        <button type="button" class="profile-top__btn profile-top__btn--end" id="profile-menu" aria-label="More">${iconDotsMenu()}</button>
+      <div class="profile-top profile-top--masthead${cachedProfile ? '' : ' profile-top--pending'}">
+        <span class="profile-top__name">${esc(username)}</span>
+        <span class="profile-top__actions">
+          <a class="profile-top__btn" href="#/settings" aria-label="Settings">${iconSettings()}</a>
+          <button type="button" class="profile-top__btn" id="profile-menu" aria-label="More">${iconDotsMenu()}</button>
+        </span>
       </div>` : '') +
     `<div class="view-body${isOwn ? ' view-body--no-topbar' : ''}" id="profile-body">
        ${cachedProfile || spinner()}
@@ -158,12 +160,13 @@ export async function renderProfileView(root, { username }) {
     const pronounLabel = profile.pronouns === 'custom' ? profile.pronouns_custom : profile.pronouns;
 
     body.innerHTML = `
-      <div class="profile-header profile-header--hero">
+      <div class="profile-header profile-header--hero${isOwn ? ' profile-header--masthead' : ''}">
         <button class="profile-header__avatar-btn" id="avatar-enlarge" aria-label="View profile photo">
           ${avatarImg(profile, 96)}
         </button>
+        ${!isOwn ? `
         <h1>${esc(profile.display_name || profile.username)}${pronounLabel ? `<span class="profile-header__pronouns">${esc(pronounLabel)}</span>` : ''}</h1>
-        ${isOwn ? '' : `<p class="profile-header__username">@${esc(profile.username)}</p>`}
+        <p class="profile-header__username">@${esc(profile.username)}</p>` : ''}
         ${profile.bio ? `
           <div class="profile-header__bio-wrap">
             <p class="profile-header__bio" id="profile-bio">${esc(profile.bio)}</p>
