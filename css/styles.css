@@ -552,6 +552,17 @@ ul { list-style: none; margin: 0; padding: 0; }
   background: none; border: none; color: var(--ink); cursor: pointer;
 }
 .profile-top__btn svg { width: 24px; height: 24px; }
+/* Corner icons flush with the poster column below: the QR's left ink
+   edge lines up with Top 3's left poster edge, the gear's right ink
+   edge with the right poster edge. The glyph goes to the outer side of
+   its 50px tap target (the target itself doesn't shrink), then a
+   sub-pixel nudge takes out each glyph's own built-in margin inside its
+   24-unit box — QR's stroke starts 2.6 units in, the gear's teeth end
+   2.47 units short. Measured, not eyeballed. */
+.profile-top__btn--start { justify-items: start; }
+.profile-top__btn--start svg { margin-left: -0.6px; }
+.profile-top__btn--end { justify-items: end; }
+.profile-top__btn--end svg { margin-right: -0.45px; }
 /* Three slots now, not two: the menu on the left, the handle centred
    between the two buttons, settings on the right — the handle is the
    @userid, a secondary identifier, not the main name (that's the h1
@@ -561,7 +572,7 @@ ul { list-style: none; margin: 0; padding: 0; }
 .profile-top__name {
   flex: 1; text-align: center;
   font-family: var(--font-brand); font-weight: 700;
-  font-size: 17px; letter-spacing: -0.01em; line-height: 1.25;
+  font-size: 15px; letter-spacing: -0.01em; line-height: 1.25;
   color: var(--ink-faint); min-width: 0; overflow: hidden;
   text-overflow: ellipsis; white-space: nowrap;
 }
@@ -2336,10 +2347,10 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
   gap: 4px;
   /* 8px before. The two corner controls sit on the 8px line above, and
      with the chips gone there is nothing to separate them from the
-     face but space. Bumped 36->50 for the extra-large top-bar buttons
-     (50px, up from 38px) — the bar's own footprint grew, so the
-     avatar needs the extra room to clear it. */
-  padding: 50px 0 28px;
+     face but space. 34px: the extra-large bar (50px buttons) still
+     clears the avatar by ~30px, the rest of the header just sits
+     higher than the 50px it was first given for that bar. */
+  padding: 34px 0 28px;
 }
 .profile-header--hero .avatar { width: 108px; height: 108px; margin-bottom: 4px; box-shadow: 0 0 0 3px var(--surface); }
 /* The name and the small hours figure beside it are two flex children
@@ -2347,10 +2358,20 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
    node with a smaller word vertical-aligned against it — same
    construction the pronoun used to use here, before hours took its
    spot. gap does the spacing a margin used to. */
+/* The NAME sits dead-centre under the avatar, and the hours hang off
+   its right. A flex row centred the name+hours pair as one unit, which
+   pushed the name itself left of centre by half the hours' width. Here
+   the two outer columns are equal (1fr each), so column 2 — the name —
+   is always centred on the page; the hours sit in column 3, and column
+   1 is deliberately empty to balance it. align-self: stretch because
+   the hero is a centred flex column, which would otherwise shrink the
+   h1 to its content and leave the 1fr columns no room at all. */
 .profile-header--hero h1 {
-  display: flex; align-items: baseline; justify-content: center;
-  gap: 8px; margin: 0;
+  display: grid; grid-template-columns: 1fr auto 1fr; align-items: baseline;
+  column-gap: 8px; margin: 0; align-self: stretch;
 }
+.profile-header--hero h1 .profile-header__name-text { grid-column: 2; }
+.profile-header--hero h1 .profile-header__hours-inline { grid-column: 3; justify-self: start; }
 /* Manrope at its heaviest, not the light --weight-heading this used to
    carry and not Unbounded either. Bold gives the name the weight the
    sketch draws it with while staying in the app's one UI typeface, and
