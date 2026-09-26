@@ -2,11 +2,11 @@ import * as api from '../api.js';
 import { state } from '../state.js';
 import { MESSENGER_ARCHIVED } from '../config.js';
 import {
-  topBar, navBar, spinner, avatarImg, gameCard, showcaseGrid, SHOWCASE_MAX, ratingHistogram, wireRatingHistogram, posterFrame,
-  emptyState, iconStamp, iconSettings, iconShare, iconQr, iconClose, iconSearch, iconPlus, listCard, iconFlame, iconMessage,
+  navBar, spinner, avatarImg, gameCard, showcaseGrid, SHOWCASE_MAX, ratingHistogram, wireRatingHistogram, posterFrame,
+  emptyState, iconStamp, iconSettings, iconShare, iconQr, iconDotsMenu, iconClose, iconSearch, iconPlus, listCard, iconMessage,
   combinedGameResults, wireCombinedGameResults, openReportSheet, iconFlag, iconBlock,
 } from '../components.js';
-import { esc, formatDate, statusStamp, starRow, qs, qsa, toast, debounce, pulseLogTab, igdbSized, enableSwipeToDismiss } from '../utils.js';
+import { esc, formatDate, statusStamp, starRow, qs, qsa, toast, debounce, pulseLogTab, igdbSized, enableSwipeToDismiss, promptSignIn } from '../utils.js';
 import { refreshCurrentView, navigate } from '../router.js';
 import { wirePullToRefresh } from './feed-view.js';
 import { openNewListForm } from './lists-view.js';
@@ -93,33 +93,56 @@ export async function renderProfileView(root, { username }) {
   // The cached snapshot itself has no listeners wired yet (it's just
   // copied markup), so it's briefly non-interactive until that finishes.
   const cachedProfile = getCached(cacheKey);
-  // Own profile drops the header bar entirely, same as Search/Messages —
-  // just the settings icon floating in the corner of the content itself.
-  // Someone else's profile still needs the back button and their actual
-  // name, so that case keeps its real topBar untouched.
+  // Own and visitor profiles now share the exact same masthead bar —
+  // @handle centred, one control on each side — rather than the old
+  // split where a visitor got a completely different docked topBar()
+  // with a visible back arrow. The back arrow is gone entirely: hardware
+  // back (Capacitor's backButton listener in app.js) and the browser's
+  // own back button already call history.back() regardless of any
+  // on-screen button, so removing it loses no way back, only a second,
+  // redundant one. The left slot on a visitor's page is an inert
+  // same-size spacer, not a button, so the handle still lands dead
+  // centre (flex:1 between two equal 50px boxes) with nothing to press.
   //
-  // The settings link is a SIBLING of #profile-body here, not nested
-  // inside it — it used to be a child, and the real fetch below replaces
+  // .profile-top is a SIBLING of #profile-body, not nested inside it —
+  // it used to be a child, and the real fetch below replaces
   // #profile-body's entire innerHTML once it lands, which silently wiped
   // the button out the moment real data arrived (it only ever survived
-  // the brief spinner/cached-paint window before that). #app already has
-  // position:relative and doesn't itself scroll, so position:absolute
-  // here still anchors correctly and stays put regardless of what
-  // #profile-body's own content does.
-  // The gear is painted in the same pass as the spinner, so on a cold
-  // load it used to sit there alone against an empty screen for as long
-  // as the fetch took — one lit control floating over nothing. It starts
-  // faded instead and arrives WITH the profile it belongs to. A warm
-  // cache paints real content immediately, so there is nothing to wait
-  // for and it is shown straight away.
-  root.innerHTML = (isOwn ? '' : topBar(username, { back: true })) +
-    (isOwn ? `
+  // the brief spinner/cached-paint window before that).
+  //
+  // position: fixed, not absolute (2026-09-26 fix): absolute here was
+  // correct on paper — #app is position:relative and never scrolls, so
+  // an absolute child of a sibling of #profile-body should stay put
+  // regardless of #profile-body's own scrolling — and it held up under
+  // every scroll test run against it. It still visibly scrolled away on
+  // a real phone, which an absolute/relative containing-block chain
+  // can't explain from CSS alone (compositing quirks in a mobile WebView
+  // are the usual cause, and they don't show up in a desktop browser).
+  // Rather than chase a bug invisible to the tools available here, this
+  // switches to the exact technique the bottom tab bar already uses
+  // (position: fixed; left: 50%; transform: translateX(-50%); width:
+  // 100%; max-width: 560px) — genuinely pinned to the viewport, not to
+  // any element's containing-block status, and proven correct on both
+  // mobile (where the viewport IS the app) and a wide desktop browser
+  // (where #app is a centred, capped-width column).
+  //
+  // The gear/dots are painted in the same pass as the spinner, so on a
+  // cold load they used to sit there alone against an empty screen for
+  // as long as the fetch took — controls floating over nothing. They
+  // start faded instead and arrive WITH the profile they belong to. A
+  // warm cache paints real content immediately, so there is nothing to
+  // wait for and it is shown straight away.
+  root.innerHTML = `
       <div class="profile-top profile-top--masthead${cachedProfile ? '' : ' profile-top--pending'}">
-        <button type="button" class="profile-top__btn profile-top__btn--start" id="profile-menu" aria-label="Share">${iconQr()}</button>
+        ${isOwn
+          ? `<button type="button" class="profile-top__btn profile-top__btn--start" id="profile-menu" aria-label="Share">${iconQr()}</button>`
+          : `<span class="profile-top__btn" aria-hidden="true"></span>`}
         <span class="profile-top__name">@${esc(username)}</span>
-        <a class="profile-top__btn profile-top__btn--end" href="#/settings" aria-label="Settings">${iconSettings()}</a>
-      </div>` : '') +
-    `<div class="view-body${isOwn ? ' view-body--no-topbar' : ''}" id="profile-body">
+        ${isOwn
+          ? `<a class="profile-top__btn profile-top__btn--end" href="#/settings" aria-label="Settings">${iconSettings()}</a>`
+          : `<button type="button" class="profile-top__btn profile-top__btn--end" id="profile-more" aria-label="More">${iconDotsMenu()}</button>`}
+      </div>
+      <div class="view-body view-body--no-topbar" id="profile-body">
        ${cachedProfile || spinner()}
      </div>` + navBar(isOwn ? '/me' : '');
   const body = qs('#profile-body', root);
@@ -162,18 +185,15 @@ export async function renderProfileView(root, { username }) {
     // to render alongside the hours badge — which has since moved from
     // its own pill (.profile-header__badges/.profile-header__hours,
     // 2026-09-26; still in styles.css, also unused now) to sitting
-    // inline next to the name (.profile-header__hours-inline, below).
+    // below the name (.profile-header__hours-inline, below).
 
     body.innerHTML = `
       <div class="profile-header profile-header--hero">
         <button class="profile-header__avatar-btn" id="avatar-enlarge" aria-label="View profile photo">
           ${avatarImg(profile, 108)}
         </button>
-        <h1>
-          <span class="profile-header__name-text">${esc(profile.display_name || profile.username)}</span>
-          ${stats.totalHours > 0 ? `<span class="profile-header__hours-inline">(${stats.totalHours.toLocaleString('en-US')}h)</span>` : ''}
-        </h1>
-        ${isOwn ? '' : `<p class="profile-header__username">@${esc(profile.username)}</p>`}
+        <h1 class="profile-header__name-text">${esc(profile.display_name || profile.username)}</h1>
+        ${stats.totalHours > 0 ? `<p class="profile-header__hours-inline">(${stats.totalHours.toLocaleString('en-US')}h)</p>` : ''}
         ${profile.bio ? `
           <div class="profile-header__bio-wrap">
             <p class="profile-header__bio" id="profile-bio">${esc(profile.bio)}</p>
@@ -188,10 +208,8 @@ export async function renderProfileView(root, { username }) {
         </div>
         ${!isOwn && state.user
           ? `<div class="profile-header__actions">
-               <button class="btn ${following ? 'btn--ghost' : 'btn--accent'}" id="follow-btn" data-following="${following}">${following ? 'Following' : 'Follow'}</button>
+               <button class="btn btn--pill ${following ? 'btn--ghost' : 'btn--accent'}" id="follow-btn" data-following="${following}">${following ? 'Following' : 'Follow'}</button>
                ${MESSENGER_ARCHIVED ? '' : `<button class="icon-btn" id="message-user" aria-label="Message ${esc(profile.username)}" title="Message">${iconMessage()}</button>`}
-               <button class="icon-btn" id="block-user" aria-label="Block ${esc(profile.username)}" title="Block">${iconBlock()}</button>
-               <button class="icon-btn" id="report-user" aria-label="Report ${esc(profile.username)}" title="Report">${iconFlag()}</button>
              </div>`
           : ''}
       </div>
@@ -449,32 +467,58 @@ export async function renderProfileView(root, { username }) {
       qs('#message-user', body)?.addEventListener('click', () => navigate(`/messages/new/${profile.id}`));
     }
 
-    qs('#report-user', body)?.addEventListener('click', () => {
-      openReportSheet({
-        targetType: 'profile',
-        targetId: profile.id,
-        subject: `@${profile.username}`,
-        onSubmit: api.reportContent,
+    // Visitor's top-bar "more" — Block and Report, moved out of the
+    // header's own icon row and into a sheet, matching the own-profile
+    // masthead's Share/QR sheet exactly (same overlay markup, same
+    // swipe-to-dismiss, no Cancel row).
+    qs('#profile-more', root)?.addEventListener('click', () => {
+      const overlay = document.createElement('div');
+      overlay.className = 'modal-overlay';
+      overlay.innerHTML = `
+        <div class="sheet comment-sheet" data-swipe-handle>
+          <div class="sheet__grip" aria-hidden="true"></div>
+          <div class="comment-sheet__list">
+            <button type="button" class="sheet-row" data-act="block">${iconBlock()}<span>Block @${esc(profile.username)}</span></button>
+            <button type="button" class="sheet-row" data-act="report">${iconFlag()}<span>Report @${esc(profile.username)}</span></button>
+          </div>
+        </div>`;
+      document.body.appendChild(overlay);
+      document.body.style.overflow = 'hidden';
+      const close = () => { overlay.remove(); document.body.style.overflow = ''; };
+      overlay.__dismiss = close;
+      enableSwipeToDismiss(qs('.comment-sheet', overlay), close);
+      overlay.addEventListener('click', async (e) => {
+        if (e.target === overlay) return close();
+        const btn = e.target.closest('[data-act]');
+        if (!btn) return;
+        close();
+        if (!state.user) { promptSignIn(btn.dataset.act === 'block' ? 'Sign in to block this account.' : 'Sign in to report this account.'); return; }
+        if (btn.dataset.act === 'report') {
+          openReportSheet({
+            targetType: 'profile',
+            targetId: profile.id,
+            subject: `@${profile.username}`,
+            onSubmit: api.reportContent,
+          });
+        } else if (btn.dataset.act === 'block') {
+          // Blocking also unfollows in both directions — leaving a follow
+          // edge in place after a block means the person you blocked keeps
+          // appearing in your feed, which defeats the point.
+          if (!confirm(`Block @${profile.username}? You won't see their reviews, and you'll both stop following each other.`)) return;
+          try {
+            await api.blockUser(profile.id);
+            await Promise.allSettled([
+              api.unfollow(state.user.id, profile.id),
+              api.unfollow(profile.id, state.user.id),
+            ]);
+            api.invalidateBlockedCache();
+            toast(`Blocked @${profile.username}.`, 'success');
+            navigate('/feed');
+          } catch (err) {
+            toast(err.message || 'Could not block that user.', 'error');
+          }
+        }
       });
-    });
-
-    qs('#block-user', body)?.addEventListener('click', async () => {
-      // Blocking also unfollows in both directions — leaving a follow
-      // edge in place after a block means the person you blocked keeps
-      // appearing in your feed, which defeats the point.
-      if (!confirm(`Block @${profile.username}? You won't see their reviews, and you'll both stop following each other.`)) return;
-      try {
-        await api.blockUser(profile.id);
-        await Promise.allSettled([
-          api.unfollow(state.user.id, profile.id),
-          api.unfollow(profile.id, state.user.id),
-        ]);
-        api.invalidateBlockedCache();
-        toast(`Blocked @${profile.username}.`, 'success');
-        navigate('/feed');
-      } catch (err) {
-        toast(err.message || 'Could not block that user.', 'error');
-      }
     });
 
     setCached(cacheKey, body.innerHTML);

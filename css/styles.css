@@ -538,9 +538,18 @@ ul { list-style: none; margin: 0; padding: 0; }
    justify-items, not a negative margin — so what lines up is the MARK,
    not the invisible 38px box around it. The box stays 38px because that
    is the touch target. */
+/* position: fixed, not absolute (2026-09-26) — see the long comment in
+   profile-view.js above where .profile-top is built for why. Same
+   technique .tabbar already uses to stay pinned regardless of what
+   scrolls underneath it: fixed to the viewport, centred and capped to
+   #app's own width via left:50%/transform rather than left/right
+   insets, so it's correct on a full-width phone AND a wide desktop
+   browser where #app is a centred column. */
 .profile-top {
-  position: absolute; top: calc(var(--safe-top) + 8px);
-  left: var(--gutter); right: var(--gutter);
+  position: fixed; top: calc(var(--safe-top) + 8px);
+  left: 50%; right: auto; transform: translateX(-50%);
+  width: 100%; max-width: 560px; box-sizing: border-box;
+  padding: 0 var(--gutter);
   display: flex; align-items: center; gap: 10px; z-index: 5;
   transition: opacity var(--dur) var(--ease);
 }
@@ -2358,38 +2367,25 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
    node with a smaller word vertical-aligned against it — same
    construction the pronoun used to use here, before hours took its
    spot. gap does the spacing a margin used to. */
-/* The NAME sits dead-centre under the avatar, and the hours hang off
-   its right. A flex row centred the name+hours pair as one unit, which
-   pushed the name itself left of centre by half the hours' width. Here
-   the two outer columns are equal (1fr each), so column 2 — the name —
-   is always centred on the page; the hours sit in column 3, and column
-   1 is deliberately empty to balance it. align-self: stretch because
-   the hero is a centred flex column, which would otherwise shrink the
-   h1 to its content and leave the 1fr columns no room at all. */
-.profile-header--hero h1 {
-  display: grid; grid-template-columns: 1fr auto 1fr; align-items: baseline;
-  column-gap: 8px; margin: 0; align-self: stretch;
-}
-.profile-header--hero h1 .profile-header__name-text { grid-column: 2; }
-.profile-header--hero h1 .profile-header__hours-inline { grid-column: 3; justify-self: start; }
-/* Manrope at its heaviest, not the light --weight-heading this used to
-   carry and not Unbounded either. Bold gives the name the weight the
-   sketch draws it with while staying in the app's one UI typeface, and
-   without Unbounded's width — which is what forced the size down to
-   26px and would do so again. */
+/* h1 IS the name now — nothing else lives inside it, so a plain
+   centred block is all it needs (the hours line below is its own
+   sibling <p>, not a second grid column). Manrope at its heaviest, not
+   the light --weight-heading this used to carry and not Unbounded
+   either. Sized down a little from 33px — still the loudest thing in
+   the header, just not quite as loud. */
 .profile-header__name-text {
+  margin: 0;
   font-family: var(--font-display); font-weight: var(--weight-black);
-  font-size: 33px; letter-spacing: -0.025em; line-height: 1.15;
+  font-size: 28px; letter-spacing: -0.025em; line-height: 1.15;
 }
-/* Same face as the top bar's own handle, small and dim so it reads as
-   an aside on the name rather than part of it — the exact role the
-   pronoun used to fill in this spot. */
+/* Below the name now, not beside it — small and dim, the same role a
+   caption under a heading plays anywhere else in the app. */
 .profile-header__hours-inline {
-  font-family: var(--font-brand); font-size: 13px; font-weight: 700;
-  color: var(--ink-dim); letter-spacing: -0.01em;
+  display: block; margin-top: 3px;
+  font-family: var(--font-brand); font-size: 11px; font-weight: 700;
+  color: var(--ink-faint); letter-spacing: -0.01em;
   font-variant-numeric: tabular-nums;
 }
-.profile-header--hero .profile-header__username { margin-top: 0; }
 /* The bio and its toggle move together, so the wrapper carries the
    width and the spacing the bio itself used to. */
 .profile-header--hero .profile-header__bio-wrap {
