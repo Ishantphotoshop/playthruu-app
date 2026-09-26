@@ -2361,7 +2361,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
      higher than the 50px it was first given for that bar. */
   padding: 34px 0 28px;
 }
-.profile-header--hero .avatar { width: 108px; height: 108px; margin-bottom: 4px; box-shadow: 0 0 0 3px var(--surface); }
+.profile-header--hero .avatar { width: 92px; height: 92px; margin-bottom: 4px; box-shadow: 0 0 0 3px var(--surface); }
 /* The name and the small hours figure beside it are two flex children
    sharing one baseline (align-items: baseline) rather than one text
    node with a smaller word vertical-aligned against it — same
