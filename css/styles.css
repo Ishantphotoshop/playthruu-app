@@ -549,7 +549,12 @@ ul { list-style: none; margin: 0; padding: 0; }
   position: fixed; top: calc(var(--safe-top) + 8px);
   left: 50%; right: auto; transform: translateX(-50%);
   width: 100%; max-width: 560px; box-sizing: border-box;
-  padding: 0 var(--gutter);
+  padding: 0 var(--gutter) 10px;
+  /* A hairline under the bar, the same token every other divider in
+     the app uses — the page behind it still shows through (the bar
+     has no background fill of its own), so this reads as the bar's
+     own edge rather than a filled header strip. */
+  border-bottom: 1px solid var(--line);
   display: flex; align-items: center; gap: 10px; z-index: 5;
   transition: opacity var(--dur) var(--ease);
 }
