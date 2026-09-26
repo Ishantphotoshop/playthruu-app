@@ -57,9 +57,10 @@ export function posterFrame(coverUrl, title, extraClass = '', { tag = 'span', hr
   // The skeleton shimmer behind the image (.poster-frame::after) stays:
   // it costs no request, sits BEHIND both layers, and is covered the
   // instant the cover paints.
-  const fail = `this.onerror=null;this.src='${fallback}'`;
+  const fail = `this.onerror=null;this.src='${fallback}';this.classList.add('is-loaded')`;
+  const reveal = `this.classList.add('is-loaded')`;
   return `<${tag} ${attrs} ${id ? `id="${esc(id)}"` : ''} class="poster-frame ${extraClass}">
-    <img class="poster-frame__img" src="${esc(sharp)}" alt="${esc(title)} cover" loading="lazy" decoding="async" onerror="${fail}">
+    <img class="poster-frame__img" src="${esc(sharp)}" alt="${esc(title)} cover" loading="lazy" decoding="async" onload="${reveal}" onerror="${fail}">
   </${tag}>`;
 }
 
@@ -227,7 +228,6 @@ export function topBar(title, { back = false, right = '', home = false, wordmark
   if (home) {
     return `
       <header class="topbar topbar--home">
-        <img src="icons/mark-blue.svg" alt="PlayThruu" class="topbar__mark">
         ${wordmark ? `<span class="topbar__logo">PlayThruu</span>` : ''}
         ${right ? `<div class="topbar__right topbar__right--home">${right}</div>` : ''}
       </header>`;
@@ -527,7 +527,7 @@ export function wireTrendingStrip(container, games, { onSelect }) {
 // alongside the stars (all independent — someone can rate AND love AND
 // review the same log), each its own small icon so every combination
 // stays legible instead of trying to cram one composite glyph.
-function cardWho(profile, rating, { playing = false, loved = false, hasReview = false } = {}) {
+function cardWho(profile, rating, { playing = false, replayed = false, hasReview = false } = {}) {
   const bits = [];
   if (playing) {
     // No "Playing" label on the card itself. Both places these appear
@@ -536,8 +536,11 @@ function cardWho(profile, rating, { playing = false, loved = false, hasReview = 
     // printed twice on every tile — and it was the thing making that
     // row taller and busier than the ones around it.
   } else {
-    if (rating) bits.push(starRow(rating, { size: 12 }));
-    if (loved) bits.push(`<span class="card-who__icon card-who__icon--loved">${iconHeartFilled()}</span>`);
+    if (rating) bits.push(starRow(rating, { size: 14 }));
+    // Whether it's loved only shows on the review page itself — not
+    // here in the feed byline. A relog shows instead, since it's the
+    // thing that's actually new about this particular log entry.
+    if (replayed) bits.push(`<span class="card-who__icon card-who__icon--replayed">${iconReplay()}</span>`);
     if (hasReview) bits.push(`<span class="card-who__icon card-who__icon--review">${iconReviewLines()}</span>`);
   }
   // The second line is rendered even when it is empty — that reserve is
@@ -583,7 +586,7 @@ export function friendsPlayingCard(entry) {
       <a href="#/review/${entry.logId}" class="friend-card__poster" aria-label="Open ${esc(f.display_name || f.username)}'s log of ${esc(g.title)}">
         ${posterFrame(g.cover_url, g.title, 'friend-card__cover')}
       </a>
-      ${cardWho(f, entry.rating, { loved: entry.loved, hasReview: entry.hasReview })}
+      ${cardWho(f, entry.rating, { replayed: entry.isReplay, hasReview: entry.hasReview })}
     </div>`;
 }
 
@@ -913,6 +916,9 @@ export function iconMessage() { return `<svg viewBox="0 0 24 24" fill="none" str
 // to match the star fill. viewBox cropped tight to the lines so it fills
 // its box and sits close to the heart, matching the star rhythm.
 export function iconReviewLines() { return `<svg viewBox="4 5 15 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 7h13M5 12h13M5 17h8"/></svg>`; }
+// The "relogged this" mark on activity cards: a circular arrow, same
+// stroke language as the rest of the set, for a log where is_replay is set.
+export function iconReplay() { return `<svg viewBox="2 2 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12a7 7 0 1 1-2.34-5.23"/><path d="M19 4v4h-4"/></svg>`; }
 export function iconSend() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12 20 4.5 15 19.5l-3.4-6.8L4.5 12z"/><path d="M11.6 12.7 15 19.5"/></svg>`; }
 export function iconTrash() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h14M9.5 7V5a1.5 1.5 0 0 1 1.5-1.5h2A1.5 1.5 0 0 1 14.5 5v2M6.5 7l1 12.5A1.5 1.5 0 0 0 9 21h6a1.5 1.5 0 0 0 1.5-1.5L17.5 7"/><path d="M10 11v6M14 11v6"/></svg>`; }
 export function iconDotsMenu() { return `<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="12" cy="5.5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="18.5" r="1.8"/></svg>`; }

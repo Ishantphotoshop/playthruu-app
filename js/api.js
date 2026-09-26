@@ -1533,7 +1533,7 @@ export async function getFriendsPlaying(userId, limit = 12) {
   // that's the social hook the feed is built around.
   const { data, error } = await supabase
     .from('logs')
-    .select('id, game_id, status, rating, loved, review, contains_spoilers, created_at, games!logs_game_id_fkey(*), profiles!logs_user_id_fkey(*)')
+    .select('id, game_id, status, rating, loved, review, is_replay, contains_spoilers, created_at, games!logs_game_id_fkey(*), profiles!logs_user_id_fkey(*)')
     .in('user_id', followingIds)
     .eq('status', 'played') // NOT 'playing' too — that's what "Currently Playing" shows, kept separate on purpose
     .eq('is_public', true)
@@ -1548,6 +1548,7 @@ export async function getFriendsPlaying(userId, limit = 12) {
     rating: row.rating,
     loved: row.loved,
     hasReview: !!row.review,
+    isReplay: !!row.is_replay,
     containsSpoilers: row.contains_spoilers,
   }));
 }

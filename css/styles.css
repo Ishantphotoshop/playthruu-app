@@ -698,7 +698,7 @@ ul { list-style: none; margin: 0; padding: 0; }
 /* Tight tracking, not the wide letter-spacing this used to carry —
    a bold wordmark sitting close to its mark reads as one confident
    lockup; spread out, it read as two unrelated pieces. */
-.topbar--home .topbar__logo { font-size: 25px; letter-spacing: -0.01em; }
+.topbar--home .topbar__logo { font-size: 19px; letter-spacing: -0.01em; }
 .topbar__mark { width: 28px; height: 28px; border-radius: 8px; flex-shrink: 0; }
 /* Flat, bold, and the plain theme ink — matches the actual "PlayThruu"
    brand mark exactly (see icons/mark-blue.svg) rather than a decorative
@@ -1165,6 +1165,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   background: var(--surface); border: 1.5px solid var(--line); border-radius: 50%;
   color: var(--ink); transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
 }
+.filter-btn--sm { width: 32px; height: 32px; }
 /* Search's filter button sits beside the search bar (not the feed's
    small "change collection" chip, which stays --sm) — matched to the
    search input's fixed 46px height so the two read as one control. */
@@ -1175,6 +1176,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    This small nudge is optical correction on top of that, not undoing
    it. */
 .filter-btn svg, .filter-btn--sm svg { width: 20px; height: 20px; transform: translate(0.29px, 1.29px); }
+.filter-btn--sm svg { width: 16px; height: 16px; }
 .filter-btn:active, .filter-btn--sm:active { transform: scale(0.94); background: var(--surface-raised); }
 
 /* --- discovery shelf --- */
@@ -1199,7 +1201,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .discovery-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-3);
+  gap: var(--space-2);
 }
 /* The Browse screen on the signed-out landing funnel only — 4 across
    instead of 3, scoped here rather than changing .discovery-grid
@@ -1209,7 +1211,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .discovery-tile {
   position: relative;
   width: 100%; padding: 0; background: none; border: none; display: block;
-  border-radius: var(--radius-s);
+  border-radius: 5px;
   transition: transform var(--dur) var(--ease);
 }
 .discovery-tile:active { transform: scale(0.94); }
@@ -1267,7 +1269,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .recent-search-row__content span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .discovery-tile__cover {
   width: 100%; aspect-ratio: var(--ratio-card); display: block;
-  border-radius: var(--radius-s); background: var(--surface);
+  border-radius: 5px; background: var(--surface);
   box-shadow: var(--shadow-card); transition: box-shadow var(--dur) var(--ease);
 }
 .discovery-tile:hover { transform: translateY(-4px) scale(1.03); }
@@ -1275,7 +1277,10 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .discovery-tile:focus-visible { outline: none; transform: translateY(-4px) scale(1.03); }
 .discovery-tile:focus-visible .discovery-tile__cover { box-shadow: var(--glow-focus); }
 .discovery-tile:focus-visible .discovery-tile__cover { box-shadow: var(--glow-focus); }
-.skeleton--tile { width: 100%; aspect-ratio: var(--ratio-card); border-radius: var(--radius-s); }
+.skeleton--tile {
+  width: 100%; aspect-ratio: var(--ratio-card); border-radius: 5px;
+  border: 1px solid rgba(255,255,255,0.10);
+}
 /* Zero-height marker the observer watches; rootMargin gives it a 400px
    head start so the next page is already arriving before you reach the
    end and the list never visibly stalls. */
@@ -1501,15 +1506,15 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    elements, plus a slight gap inside the star run so the stars sit a touch
    looser than flush (flex gap, not a per-star margin — that rounded
    unevenly before). */
-.card-who__stars { display: flex; align-items: center; gap: 3px; min-height: 14px; line-height: 14px; }
-.card-who__stars .stars { gap: 1.5px; }
+.card-who__stars { display: flex; align-items: center; gap: 15px; min-height: 14px; line-height: 14px; }
+.card-who__stars .stars { gap: 0; }
 /* Loved + review marks: a touch smaller than the 12px stars, tight
    viewBoxes (see components.js) so the glyphs fill their box like a star
    does, and coloured off the same --star-fill so the whole row is one
    colour and reads as one evenly-spaced group. */
 .card-who__icon { width: 10px; height: 10px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
 .card-who__icon svg { width: 100%; height: 100%; display: block; }
-.card-who__icon--loved { color: var(--coral); }
+.card-who__icon--replayed { color: var(--star-fill); }
 .card-who__icon--review { color: var(--star-fill); }
 /* Phone: these feed cards are far narrower than on desktop, so the whole
    row is sized down to fit. The widest case — 5 stars + loved + review —
@@ -1527,25 +1532,23 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
      ran straight into the heart, and the heart into the review lines,
      so the three read as one smudge. The padding that was doing this
      job invisibly is now doing it on purpose. */
-  .card-who__stars { gap: 3px; }
-  /* A real 1px between stars, now that the glyph has no margin of its
-     own to hide behind. This is board 03 of the spacing set. */
-  .card-who__stars .stars { gap: 1px; }
+  .card-who__stars { gap: 15px; }
+  /* Stars touch — no gap of their own — now that the loved icon is gone
+     from this row (only shows on the review page itself), which frees
+     up the width the 15px group gaps spend. */
+  .card-who__stars .stars { gap: 0; }
   /* The SIZE TOKEN, not a literal width: the half-star rule derives its
      width from --star-size, so overriding .star's width here left the
-     halves sized off a value the full stars no longer used (10px full
-     against a 6px half).
+     halves sized off a value the full stars no longer used.
 
-     !important because starRow() writes style="--star-size:12px"
+     !important because starRow() writes style="--star-size:14px"
      inline on .stars, and an inline custom property beats any selector.
      The alternative is overriding .star's width AND .star--half's width
      separately, which is two places to keep in step and is exactly the
      drift that produced the mismatch above. */
-  .card-who__stars .stars { --star-size: 10px !important; }
-  /* Matched to the star height. At 9px they read as undersized next
-     to stars that now fill their full 10px box, where before the
-     stars' own margin made the two look the same size. */
-  .card-who__icon { width: 10px; height: 10px; }
+  .card-who__stars .stars { --star-size: 12px !important; }
+  /* Matched to the star height. */
+  .card-who__icon { width: 11px; height: 11px; }
 }
 /* Currently Playing's footer, in place of a rating that can never
    exist there (the game isn't finished) — a small pulsing dot instead
@@ -1944,6 +1947,11 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .poster-frame__img {
   position: relative; z-index: 1; width: 100%; height: 100%;
   object-fit: cover;
+  opacity: 0; transition: opacity 0.35s ease;
+}
+.poster-frame__img.is-loaded { opacity: 1; }
+@media (prefers-reduced-motion: reduce) {
+  .poster-frame__img { transition: none; }
 }
 /* A big grid of these lazy-loads at once, and the browser trickles
    through them at its own pace. This sweep sits BEHIND both image
@@ -2599,7 +2607,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
    mark the wordmark uses. */
 .section-heading {
   font-family: var(--font-brand); font-weight: 700;
-  font-size: var(--text-heading); letter-spacing: -0.01em;
+  font-size: 16px; letter-spacing: -0.01em;
   color: var(--ink); margin: var(--space-4) 0 12px;
 }
 /* "Trending now" is the very first thing in the scroll area — its own
@@ -2664,7 +2672,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 #feed-body .feed-section-head { margin-top: var(--space-4); }
 #feed-body #trending-section .feed-section-head { margin-top: 0; }
 #feed-body .feed-section-head .section-heading { margin-top: 0; margin-bottom: 0; }
-#feed-body .feed-section-head { margin-bottom: 12px; }
+#feed-body .feed-section-head { margin-bottom: 8px; }
 .see-more-link { font-size: 12.5px; font-weight: 700; color: var(--accent-bright); flex-shrink: 0; }
 /* Icon-only "see more" for the three feed strips (see feedSectionHead()
    in components.js) — deliberately plainer than .see-more-link's text +
@@ -2679,7 +2687,6 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
   display: flex; align-items: center; justify-content: center;
   width: 34px; height: 34px; margin: -4px -8px -4px 0; flex-shrink: 0;
   color: var(--ink-dim);
-  transform: translateY(-4px);
 }
 .see-more-icon svg { width: 18px; height: 18px; }
 
@@ -6355,7 +6362,7 @@ a.gd-credit__name { text-decoration: none; }
   background: none; border: none; color: var(--ink); cursor: pointer;
 }
 .foryou-card:active { transform: scale(0.97); }
-.foryou-card__cover { width: 100%; border-radius: 10px; overflow: hidden; }
+.foryou-card__cover { width: 100%; border-radius: 5px; overflow: hidden; aspect-ratio: var(--ratio-card); }
 .foryou-card__cover img { width: 100%; display: block; }
 
 /* The group's rules, shown under its name in the info sheet. Set by the
