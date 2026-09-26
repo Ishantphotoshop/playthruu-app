@@ -545,12 +545,13 @@ ul { list-style: none; margin: 0; padding: 0; }
   transition: opacity var(--dur) var(--ease);
 }
 .profile-top--pending { opacity: 0; pointer-events: none; }
+/* Extra large, from the size review: 38px -> 50px, icon 19px -> 24px. */
 .profile-top__btn {
-  width: 38px; height: 38px; flex-shrink: 0; padding: 0;
+  width: 50px; height: 50px; flex-shrink: 0; padding: 0;
   display: grid; place-items: center;
   background: none; border: none; color: var(--ink); cursor: pointer;
 }
-.profile-top__btn svg { width: 19px; height: 19px; }
+.profile-top__btn svg { width: 24px; height: 24px; }
 /* Three slots now, not two: the menu on the left, the handle centred
    between the two buttons, settings on the right — the handle is the
    @userid, a secondary identifier, not the main name (that's the h1
@@ -560,7 +561,7 @@ ul { list-style: none; margin: 0; padding: 0; }
 .profile-top__name {
   flex: 1; text-align: center;
   font-family: var(--font-brand); font-weight: 700;
-  font-size: 14px; letter-spacing: -0.01em; line-height: 1.25;
+  font-size: 17px; letter-spacing: -0.01em; line-height: 1.25;
   color: var(--ink-faint); min-width: 0; overflow: hidden;
   text-overflow: ellipsis; white-space: nowrap;
 }
@@ -2335,10 +2336,12 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
   gap: 4px;
   /* 8px before. The two corner controls sit on the 8px line above, and
      with the chips gone there is nothing to separate them from the
-     face but space. */
-  padding: 36px 0 28px;
+     face but space. Bumped 36->50 for the extra-large top-bar buttons
+     (50px, up from 38px) — the bar's own footprint grew, so the
+     avatar needs the extra room to clear it. */
+  padding: 50px 0 28px;
 }
-.profile-header--hero .avatar { width: 96px; height: 96px; margin-bottom: 4px; box-shadow: 0 0 0 3px var(--surface); }
+.profile-header--hero .avatar { width: 108px; height: 108px; margin-bottom: 4px; box-shadow: 0 0 0 3px var(--surface); }
 /* The name and the small hours figure beside it are two flex children
    sharing one baseline (align-items: baseline) rather than one text
    node with a smaller word vertical-aligned against it — same
@@ -2355,7 +2358,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
    26px and would do so again. */
 .profile-header__name-text {
   font-family: var(--font-display); font-weight: var(--weight-black);
-  font-size: 30px; letter-spacing: -0.025em; line-height: 1.15;
+  font-size: 33px; letter-spacing: -0.025em; line-height: 1.15;
 }
 /* Same face as the top bar's own handle, small and dim so it reads as
    an aside on the name rather than part of it — the exact role the

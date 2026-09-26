@@ -167,11 +167,11 @@ export async function renderProfileView(root, { username }) {
     body.innerHTML = `
       <div class="profile-header profile-header--hero">
         <button class="profile-header__avatar-btn" id="avatar-enlarge" aria-label="View profile photo">
-          ${avatarImg(profile, 96)}
+          ${avatarImg(profile, 108)}
         </button>
         <h1>
           <span class="profile-header__name-text">${esc(profile.display_name || profile.username)}</span>
-          ${stats.totalHours > 0 ? `<span class="profile-header__hours-inline">${stats.totalHours.toLocaleString('en-US')}h</span>` : ''}
+          ${stats.totalHours > 0 ? `<span class="profile-header__hours-inline">(${stats.totalHours.toLocaleString('en-US')}h)</span>` : ''}
         </h1>
         ${isOwn ? '' : `<p class="profile-header__username">@${esc(profile.username)}</p>`}
         ${profile.bio ? `
