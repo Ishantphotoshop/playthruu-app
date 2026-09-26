@@ -115,11 +115,9 @@ export async function renderProfileView(root, { username }) {
   root.innerHTML = (isOwn ? '' : topBar(username, { back: true })) +
     (isOwn ? `
       <div class="profile-top profile-top--masthead${cachedProfile ? '' : ' profile-top--pending'}">
+        <button type="button" class="profile-top__btn" id="profile-menu" aria-label="More">${iconDotsMenu()}</button>
         <span class="profile-top__name">@${esc(username)}</span>
-        <span class="profile-top__actions">
-          <a class="profile-top__btn" href="#/settings" aria-label="Settings">${iconSettings()}</a>
-          <button type="button" class="profile-top__btn" id="profile-menu" aria-label="More">${iconDotsMenu()}</button>
-        </span>
+        <a class="profile-top__btn" href="#/settings" aria-label="Settings">${iconSettings()}</a>
       </div>` : '') +
     `<div class="view-body${isOwn ? ' view-body--no-topbar' : ''}" id="profile-body">
        ${cachedProfile || spinner()}
@@ -161,15 +159,20 @@ export async function renderProfileView(root, { username }) {
     // computed below via stats.streak (see getUserStats/computeLogStreak
     // in api.js) and the CSS for .profile-header__streak is untouched.
     // Bringing the badge back is restoring the conditional span this used
-    // to render next to the hours pill in .profile-header__badges below —
-    // nothing else to rebuild.
+    // to render alongside the hours badge — which has since moved from
+    // its own pill (.profile-header__badges/.profile-header__hours,
+    // 2026-09-26; still in styles.css, also unused now) to sitting
+    // inline next to the name (.profile-header__hours-inline, below).
 
     body.innerHTML = `
       <div class="profile-header profile-header--hero">
         <button class="profile-header__avatar-btn" id="avatar-enlarge" aria-label="View profile photo">
           ${avatarImg(profile, 96)}
         </button>
-        <h1><span class="profile-header__name-text">${esc(profile.display_name || profile.username)}</span></h1>
+        <h1>
+          <span class="profile-header__name-text">${esc(profile.display_name || profile.username)}</span>
+          ${stats.totalHours > 0 ? `<span class="profile-header__hours-inline">${stats.totalHours.toLocaleString('en-US')}h</span>` : ''}
+        </h1>
         ${isOwn ? '' : `<p class="profile-header__username">@${esc(profile.username)}</p>`}
         ${profile.bio ? `
           <div class="profile-header__bio-wrap">
@@ -177,10 +180,6 @@ export async function renderProfileView(root, { username }) {
             <button type="button" class="profile-header__bio-more" id="profile-bio-more"
                     aria-controls="profile-bio" aria-expanded="false"
                     aria-label="Show full bio" hidden><span></span><span></span><span></span></button>
-          </div>` : ''}
-        ${stats.totalHours > 0 ? `
-          <div class="profile-header__badges">
-            <span class="profile-header__hours">${stats.totalHours.toLocaleString('en-US')}h logged</span>
           </div>` : ''}
         <div class="profile-header__stats">
           <a href="#/profile/${esc(profile.username)}/log-list/logged" class="profile-header__stat"><b>${stats.logged}</b><span>Games</span></a>
