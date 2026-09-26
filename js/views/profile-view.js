@@ -157,6 +157,13 @@ export async function renderProfileView(root, { username }) {
         })
       : diary.slice(0, SHOWCASE_MAX).map((l) => ({ game: l.games, rating: l.rating, reviewed: !!l.review }));
 
+    // Streak archived, not deleted (2026-09-26) — the number is still
+    // computed below via stats.streak (see getUserStats/computeLogStreak
+    // in api.js) and the CSS for .profile-header__streak is untouched.
+    // Bringing the badge back is restoring the conditional span this used
+    // to render next to the hours pill in .profile-header__badges below —
+    // nothing else to rebuild.
+
     body.innerHTML = `
       <div class="profile-header profile-header--hero">
         <button class="profile-header__avatar-btn" id="avatar-enlarge" aria-label="View profile photo">
@@ -171,10 +178,9 @@ export async function renderProfileView(root, { username }) {
                     aria-controls="profile-bio" aria-expanded="false"
                     aria-label="Show full bio" hidden><span></span><span></span><span></span></button>
           </div>` : ''}
-        ${stats.totalHours > 0 || stats.streak >= 2 ? `
+        ${stats.totalHours > 0 ? `
           <div class="profile-header__badges">
-            ${stats.totalHours > 0 ? `<span class="profile-header__hours">${stats.totalHours.toLocaleString('en-US')}h logged</span>` : ''}
-            ${stats.streak >= 2 ? `<span class="profile-header__streak">${iconFlame()}${stats.streak} day streak</span>` : ''}
+            <span class="profile-header__hours">${stats.totalHours.toLocaleString('en-US')}h logged</span>
           </div>` : ''}
         ${!isOwn && state.user
           ? `<div class="profile-header__actions">
