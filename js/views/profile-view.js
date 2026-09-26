@@ -182,6 +182,11 @@ export async function renderProfileView(root, { username }) {
           <div class="profile-header__badges">
             <span class="profile-header__hours">${stats.totalHours.toLocaleString('en-US')}h logged</span>
           </div>` : ''}
+        <div class="profile-header__stats">
+          <a href="#/profile/${esc(profile.username)}/log-list/logged" class="profile-header__stat"><b>${stats.logged}</b><span>Games</span></a>
+          <a href="#/profile/${esc(profile.username)}/followers" class="profile-header__stat"><b>${counts.followers}</b><span>Followers</span></a>
+          <a href="#/profile/${esc(profile.username)}/following" class="profile-header__stat"><b>${counts.following}</b><span>Following</span></a>
+        </div>
         ${!isOwn && state.user
           ? `<div class="profile-header__actions">
                <button class="btn ${following ? 'btn--ghost' : 'btn--accent'}" id="follow-btn" data-following="${following}">${following ? 'Following' : 'Follow'}</button>
@@ -267,8 +272,6 @@ export async function renderProfileView(root, { username }) {
         <a href="#/profile/${esc(profile.username)}/log-list/logged" class="stat-link"><b>${stats.logged}</b><span>Logged</span></a>
         <a href="#/profile/${esc(profile.username)}/log-list/reviews" class="stat-link"><b>${stats.reviews}</b><span>Reviews</span></a>
         <button type="button" class="stat-link" data-jump-tab="wanttoplay"><b>${stats.backlog}</b><span>Want to Play</span></button>
-        <a href="#/profile/${esc(profile.username)}/followers" class="stat-link"><b>${counts.followers}</b><span>Followers</span></a>
-        <a href="#/profile/${esc(profile.username)}/following" class="stat-link"><b>${counts.following}</b><span>Following</span></a>
       </div>
     `;
 
