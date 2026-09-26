@@ -3,7 +3,7 @@ import { state } from '../state.js';
 import { MESSENGER_ARCHIVED } from '../config.js';
 import {
   topBar, navBar, spinner, avatarImg, gameCard, showcaseGrid, SHOWCASE_MAX, ratingHistogram, wireRatingHistogram, posterFrame,
-  emptyState, iconStamp, iconSettings, iconShare, iconQr, iconClose, iconSearch, iconPlus, listCard, iconFlame, iconMessage, iconDotsMenu,
+  emptyState, iconStamp, iconSettings, iconShare, iconCurvedShare, iconQr, iconClose, iconSearch, iconPlus, listCard, iconFlame, iconMessage,
   combinedGameResults, wireCombinedGameResults, openReportSheet, iconFlag, iconBlock,
 } from '../components.js';
 import { esc, formatDate, statusStamp, starRow, qs, qsa, toast, debounce, pulseLogTab, igdbSized, enableSwipeToDismiss } from '../utils.js';
@@ -115,7 +115,7 @@ export async function renderProfileView(root, { username }) {
   root.innerHTML = (isOwn ? '' : topBar(username, { back: true })) +
     (isOwn ? `
       <div class="profile-top profile-top--masthead${cachedProfile ? '' : ' profile-top--pending'}">
-        <button type="button" class="profile-top__btn" id="profile-menu" aria-label="More">${iconDotsMenu()}</button>
+        <button type="button" class="profile-top__btn" id="profile-menu" aria-label="Share">${iconCurvedShare()}</button>
         <span class="profile-top__name">@${esc(username)}</span>
         <a class="profile-top__btn" href="#/settings" aria-label="Settings">${iconSettings()}</a>
       </div>` : '') +
