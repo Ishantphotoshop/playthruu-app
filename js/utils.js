@@ -23,7 +23,7 @@ export function esc(str) {
 // actually has something to show (full or half) — a plain display
 // isn't a fixed "X out of 5" scale, so trailing empty stars there were
 // just visual noise, not information.
-export function starRow(rating, { interactive = false, size = 18, count: fixedCount } = {}) {
+export function starRow(rating, { interactive = false, size = 18, count: fixedCount, round = false } = {}) {
   const r = Number(rating) || 0;
   // Fixed callers (a single held bar being swapped in and out of the
   // same slot) pass `count` explicitly so the row is always 5 glyphs
@@ -33,9 +33,15 @@ export function starRow(rating, { interactive = false, size = 18, count: fixedCo
   // changes. Everywhere else keeps the old "just enough stars for this
   // rating" compact look, which is deliberate there.
   const count = fixedCount ?? (interactive ? 5 : Math.ceil(r));
+  // `round` skips the half-star glyph entirely (nearest whole star,
+  // full or empty) — for a badge this small, the clip-path/mask half
+  // star doesn't hold its shape, so this trades half-star precision
+  // for a glyph that actually renders clean at that size.
   let html = `<span class="stars${interactive ? ' stars--interactive' : ''}" style="--star-size:${size}px" data-rating="${r}">`;
   for (let i = 1; i <= count; i++) {
-    const fill = r >= i ? 'full' : r >= i - 0.5 ? 'half' : 'empty';
+    const fill = round
+      ? (Math.round(r) >= i ? 'full' : 'empty')
+      : (r >= i ? 'full' : r >= i - 0.5 ? 'half' : 'empty');
     html += `<span class="star star--${fill}" data-star="${i}" aria-hidden="true"></span>`;
   }
   html += `</span>`;
