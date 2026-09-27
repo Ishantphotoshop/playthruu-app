@@ -1508,8 +1508,6 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    unevenly before). */
 .card-who__stars {
   display: flex; align-items: center; gap: 6px; min-height: 14px; line-height: 14px;
-  background: var(--surface-raised); border-radius: 999px; padding: 3px 7px;
-  width: fit-content;
 }
 .card-who__stars .stars { gap: 0; }
 /* Loved + review marks: a touch smaller than the 12px stars, tight
