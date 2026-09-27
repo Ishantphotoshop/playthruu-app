@@ -1507,14 +1507,14 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    looser than flush (flex gap, not a per-star margin — that rounded
    unevenly before). */
 .card-who__stars {
-  display: flex; align-items: center; gap: 6px; min-height: 14px; line-height: 14px;
+  display: flex; align-items: center; gap: 4px; min-height: 14px; line-height: 14px;
 }
 .card-who__stars .stars { gap: 0; }
 /* Loved + review marks: a touch smaller than the 12px stars, tight
    viewBoxes (see components.js) so the glyphs fill their box like a star
    does, and coloured off the same --star-fill so the whole row is one
    colour and reads as one evenly-spaced group. */
-.card-who__icon { width: 10px; height: 10px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+.card-who__icon { width: 11px; height: 11px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
 .card-who__icon svg { width: 100%; height: 100%; display: block; }
 .card-who__icon--replayed { color: var(--star-fill); }
 .card-who__icon--review { color: var(--star-fill); }
@@ -1534,7 +1534,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
      ran straight into the heart, and the heart into the review lines,
      so the three read as one smudge. The padding that was doing this
      job invisibly is now doing it on purpose. */
-  .card-who__stars { gap: 6px; }
+  .card-who__stars { gap: 4px; }
   /* Stars touch — no gap of their own — now that the loved icon is gone
      from this row (only shows on the review page itself), which frees
      up the width the 15px group gaps spend. */
@@ -1550,7 +1550,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
      drift that produced the mismatch above. */
   .card-who__stars .stars { --star-size: 10px !important; }
   /* Matched to the star height. */
-  .card-who__icon { width: 11px; height: 11px; }
+  .card-who__icon { width: 10px; height: 10px; }
 }
 /* Currently Playing's footer, in place of a rating that can never
    exist there (the game isn't finished) — a small pulsing dot instead
