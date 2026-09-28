@@ -1441,7 +1441,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    poster's width so nothing spills past the card edge. */
 .friend-card__poster, .activity-card__poster { display: block; }
 .card-who {
-  display: flex; align-items: center; gap: 5px; margin-top: 8px;
+  display: flex; align-items: center; gap: 5px; margin-top: 5px;
   width: var(--feed-card-w, 140px); max-width: var(--feed-card-w, 140px); /* == poster width, so it never overflows */
 }
 /* Every card in the row is the SAME width (--feed-card-w) — there's no
@@ -1507,7 +1507,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    looser than flush (flex gap, not a per-star margin — that rounded
    unevenly before). */
 .card-who__stars {
-  display: flex; align-items: center; gap: 4px; min-height: 14px; line-height: 14px;
+  display: flex; align-items: center; gap: 3px; min-height: 14px; line-height: 14px;
   max-width: 100%; flex-shrink: 1; min-width: 0;
 }
 .card-who__stars .stars { gap: 0; transform: translateY(-0.5px); }
@@ -1535,7 +1535,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
      ran straight into the heart, and the heart into the review lines,
      so the three read as one smudge. The padding that was doing this
      job invisibly is now doing it on purpose. */
-  .card-who__stars { gap: 4px; }
+  .card-who__stars { gap: 3px; }
   /* Stars touch — no gap of their own — now that the loved icon is gone
      from this row (only shows on the review page itself), which frees
      up the width the 15px group gaps spend. */
