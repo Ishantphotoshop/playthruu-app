@@ -1470,10 +1470,10 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   :root { --feed-card-w: calc((100vw - 38px) / 3.1); }
   .trending-strip, .foryou-strip { gap: 6px; }
 }
-.card-who .avatar { flex-shrink: 0; border: 0.5px solid rgba(255,255,255,0.14); }
+.card-who .avatar { flex-shrink: 0; border: 0.5px solid rgba(255,255,255,0.07); }
 .card-who__meta { min-width: 0; display: flex; flex-direction: column; gap: 1px; overflow: hidden; }
 .card-who__name {
-  font-size: 12.5px; font-weight: 700; color: var(--ink-dim); line-height: 1.3;
+  font-size: 12px; font-weight: 800; color: var(--ink-dim); line-height: 1.3;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   /* Capitalizes for display only — usernames/display names are stored
      however the person typed them (often lowercase), this doesn't
@@ -1514,7 +1514,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   margin: -2px 0 0 1px;
   max-width: 100%; flex-shrink: 1; min-width: 0;
 }
-.card-who__stars .stars { gap: 0; transform: translateY(-0.5px); }
+.card-who__stars .stars { gap: 1px; transform: translateY(-0.5px); }
 /* Loved + review marks: a touch smaller than the 12px stars, tight
    viewBoxes (see components.js) so the glyphs fill their box like a star
    does, and coloured off the same --star-fill so the whole row is one
@@ -1548,7 +1548,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   /* Stars touch — no gap of their own — now that the loved icon is gone
      from this row (only shows on the review page itself), which frees
      up the width the 15px group gaps spend. */
-  .card-who__stars .stars { gap: 0; transform: translateY(-0.5px); }
+  .card-who__stars .stars { gap: 1px; transform: translateY(-0.5px); }
   /* The SIZE TOKEN, not a literal width: the half-star rule derives its
      width from --star-size, so overriding .star's width here left the
      halves sized off a value the full stars no longer used.
