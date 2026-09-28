@@ -916,9 +916,12 @@ export function iconMessage() { return `<svg viewBox="0 0 24 24" fill="none" str
 // to match the star fill. viewBox cropped tight to the lines so it fills
 // its box and sits close to the heart, matching the star rhythm.
 export function iconReviewLines() { return `<svg viewBox="4 5 15 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 7h13M5 12h13M5 17h8"/></svg>`; }
-// The "relogged this" mark on activity cards: a circular arrow, same
-// stroke language as the rest of the set, for a log where is_replay is set.
-export function iconReplay() { return `<svg viewBox="4 3 16 17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12a7 7 0 1 1-2.34-5.23"/><path d="M19 4v4h-4"/></svg>`; }
+// The "relogged this" mark on activity cards, for a log where is_replay
+// is set: a loop that runs into an arrowhead whose lower barb is the
+// PlayThruu mark's slot. Traced from the user's own drawing. stroke-width
+// sits on the path so the icon-row CSS stroke-width (meant for 24-unit
+// icons) doesn't flatten it.
+export function iconReplay() { return `<svg viewBox="53 24 620 620" fill="none" stroke="currentColor"><path stroke-width="70" stroke-linecap="round" stroke-linejoin="round" d="M 520 482 A 240 240 0 1 1 520 186 L 594 334 M 370 334 L 594 334 L 632 110"/></svg>`; }
 export function iconSend() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12 20 4.5 15 19.5l-3.4-6.8L4.5 12z"/><path d="M11.6 12.7 15 19.5"/></svg>`; }
 export function iconTrash() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h14M9.5 7V5a1.5 1.5 0 0 1 1.5-1.5h2A1.5 1.5 0 0 1 14.5 5v2M6.5 7l1 12.5A1.5 1.5 0 0 0 9 21h6a1.5 1.5 0 0 0 1.5-1.5L17.5 7"/><path d="M10 11v6M14 11v6"/></svg>`; }
 export function iconDotsMenu() { return `<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="12" cy="5.5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="18.5" r="1.8"/></svg>`; }
