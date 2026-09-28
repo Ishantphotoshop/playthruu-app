@@ -860,7 +860,7 @@ export function iconSparkle() { return `<svg viewBox="0 0 24 24" fill="none" str
 // mark is a solid shape.
 export function iconBrandMark() {
   return `<svg viewBox="0 0 120 120" fill="none">
-    <path fill="currentColor" d="M 113.4045,52 A 54,54 0 1,0 113.4045,68 L 64,68 A 8,8 0 0,1 64,52 Z"/>
+    <path fill="currentColor" d="M 110,52.5 L 60,52.5 A 7.5,7.5 0 0,0 60,67.5 L 110,67.5 A 2.9272,2.9272 0 0,1 112.8625,71.0248 A 54,54 0 1,1 112.8625,48.9752 A 2.9272,2.9272 0 0,1 110,52.5 Z"/>
   </svg>`;
 }
 export function iconBack() { return `<svg viewBox="0 0 24 24" fill="none"><path d="M15 19l-7-7 7-7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`; }

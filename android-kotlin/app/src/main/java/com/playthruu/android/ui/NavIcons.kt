@@ -76,10 +76,13 @@ object NavIcons {
     val Brand: ImageVector by lazy {
         ImageVector.Builder("nav_brand", 24.dp, 24.dp, 120f, 120f).apply {
             path(fill = androidx.compose.ui.graphics.SolidColor(Color.Black), pathFillType = PathFillType.NonZero) {
-                moveTo(113.4045f, 52f)
-                arcTo(54f, 54f, 0f, true, true, 113.4045f, 68f)
-                lineTo(64f, 68f)
-                arcToRelative(8f, 8f, 0f, false, true, 0f, -16f)
+                moveTo(110f, 52.5f)
+                lineTo(60f, 52.5f)
+                arcTo(7.5f, 7.5f, 0f, false, false, 60f, 67.5f)
+                lineTo(110f, 67.5f)
+                arcTo(2.9272f, 2.9272f, 0f, false, true, 112.8625f, 71.0248f)
+                arcTo(54f, 54f, 0f, true, true, 112.8625f, 48.9752f)
+                arcTo(2.9272f, 2.9272f, 0f, false, true, 110f, 52.5f)
                 close()
             }
         }.build()
