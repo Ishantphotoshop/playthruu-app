@@ -1508,6 +1508,10 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    unevenly before). */
 .card-who__stars {
   display: flex; align-items: center; gap: 3px; min-height: 14px; line-height: 14px;
+  /* 1px: the name's first letter has ~1px of built-in left bearing at
+     12.5px and the star glyphs have none, so this lines the first star
+     up with the letter's actual edge, not its text box. */
+  margin: -2px 0 0 1px;
   max-width: 100%; flex-shrink: 1; min-width: 0;
 }
 .card-who__stars .stars { gap: 0; transform: translateY(-0.5px); }
