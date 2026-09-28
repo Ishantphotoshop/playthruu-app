@@ -1441,7 +1441,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    poster's width so nothing spills past the card edge. */
 .friend-card__poster, .activity-card__poster { display: block; }
 .card-who {
-  display: flex; align-items: center; gap: 7px; margin-top: 8px;
+  display: flex; align-items: center; gap: 5px; margin-top: 8px;
   width: var(--feed-card-w, 140px); max-width: var(--feed-card-w, 140px); /* == poster width, so it never overflows */
 }
 /* Every card in the row is the SAME width (--feed-card-w) — there's no
@@ -1510,7 +1510,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   display: flex; align-items: center; gap: 4px; min-height: 14px; line-height: 14px;
   max-width: 100%; flex-shrink: 1; min-width: 0;
 }
-.card-who__stars .stars { gap: 0; }
+.card-who__stars .stars { gap: 0; transform: translateY(-0.5px); }
 /* Loved + review marks: a touch smaller than the 12px stars, tight
    viewBoxes (see components.js) so the glyphs fill their box like a star
    does, and coloured off the same --star-fill so the whole row is one
@@ -1539,7 +1539,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   /* Stars touch — no gap of their own — now that the loved icon is gone
      from this row (only shows on the review page itself), which frees
      up the width the 15px group gaps spend. */
-  .card-who__stars .stars { gap: 0; }
+  .card-who__stars .stars { gap: 0; transform: translateY(-0.5px); }
   /* The SIZE TOKEN, not a literal width: the half-star rule derives its
      width from --star-size, so overriding .star's width here left the
      halves sized off a value the full stars no longer used.
@@ -1555,7 +1555,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   /* 5 stars + replay + review at 9px with two 4px gaps is 71px; at a
      360px-wide phone the space beside the avatar is ~74px. Any bigger
      and .card-who__meta's overflow:hidden silently cuts the review icon. */
-  .card-who { gap: 6px; }
+  .card-who { gap: 4px; }
 }
 /* Currently Playing's footer, in place of a rating that can never
    exist there (the game isn't finished) — a small pulsing dot instead
@@ -2635,6 +2635,12 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
    came out 8px wider than the gap under the grid, which is what made
    the page read as unevenly spaced. */
 #feed-body .trending-strip, #feed-body .foryou-strip { padding-bottom: 0; }
+/* The strips scroll sideways, which makes them clip vertically too, and
+   the card footer ended exactly on that edge — at a fractional pixel
+   position on a phone, the bottom row of the stars got shaved off. 4px
+   of room inside the clip, handed straight back below so the gap to the
+   next section doesn't change. */
+#feed-body .trending-strip { padding-bottom: 4px; margin-bottom: -4px; }
 
 /* Every horizontal poster strip in the app bleeds out to the true screen
    edges, not just the feed's — the same fix, applied wherever these rows

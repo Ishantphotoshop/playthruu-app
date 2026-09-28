@@ -558,7 +558,7 @@ function cardWho(profile, rating, { playing = false, replayed = false, hasReview
   const second = playing ? '' : `<span class="card-who__stars">${bits.join('')}</span>`;
   return `
     <a href="#/profile/${esc(profile.username)}" class="card-who">
-      <span class="card-who__avatar-wrap">${avatarImg(profile, 24)}</span>
+      <span class="card-who__avatar-wrap">${avatarImg(profile, 28)}</span>
       <span class="card-who__meta">
         <span class="card-who__name">${esc(profile.display_name || profile.username)}</span>
         ${second}
