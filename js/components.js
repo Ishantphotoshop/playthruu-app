@@ -536,7 +536,7 @@ function cardWho(profile, rating, { playing = false, replayed = false, hasReview
     // printed twice on every tile — and it was the thing making that
     // row taller and busier than the ones around it.
   } else {
-    if (rating) bits.push(starRow(rating, { size: 12, round: true }));
+    if (rating) bits.push(starRow(rating, { size: 11.5, round: true }));
     // Whether it's loved only shows on the review page itself — not
     // here in the feed byline. A relog shows instead, since it's the
     // thing that's actually new about this particular log entry.
