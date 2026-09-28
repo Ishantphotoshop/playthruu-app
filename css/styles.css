@@ -1441,7 +1441,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    poster's width so nothing spills past the card edge. */
 .friend-card__poster, .activity-card__poster { display: block; }
 .card-who {
-  display: flex; align-items: center; gap: 5px; margin-top: 5px;
+  display: flex; align-items: center; gap: 5px; margin-top: 3px;
   width: var(--feed-card-w, 140px); max-width: var(--feed-card-w, 140px); /* == poster width, so it never overflows */
 }
 /* Every card in the row is the SAME width (--feed-card-w) — there's no
@@ -1470,7 +1470,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   :root { --feed-card-w: calc((100vw - 38px) / 3.1); }
   .trending-strip, .foryou-strip { gap: 6px; }
 }
-.card-who .avatar { flex-shrink: 0; border: 1px solid rgba(255,255,255,0.10); }
+.card-who .avatar { flex-shrink: 0; border: 0.5px solid rgba(255,255,255,0.14); }
 .card-who__meta { min-width: 0; display: flex; flex-direction: column; gap: 1px; overflow: hidden; }
 .card-who__name {
   font-size: 12.5px; font-weight: 700; color: var(--ink-dim); line-height: 1.3;
