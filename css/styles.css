@@ -1507,7 +1507,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    looser than flush (flex gap, not a per-star margin — that rounded
    unevenly before). */
 .card-who__stars {
-  display: flex; align-items: center; gap: 2px; min-height: 14px; line-height: 14px;
+  display: flex; align-items: center; gap: 4px; min-height: 14px; line-height: 14px;
   max-width: 100%; flex-shrink: 1; min-width: 0;
 }
 .card-who__stars .stars { gap: 0; }
@@ -1535,7 +1535,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
      ran straight into the heart, and the heart into the review lines,
      so the three read as one smudge. The padding that was doing this
      job invisibly is now doing it on purpose. */
-  .card-who__stars { gap: 2px; }
+  .card-who__stars { gap: 4px; }
   /* Stars touch — no gap of their own — now that the loved icon is gone
      from this row (only shows on the review page itself), which frees
      up the width the 15px group gaps spend. */
@@ -1549,9 +1549,13 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
      The alternative is overriding .star's width AND .star--half's width
      separately, which is two places to keep in step and is exactly the
      drift that produced the mismatch above. */
-  .card-who__stars .stars { --star-size: 10px !important; }
+  .card-who__stars .stars { --star-size: 9px !important; }
   /* Matched to the star height. */
-  .card-who__icon { width: 10px; height: 10px; }
+  .card-who__icon { width: 9px; height: 9px; }
+  /* 5 stars + replay + review at 9px with two 4px gaps is 71px; at a
+     360px-wide phone the space beside the avatar is ~74px. Any bigger
+     and .card-who__meta's overflow:hidden silently cuts the review icon. */
+  .card-who { gap: 6px; }
 }
 /* Currently Playing's footer, in place of a rating that can never
    exist there (the game isn't finished) — a small pulsing dot instead
