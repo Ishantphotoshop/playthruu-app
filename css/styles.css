@@ -1473,7 +1473,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .card-who .avatar { flex-shrink: 0; }
 .card-who__meta { min-width: 0; display: flex; flex-direction: column; gap: 1px; overflow: hidden; }
 .card-who__name {
-  font-size: 12.5px; font-weight: 700; color: var(--ink); line-height: 1.3;
+  font-size: 12.5px; font-weight: 700; color: var(--ink-dim); line-height: 1.3;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   /* Capitalizes for display only — usernames/display names are stored
      however the person typed them (often lowercase), this doesn't
@@ -1520,7 +1520,12 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    does, and coloured off the same --star-fill so the whole row is one
    colour and reads as one evenly-spaced group. */
 .card-who__icon { width: 11px; height: 11px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
-.card-who__icon svg { width: 100%; height: 100%; display: block; }
+.card-who__icon svg { width: 100%; height: 100%; display: block; stroke-width: 1.6; }
+/* A friend's rating is quiet slate, not accent green — green is kept
+   for the viewer's own rating everywhere else, the way Letterboxd does
+   it. The replay/review icons read --star-fill too, so this one token
+   mutes the whole row. */
+.card-who__stars { --star-fill: var(--ink-ghost); }
 .card-who__icon--replayed { color: var(--star-fill); }
 .card-who__icon--review { color: var(--star-fill); }
 /* Phone: these feed cards are far narrower than on desktop, so the whole
