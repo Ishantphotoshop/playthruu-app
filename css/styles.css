@@ -1470,7 +1470,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   :root { --feed-card-w: calc((100vw - 38px) / 3.1); }
   .trending-strip, .foryou-strip { gap: 6px; }
 }
-.card-who .avatar { flex-shrink: 0; }
+.card-who .avatar { flex-shrink: 0; border: 1px solid rgba(255,255,255,0.10); }
 .card-who__meta { min-width: 0; display: flex; flex-direction: column; gap: 1px; overflow: hidden; }
 .card-who__name {
   font-size: 12.5px; font-weight: 700; color: var(--ink-dim); line-height: 1.3;
