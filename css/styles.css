@@ -2127,7 +2127,10 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 /* Landscape, not the poster-shaped 3/4 used everywhere else — article
    art is shot/cropped for a wide frame, not a game cover. */
 .news-card__cover {
-  width: 92px; aspect-ratio: 4/3; flex-shrink: 0; border-radius: 6px;
+  /* align-self keeps the 4:3 frame: under the card's default stretch it
+     grew to the text column's height, turning square and cropping the
+     sides off every landscape image. */
+  width: 92px; aspect-ratio: 4/3; flex-shrink: 0; align-self: center; border-radius: 6px;
   background: var(--surface) center/cover no-repeat;
 }
 .news-card__info { min-width: 0; flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 3px; }

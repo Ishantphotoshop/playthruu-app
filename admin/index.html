@@ -29,6 +29,14 @@
     <div class="boot-loader__mark"></div>
   </div>
 </div>
-<script type="module" src="admin.js"></script>
+<!-- Loaded with a per-launch query string, not a plain src: the Android
+     admin shell's WebView otherwise keeps serving a cached admin.js for as
+     long as it likes, so a deployed fix could stay invisible on the phone.
+     The service worker (network-first) is registered here too, so every
+     file the admin build pulls from ../js and ../css comes fresh as well. -->
+<script type="module">
+  import('./admin.js?v=' + Date.now());
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('../service-worker.js').catch(() => {});
+</script>
 </body>
 </html>
