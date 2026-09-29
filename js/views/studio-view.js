@@ -42,7 +42,7 @@ export async function renderStudioView(root, { companyId }) {
         <span class="see-more-link">${studio.games.length} title${studio.games.length === 1 ? '' : 's'}</span>
       </div>
       ${studio.games.length
-        ? `<div class="game-grid">${studio.games.map((g) => `
+        ? `<div class="game-grid game-grid--3col">${studio.games.map((g) => `
             <button type="button" class="game-card gameography-card" data-igdb-id="${g.igdb_id}">
               ${posterFrame(g.cover_url, g.title, 'game-card__cover')}
               <div class="game-card__title">${esc(g.title)}</div>
