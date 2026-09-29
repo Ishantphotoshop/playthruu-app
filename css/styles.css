@@ -232,7 +232,7 @@
      app column on desktop. */
   --poster-gap: 8px;
   --poster-w: calc((min(100vw, 560px) - 2 * var(--gutter) - 4px - 2 * var(--poster-gap)) / 3);
-  --poster-radius: 7px;
+  --poster-radius: 5px;
   --feed-card-w: var(--poster-w);
 
   --space-1: 4px;
