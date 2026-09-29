@@ -330,6 +330,20 @@
    Invisible in a headless browser, which uses zero-width overlay
    scrollbars — this only ever showed up on a real desktop. */
 html, body { height: 100%; overflow: hidden; }
+/* Behind body. On a desktop body covers the whole window so this never
+   shows; if a phone ever leaves a strip below body, it's the app's own
+   dark instead of body's white. */
+html { background: var(--bg); }
+/* iPhone home-screen viewport shortfall — see the script in index.html.
+   Extends the document, the app column and everything pinned to the
+   bottom by exactly the measured strip. */
+html.vp-gap { height: calc(100% + var(--vp-gap)); }
+html.vp-gap body { background: var(--bg); }
+html.vp-gap #app { height: calc(100dvh + var(--vp-gap)); }
+html.vp-gap :is(.tabbar, .rv-composer, .thread-composer, .modal-overlay, .poster-viewer,
+  .avatar-viewer, .avatar-crop, .image-viewer, .story-viewer, .celebrate-layer) {
+  bottom: calc(-1 * var(--vp-gap));
+}
 body {
   margin: 0;
   /* The site page BEHIND/AROUND the app column. Plain white — the last

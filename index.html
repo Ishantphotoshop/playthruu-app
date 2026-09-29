@@ -28,6 +28,29 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Playthruu">
 <link rel="stylesheet" href="css/styles.css">
+<script>
+  // iPhone home-screen app only (navigator.standalone is iOS-only). With the
+  // black-translucent status bar, some iOS versions report a viewport
+  // shorter than the screen by about the status bar's height, so #app and
+  // every bottom:0 bar stop short and the page shows through underneath.
+  // Measure the missing strip and hand it to CSS as --vp-gap; on iOS
+  // versions without the bug it measures 0 and nothing changes.
+  (() => {
+    if (navigator.standalone !== true) return;
+    const root = document.documentElement;
+    const fit = () => {
+      const portrait = innerHeight >= innerWidth;
+      const full = portrait ? Math.max(screen.width, screen.height) : Math.min(screen.width, screen.height);
+      const gap = Math.round(full - innerHeight);
+      const on = gap > 0 && gap < 100;
+      root.classList.toggle('vp-gap', on);
+      root.style.setProperty('--vp-gap', (on ? gap : 0) + 'px');
+    };
+    fit();
+    addEventListener('resize', fit);
+    addEventListener('orientationchange', () => setTimeout(fit, 300));
+  })();
+</script>
 </head>
 <body>
 <div id="app">
