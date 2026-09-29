@@ -67,70 +67,57 @@ async function igdb(endpoint, query, { timeout = FETCH_TIMEOUT_MS, retry = true 
   }
 }
 
-// All game-news traffic goes through a Supabase Edge Function (see
-// supabase/functions/news-proxy) rather than fetching RSS feeds straight
-// from the browser — none of those publishers send CORS headers, so a
-// direct fetch from a live domain gets silently blocked. Unlike IGDB,
-// no secret is involved; the proxy just merges public RSS server-side.
-const NEWS_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/news-proxy`;
+// News comes from PlayThruu's own newsroom: articles the News Brain (and
+// admins) publish on playthruu.com, read straight from the shared
+// news_articles table — RLS only exposes published rows. Every card opens
+// the article on playthruu.com, so the traffic stays ours instead of being
+// sent out to the outlets the old RSS feed linked to. (custom_news and the
+// news-proxy RSS function are no longer read.)
+const NEWS_SITE = 'https://playthruu.com/news/';
+const NEWS_LABEL = { confirmed: 'Confirmed', reported: 'Reported', rumor: 'Rumor', leak: 'Leak' };
 
-// Longer than the default 3.5s timeout — a cold-started function pulling
-// 5 outlets' RSS feeds genuinely needs more headroom than a single IGDB
-// query does, and this only ever runs once per News tab visit (results
-// are cached server-side for 10 minutes after that).
-async function fetchRssNews() {
-  try {
-    const res = await fetchWithTimeout(NEWS_FUNCTION_URL, {
-      headers: { Authorization: `Bearer ${SUPABASE_ANON_KEY}` },
-    }, 8000);
-    if (!res.ok) return [];
-    const data = await res.json();
-    return Array.isArray(data.articles) ? data.articles : [];
-  } catch {
-    return [];
-  }
+// Same ordering as playthruu.com/news: fresh breaking/important stories
+// first (breaking > confirmed > the rest), then everything newest-updated
+// first. The freshness windows stop an old "breaking" story sitting on top.
+const TOP_WINDOW_HOURS = { breaking: 72, important: 48 };
+
+function rankNews(rows) {
+  const now = Date.now();
+  const top = [];
+  const latest = [];
+  rows.forEach((a) => {
+    const windowH = TOP_WINDOW_HOURS[a.importance];
+    const ageH = (now - Date.parse(a.updated_at)) / 36e5;
+    (windowH && ageH <= windowH ? top : latest).push(a);
+  });
+  const weight = (a) => (a.importance === 'breaking' ? 3 : a.verification_status === 'confirmed' ? 2 : 1);
+  top.sort((a, b) => weight(b) - weight(a) || b.updated_at.localeCompare(a.updated_at));
+  return [...top, ...latest];
 }
 
-// Posts written in the admin build, shaped into exactly what an RSS
-// article looks like so the News tab doesn't need to know the
-// difference. Empty (never throwing) if the admin migration hasn't run.
-async function fetchCustomNews() {
+export async function getGameNews() {
   try {
     const { data, error } = await supabase
-      .from('custom_news')
-      .select('id, title, summary, image_url, source, link, published_at, pinned')
-      .eq('is_published', true)
-      .order('published_at', { ascending: false })
-      .limit(30);
+      .from('news_articles')
+      .select('slug, title, card_description, category, importance, verification_status, image_url, updated_at')
+      .eq('status', 'published')
+      .order('updated_at', { ascending: false })
+      .limit(60);
     if (error) return [];
-    return (data || []).map((p) => ({
-      title: p.title,
-      summary: p.summary || '',
-      image: p.image_url || '',
-      source: p.source || 'PlayThruu',
-      link: p.link || '',
-      pubDate: p.published_at,
-      pinned: !!p.pinned,
-      isCustom: true,
+    return rankNews(data || []).map((a) => ({
+      title: a.title,
+      summary: a.card_description || '',
+      // Official press art when the story has it, otherwise PlayThruu's
+      // own generated card — never a publication's photo.
+      image: a.image_url || `${NEWS_SITE}${a.slug}/thumb`,
+      source: a.importance === 'breaking' ? 'Breaking' : a.category,
+      status: NEWS_LABEL[a.verification_status] || '',
+      link: NEWS_SITE + a.slug,
+      pubDate: a.updated_at,
     }));
   } catch {
     return [];
   }
-}
-
-// Own posts first (the pinned ones), then everything else — custom and
-// RSS together — newest first. Both sources are fetched at once rather
-// than in sequence so adding this can't make the News tab slower than
-// the RSS call it already waited on.
-export async function getGameNews() {
-  const [custom, rss] = await Promise.all([fetchCustomNews(), fetchRssNews()]);
-  if (!custom.length) return rss;
-
-  const pinned = custom.filter((a) => a.pinned);
-  const mixed = [...custom.filter((a) => !a.pinned), ...rss]
-    .sort((a, b) => new Date(b.pubDate || 0) - new Date(a.pubDate || 0));
-
-  return [...pinned, ...mixed];
 }
 
 // ------------------------------------------------------------

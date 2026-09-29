@@ -136,12 +136,12 @@ async function paintAnnouncement(slot) {
     : `<div class="announce">${body}</div>`;
 }
 
-// Articles link straight out to the publisher (target="_blank") rather
-// than opening in-app — this is an aggregator, not a reader, and these
-// outlets' own pages are where the ads/analytics that fund them live.
-// A post written in the admin build may have no link at all, though, and
-// an <a href=""> would "navigate" to the current page on tap — so those
-// render as a plain, non-clickable card instead.
+// Every article is PlayThruu's own, published on playthruu.com, and the
+// card opens it there (new tab, so the app stays where it was). The meta
+// line carries the story's verification status — Confirmed / Reported /
+// Rumor / Leak — so a rumour never reads like settled news. A card with no
+// link renders as a plain, non-clickable div, since <a href=""> would
+// "navigate" to the current page on tap.
 function newsCard(article) {
   const tag = article.link ? 'a' : 'div';
   const linkAttrs = article.link
@@ -153,7 +153,7 @@ function newsCard(article) {
       <span class="news-card__info">
         <span class="news-card__title">${esc(article.title)}</span>
         ${article.summary ? `<span class="news-card__summary">${esc(article.summary)}</span>` : ''}
-        <span class="news-card__meta">${esc(article.source)} · ${timeAgo(article.pubDate)}</span>
+        <span class="news-card__meta">${esc(article.source)}${article.status ? ` · ${esc(article.status)}` : ''} · ${timeAgo(article.pubDate)}</span>
       </span>
     </${tag}>`;
 }

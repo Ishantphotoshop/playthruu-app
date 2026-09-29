@@ -240,7 +240,7 @@ function paletteCommands() {
   }));
   cmds.unshift({ title: 'Dashboard', hint: 'Stats and charts', icon: iconFlame(), run: () => go('home') });
   cmds.push(
-    { title: 'Write a news post', hint: 'Publish to the News tab', icon: iconNewspaper(), run: () => { go('news'); setTimeout(() => openNewsEditor(null), 60); } },
+    { title: 'Review news', hint: 'The News Brain queue', icon: iconNewspaper(), run: () => go('news') },
     { title: 'Feature a game', hint: 'Add to Trending', icon: iconFlame(), run: () => { go('trending'); setTimeout(openGamePicker, 60); } },
     { title: 'Sign out', hint: 'End this session', icon: iconUser(), run: signOut },
   );
@@ -385,7 +385,7 @@ async function signOut() {
 // ============================================================
 const SECTIONS = [
   { id: 'trending', icon: iconFlame, title: 'Trending', sub: 'Feature games' },
-  { id: 'news', icon: iconNewspaper, title: 'News', sub: 'Publish posts' },
+  { id: 'news', icon: iconNewspaper, title: 'News', sub: 'Review the News Brain' },
   { id: 'announce', icon: iconMegaphone, title: 'Announce', sub: 'Feed banner' },
   { id: 'activity', icon: iconDiary, title: 'Activity', sub: 'Live logs' },
   { id: 'people', icon: iconUser, title: 'People', sub: "Who's online" },
@@ -970,179 +970,199 @@ function openGamePicker() {
 }
 
 // ============================================================
-// NEWS
+// NEWS — the News Brain's review queue
 // ============================================================
+// Stories live in news_articles (shared with playthruu.com). The News
+// Brain publishes confirmed, officially sourced, high-confidence stories
+// itself and queues everything else here. Every action below runs as the
+// signed-in admin through RLS (is_news_admin() accepts profiles.is_admin),
+// is written to news_events, and then asks playthruu.com to refresh so the
+// website and the app's News tab change straight away.
+const NEWS_SITE = 'https://playthruu.com';
+const NEWS_TABS = [
+  ['review', 'Review queue'],
+  ['published', 'Published'],
+  ['flagged', 'Flagged'],
+  ['archived', 'Archived'],
+  ['rejected', 'Rejected'],
+];
+const NEWS_VERIFY = { confirmed: 'Confirmed', reported: 'Reported', rumor: 'Rumor', leak: 'Leak' };
+let newsTab = 'review';
+
 SCREENS.news = function news() {
   paint(`
     ${header('News', { back: true })}
     <main class="view-body">
-      <button class="btn btn--accent btn--block" id="new-post">Write a post</button>
-      <div id="list" style="margin-top:var(--space-4)">${spinner()}</div>
+      <div class="adm-chips" id="n-tabs">
+        ${NEWS_TABS.map(([id, label]) => `<button class="adm-chip" data-tab="${id}">${label}</button>`).join('')}
+      </div>
+      <p class="adm-hint" style="margin:0 2px var(--space-3)">Written by the News Brain every 3 hours. Anything it isn't sure of waits here for you.</p>
+      <div id="list">${spinner()}</div>
     </main>`);
-  qs('#new-post').addEventListener('click', () => openNewsEditor(null));
+  const sync = () => qsa('#n-tabs [data-tab]').forEach((b) => b.classList.toggle('adm-chip--on', b.dataset.tab === newsTab));
+  qsa('#n-tabs [data-tab]').forEach((b) => b.addEventListener('click', () => { newsTab = b.dataset.tab; sync(); paintNews(); }));
+  sync();
   paintNews();
 };
 
 async function paintNews() {
   const host = qs('#list');
   if (!host) return;
-  const { data, error } = await supabase.from('custom_news').select('*').order('published_at', { ascending: false });
+  host.innerHTML = spinner();
+  let query = supabase
+    .from('news_articles')
+    .select('id, slug, title, summary, category, importance, status, lifecycle, verification_status, confidence_level, confidence_reason, editor_notes, flagged_incorrect, needs_update, brain_locked, sources, updated_at')
+    .order('updated_at', { ascending: false })
+    .limit(100);
+  query = newsTab === 'flagged'
+    ? query.or('flagged_incorrect.eq.true,needs_update.eq.true')
+    : query.eq('status', newsTab);
+  const { data, error } = await query;
+  if (!qs('#list')) return;
   if (error) { host.innerHTML = emptyState(error.message); return; }
   if (!data?.length) {
-    host.innerHTML = emptyState("No posts yet. Anything you write here shows up in the app's News tab.", { icon: iconNewspaper() });
+    host.innerHTML = emptyState(newsTab === 'review' ? 'Nothing waiting for review.' : 'Nothing here.', { icon: iconNewspaper() });
     return;
   }
 
-  host.innerHTML = data.map((p) => `
-    <div class="list-card adm-row" data-id="${p.id}">
-      ${p.image_url ? `<img class="adm-thumb adm-thumb--wide" src="${esc(p.image_url)}" alt="" loading="lazy">` : '<span class="adm-thumb adm-thumb--wide"></span>'}
+  host.innerHTML = data.map((a) => {
+    const flags = [
+      a.importance === 'breaking' ? 'BREAKING' : '',
+      a.flagged_incorrect ? 'INCORRECT' : '',
+      a.needs_update ? 'UPDATE REQUESTED' : '',
+      a.brain_locked ? 'LOCKED' : '',
+    ].filter(Boolean);
+    return `
+    <button class="list-card adm-row" data-id="${a.id}">
       <span class="adm-row__body">
-        <span class="adm-row__title">${esc(p.title)}</span>
-        <span class="adm-row__meta"${timeTitle(p.published_at)}>
-          ${p.is_published ? '' : 'DRAFT · '}${p.pinned ? 'PINNED · ' : ''}${esc(p.source)} · ${esc(timeAgo(p.published_at))} ago
+        <span class="adm-row__title">${esc(a.title)}</span>
+        <span class="adm-row__meta"${timeTitle(a.updated_at)}>
+          ${flags.length ? esc(flags.join(' · ')) + ' · ' : ''}${esc(NEWS_VERIFY[a.verification_status] || '')} · ${esc(a.category)} · ${esc(timeAgo(a.updated_at))} ago
         </span>
       </span>
-      <span class="adm-row__actions">
-        <button class="icon-btn icon-btn--small" data-toggle aria-label="${p.is_published ? 'Unpublish' : 'Publish'}">${iconEye()}</button>
-        <button class="icon-btn icon-btn--small" data-dupe aria-label="Duplicate">${iconCopyStack()}</button>
-        <button class="icon-btn icon-btn--small" data-edit aria-label="Edit">${iconNote()}</button>
-        <button class="icon-btn icon-btn--small" data-del aria-label="Delete">${iconTrash()}</button>
-      </span>
-    </div>`).join('');
+      <span class="adm-row__actions">${iconChevronRight()}</span>
+    </button>`;
+  }).join('');
 
-  qsa('[data-edit]', host).forEach((btn) => btn.addEventListener('click', () => {
-    openNewsEditor(data.find((p) => p.id === btn.closest('.adm-row').dataset.id));
-  }));
-
-  // Publish/unpublish without opening the editor — the single most
-  // common thing to want to change about a post that already exists.
-  qsa('[data-toggle]', host).forEach((btn) => btn.addEventListener('click', async () => {
-    const post = data.find((p) => p.id === btn.closest('.adm-row').dataset.id);
-    const { error: e } = await supabase.from('custom_news').update({ is_published: !post.is_published }).eq('id', post.id);
-    if (e) return fail(e);
-    toast(post.is_published ? 'Moved to drafts' : 'Published', 'success');
-    paintNews();
-  }));
-
-  // Copies a post as an unpublished draft, for the recurring formats
-  // that only change a line or two between editions.
-  qsa('[data-dupe]', host).forEach((btn) => btn.addEventListener('click', async () => {
-    const post = data.find((p) => p.id === btn.closest('.adm-row').dataset.id);
-    const { error: e } = await supabase.from('custom_news').insert({
-      title: `${post.title} (copy)`, summary: post.summary, image_url: post.image_url,
-      source: post.source, link: post.link, is_published: false, pinned: post.pinned,
-      created_by: state.user.id,
-    });
-    if (e) return fail(e);
-    toast('Duplicated as a draft', 'success');
-    paintNews();
-  }));
-
-  qsa('[data-del]', host).forEach((btn) => btn.addEventListener('click', async () => {
-    const id = btn.closest('.adm-row').dataset.id;
-    if (!await confirmSheet({ title: 'Delete this post?', sub: 'It disappears from the News tab straight away.', confirmLabel: 'Delete', danger: true })) return;
-    const { error: delErr } = await supabase.from('custom_news').delete().eq('id', id);
-    if (delErr) return fail(delErr);
-    toast('Deleted', 'success');
-    paintNews();
+  qsa('.adm-row', host).forEach((row) => row.addEventListener('click', () => {
+    openNewsStory(data.find((a) => a.id === row.dataset.id));
   }));
 }
 
-function openNewsEditor(post) {
-  const editing = !!post;
-  openSheet(editing ? 'Edit post' : 'New post', `
-    <p class="modal__hint">Appears in the app's News tab alongside the RSS feeds.</p>
-    <label class="field"><span>Headline</span><input id="n-title" value="${esc(post?.title || '')}" placeholder="What happened?"></label>
-    <label class="field"><span>Summary</span><textarea id="n-summary" placeholder="A sentence or two.">${esc(post?.summary || '')}</textarea></label>
-    <label class="field"><span>Image URL</span><input id="n-image" value="${esc(post?.image_url || '')}" placeholder="https://…"></label>
-    <label class="field"><span>Source label</span><input id="n-source" value="${esc(post?.source || 'PlayThruu')}" placeholder="PlayThruu"></label>
-    <label class="field"><span>Link (optional)</span><input id="n-link" value="${esc(post?.link || '')}" placeholder="https://…"></label>
-    <div class="adm-switch-row">
-      <span class="adm-switch-row__text">
-        <span class="adm-switch-row__title">Published</span>
-        <span class="adm-switch-row__sub">Off keeps it as a draft only you can see.</span>
-      </span>
-      <button class="adm-switch" id="n-published" role="switch" aria-checked="${post ? !!post.is_published : true}"></button>
-    </div>
-    <div class="adm-switch-row">
-      <span class="adm-switch-row__text">
-        <span class="adm-switch-row__title">Pin to top</span>
-        <span class="adm-switch-row__sub">Sits above the RSS articles instead of mixing in by date.</span>
-      </span>
-      <button class="adm-switch" id="n-pinned" role="switch" aria-checked="${post ? !!post.pinned : true}"></button>
-    </div>
-    <p class="adm-count-line" id="n-status"></p>
-    <div class="adm-btn-row">
-      <button class="btn" data-act="cancel">Cancel</button>
-      <button class="btn btn--accent" id="n-save">${editing ? 'Save' : 'Publish'}</button>
-    </div>`, (sheet, close) => {
-    qsa('.adm-switch', sheet).forEach((sw) => sw.addEventListener('click', () => {
-      sw.setAttribute('aria-checked', sw.getAttribute('aria-checked') === 'true' ? 'false' : 'true');
-    }));
-
-    // A new post is kept in localStorage as it's typed, so closing the
-    // sheet by accident (or the WebView being killed in the background)
-    // doesn't lose the draft. Only for new posts: an edit already has a
-    // saved copy in the database to fall back to.
-    const DRAFT_KEY = 'playthruu_admin_news_draft';
-    const fields = ['n-title', 'n-summary', 'n-image', 'n-source', 'n-link'];
-    const status = qs('#n-status', sheet);
-
-    if (!editing) {
-      try {
-        const saved = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null');
-        if (saved && Object.values(saved).some(Boolean)) {
-          fields.forEach((f) => { if (saved[f]) qs(`#${f}`, sheet).value = saved[f]; });
-          status.textContent = 'Restored an unsaved draft.';
-        }
-      } catch { /* nothing usable stored */ }
-
-      let saveTimer;
-      const stash = () => {
-        clearTimeout(saveTimer);
-        saveTimer = setTimeout(() => {
-          const snap = {};
-          fields.forEach((f) => { snap[f] = qs(`#${f}`, sheet).value; });
-          try { localStorage.setItem(DRAFT_KEY, JSON.stringify(snap)); } catch { /* storage full or blocked */ }
-          status.textContent = `Draft saved ${new Date().toLocaleTimeString()}`;
-        }, 600);
-      };
-      fields.forEach((f) => qs(`#${f}`, sheet).addEventListener('input', stash));
-    }
-    sheet.dataset.draftKey = DRAFT_KEY;
-
-    qs('[data-act="cancel"]', sheet).addEventListener('click', close);
-
-    qs('#n-save', sheet).addEventListener('click', async () => {
-      const title = qs('#n-title', sheet).value.trim();
-      if (!title) { toast('A headline is required', 'error'); return; }
-      const payload = {
-        title,
-        summary: qs('#n-summary', sheet).value.trim() || null,
-        image_url: qs('#n-image', sheet).value.trim() || null,
-        source: qs('#n-source', sheet).value.trim() || 'PlayThruu',
-        link: qs('#n-link', sheet).value.trim() || null,
-        is_published: qs('#n-published', sheet).getAttribute('aria-checked') === 'true',
-        pinned: qs('#n-pinned', sheet).getAttribute('aria-checked') === 'true',
-      };
-      const btn = qs('#n-save', sheet);
-      btn.disabled = true;
-      try {
-        const { error } = editing
-          ? await supabase.from('custom_news').update(payload).eq('id', post.id)
-          : await supabase.from('custom_news').insert({ ...payload, created_by: state.user.id });
-        if (error) throw error;
-        // The draft has become a real row; keeping it would re-restore
-        // itself into the next empty editor.
-        if (!editing) { try { localStorage.removeItem(sheet.dataset.draftKey); } catch { /* nothing to clear */ } }
-        close();
-        toast(editing ? 'Saved' : 'Published', 'success');
-        paintNews();
-      } catch (err) {
-        btn.disabled = false;
-        fail(err);
-      }
+// Log the action, then have playthruu.com refresh its cached pages. The
+// refresh is best-effort: the site also re-reads on its own every 5 minutes.
+async function newsDone(article, action, note = '') {
+  await supabase.from('news_events').insert({
+    article_id: action === 'deleted' ? null : article.id,
+    article_slug: article.slug,
+    actor: state.user?.email || 'admin',
+    action,
+    note,
+  });
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    await fetch(`${NEWS_SITE}/api/news/revalidate`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${session?.access_token || ''}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ slug: article.slug }),
     });
+  } catch { /* site refreshes itself within 5 minutes anyway */ }
+}
+
+function openNewsStory(a) {
+  const live = a.status === 'published' || a.status === 'archived';
+  const hasOfficial = (a.sources || []).some((s) => s.tier === 1);
+  const btn = (act, label, cls = '') => `<button class="btn ${cls}" data-act="${act}">${label}</button>`;
+  const actions = [
+    a.status !== 'published' ? btn('approve', 'Approve &amp; publish', 'btn--accent') : btn('unpublish', 'Unpublish'),
+    a.status !== 'rejected' ? btn('reject', 'Reject') : '',
+    a.status === 'published' ? btn('archive', 'Archive') : '',
+    a.verification_status !== 'confirmed' ? btn('verify', 'Mark verified') : '',
+    a.flagged_incorrect ? btn('clear-flag', 'Clear incorrect flag') : btn('incorrect', 'Mark incorrect'),
+    btn('force-update', a.needs_update ? 'Update requested ✓' : 'Force update'),
+    a.brain_locked ? btn('unlock', 'Unlock for Brain') : btn('lock', 'Lock from Brain'),
+    btn('delete', 'Delete'),
+  ].filter(Boolean);
+
+  openSheet('Story', `
+    <p class="modal__hint">${esc(NEWS_VERIFY[a.verification_status] || '')} · ${esc(a.importance)} · confidence ${esc(a.confidence_level)} · ${esc(a.status)}</p>
+    ${a.editor_notes ? `<p class="adm-hint" style="white-space:pre-wrap;margin-top:0">${esc(a.editor_notes)}</p>` : ''}
+    <label class="field"><span>Headline</span><input id="s-title" value="${esc(a.title)}"></label>
+    <label class="field"><span>Summary</span><textarea id="s-summary">${esc(a.summary)}</textarea></label>
+    <label class="field"><span>Category</span><input id="s-category" value="${esc(a.category)}"></label>
+    <label class="field"><span>Importance</span>
+      <select id="s-importance">${['breaking', 'important', 'standard', 'minor'].map((v) => `<option${v === a.importance ? ' selected' : ''}>${v}</option>`).join('')}</select>
+    </label>
+    <label class="field"><span>Verification</span>
+      <select id="s-verify">${Object.keys(NEWS_VERIFY).map((v) => `<option value="${v}"${v === a.verification_status ? ' selected' : ''}>${NEWS_VERIFY[v]}</option>`).join('')}</select>
+    </label>
+    <div class="adm-btn-row"><button class="btn btn--accent" id="s-save">Save changes</button></div>
+    <div class="adm-btn-row" style="flex-wrap:wrap">${actions.join('')}</div>
+    <div class="adm-btn-row">
+      ${live ? `<a class="btn" href="${NEWS_SITE}/news/${esc(a.slug)}" target="_blank" rel="noopener">Read on site</a>` : ''}
+      <a class="btn" href="${NEWS_SITE}/admin/news/${esc(a.id)}" target="_blank" rel="noopener">Full editor</a>
+    </div>
+    <p class="adm-hint">Body text, sources and SEO are edited in the full editor on playthruu.com.</p>`, (sheet, close) => {
+
+    const update = async (fields, action, toastMsg) => {
+      const { error } = await supabase.from('news_articles').update(fields).eq('id', a.id);
+      if (error) return fail(error);
+      await newsDone(a, action);
+      close();
+      toast(toastMsg, 'success');
+      paintNews();
+    };
+
+    qs('#s-save', sheet).addEventListener('click', async () => {
+      const title = qs('#s-title', sheet).value.trim();
+      const summary = qs('#s-summary', sheet).value.trim();
+      const category = qs('#s-category', sheet).value.trim();
+      const verification = qs('#s-verify', sheet).value;
+      if (!title || !summary || !category) { toast('Headline, summary and category are required', 'error'); return; }
+      if (verification === 'confirmed' && !hasOfficial) {
+        toast('Confirmed needs an official source. Add one in the full editor', 'error');
+        return;
+      }
+      await update({
+        title, summary, category,
+        importance: qs('#s-importance', sheet).value,
+        verification_status: verification,
+        updated_at: new Date().toISOString(),
+      }, 'edited', 'Saved');
+    });
+
+    const now = new Date().toISOString();
+    const ops = {
+      approve: () => update({ status: 'published', lifecycle: a.lifecycle === 'updated' || a.lifecycle === 'resolved' ? a.lifecycle : 'published', published_at: now, flagged_incorrect: false, updated_at: now }, 'approve', 'Published'),
+      unpublish: () => update({ status: 'review' }, 'unpublish', 'Moved back to review'),
+      archive: () => update({ status: 'archived', lifecycle: 'archived' }, 'archive', 'Archived'),
+      verify: () => {
+        if (!hasOfficial) { toast('Add an official source in the full editor first', 'error'); return; }
+        update({ verification_status: 'confirmed', flagged_incorrect: false, lifecycle: a.status === 'published' ? 'resolved' : 'verified', updated_at: now }, 'verify', 'Marked verified');
+      },
+      'clear-flag': () => update({ flagged_incorrect: false }, 'clear-flag', 'Flag cleared'),
+      'force-update': () => update({ needs_update: true }, 'force-update', 'The Brain will revisit it next run'),
+      lock: () => update({ brain_locked: true }, 'lock', 'Locked. The Brain won’t touch it'),
+      unlock: () => update({ brain_locked: false }, 'unlock', 'Unlocked'),
+      reject: async () => {
+        if (!await confirmSheet({ title: 'Reject this story?', sub: 'It comes off the site and the Brain can’t bring it back.', confirmLabel: 'Reject', danger: true })) return;
+        update({ status: 'rejected' }, 'reject', 'Rejected');
+      },
+      incorrect: async () => {
+        if (!await confirmSheet({ title: 'Mark as incorrect?', sub: 'A published story is pulled from the site and the Brain is asked to fix it.', confirmLabel: 'Mark incorrect', danger: true })) return;
+        update({ flagged_incorrect: true, needs_update: true, ...(a.status === 'published' ? { status: 'review' } : {}) }, 'incorrect', 'Pulled for fixing');
+      },
+      delete: async () => {
+        if (!await confirmSheet({ title: 'Delete this story?', sub: 'Permanently removes it from the site and the app.', confirmLabel: 'Delete', danger: true })) return;
+        await newsDone(a, 'deleted');
+        const { error } = await supabase.from('news_articles').delete().eq('id', a.id);
+        if (error) return fail(error);
+        close();
+        toast('Deleted', 'success');
+        paintNews();
+      },
+    };
+    qsa('[data-act]', sheet).forEach((b) => b.addEventListener('click', () => ops[b.dataset.act]?.()));
   });
 }
 
