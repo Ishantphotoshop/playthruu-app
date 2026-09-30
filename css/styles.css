@@ -432,6 +432,11 @@ ul { list-style: none; margin: 0; padding: 0; }
   scrollbar-width: none; -ms-overflow-style: none;
 }
 #app::-webkit-scrollbar { display: none; }
+/* Each history entry's screen lives in its own .page (see router.js), so
+   Back can put a screen back exactly as it was left. display: contents
+   keeps the wrapper out of layout: the view's topbar, .view-body and tab
+   bar stay direct flex children of #app, exactly as before. */
+#app > .page { display: contents; }
 
 .boot-loader { flex: 1; display: grid; place-items: center; position: relative; }
 /* Shown by the watchdog in index.html when app.js never ran — see the

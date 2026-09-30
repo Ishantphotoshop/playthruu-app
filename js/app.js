@@ -2,7 +2,7 @@ import { supabase } from './supabase-client.js';
 import { onAuthChange, signOut, updatePasswordAfterReset } from './auth.js';
 import * as api from './api.js';
 import { state } from './state.js';
-import { route, setNotFound, startRouter, navigate, refreshCurrentView } from './router.js';
+import { route, setNotFound, startRouter, navigate, refreshCurrentView, pageEl, historyDepth, resetPages, trackOverlays, onOverlayEntry } from './router.js';
 import { renderLandingView, seedPinnedGames } from './views/landing-view.js';
 import { renderAuthView } from './views/auth-view.js';
 import { renderFeedView } from './views/feed-view.js';
@@ -154,7 +154,7 @@ function maybeSystemNotify(row) {
     });
     n.onclick = () => {
       window.focus();
-      location.hash = '#/notifications';
+      navigate('/notifications');
       n.close();
     };
   } catch {
@@ -197,53 +197,62 @@ async function refreshNotifBadge() {
 function registerPublicRoutes() {
   if (publicRoutesRegistered) return;
   publicRoutesRegistered = true;
-  route('/game/:id', (p) => renderGameView(appEl, p));
+  route('/game/:id', (p) => renderGameView(pageEl(), p));
   // Viewing a game that isn't in the catalogue yet — see the note on
   // renderGameView's `igdbId` mode in game-view.js for why this exists
   // as its own route rather than reusing /game/:id.
-  route('/game/igdb/:igdbId', (p) => renderGameView(appEl, { igdbId: Number(p.igdbId) }));
-  route('/search', () => renderSearchView(appEl));
-  route('/discover', () => renderDiscoverView(appEl));
+  route('/game/igdb/:igdbId', (p) => renderGameView(pageEl(), { igdbId: Number(p.igdbId) }));
+  route('/search', () => renderSearchView(pageEl()));
+  route('/discover', () => renderDiscoverView(pageEl()));
   // What the Search tab's funnel opens: the filters themselves, not a
   // page of popular games with the filters hidden behind a second tap.
-  route('/discover/filters', () => renderDiscoverView(appEl, { openFilters: true }));
+  route('/discover/filters', () => renderDiscoverView(pageEl(), { openFilters: true }));
 }
 
 function registerRoutes() {
   if (routesRegistered) return;
   routesRegistered = true;
   registerPublicRoutes();
-  route('/feed', () => renderFeedView(appEl));
-  route('/news', () => renderFeedView(appEl, { initialTab: 'news' }));
-  route('/trending', () => renderTrendingView(appEl));
-  route('/friends-playing', () => renderFriendsPlayingView(appEl));
-  route('/currently-playing', () => renderCurrentlyPlayingView(appEl));
-  route('/list/:id', (p) => renderListDetailView(appEl, p));
-  route('/messages', () => renderMessagesView(appEl));
-  route('/messages/new/:userId', (p) => renderMessageThreadView(appEl, { otherUserId: p.userId }));
-  route('/messages/:id', (p) => renderMessageThreadView(appEl, { conversationId: p.id }));
-  route('/me', () => renderProfileView(appEl, { username: state.profile.username }));
-  route('/profile/:username', (p) => renderProfileView(appEl, p));
-  route('/profile/:username/followers', (p) => renderConnectionsView(appEl, { username: p.username, kind: 'followers' }));
-  route('/profile/:username/following', (p) => renderConnectionsView(appEl, { username: p.username, kind: 'following' }));
-  route('/profile/:username/activity', (p) => renderActivityView(appEl, p));
-  route('/profile/:username/log-list/:mode', (p) => renderLogListView(appEl, p));
-  route('/game/:id/reviews', (p) => renderGameReviewsView(appEl, p));
-  route('/review/:id', (p) => renderReviewView(appEl, p));
-  route('/person/:qid', (p) => renderPersonView(appEl, p));
-  route('/director/:slug', (p) => renderDirectorView(appEl, p));
-  route('/studio/:companyId', (p) => renderStudioView(appEl, p));
-  route('/settings', () => renderSettingsView(appEl));
-  route('/notifications', () => renderNotificationsView(appEl));
+  route('/feed', () => renderFeedView(pageEl()));
+  route('/news', () => renderFeedView(pageEl(), { initialTab: 'news' }));
+  route('/trending', () => renderTrendingView(pageEl()));
+  route('/friends-playing', () => renderFriendsPlayingView(pageEl()));
+  route('/currently-playing', () => renderCurrentlyPlayingView(pageEl()));
+  route('/list/:id', (p) => renderListDetailView(pageEl(), p));
+  // The inbox and threads tear their realtime subscriptions down the
+  // moment you leave them, so they are rebuilt on every visit instead of
+  // being kept in the back stack (a kept copy would be a dead one).
+  route('/messages', () => renderMessagesView(pageEl()), { keep: false });
+  route('/messages/new/:userId', (p) => renderMessageThreadView(pageEl(), { otherUserId: p.userId }), { keep: false });
+  route('/messages/:id', (p) => renderMessageThreadView(pageEl(), { conversationId: p.id }), { keep: false });
+  route('/me', () => renderProfileView(pageEl(), { username: state.profile.username }));
+  route('/profile/:username', (p) => renderProfileView(pageEl(), p));
+  route('/profile/:username/followers', (p) => renderConnectionsView(pageEl(), { username: p.username, kind: 'followers' }));
+  route('/profile/:username/following', (p) => renderConnectionsView(pageEl(), { username: p.username, kind: 'following' }));
+  route('/profile/:username/activity', (p) => renderActivityView(pageEl(), p));
+  route('/profile/:username/log-list/:mode', (p) => renderLogListView(pageEl(), p));
+  route('/game/:id/reviews', (p) => renderGameReviewsView(pageEl(), p));
+  route('/review/:id', (p) => renderReviewView(pageEl(), p));
+  route('/person/:qid', (p) => renderPersonView(pageEl(), p));
+  route('/director/:slug', (p) => renderDirectorView(pageEl(), p));
+  route('/studio/:companyId', (p) => renderStudioView(pageEl(), p));
+  route('/settings', () => renderSettingsView(pageEl()));
+  route('/notifications', () => renderNotificationsView(pageEl()));
   // Finding people to follow is the Players tab's job, not a page of its
   // own — this just opens Search already on that tab (see
   // paintSuggestedPeople in search-view.js).
-  route('/people', () => renderSearchView(appEl, { initialTab: 'people' }));
+  route('/people', () => renderSearchView(pageEl(), { initialTab: 'people' }));
+  // A link straight to the composer: the entry becomes the feed (replaced,
+  // not added, so Back never returns to a URL that reopens the sheet) and
+  // the sheet opens over it once the feed is in place.
   route('/log', () => {
-    history.replaceState(null, '', '#/feed');
-    renderFeedView(appEl).then(() => openLogComposer({ onSaved: refreshCurrentView }));
-  });
-  setNotFound(() => navigate('/feed'));
+    window.addEventListener('hashchange', () => setTimeout(() => openLogComposer({ onSaved: refreshCurrentView }), 0), { once: true });
+    navigate('/feed', { replace: true });
+  }, { keep: false });
+  // Replace, not push: pushing /feed on top of the bad URL meant Back
+  // returned to it, which redirected straight forward again, so Back
+  // looked like it did nothing.
+  setNotFound(() => navigate('/feed', { replace: true }));
 }
 
 // Delegated handlers attached once to a node that survives every
@@ -251,7 +260,7 @@ function registerRoutes() {
 function wireGlobalChrome() {
   document.body.addEventListener('click', (e) => {
     const back = e.target.closest('[data-action="back"]');
-    if (back) { e.preventDefault(); history.back(); }
+    if (back) { e.preventDefault(); goBack(); }
     // Account/Browse on the signed-out nav (see navBar() in
     // components.js) aren't real routes — there's no bare "/browse"
     // page, it's a screen inside landing-view.js's own local state — so
@@ -286,7 +295,7 @@ function wireGlobalChrome() {
     const searchTab = e.target.closest('.tabbar [data-route="/search"]');
     if (searchTab && location.hash.slice(1).split('?')[0] === '/search') {
       e.preventDefault();
-      refreshCurrentView();
+      refreshCurrentView({ dataChanged: false });
     }
   });
 }
@@ -309,7 +318,7 @@ function wireGlobalChrome() {
 // which missed .avatar-viewer (profile-view.js) and .image-viewer
 // (message-thread-view.js) entirely, so back still stuck around on
 // exactly those two screens.
-const OVERLAY_SELECTOR = '.modal-overlay, .poster-viewer, .avatar-viewer, .image-viewer, .avatar-crop';
+const OVERLAY_SELECTOR = '.modal-overlay, .poster-viewer, .avatar-viewer, .image-viewer, .avatar-crop, .draw-overlay, .story-viewer';
 
 // This is the same cleanup wireHardwareBack already did for Android's
 // physical back button below — just generalized to every hashchange, so
@@ -331,41 +340,42 @@ function closeStrayOverlays() {
   document.body.style.overflow = '';
 }
 
-// Android's hardware/gesture back button.
+// One Back for the in-app arrow and the Android button alike: the
+// previous history entry, whatever it is. Only when there is none (this
+// screen was opened directly from a link or a notification) is there
+// nowhere to go back to; the arrow then goes to the app's home rather
+// than out of the app.
+function goBack() {
+  if (onOverlayEntry() || historyDepth() > 0) { history.back(); return; }
+  if ((location.hash.slice(1) || '/feed') !== '/feed') navigate('/feed', { replace: true });
+}
+
+// Android's hardware/gesture back button inside a Capacitor build.
 //
-// Inside the packaged app the WebView doesn't wire this up to page
-// history on its own — the default is to exit the app outright, so a
-// single back press from anywhere in the app closed it instead of
-// returning to the previous screen. This routes back presses through
-// the same history the in-app back arrows use, and only actually leaves
-// the app from the feed (the root screen), which is the behaviour
-// Android users expect.
+// The WebView there doesn't wire it to page history on its own — the
+// default exits the app outright. This sends it through the same history
+// as everything else, and only exits when there is genuinely no previous
+// entry left. The TWA (android-app) and the plain WebView build
+// (android-native) get this from the browser/WebView history directly.
 //
-// No-ops on the web build, where the browser's own back button already
-// does the right thing and the plugin simply isn't present.
-async function wireHardwareBack() {
-  try {
-    const { App } = await import('@capacitor/app');
-    App.addListener('backButton', ({ canGoBack }) => {
-      const onRootScreen = (location.hash.slice(1) || '/feed') === '/feed';
-      // Multiple overlays can stack (e.g. "Add to list" opened from a
-      // button inside the log modal) — appendChild always adds to the
-      // end of <body>, so the LAST match here is the topmost/most
-      // recently opened one, not the first. A single back press should
-      // only dismiss that one layer, not reach past it to whatever a
-      // querySelector's first match happened to be.
-      const overlays = document.querySelectorAll(OVERLAY_SELECTOR);
-      if (overlays.length) {
-        dismissOverlay(overlays[overlays.length - 1]);
-        if (overlays.length === 1) document.body.style.overflow = '';
-        return;
-      }
-      if (canGoBack && !onRootScreen) history.back();
-      else App.exitApp();
-    });
-  } catch {
-    // Web build: no Capacitor runtime, nothing to bind.
-  }
+// No-ops on the web build, where the plugin simply isn't present.
+function wireHardwareBack() {
+  const App = window.Capacitor?.Plugins?.App;
+  if (!App?.addListener) return;
+  App.addListener('backButton', () => {
+    // Overlays opened where there is no routed page (the signed-out
+    // funnel) have no history entry; close those directly.
+    if (onOverlayEntry() || historyDepth() > 0) { history.back(); return; }
+    // Overlays opened where there is no routed page (the signed-out
+    // funnel) have no history entry of their own; close those directly.
+    const overlays = document.querySelectorAll(OVERLAY_SELECTOR);
+    if (overlays.length) {
+      dismissOverlay(overlays[overlays.length - 1]);
+      if (overlays.length === 1) document.body.style.overflow = '';
+      return;
+    }
+    App.exitApp();
+  });
 }
 
 // Catches the return trip from signInWithProvider()'s native branch (see
@@ -645,7 +655,9 @@ function handleSignedOut() {
   state.profile = null;
   // replaceState (not location.hash =) so this doesn't fire a
   // hashchange into a router that would try to render a protected view.
-  history.replaceState(null, '', location.pathname + location.search);
+  history.replaceState({ idx: historyDepth() }, '', location.pathname + location.search);
+  // None of the signed-in screens kept for Back may come back now.
+  resetPages();
   // Reset routing to the anonymous fallback — registerRoutes() pointed
   // notFound at /feed for the session that just ended, and /feed's
   // handler assumes a signed-in user. Without this reset, hitting an
@@ -660,11 +672,19 @@ function handleSignedOut() {
 
 async function boot() {
   wireGlobalChrome();
+  trackOverlays({
+    selector: OVERLAY_SELECTOR,
+    dismiss: dismissOverlay,
+    onAllClosed: () => { if (!document.querySelector(OVERLAY_SELECTOR)) document.body.style.overflow = ''; },
+  });
   wireHardwareBack();
   wireAuthDeepLink();
   window.addEventListener('hashchange', applyMessageBadge);
   window.addEventListener('hashchange', applyNotifBadge);
   window.addEventListener('hashchange', closeStrayOverlays);
+  // A page put back from the back stack still has the tab bar it was
+  // built with; bring its badges up to date like a fresh one's.
+  window.addEventListener('page:shown', () => { applyMessageBadge(); applyNotifBadge(); });
   // The hub clears the inbox server-side when it opens; this is how the
   // bell hears about it without polling.
   window.addEventListener('notifications:read', () => {

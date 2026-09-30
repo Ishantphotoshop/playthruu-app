@@ -125,7 +125,7 @@ export async function renderMessageThreadView(root, { conversationId, otherUserI
         convo = existing;
         threadId = existing.id;
         messages = await api.getMessages(threadId);
-        history.replaceState(null, '', `#/messages/${threadId}`);
+        history.replaceState(history.state, '', `#/messages/${threadId}`);
       } else {
         convo = { other: await api.getProfile(otherUserId), status: null, requested_by: null, id: null };
       }
@@ -1047,7 +1047,7 @@ export async function renderMessageThreadView(root, { conversationId, otherUserI
     if (threadId) return;
     convo = await api.getOrCreateConversation(state.user.id, otherUserId);
     threadId = convo.id;
-    history.replaceState(null, '', `#/messages/${threadId}`);
+    history.replaceState(history.state, '', `#/messages/${threadId}`);
     startListening();
   }
 

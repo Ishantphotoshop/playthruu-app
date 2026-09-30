@@ -101,6 +101,7 @@ export function openStoryViewer(groups, startGroup = 0, onClose) {
     document.removeEventListener('keydown', onKey);
     onClose?.();
   };
+  overlay.__dismiss = close;
 
   function onKey(e) {
     if (e.key === 'Escape') close();

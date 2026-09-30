@@ -8,7 +8,7 @@ import {
 import { toast, qs, qsa, esc, timeAgo, enableSwipeToDismiss, promptSignIn, tapFeedback, pulseLogTab, igdbSized, placeholderCover } from '../utils.js';
 import { buzz } from '../haptics.js';
 import { openLogComposer } from './log-composer.js';
-import { refreshCurrentView, navigate } from '../router.js';
+import { refreshCurrentView, navigate, markPagesStale } from '../router.js';
 import { paintStoryRail } from './stories.js';
 import { getCached, setCached } from '../cache.js';
 
@@ -322,6 +322,7 @@ async function paintDiscovery(slot) {
           try {
             const saved = await api.addGame(g, state.user.id);
             await api.createLog({ game_id: saved.id, user_id: state.user.id, status: 'backlog', is_public: true });
+            markPagesStale();
             pulseLogTab();
             tapFeedback();
             const badge = qs('.discovery-tile__saved', btn);
@@ -524,6 +525,7 @@ async function paintDiscovery(slot) {
     };
     document.addEventListener('keydown', onKey);
     window.addEventListener('hashchange', close);
+    overlay.__dismiss = () => close();
     qs('[data-close]', overlay).addEventListener('click', close);
     overlay.addEventListener('click', (e) => {
       if (e.target.closest('button')) return;
@@ -678,6 +680,7 @@ async function paintDiscovery(slot) {
       try {
         const saved = await api.addGame(g, state.user.id);
         await api.createLog({ game_id: saved.id, user_id: state.user.id, status: 'backlog', is_public: true });
+        markPagesStale();
         buzz([10, 40, 14]);
         pulseLogTab();
         if (pick === g) qs('span', btnSave).textContent = 'Added';
@@ -892,7 +895,7 @@ export function wirePullToRefresh(body) {
       indicator.classList.add('pull-refresh--spinning');
       indicator.style.transform = `translateY(${THRESHOLD}px)`;
       indicator.style.opacity = '1';
-      try { await refreshCurrentView(); } catch { /* the view's own error state handles this */ }
+      try { await refreshCurrentView({ dataChanged: false }); } catch { /* the view's own error state handles this */ }
     } else {
       indicator.style.transform = ''; indicator.style.opacity = '0';
       indicator.classList.remove('pull-refresh--ready');

@@ -431,7 +431,7 @@ export async function renderGameView(root, { id, igdbId }) {
           const g = games[Number(el.dataset.idx)];
           try {
             const saved = await api.addGame({ igdb_id: g.igdb_id, title: g.title, cover_url: g.cover_url, release_year: g.year }, state.user?.id ?? null);
-            location.hash = `#/game/${saved.id}`;
+            navigate(`/game/${saved.id}`);
           } catch (err) {
             toast(err.message || 'Could not open that game.', 'error');
             el.disabled = false;
