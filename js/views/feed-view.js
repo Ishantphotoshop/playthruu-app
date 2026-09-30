@@ -3,9 +3,10 @@ import { state } from '../state.js';
 import {
   topBar, navBar, homeTabs, feedSectionHead, activityCard, emptyState, spinner, skeletonRow, iconStamp, iconUser, iconFilter,
   trendingStrip, wireTrendingStrip, friendsPlayingCard, posterFrame, openReportSheet, iconChevronRight,
-  iconDice, iconBookmark,
+  iconDice, iconBookmark, iconBrandMark, iconCardStack, iconPlay,
 } from '../components.js';
-import { toast, qs, qsa, esc, timeAgo, enableSwipeToDismiss, promptSignIn, tapFeedback, pulseLogTab } from '../utils.js';
+import { toast, qs, qsa, esc, timeAgo, enableSwipeToDismiss, promptSignIn, tapFeedback, pulseLogTab, igdbSized, placeholderCover } from '../utils.js';
+import { sfx, sfxUnlock, buzz } from '../sfx.js';
 import { openLogComposer } from './log-composer.js';
 import { refreshCurrentView, navigate } from '../router.js';
 import { paintStoryRail } from './stories.js';
@@ -284,7 +285,7 @@ async function paintDiscovery(slot) {
       <div class="discovery-grid" id="discovery-list">${games.length ? rowsHtml(games, 0) : skeletonTiles(9)}</div>
       <div id="discovery-more"></div>`;
     qs('#discovery-filter', slot).addEventListener('click', openPicker);
-    qs('#discovery-random', slot).addEventListener('click', openSpin);
+    qs('#discovery-random', slot).addEventListener('click', openDraw);
     if (games.length) wireRows(qs('#discovery-list', slot));
   }
 
@@ -462,167 +463,178 @@ async function paintDiscovery(slot) {
     });
   }
 
-  // Random pick: a slot-machine reel through the games already loaded for
-  // the collection being viewed, landing on one of them at random. Never
-  // the same game twice in a row when there's more than one to pick from.
-  let lastPickKey = null;
-  function openSpin() {
+  // Random pick as a card draw. The collection being viewed becomes a
+  // deck: it riffles twice, the top card lifts to show genre and year on
+  // its back (a beat of anticipation before the game itself), then flips.
+  // Three action cards deal out underneath: Draw another, Open, Want to
+  // play. Picks don't repeat within a collection until every loaded game
+  // has come up once. Tapping the dark area mid-draw skips to the result.
+  const drawn = { collection: null, keys: new Set() };
+  function openDraw() {
     if (!games.length) { toast('Still loading this collection. Try again in a second.'); return; }
+    sfxUnlock();
     const collection = activeCollection();
+    if (drawn.collection !== collection.id) { drawn.collection = collection.id; drawn.keys.clear(); }
     const overlay = document.createElement('div');
-    overlay.className = 'modal-overlay';
+    overlay.className = 'draw-overlay';
     overlay.innerHTML = `
-      <div class="modal spin-sheet" role="dialog" aria-label="Random pick">
-        <header class="modal__header">
-          <div>
-            <h2>Random pick</h2>
-            <p class="spin-sheet__from">From ${esc(collection.label)}</p>
-          </div>
-          <button class="modal__close" data-close aria-label="Close">&times;</button>
-        </header>
-        <div class="modal__body">
-          <div class="spin-reel" aria-hidden="true"><div class="spin-reel__strip"></div></div>
-          <div class="spin-result" aria-live="polite">
-            <h3 class="spin-result__title"></h3>
-            <p class="spin-result__meta"></p>
-          </div>
-          <div class="spin-actions">
-            <button type="button" class="btn btn--accent btn--block" data-open disabled>Open game</button>
-            <div class="spin-actions__row">
-              <button type="button" class="btn btn--ghost" data-save disabled>${iconBookmark()}<span>Save</span></button>
-              <button type="button" class="btn btn--ghost" data-again disabled>${iconDice()}<span>Spin again</span></button>
-            </div>
-          </div>
+      <button type="button" class="modal__close draw-close" data-close aria-label="Close">&times;</button>
+      <div class="draw" role="dialog" aria-label="Random pick from ${esc(collection.label)}">
+        <div class="draw-stage"></div>
+        <div class="draw-info" aria-live="polite">
+          <h3 class="draw-info__title"></h3>
+          <p class="draw-info__meta"></p>
+        </div>
+        <div class="draw-actions">
+          <button type="button" class="draw-act" data-draw>${iconCardStack()}<span>Draw</span></button>
+          <button type="button" class="draw-act draw-act--go" data-open>${iconPlay()}<span>Open</span></button>
+          <button type="button" class="draw-act" data-save>${iconBookmark()}<span>Want to play</span></button>
         </div>
       </div>`;
     document.body.appendChild(overlay);
     document.body.style.overflow = 'hidden';
 
-    const reel = qs('.spin-reel', overlay);
-    const strip = qs('.spin-reel__strip', overlay);
-    const result = qs('.spin-result', overlay);
-    const titleEl = qs('.spin-result__title', overlay);
-    const metaEl = qs('.spin-result__meta', overlay);
+    const drawEl = qs('.draw', overlay);
+    const stage = qs('.draw-stage', overlay);
+    const titleEl = qs('.draw-info__title', overlay);
+    const metaEl = qs('.draw-info__meta', overlay);
+    const acts = qsa('.draw-act', overlay);
+    const btnDraw = qs('[data-draw]', overlay);
     const btnOpen = qs('[data-open]', overlay);
     const btnSave = qs('[data-save]', overlay);
-    const btnAgain = qs('[data-again]', overlay);
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
     const keyOf = (g) => g.igdb_id ?? g.id ?? g.title;
-    const rand = (arr) => arr[Math.floor(Math.random() * arr.length)];
-    const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
-    let anim = null;
-    let raf = 0;
-    let closed = false;
+    const anims = [];
+    let token = 0;
+    let busy = false;
+    let skip = false;
     let pick = null;
+    let current = null;
 
-    const close = () => {
-      closed = true;
-      anim?.cancel();
-      cancelAnimationFrame(raf);
+    const run = (el, kf, opt) => { const a = el.animate(kf, opt); anims.push(a); return a; };
+    const done = (a) => a.finished.catch(() => {});
+    const pause = (ms) => (skip || reduce ? Promise.resolve() : new Promise((r) => setTimeout(r, ms)));
+    const onKey = (e) => { if (e.key === 'Escape') close(); };
+    function close() {
+      token++;
+      anims.forEach((a) => { try { a.cancel(); } catch { /* already gone */ } });
       overlay.remove();
       document.body.style.overflow = '';
-    };
-    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+      document.removeEventListener('keydown', onKey);
+      window.removeEventListener('hashchange', close);
+    }
+    document.addEventListener('keydown', onKey);
+    window.addEventListener('hashchange', close);
     qs('[data-close]', overlay).addEventListener('click', close);
-    enableSwipeToDismiss(qs('.modal', overlay), close);
+    overlay.addEventListener('click', (e) => {
+      if (e.target.closest('button')) return;
+      if (busy) { skip = true; anims.forEach((a) => { try { a.finish(); } catch { /* already gone */ } }); return; }
+      if (e.target === overlay || e.target === drawEl) close();
+    });
 
-    // Light haptic ticks as posters pass the window, only once the reel
-    // has slowed enough for them to be felt as separate clicks.
-    function ticks(pitch, centreOffset) {
-      let last = -1;
-      let lastAt = 0;
-      const frame = (now) => {
-        const m = new DOMMatrixReadOnly(getComputedStyle(strip).transform);
-        const idx = Math.round((centreOffset - m.m42) / pitch);
-        if (idx !== last) {
-          if (last !== -1 && now - lastAt > 55) { try { navigator.vibrate?.(4); } catch { /* unsupported */ } }
-          last = idx;
-          lastAt = now;
-        }
-        raf = requestAnimationFrame(frame);
-      };
-      raf = requestAnimationFrame(frame);
+    const cardHTML = () => `
+      <div class="draw-card"><div class="draw-card__inner">
+        <div class="draw-card__face draw-card__back">${iconBrandMark()}<span class="draw-card__chip"></span></div>
+        <div class="draw-card__face draw-card__front"><img alt=""></div>
+      </div></div>`;
+    const liveCards = () => qsa('.draw-card:not(.is-gone)', stage);
+    const stack = () => liveCards().forEach((c, i) => { c.style.top = `${-i * 1.6}px`; c.style.left = `${-i * 0.6}px`; c.style.zIndex = i; });
+    const fan = (i) => `translateX(${i % 2 ? 80 : -80}px) rotate(${i % 2 ? 7 : -7}deg)`;
+    const genreOf = (g) => (g.genre || '').split(',')[0].replace('Role-playing (RPG)', 'RPG').trim();
+
+    function choose() {
+      let fresh = games.filter((g) => !drawn.keys.has(keyOf(g)));
+      if (!fresh.length) {
+        drawn.keys.clear();
+        fresh = games.filter((g) => !pick || keyOf(g) !== keyOf(pick));
+        if (!fresh.length) fresh = games.slice();
+      }
+      const g = fresh[Math.floor(Math.random() * fresh.length)];
+      drawn.keys.add(keyOf(g));
+      return g;
     }
 
-    function land() {
-      cancelAnimationFrame(raf);
-      result.classList.remove('spin-result--rolling');
+    function hideResult() {
+      drawEl.classList.remove('is-landed');
+      acts.forEach((b) => { b.disabled = true; });
+    }
+
+    function showResult() {
       titleEl.textContent = pick.title;
-      metaEl.textContent = [pick.release_year, pick.genre].filter(Boolean).join(' · ');
-      btnOpen.disabled = false;
-      btnSave.disabled = false;
-      btnAgain.disabled = false;
-      tapFeedback();
+      metaEl.textContent = [pick.release_year, genreOf(pick), pick.igdb_rating ? `★ ${(pick.igdb_rating / 20).toFixed(1)}` : '']
+        .filter(Boolean).join(' · ');
+      qs('span', btnSave).textContent = 'Want to play';
+      drawEl.classList.add('is-landed');
+      acts.forEach((b) => { b.disabled = false; });
+      run(qs('.draw-info', overlay), [{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'none' }], { duration: 280, easing: 'cubic-bezier(.2,.8,.2,1)' });
+      acts.forEach((b, i) => {
+        run(b, [{ opacity: 0, translate: '0 60px' }, { opacity: 1, translate: '0 0' }], { duration: reduce ? 1 : 360, delay: reduce ? 0 : 120 + i * 90, easing: 'cubic-bezier(.2,.8,.2,1)', fill: 'backwards' });
+        if (!reduce) setTimeout(() => sfx.deal(), 120 + i * 90);
+      });
     }
 
-    async function spin() {
-      btnOpen.disabled = true;
-      btnSave.disabled = true;
-      btnAgain.disabled = true;
-      qs('span', btnSave).textContent = 'Save';
-      result.classList.add('spin-result--rolling');
-      titleEl.textContent = 'Rolling…';
-      metaEl.textContent = '';
+    async function deal({ shuffle }) {
+      const my = ++token;
+      busy = true; skip = false;
+      hideResult();
+      pick = choose();
+      const art = pick.cover_url ? igdbSized(pick.cover_url, '720p') : placeholderCover(pick.title);
+      const artReady = new Promise((r) => { const im = new Image(); im.onload = im.onerror = r; im.src = art; });
 
-      const pool = games.slice();
-      const fresh = pool.filter((g) => keyOf(g) !== lastPickKey);
-      pick = rand(fresh.length ? fresh : pool);
-      lastPickKey = keyOf(pick);
-      const fillers = pool.length > 1 ? pool.filter((g) => keyOf(g) !== keyOf(pick)) : pool;
-      // ~24 posters roll past before the pick, plus one after it so the
-      // reel window never shows an empty slot below the landed game.
-      // No poster twice in a row, which reads as the reel stalling.
-      const seq = [];
-      while (seq.length < 24) {
-        const g = rand(fillers);
-        if (fillers.length > 1 && seq.length && keyOf(seq[seq.length - 1]) === keyOf(g)) continue;
-        seq.push(g);
+      if (shuffle || liveCards().length < 3) {
+        stage.innerHTML = Array.from({ length: 7 }, cardHTML).join('');
+        stack();
+        if (!reduce) {
+          const cards = liveCards();
+          for (let r = 0; r < 2 && !skip; r++) {
+            await Promise.all(cards.map((c, i) => done(run(c, [{ transform: 'none' }, { transform: fan(i) }], { duration: 200, easing: 'cubic-bezier(.3,0,.2,1)', fill: 'forwards' }))));
+            if (my !== token) return;
+            sfx.riffle();
+            await Promise.all(cards.map((c, i) => done(run(c, [{ transform: fan(i) }, { transform: 'none' }], { duration: 240, delay: i * 28, easing: 'cubic-bezier(.2,.8,.2,1)', fill: 'forwards' }))));
+            if (my !== token) return;
+          }
+        }
       }
-      const target = seq.length;
-      const items = [...seq, pick, rand(fillers)];
-      strip.getAnimations().forEach((a) => a.cancel());
-      strip.style.transform = '';
-      strip.innerHTML = items.map((g) => `<div class="spin-reel__item">${posterFrame(g.cover_url, g.title, 'spin-reel__cover')}</div>`).join('');
-      const imgs = qsa('img', strip);
-      imgs.forEach((img) => { img.loading = 'eager'; });
 
-      // Fractional rects, not offsetTop/offsetHeight: those round to whole
-      // pixels, and a third of a pixel per poster adds up to a visibly
-      // off-centre landing 24 posters down.
-      const kids = strip.children;
-      const r0 = kids[0].getBoundingClientRect();
-      const itemH = r0.height;
-      const pitch = kids[1].getBoundingClientRect().top - r0.top;
-      const centreOffset = reel.getBoundingClientRect().height / 2 - itemH / 2;
-      const yFor = (i) => centreOffset - i * pitch;
-      const start = yFor(1);
-      const end = yFor(target);
-      strip.style.transform = `translateY(${start}px)`;
-
-      // The landing posters have to be painted before the reel slows onto
-      // them; the fast part blurs past anything still loading.
-      const settle = imgs.slice(target - 4).map((img) => img.decode().catch(() => {}));
-      await Promise.race([Promise.all(settle), new Promise((r) => setTimeout(r, 1200))]);
-      if (closed) return;
-
-      if (reduceMotion) {
-        strip.style.transform = `translateY(${end}px)`;
-        land();
-        return;
-      }
-      ticks(pitch, centreOffset);
-      anim = strip.animate([
-        { transform: `translateY(${start}px)`, easing: 'cubic-bezier(0.12, 0.72, 0.18, 1)' },
-        { transform: `translateY(${end - 10}px)`, offset: 0.92, easing: 'cubic-bezier(0.3, 0, 0.3, 1)' },
-        { transform: `translateY(${end}px)` },
-      ], { duration: 3400, fill: 'forwards' });
-      try { await anim.finished; } catch { return; }
-      if (closed) return;
-      land();
+      const cards = liveCards();
+      const top = cards[cards.length - 1];
+      current = top;
+      qs('.draw-card__front img', top).src = art;
+      const chip = qs('.draw-card__chip', top);
+      chip.textContent = [genreOf(pick), pick.release_year].filter(Boolean).join(' · ');
+      sfx.lift();
+      await done(run(top, [{ transform: 'none' }, { transform: 'translateY(-22px) scale(1.04)' }], { duration: reduce ? 1 : 230, easing: 'cubic-bezier(.2,.8,.2,1)', fill: 'forwards' }));
+      if (my !== token) return;
+      if (chip.textContent) run(chip, [{ opacity: 0, transform: 'translate(-50%,6px)' }, { opacity: 1, transform: 'translate(-50%,0)' }], { duration: 220, fill: 'forwards' });
+      await Promise.all([pause(420), Promise.race([artReady, new Promise((r) => setTimeout(r, 900))])]);
+      if (my !== token) return;
+      sfx.flip();
+      buzz(12);
+      await done(run(qs('.draw-card__inner', top), [{ transform: 'rotateY(0)' }, { transform: 'rotateY(180deg)' }], { duration: reduce ? 1 : 520, easing: 'cubic-bezier(.3,.1,.2,1)', fill: 'forwards' }));
+      if (my !== token) return;
+      cards.slice(0, -1).forEach((c) => run(c, [{ opacity: 1 }, { opacity: 0 }], { duration: 250, fill: 'forwards' }));
+      busy = false;
+      showResult();
     }
 
-    btnAgain.addEventListener('click', spin);
+    btnDraw.addEventListener('click', async () => {
+      if (busy || !current) return;
+      busy = true;
+      hideResult();
+      sfx.toss();
+      buzz(6);
+      const gone = current;
+      await done(run(gone, [{ transform: 'translateY(-22px) scale(1.04)', opacity: 1 }, { transform: 'translate(300px,-40px) rotate(18deg)', opacity: 0 }], { duration: reduce ? 1 : 340, easing: 'cubic-bezier(.4,0,.8,.4)', fill: 'forwards' }));
+      gone.classList.add('is-gone');
+      stack();
+      liveCards().forEach((c) => run(c, [{ opacity: 0.2 }, { opacity: 1 }], { duration: 200, fill: 'forwards' }));
+      deal({ shuffle: false });
+    });
     btnOpen.addEventListener('click', async () => {
+      if (busy || !pick) return;
       if (!state.user) { promptSignIn('Sign in to open games.'); return; }
+      sfx.open();
+      buzz(8);
       btnOpen.disabled = true;
       try {
         const saved = await api.addGame(pick, state.user.id);
@@ -634,22 +646,25 @@ async function paintDiscovery(slot) {
       }
     });
     btnSave.addEventListener('click', async () => {
+      if (busy || !pick) return;
       if (!state.user) { promptSignIn('Sign in to save games.'); return; }
+      const g = pick;
       btnSave.disabled = true;
       try {
-        const saved = await api.addGame(pick, state.user.id);
+        const saved = await api.addGame(g, state.user.id);
         await api.createLog({ game_id: saved.id, user_id: state.user.id, status: 'backlog', is_public: true });
+        sfx.save();
+        buzz([10, 40, 14]);
         pulseLogTab();
-        tapFeedback();
-        qs('span', btnSave).textContent = 'Saved';
-        toast(`Saved ${saved.title} to your backlog.`, 'success');
+        if (pick === g) qs('span', btnSave).textContent = 'Added';
+        toast(`Added ${saved.title} to Want to Play.`, 'success');
       } catch (err) {
         toast(err.message || 'Could not save that game.', 'error');
         btnSave.disabled = false;
       }
     });
 
-    spin();
+    deal({ shuffle: true });
   }
 
   // Full reset whenever the collection changes — without clearing page
