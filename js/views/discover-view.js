@@ -155,8 +155,19 @@ export function renderDiscoverView(root, { openFilters = false } = {}) {
         }).join(''));
         wireDiscoverCards(games);
       }
-      moreEl().innerHTML = hasMore ? `<button class="btn btn--ghost btn--block" id="load-more">Load more</button>` : '';
-      if (hasMore) qs('#load-more', moreEl()).addEventListener('click', () => { page += 1; runSearch(false); });
+      // Loads as you scroll; no button. The sentinel sits under the list
+      // and the next page starts about a screen and a half early.
+      moreEl().innerHTML = hasMore ? `<div id="discover-sentinel" aria-hidden="true" style="height:1px"></div>` : '';
+      const sentinel = hasMore && qs('#discover-sentinel', moreEl());
+      if (sentinel && 'IntersectionObserver' in window) {
+        const io = new IntersectionObserver((entries) => {
+          if (!entries.some((e) => e.isIntersecting) || loading) return;
+          io.disconnect();
+          page += 1;
+          runSearch(false);
+        }, { root: sentinel.closest('.view-body') || null, rootMargin: '0px 0px 1200px 0px' });
+        io.observe(sentinel);
+      }
     } catch (err) {
       if (ticket === searchTicket && resultsEl()) {
         resultsEl().innerHTML = `<p class="muted">Couldn't load games right now: ${esc(err.message)}</p>`;

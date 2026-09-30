@@ -1233,7 +1233,6 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    is the usual cause of a grid drifting out of true. */
 /* Separated poster cards — each its own rounded tile with a gap between,
    not one attached block. */
-.discovery-grid--more { margin-top: var(--poster-gap); }
 .discovery-grid {
   display: grid;
   grid-template-columns: repeat(3, var(--poster-w));

@@ -412,8 +412,8 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
     if (list) qsa('[data-skeleton]', list).forEach((el) => el.remove());
     if (!gamesCache?.length) { moreEl.innerHTML = emptyState('Nothing to show right now.'); return; }
     if (!gamesHasMore) { moreEl.innerHTML = `<p class="discovery-end">That's everything for now.</p>`; return; }
-    moreEl.innerHTML = `<div id="landing-games-sentinel" aria-hidden="true"></div><button class="btn btn--ghost btn--block" id="landing-games-load-more">Load more</button>`;
-    qs('#landing-games-load-more', moreEl).addEventListener('click', () => loadMoreGames(stage));
+    // Loads as you scroll; no button.
+    moreEl.innerHTML = `<div id="landing-games-sentinel" aria-hidden="true"></div>`;
     if (gamesObserver) gamesObserver.disconnect();
     const sentinel = qs('#landing-games-sentinel', moreEl);
     const scrollRoot = moreEl.closest('.landing-stage') || null;

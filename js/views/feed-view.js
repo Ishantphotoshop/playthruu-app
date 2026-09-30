@@ -293,10 +293,12 @@ async function paintDiscovery(slot) {
         </div>
       </div>
       <div class="discovery-grid" id="discovery-list">${shown ? rowsHtml(games.slice(0, shown), 0) : skeletonTiles(BATCH)}</div>
+      <div id="discovery-sentinel" aria-hidden="true"></div>
       <div id="discovery-more"></div>`;
     qs('#discovery-filter', slot).addEventListener('click', openPicker);
     qs('#discovery-random', slot).addEventListener('click', openDraw);
     if (games.length) wireRows(qs('#discovery-list', slot));
+    observeSentinel();
   }
 
   // Posters only, no titles or metadata — the artwork is the hook here,
@@ -358,41 +360,42 @@ async function paintDiscovery(slot) {
     });
   }
 
-  // The scroll container is .view-body (it owns overflow-y), not the
-  // window — so the observer has to watch inside it or it would fire
-  // immediately and load every page at once.
+  // Infinite scroll, no button. One observer on a sentinel that sits
+  // right under the grid and never moves or gets rebuilt; it fires about
+  // a screen and a half early, so the next posters are usually in place
+  // before you get there. The scroll container is .view-body, not the
+  // window.
   function observeSentinel() {
     if (observer) observer.disconnect();
     const sentinel = qs('#discovery-sentinel', slot);
     if (!sentinel || !('IntersectionObserver' in window)) return;
-    const scrollRoot = slot.closest('.view-body') || null;
     observer = new IntersectionObserver((entries) => {
       if (entries.some((e) => e.isIntersecting)) loadMore();
-    }, { root: scrollRoot, rootMargin: '400px' });
+    }, { root: slot.closest('.view-body') || null, rootMargin: '0px 0px 1200px 0px' });
     observer.observe(sentinel);
   }
+  // Still in range after a block went in (a fast fling): observing again
+  // reports the current state, which carries straight on to the next.
+  function recheckSentinel() {
+    const sentinel = qs('#discovery-sentinel', slot);
+    if (observer && sentinel) { observer.unobserve(sentinel); observer.observe(sentinel); }
+  }
 
+  // Only ever the end-of-list or empty message. Loading is shown inside
+  // the grid itself (see loadMore), so nothing down here changes height
+  // while you scroll, which is what made the grid jump and flicker.
   function paintFooter() {
     const moreEl = qs('#discovery-more', slot);
     if (!moreEl) return;
-    if (loading) {
-      // First batch: the grid itself already shows the placeholders.
-      moreEl.innerHTML = shown ? `<div class="discovery-grid discovery-grid--more">${skeletonTiles(BATCH)}</div>` : '';
-      return;
-    }
-    if (!more()) {
-      moreEl.innerHTML = games.length
-        ? `<p class="discovery-end">That's everything in this collection.</p>`
+    moreEl.innerHTML = more() || loading ? ''
+      : games.length ? `<p class="discovery-end">That's everything in this collection.</p>`
         : `<p class="muted">Nothing here right now — try another mood.</p>`;
-      return;
-    }
-    // Sentinel drives auto-loading; the button is a visible fallback and
-    // an escape hatch if the observer never fires.
-    moreEl.innerHTML = `
-      <div id="discovery-sentinel" aria-hidden="true"></div>
-      <button class="btn btn--ghost btn--block" id="discovery-load-more">Load more</button>`;
-    qs('#discovery-load-more', moreEl).addEventListener('click', loadMore);
-    observeSentinel();
+  }
+
+  // Warm the image cache for posters that are fetched but not shown yet,
+  // so a new block paints its covers at once instead of popping in.
+  function preload(list) {
+    list.forEach((g) => { if (g.cover_url) { const im = new Image(); im.decoding = 'async'; im.src = igdbSized(g.cover_url, 'cover_big'); } });
   }
 
   async function fetchPage() {
@@ -420,8 +423,15 @@ async function paintDiscovery(slot) {
   async function loadMore() {
     if (loading || !more()) return;
     loading = true;
-    paintFooter();
     const startActive = activeId;
+    const listEl = qs('#discovery-list', slot);
+    // Placeholders go INTO the grid, the same size as posters, and are
+    // swapped for them in place, so the page never grows then shrinks.
+    // Skipped when the next block is already fetched.
+    const needsNetwork = games.length - shown < BATCH && hasMore;
+    if (listEl && shown && needsNetwork) {
+      listEl.insertAdjacentHTML('beforeend', Array.from({ length: BATCH }, () => `<div class="skeleton skeleton--tile" data-ph></div>`).join(''));
+    }
     try {
       if (prefetching) await prefetching;
       while (games.length - shown < BATCH && hasMore) await fetchPage();
@@ -430,19 +440,23 @@ async function paintDiscovery(slot) {
     }
     if (startActive !== activeId) return; // the collection changed meanwhile
     const batch = games.slice(shown, shown + BATCH);
-    const listEl = qs('#discovery-list', slot);
-    if (listEl && batch.length) {
-      // The first batch replaces the placeholder tiles shell() painted;
-      // every later one appends a full 3x3 block.
-      if (shown === 0) listEl.innerHTML = rowsHtml(batch, 0);
-      else listEl.insertAdjacentHTML('beforeend', rowsHtml(batch, shown));
-      wireRows(listEl);
+    if (listEl) {
+      qsa('[data-ph]', listEl).forEach((ph) => ph.remove());
+      if (batch.length) {
+        if (shown === 0) listEl.innerHTML = rowsHtml(batch, 0);
+        else listEl.insertAdjacentHTML('beforeend', rowsHtml(batch, shown));
+        wireRows(listEl);
+      }
     }
     shown += batch.length;
     setCached(DISCOVERY_CACHE_KEY, { activeId, page, hasMore, games, shown });
     loading = false;
+    // Fetch the next block now and warm its images, while this one is
+    // being looked at.
     if (games.length - shown < BATCH && hasMore && !prefetching) {
-      prefetching = fetchPage().catch(() => {}).finally(() => { prefetching = null; });
+      prefetching = fetchPage().catch(() => {}).finally(() => { prefetching = null; preload(games.slice(shown, shown + BATCH)); });
+    } else {
+      preload(games.slice(shown, shown + BATCH));
     }
     if (!batch.length && !games.length) {
       const moreEl = qs('#discovery-more', slot);
@@ -450,6 +464,7 @@ async function paintDiscovery(slot) {
       return;
     }
     paintFooter();
+    if (more()) recheckSentinel();
   }
 
   function openPicker() {
