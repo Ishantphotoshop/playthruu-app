@@ -678,8 +678,8 @@ function handleSignedOut() {
 // alone (Bored grid, trending) are matched by title, the same lookup
 // Search uses, and added to the catalogue if they are new.
 function wirePosterLongPress() {
-  // Held for a full second: buzz, then the sheet slides up from the bottom.
-  const HOLD_MS = 1000;
+  // Held for half a second: the sheet slides up with a buzz, together.
+  const HOLD_MS = 500;
   let timer = 0;
   let start = null;
   let swallowClick = false;
@@ -717,11 +717,12 @@ function wirePosterLongPress() {
       timer = 0; start = null;
       swallowClick = true;
       setTimeout(() => { swallowClick = false; }, 1200);
-      buzz([20]);
-      if (!state.user) { promptSignIn('Sign in to log games.'); return; }
+      if (!state.user) { buzz([20]); promptSignIn('Sign in to log games.'); return; }
       try {
         const game = await lookup;
         if (!game) { toast('Could not find that game.', 'error'); return; }
+        // The buzz lands with the sheet, not before it.
+        buzz([20]);
         openLogComposer({ game, onSaved: refreshCurrentView });
       } catch (err) {
         toast(err.message || 'Could not open the log sheet.', 'error');
