@@ -259,11 +259,11 @@ async function paintDiscovery(slot) {
   let hasMore = cached?.hasMore ?? true;
   let loading = false;
   let games = cached?.games || [];
-  // Posters go on screen 9 at a time (three full rows of 3); games
+  // Posters go on screen 18 at a time (six full rows of 3); games
   // fetched beyond that wait in `games` until the next scroll. A page of
   // results is 20 minus whatever has no cover, so appending pages as
   // they came left ragged rows (8, then 1-3-3-2).
-  const BATCH = 9;
+  const BATCH = 18;
   let shown = Math.min(games.length, cached?.shown ?? (Math.floor(games.length / BATCH) * BATCH || games.length));
   const more = () => games.length > shown || hasMore;
   let observer = null;
