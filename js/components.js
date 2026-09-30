@@ -931,7 +931,7 @@ export function iconReviewLines() { return `<svg viewBox="4 5 15 14" fill="none"
 // PlayThruu mark's slot. Traced from the user's own drawing. stroke-width
 // sits on the path so the icon-row CSS stroke-width (meant for 24-unit
 // icons) doesn't flatten it.
-export function iconReplay() { return `<svg viewBox="16.75 10.59 98.81 98.81" fill="none" stroke="currentColor"><path stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round" d="M 96.82 75.63 A 40 40 0 1 1 100 60 L 112.31 26.17 M 65.6 60 L 100 60"/></svg>`; }
+export function iconReplay() { return `<svg viewBox="15.25 12.18 101.81 101.81" fill="none" stroke="currentColor"><path stroke-width="9.5" stroke-linecap="round" stroke-linejoin="round" d="M 96.82 75.63 A 40 40 0 1 1 100 60 L 112.31 26.17 M 65.6 60 L 100 60"/></svg>`; }
 export function iconSend() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12 20 4.5 15 19.5l-3.4-6.8L4.5 12z"/><path d="M11.6 12.7 15 19.5"/></svg>`; }
 export function iconTrash() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h14M9.5 7V5a1.5 1.5 0 0 1 1.5-1.5h2A1.5 1.5 0 0 1 14.5 5v2M6.5 7l1 12.5A1.5 1.5 0 0 0 9 21h6a1.5 1.5 0 0 0 1.5-1.5L17.5 7"/><path d="M10 11v6M14 11v6"/></svg>`; }
 export function iconDotsMenu() { return `<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="12" cy="5.5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="18.5" r="1.8"/></svg>`; }
