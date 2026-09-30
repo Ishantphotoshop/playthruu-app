@@ -5,7 +5,7 @@
 // also has the side effect of dropping every old "questlog-*" cache on
 // people's phones, which is exactly right: those held Questlog-branded
 // assets that no longer exist.
-const CACHE_VERSION = 'playthruu-v76';
+const CACHE_VERSION = 'playthruu-v77';
 const PRECACHE = [
   './',
   './index.html',
@@ -20,7 +20,7 @@ const PRECACHE = [
   './js/auth.js',
   './js/utils.js',
   './js/components.js',
-  './js/sfx.js',
+  './js/haptics.js',
   './js/views/auth-view.js',
   './js/views/feed-view.js',
   './js/views/search-view.js',

@@ -6,7 +6,7 @@ import {
   iconDice, iconBookmark, iconBrandMark, iconCardStack, iconPlay,
 } from '../components.js';
 import { toast, qs, qsa, esc, timeAgo, enableSwipeToDismiss, promptSignIn, tapFeedback, pulseLogTab, igdbSized, placeholderCover } from '../utils.js';
-import { sfx, sfxUnlock, buzz } from '../sfx.js';
+import { buzz } from '../haptics.js';
 import { openLogComposer } from './log-composer.js';
 import { refreshCurrentView, navigate } from '../router.js';
 import { paintStoryRail } from './stories.js';
@@ -472,7 +472,6 @@ async function paintDiscovery(slot) {
   const drawn = { collection: null, keys: new Set() };
   function openDraw() {
     if (!games.length) { toast('Still loading this collection. Try again in a second.'); return; }
-    sfxUnlock();
     const collection = activeCollection();
     if (drawn.collection !== collection.id) { drawn.collection = collection.id; drawn.keys.clear(); }
     const overlay = document.createElement('div');
@@ -569,7 +568,6 @@ async function paintDiscovery(slot) {
       run(qs('.draw-info', overlay), [{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'none' }], { duration: 280, easing: 'cubic-bezier(.2,.8,.2,1)' });
       acts.forEach((b, i) => {
         run(b, [{ opacity: 0, translate: '0 60px' }, { opacity: 1, translate: '0 0' }], { duration: reduce ? 1 : 360, delay: reduce ? 0 : 120 + i * 90, easing: 'cubic-bezier(.2,.8,.2,1)', fill: 'backwards' });
-        if (!reduce) setTimeout(() => sfx.deal(), 120 + i * 90);
       });
     }
 
@@ -589,7 +587,6 @@ async function paintDiscovery(slot) {
           for (let r = 0; r < 2 && !skip; r++) {
             await Promise.all(cards.map((c, i) => done(run(c, [{ transform: 'none' }, { transform: fan(i) }], { duration: 200, easing: 'cubic-bezier(.3,0,.2,1)', fill: 'forwards' }))));
             if (my !== token) return;
-            sfx.riffle();
             await Promise.all(cards.map((c, i) => done(run(c, [{ transform: fan(i) }, { transform: 'none' }], { duration: 240, delay: i * 28, easing: 'cubic-bezier(.2,.8,.2,1)', fill: 'forwards' }))));
             if (my !== token) return;
           }
@@ -602,13 +599,11 @@ async function paintDiscovery(slot) {
       qs('.draw-card__front img', top).src = art;
       const chip = qs('.draw-card__chip', top);
       chip.textContent = [genreOf(pick), pick.release_year].filter(Boolean).join(' · ');
-      sfx.lift();
       await done(run(top, [{ transform: 'none' }, { transform: 'translateY(-22px) scale(1.04)' }], { duration: reduce ? 1 : 230, easing: 'cubic-bezier(.2,.8,.2,1)', fill: 'forwards' }));
       if (my !== token) return;
       if (chip.textContent) run(chip, [{ opacity: 0, transform: 'translate(-50%,6px)' }, { opacity: 1, transform: 'translate(-50%,0)' }], { duration: 220, fill: 'forwards' });
       await Promise.all([pause(420), Promise.race([artReady, new Promise((r) => setTimeout(r, 900))])]);
       if (my !== token) return;
-      sfx.flip();
       buzz(12);
       await done(run(qs('.draw-card__inner', top), [{ transform: 'rotateY(0)' }, { transform: 'rotateY(180deg)' }], { duration: reduce ? 1 : 520, easing: 'cubic-bezier(.3,.1,.2,1)', fill: 'forwards' }));
       if (my !== token) return;
@@ -621,7 +616,6 @@ async function paintDiscovery(slot) {
       if (busy || !current) return;
       busy = true;
       hideResult();
-      sfx.toss();
       buzz(6);
       const gone = current;
       await done(run(gone, [{ transform: 'translateY(-22px) scale(1.04)', opacity: 1 }, { transform: 'translate(300px,-40px) rotate(18deg)', opacity: 0 }], { duration: reduce ? 1 : 340, easing: 'cubic-bezier(.4,0,.8,.4)', fill: 'forwards' }));
@@ -633,7 +627,6 @@ async function paintDiscovery(slot) {
     btnOpen.addEventListener('click', async () => {
       if (busy || !pick) return;
       if (!state.user) { promptSignIn('Sign in to open games.'); return; }
-      sfx.open();
       buzz(8);
       btnOpen.disabled = true;
       try {
@@ -653,7 +646,6 @@ async function paintDiscovery(slot) {
       try {
         const saved = await api.addGame(g, state.user.id);
         await api.createLog({ game_id: saved.id, user_id: state.user.id, status: 'backlog', is_public: true });
-        sfx.save();
         buzz([10, 40, 14]);
         pulseLogTab();
         if (pick === g) qs('span', btnSave).textContent = 'Added';
