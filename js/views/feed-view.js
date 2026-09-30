@@ -259,6 +259,13 @@ async function paintDiscovery(slot) {
   let hasMore = cached?.hasMore ?? true;
   let loading = false;
   let games = cached?.games || [];
+  // Posters go on screen 9 at a time (three full rows of 3); games
+  // fetched beyond that wait in `games` until the next scroll. A page of
+  // results is 20 minus whatever has no cover, so appending pages as
+  // they came left ragged rows (8, then 1-3-3-2).
+  const BATCH = 9;
+  let shown = Math.min(games.length, cached?.shown ?? (Math.floor(games.length / BATCH) * BATCH || games.length));
+  const more = () => games.length > shown || hasMore;
   let observer = null;
 
   function activeCollection() {
@@ -282,7 +289,7 @@ async function paintDiscovery(slot) {
           </button>
         </div>
       </div>
-      <div class="discovery-grid" id="discovery-list">${games.length ? rowsHtml(games, 0) : skeletonTiles(9)}</div>
+      <div class="discovery-grid" id="discovery-list">${shown ? rowsHtml(games.slice(0, shown), 0) : skeletonTiles(BATCH)}</div>
       <div id="discovery-more"></div>`;
     qs('#discovery-filter', slot).addEventListener('click', openPicker);
     qs('#discovery-random', slot).addEventListener('click', openDraw);
@@ -366,10 +373,11 @@ async function paintDiscovery(slot) {
     const moreEl = qs('#discovery-more', slot);
     if (!moreEl) return;
     if (loading) {
-      moreEl.innerHTML = `<div class="discovery-grid">${Array.from({length:8},()=>`<div class="skeleton skeleton--tile"></div>`).join("")}</div>`;
+      // First batch: the grid itself already shows the placeholders.
+      moreEl.innerHTML = shown ? `<div class="discovery-grid discovery-grid--more">${skeletonTiles(BATCH)}</div>` : '';
       return;
     }
-    if (!hasMore) {
+    if (!more()) {
       moreEl.innerHTML = games.length
         ? `<p class="discovery-end">That's everything in this collection.</p>`
         : `<p class="muted">Nothing here right now — try another mood.</p>`;
@@ -384,51 +392,54 @@ async function paintDiscovery(slot) {
     observeSentinel();
   }
 
+  async function fetchPage() {
+    // GOTY is a fixed, finite curated list (see resolveGotyWinners in
+    // api.js), not a browseGames() filter like every other collection
+    // here — one full page, then hasMore is simply false.
+    const collection = activeCollection();
+    const isGoty = collection.id === 'goty';
+    // A rotating collection starts further into its own ranking
+    // depending on the fortnight (see rotationPage in api.js), so the
+    // row genuinely turns over. Scrolling for more walks forward from
+    // wherever that landed.
+    const startPage = collection.rotates ? api.rotationPage() : 1;
+    const res = isGoty
+      ? { games: page === 1 ? await api.resolveGotyWinners() : [], hasMore: false }
+      : await api.browseGames({ ...collection.params, page: page + startPage - 1 });
+    // Only games WITH cover art — the grid is poster-only.
+    games = [...games, ...res.games.filter((g) => g.cover_url)];
+    hasMore = res.hasMore;
+    page += 1;
+  }
+
   async function loadMore() {
-    if (loading || !hasMore) return;
+    if (loading || !more()) return;
     loading = true;
     paintFooter();
+    const startActive = activeId;
     try {
-      // GOTY is a fixed, finite curated list (see resolveGotyWinners in
-      // api.js), not a browseGames() filter like every other collection
-      // here — one full page, then hasMore is simply false, no real
-      // pagination needed.
-      const isGoty = activeCollection().id === 'goty';
-      const collection = activeCollection();
-      // A rotating collection starts further into its own ranking
-      // depending on the fortnight (see rotationPage in api.js), so the
-      // row genuinely turns over instead of showing the same twelve
-      // games until the end of time. Scrolling for more still walks
-      // forward from wherever that landed.
-      const startPage = collection.rotates ? api.rotationPage() : 1;
-      const res = isGoty
-        ? { games: page === 1 ? await api.resolveGotyWinners() : [], hasMore: false }
-        : await api.browseGames({ ...collection.params, page: page + startPage - 1 });
-      const listEl = qs('#discovery-list', slot);
-      const offset = games.length;
-      // Only games WITH cover art — the grid is poster-only, so a
-      // cover-less game just renders as an empty box, which is what made
-      // the grid look like it was loading unevenly.
-      const withCovers = res.games.filter((g) => g.cover_url);
-      games = [...games, ...withCovers];
-      hasMore = res.hasMore;
-      page += 1;
-      if (listEl) {
-        // First page replaces the skeleton tiles shell() painted rather
-        // than appending after them — every later page still appends.
-        if (offset === 0) listEl.innerHTML = rowsHtml(withCovers, 0);
-        else listEl.insertAdjacentHTML('beforeend', rowsHtml(withCovers, offset));
-        wireRows(listEl);
-      }
-      setCached(DISCOVERY_CACHE_KEY, { activeId, page, hasMore, games });
+      while (games.length - shown < BATCH && hasMore) await fetchPage();
     } catch {
       hasMore = false;
+    }
+    if (startActive !== activeId) return; // the collection changed meanwhile
+    const batch = games.slice(shown, shown + BATCH);
+    const listEl = qs('#discovery-list', slot);
+    if (listEl && batch.length) {
+      // The first batch replaces the placeholder tiles shell() painted;
+      // every later one appends a full 3x3 block.
+      if (shown === 0) listEl.innerHTML = rowsHtml(batch, 0);
+      else listEl.insertAdjacentHTML('beforeend', rowsHtml(batch, shown));
+      wireRows(listEl);
+    }
+    shown += batch.length;
+    setCached(DISCOVERY_CACHE_KEY, { activeId, page, hasMore, games, shown });
+    loading = false;
+    if (!batch.length && !games.length) {
       const moreEl = qs('#discovery-more', slot);
-      if (moreEl) moreEl.innerHTML = `<p class="muted">Couldn't load more right now.</p>`;
-      loading = false;
+      if (moreEl) moreEl.innerHTML = `<p class="muted">Couldn't load this right now.</p>`;
       return;
     }
-    loading = false;
     paintFooter();
   }
 
@@ -810,7 +821,7 @@ async function paintDiscovery(slot) {
   // the old one and paginate from wherever the last one left off.
   function reset() {
     if (observer) observer.disconnect();
-    page = 1; hasMore = true; loading = false; games = [];
+    page = 1; hasMore = true; loading = false; games = []; shown = 0;
     shell();
     loadMore();
   }
