@@ -450,6 +450,7 @@ async function paintDiscovery(slot) {
     }
     shown += batch.length;
     setCached(DISCOVERY_CACHE_KEY, { activeId, page, hasMore, games, shown });
+    if (drawPool.id !== activeId || drawPool.games.length < 3) setTimeout(() => refillDrawPool().catch(() => {}), 1500);
     loading = false;
     // Fetch the next block now and warm its images, while this one is
     // being looked at.
@@ -506,6 +507,26 @@ async function paintDiscovery(slot) {
   // play. Picks don't repeat within a collection until every loaded game
   // has come up once. Tapping the dark area mid-draw skips to the result.
   const drawn = { collection: null, keys: new Set() };
+  // Random-pick candidates, filled from random pages of the collection a
+  // page at a time. Warmed in the background once the grid is up, so the
+  // first card of a draw doesn't wait on the network either.
+  const drawPool = { id: null, games: [] };
+  const drawKey = (g) => g.igdb_id ?? g.id ?? g.title;
+  async function refillDrawPool() {
+    const collection = activeCollection();
+    if (drawPool.id !== collection.id) { drawPool.id = collection.id; drawPool.games = []; }
+    if (collection.id === 'goty') return;
+    const pg = 1 + Math.floor(Math.random() * 40);
+    const res = await Promise.race([
+      api.browseGames({ ...collection.params, page: pg }),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('slow')), 3500)),
+    ]);
+    if (drawPool.id !== activeCollection().id) return;
+    const pool = drawPool.games;
+    (res.games || []).forEach((g) => {
+      if (g.cover_url && !drawn.keys.has(drawKey(g)) && !pool.some((x) => drawKey(x) === drawKey(g))) pool.push(g);
+    });
+  }
   function openDraw() {
     if (!games.length) { toast('Still loading this collection. Try again in a second.'); return; }
     const collection = activeCollection();
@@ -589,29 +610,32 @@ async function paintDiscovery(slot) {
       if (!fresh.length) fresh = games.slice();
       return fresh[Math.floor(Math.random() * fresh.length)];
     };
+    if (drawPool.id !== collection.id) { drawPool.id = collection.id; drawPool.games = []; }
+    const pool = drawPool.games;
+    const refill = refillDrawPool;
     async function choose() {
-      const c = collection;
-      if (c.id !== 'goty') {
-        for (let tries = 0; tries < 2; tries++) {
-          try {
-            const pg = 1 + Math.floor(Math.random() * 40);
-            const res = await Promise.race([
-              api.browseGames({ ...c.params, page: pg }),
-              new Promise((_, rej) => setTimeout(() => rej(new Error('slow')), 3500)),
-            ]);
-            const fresh = (res.games || []).filter((g) => g.cover_url && !seen.has(keyOf(g)));
-            if (fresh.length) {
-              const g = fresh[Math.floor(Math.random() * fresh.length)];
-              seen.add(keyOf(g));
-              return g;
-            }
-          } catch { /* try again, then fall back */ }
-        }
+      if (pool.length < 3) {
+        const filling = refill().catch(() => {});
+        if (!pool.length) await filling; // otherwise it tops up in the background
       }
-      const g = localPick();
+      const g = pool.length ? pool.splice(Math.floor(Math.random() * pool.length), 1)[0] : localPick();
       seen.add(keyOf(g));
       return g;
     }
+    // The NEXT card is picked and its art downloaded and decoded while the
+    // current one is on screen, so Draw only has to play the animation.
+    const artOf = (g) => (g.cover_url ? igdbSized(g.cover_url, '720p') : placeholderCover(g.title));
+    function prepare() {
+      return choose().then((g) => {
+        const art = artOf(g);
+        const im = new Image();
+        im.decoding = 'async';
+        im.src = art;
+        const ready = im.decode().catch(() => {});
+        return { g, art, ready };
+      });
+    }
+    let nextUp = prepare(); // starts during the opening shuffle
 
     function hideResult() {
       drawEl.classList.remove('is-landed');
@@ -637,17 +661,15 @@ async function paintDiscovery(slot) {
       endTilt();
       hideResult();
       pick = null;
-      let art = '';
-      const picking = choose().then((g) => {
-        pick = g;
-        art = g.cover_url ? igdbSized(g.cover_url, '720p') : placeholderCover(g.title);
-        return new Promise((r) => { const im = new Image(); im.onload = im.onerror = r; im.src = art; });
-      });
+      const picking = nextUp || prepare();
+      nextUp = null;
 
       if (shuffle || liveCards().length < 3) {
         stage.innerHTML = Array.from({ length: 7 }, cardHTML).join('');
         stack();
-        if (!reduce) {
+        // Riffles only when the draw opens; a used-up deck mid-session is
+        // swapped for a fresh one silently, so every Draw is as quick.
+        if (!reduce && shuffle) {
           const cards = liveCards();
           for (let r = 0; r < 2 && !skip; r++) {
             await Promise.all(cards.map((c, i) => done(run(c, [{ transform: 'none' }, { transform: fan(i) }], { duration: 200, easing: 'cubic-bezier(.3,0,.2,1)', fill: 'forwards' }))));
@@ -658,10 +680,13 @@ async function paintDiscovery(slot) {
         }
       }
 
-      const artReady = picking;
-      await Promise.race([picking, new Promise((r) => setTimeout(r, 6000))]);
+      const item = await Promise.race([picking, new Promise((r) => setTimeout(r, 4000))]).catch(() => null);
       if (my !== token) return;
-      if (!pick) { pick = localPick(); art = igdbSized(pick.cover_url, '720p'); }
+      let art;
+      let artReady;
+      if (item) { pick = item.g; art = item.art; artReady = item.ready; }
+      else { pick = localPick(); seen.add(keyOf(pick)); art = artOf(pick); artReady = Promise.resolve(); }
+      nextUp = prepare(); // the one after this, while this one is being looked at
       const cards = liveCards();
       const top = cards[cards.length - 1];
       current = top;
@@ -673,10 +698,10 @@ async function paintDiscovery(slot) {
       await done(run(top, [{ transform: 'none' }, { transform: 'translateY(-22px) scale(1.04)' }], { duration: reduce ? 1 : 230, easing: 'cubic-bezier(.2,.8,.2,1)', fill: 'forwards' }));
       if (my !== token) return;
       if (chip.textContent) run(chip, [{ opacity: 0, transform: 'translate(-50%,6px)' }, { opacity: 1, transform: 'translate(-50%,0)' }], { duration: 220, fill: 'forwards' });
-      await Promise.all([pause(420), Promise.race([artReady.then(() => img.decode()).catch(() => {}), new Promise((r) => setTimeout(r, 900))])]);
+      await Promise.all([pause(shuffle ? 380 : 220), Promise.race([artReady.then(() => img.decode()).catch(() => {}), new Promise((r) => setTimeout(r, 900))])]);
       if (my !== token) return;
       buzz(12);
-      await done(run(qs('.draw-card__inner', top), [{ transform: 'rotateY(0)' }, { transform: 'rotateY(180deg)' }], { duration: reduce ? 1 : 520, easing: 'cubic-bezier(.3,.1,.2,1)', fill: 'forwards' }));
+      await done(run(qs('.draw-card__inner', top), [{ transform: 'rotateY(0)' }, { transform: 'rotateY(180deg)' }], { duration: reduce ? 1 : 460, easing: 'cubic-bezier(.3,.1,.2,1)', fill: 'forwards' }));
       if (my !== token) return;
       cards.slice(0, -1).forEach((c) => run(c, [{ opacity: 1 }, { opacity: 0 }], { duration: 250, fill: 'forwards' }));
       busy = false;
@@ -691,7 +716,7 @@ async function paintDiscovery(slot) {
       endTilt();
       buzz(6);
       const gone = current;
-      await done(run(gone, [{ transform: 'translateY(-22px) scale(1.04)', opacity: 1 }, { transform: 'translate(300px,-40px) rotate(18deg)', opacity: 0 }], { duration: reduce ? 1 : 340, easing: 'cubic-bezier(.4,0,.8,.4)', fill: 'forwards' }));
+      await done(run(gone, [{ transform: 'translateY(-22px) scale(1.04)', opacity: 1 }, { transform: 'translate(300px,-40px) rotate(18deg)', opacity: 0 }], { duration: reduce ? 1 : 280, easing: 'cubic-bezier(.4,0,.8,.4)', fill: 'forwards' }));
       gone.classList.add('is-gone');
       stack();
       liveCards().forEach((c) => run(c, [{ opacity: 0.2 }, { opacity: 1 }], { duration: 200, fill: 'forwards' }));
@@ -858,6 +883,7 @@ async function paintDiscovery(slot) {
   if (games.length) {
     shell();
     paintFooter();
+    setTimeout(() => refillDrawPool().catch(() => {}), 1500);
   } else {
     reset();
   }
