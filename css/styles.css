@@ -437,6 +437,10 @@ ul { list-style: none; margin: 0; padding: 0; }
    keeps the wrapper out of layout: the view's topbar, .view-body and tab
    bar stay direct flex children of #app, exactly as before. */
 #app > .page { display: contents; }
+/* Posters are press-and-hold targets (the log shortcut, see app.js):
+   no text selection or iOS image callout on a long press. */
+.poster-frame { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+.poster-frame img { -webkit-user-drag: none; }
 
 .boot-loader { flex: 1; display: grid; place-items: center; position: relative; }
 /* Shown by the watchdog in index.html when app.js never ran — see the

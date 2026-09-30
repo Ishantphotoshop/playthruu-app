@@ -28,7 +28,8 @@ import { renderStudioView } from './views/studio-view.js';
 import { renderSettingsView } from './views/settings-view.js';
 import { renderNotificationsView } from './views/notifications-view.js';
 import { openLogComposer } from './views/log-composer.js';
-import { toast, qs } from './utils.js';
+import { toast, qs, promptSignIn } from './utils.js';
+import { buzz } from './haptics.js';
 import { clearViewCache, setCached, getCached, CACHE_KEYS } from './cache.js';
 import { iconClose, iconLock } from './components.js';
 
@@ -670,8 +671,70 @@ function handleSignedOut() {
   renderLandingView(appEl);
 }
 
+// Press and hold any poster: the log sheet for that game opens straight
+// away, a shortcut past the game page. One delegated listener covers every
+// poster in the app (posterFrame in components.js). The game comes from
+// the poster's own link when it has one; posters built from IGDB data
+// alone (Bored grid, trending) are matched by title, the same lookup
+// Search uses, and added to the catalogue if they are new.
+function wirePosterLongPress() {
+  const HOLD_MS = 450;
+  let timer = 0;
+  let start = null;
+  let swallowClick = false;
+  const cancel = () => { clearTimeout(timer); timer = 0; start = null; };
+
+  async function gameFor(frame) {
+    const link = frame.closest('a[href^="#/game/"], [href^="#/game/"]') || (frame.matches('a[href^="#/game/"]') ? frame : null);
+    const id = link?.getAttribute('href').match(/^#\/game\/([0-9a-f-]{36})$/)?.[1];
+    if (id) return api.getGame(id);
+    const title = (qs('img', frame)?.alt || '').replace(/ cover$/, '').trim();
+    if (!title) return null;
+    const { results: found = [] } = await api.searchGamesEverywhere(title, 5);
+    const g = found.find((x) => (x.title || '').toLowerCase() === title.toLowerCase()) || found[0];
+    if (!g) return null;
+    return g.id ? g : api.addGame(g, state.user.id);
+  }
+
+  document.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0) return;
+    const frame = e.target.closest?.('.poster-frame');
+    if (!frame || frame.closest('.modal-overlay, .draw-overlay')) return;
+    cancel();
+    start = { x: e.clientX, y: e.clientY };
+    timer = setTimeout(async () => {
+      timer = 0;
+      swallowClick = true;
+      setTimeout(() => { swallowClick = false; }, 800);
+      if (!state.user) { promptSignIn('Sign in to log games.'); return; }
+      buzz(15);
+      try {
+        const game = await gameFor(frame);
+        if (!game) { toast('Could not find that game.', 'error'); return; }
+        openLogComposer({ game, onSaved: refreshCurrentView });
+      } catch (err) {
+        toast(err.message || 'Could not open the log sheet.', 'error');
+      }
+    }, HOLD_MS);
+  }, { passive: true });
+  // A drag or scroll is not a hold.
+  document.addEventListener('pointermove', (e) => {
+    if (start && Math.hypot(e.clientX - start.x, e.clientY - start.y) > 10) cancel();
+  }, { passive: true });
+  ['pointerup', 'pointercancel', 'scroll'].forEach((t) => document.addEventListener(t, () => { if (timer) cancel(); }, { passive: true, capture: true }));
+  // The finger lifting after a hold must not also open the poster's link.
+  document.addEventListener('click', (e) => {
+    if (swallowClick && e.target.closest?.('.poster-frame, .discovery-tile, .trending-card, a[href^="#/game/"]')) {
+      e.preventDefault(); e.stopPropagation(); swallowClick = false;
+    }
+  }, true);
+  // No "save image" menu on a held poster.
+  document.addEventListener('contextmenu', (e) => { if (e.target.closest?.('.poster-frame')) e.preventDefault(); });
+}
+
 async function boot() {
   wireGlobalChrome();
+  wirePosterLongPress();
   trackOverlays({
     selector: OVERLAY_SELECTOR,
     dismiss: dismissOverlay,
