@@ -3,6 +3,7 @@ package com.playthruu.android
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
@@ -29,13 +30,20 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -78,15 +86,20 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private sealed interface Screen {
-    data object Feed : Screen
-    data object Search : Screen
-    data object Messages : Screen
-    data object Activity : Screen
-    data class Profile(val username: String?) : Screen
-    data class Game(val id: String) : Screen
-    data object Settings : Screen
-}
+/** The stack survives rotation and the process being reclaimed. */
+private val StackSaver = Saver<NavState, ArrayList<String>>(
+    save = { it.encode() },
+    restore = { NavState.decode(it) },
+)
+
+/**
+ * How many of the newest entries stay composed. Those come back on Back
+ * exactly as they were left: scroll, typed text, tabs, loaded data, with
+ * no refetch. Deeper ones are dropped from composition but keep their
+ * rememberSaveable state (scroll positions) through the state holder, and
+ * reload their data when Back reaches them.
+ */
+private const val KEEP_ALIVE = 8
 
 @Composable
 private fun Root(vm: AppViewModel = viewModel()) {
@@ -97,9 +110,6 @@ private fun Root(vm: AppViewModel = viewModel()) {
     val authError by vm.authError.collectAsStateWithLifecycle()
     val repo = remember { Repository() }
 
-    var tab by remember { mutableStateOf<Screen>(Screen.Feed) }
-    var pushed by remember { mutableStateOf<Screen?>(null) }
-
     when (val state = auth) {
         is AppViewModel.Auth.Loading -> Box(
             Modifier.fillMaxSize().background(Ink.bg), contentAlignment = Alignment.Center,
@@ -109,95 +119,176 @@ private fun Root(vm: AppViewModel = viewModel()) {
             AuthScreen(busy, authError, vm::signIn, vm::signUp, vm::dismissAuthError)
         }
 
-        is AppViewModel.Auth.SignedIn -> {
-            val userId = state.userId
-            val current = pushed ?: tab
-            androidx.activity.compose.BackHandler(enabled = pushed != null) { pushed = null }
+        // Keyed by account: signing in as someone else starts a fresh stack.
+        is AppViewModel.Auth.SignedIn -> key(state.userId) {
+            SignedInShell(state.userId, profile, unread, repo, vm)
+        }
+    }
+}
 
-            Column(Modifier.fillMaxSize().background(Ink.bg)) {
-                Box(Modifier.weight(1f)) {
-                    when (val screen = current) {
-                        is Screen.Feed -> Column(Modifier.fillMaxSize()) {
-                            HomeTopBar(unread = unread, onOpenNotifications = { pushed = Screen.Activity })
-                            FeedScreen(
-                                userId = userId, repo = repo,
-                                onOpenGame = { pushed = Screen.Game(it) },
-                                onOpenProfile = { pushed = Screen.Profile(it) },
+@Composable
+private fun SignedInShell(
+    userId: String,
+    profile: com.playthruu.android.data.Profile?,
+    unread: Long,
+    repo: Repository,
+    vm: AppViewModel,
+) {
+    var nav by rememberSaveable(stateSaver = StackSaver) { mutableStateOf(NavState.Initial) }
+    val holder = rememberSaveableStateHolder()
+    val focus = LocalFocusManager.current
+    val keyboard = LocalSoftwareKeyboardController.current
+
+    // The screen being left stays composed underneath, so a focused text
+    // field there would keep the keyboard up over the next screen.
+    fun settle() {
+        focus.clearFocus(force = true)
+        keyboard?.hide()
+    }
+    fun go(next: NavState) {
+        if (next === nav) return // a repeat tap: nothing to do
+        settle()
+        nav = next
+    }
+    fun pop() {
+        if (!nav.canGoBack) return
+        val gone = nav.top
+        go(nav.pop())
+        holder.removeState(gone.id)
+    }
+
+    val top = nav.top
+    // Only when there is somewhere to go back to; on the first entry the
+    // system handles Back and the app closes, as Android expects. Sheets
+    // (ModalBottomSheet) take Back first on their own, above this.
+    BackHandler(enabled = nav.canGoBack) { pop() }
+
+    Column(Modifier.fillMaxSize().background(Ink.bg)) {
+        Box(Modifier.weight(1f)) {
+            for (entry in nav.entries.takeLast(KEEP_ALIVE)) {
+                key(entry.id) {
+                    holder.SaveableStateProvider(entry.id) {
+                        KeptEntry(visible = entry.id == top.id) {
+                            EntryContent(
+                                entry = entry, userId = userId, profile = profile, unread = unread,
+                                repo = repo, vm = vm, push = { go(nav.push(it)) }, pop = { pop() },
                             )
                         }
-
-                        is Screen.Search -> Column(
-                            Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars).padding(top = 16.dp),
-                        ) {
-                            SearchScreen(
-                                repo = repo,
-                                onOpenGame = { pushed = Screen.Game(it) },
-                                onOpenProfile = { pushed = Screen.Profile(it) },
-                            )
-                        }
-
-                        is Screen.Messages -> Column(
-                            Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars).padding(top = 16.dp),
-                        ) {
-                            Text(
-                                "Messages", style = MaterialTheme.typography.titleLarge,
-                                color = Ink.ink, modifier = Modifier.padding(horizontal = 20.dp),
-                            )
-                            EmptyState("The messenger has not been ported to native yet. Open the web app or the bundled build to message someone.")
-                        }
-
-                        is Screen.Activity -> Column(
-                            Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars).padding(top = 16.dp),
-                        ) {
-                            Text(
-                                "Notifications", style = MaterialTheme.typography.titleLarge,
-                                color = Ink.ink, modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
-                            )
-                            ActivityScreen(
-                                userId = userId, repo = repo,
-                                onOpenProfile = { pushed = Screen.Profile(it) },
-                                onOpenGame = { pushed = Screen.Game(it) },
-                                onOpened = vm::clearUnread,
-                            )
-                        }
-
-                        is Screen.Profile -> Column(
-                            Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars)
-                                .padding(top = if (pushed == null) 54.dp else 8.dp),
-                        ) {
-                            ProfileScreen(
-                                username = screen.username, viewerId = userId, repo = repo,
-                                onBack = if (pushed != null) ({ pushed = null }) else null,
-                                onOpenGame = { pushed = Screen.Game(it) },
-                                onOpenSettings = { pushed = Screen.Settings },
-                            )
-                        }
-
-                        is Screen.Game -> GameScreen(
-                            gameId = screen.id, userId = userId, repo = repo,
-                            onBack = { pushed = null },
-                            onOpenProfile = { pushed = Screen.Profile(it) },
-                        )
-
-                        is Screen.Settings -> SettingsScreen(
-                            profile = profile, userId = userId, repo = repo,
-                            onBack = { pushed = null },
-                            onSignOut = { pushed = null; vm.signOut() },
-                        )
                     }
-                }
-                if (pushed == null) {
-                    BottomBar(
-                        current = tab,
-                        onSelect = { tab = it },
-                        // The real Log button opens a composer against
-                        // whatever game you land on; without that flow
-                        // built yet, it takes you to find the game first.
-                        onLog = { pushed = Screen.Search },
-                    )
                 }
             }
         }
+        if (top.tab) {
+            BottomBar(
+                current = top.screen,
+                onSelect = { go(nav.selectTab(it)) },
+                // The real Log button opens a composer against
+                // whatever game you land on; without that flow
+                // built yet, it takes you to find the game first.
+                onLog = { go(nav.push(Screen.Search)) },
+            )
+        }
+    }
+}
+
+/**
+ * Keeps an entry composed (its state, loaded data and scroll all stay
+ * alive) but lays out and draws only the one on top. A hidden entry is
+ * neither measured nor placed, so it costs no layout, draws nothing and
+ * cannot be touched.
+ */
+@Composable
+private fun KeptEntry(visible: Boolean, content: @Composable () -> Unit) {
+    Layout(content) { measurables, constraints ->
+        if (!visible) return@Layout layout(0, 0) {}
+        val placeables = measurables.map { it.measure(constraints) }
+        layout(constraints.maxWidth, constraints.maxHeight) {
+            placeables.forEach { it.placeRelative(0, 0) }
+        }
+    }
+}
+
+@Composable
+private fun EntryContent(
+    entry: Entry,
+    userId: String,
+    profile: com.playthruu.android.data.Profile?,
+    unread: Long,
+    repo: Repository,
+    vm: AppViewModel,
+    push: (Screen) -> Unit,
+    pop: () -> Unit,
+) {
+    when (val screen = entry.screen) {
+        is Screen.Feed -> Column(Modifier.fillMaxSize()) {
+            HomeTopBar(unread = unread, onOpenNotifications = { push(Screen.Activity) })
+            FeedScreen(
+                userId = userId, repo = repo,
+                onOpenGame = { push(Screen.Game(it)) },
+                onOpenProfile = { push(Screen.Profile(it)) },
+            )
+        }
+
+        is Screen.Search -> Column(
+            Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars).padding(top = 16.dp),
+        ) {
+            SearchScreen(
+                repo = repo,
+                onOpenGame = { push(Screen.Game(it)) },
+                onOpenProfile = { push(Screen.Profile(it)) },
+            )
+        }
+
+        is Screen.Messages -> Column(
+            Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars).padding(top = 16.dp),
+        ) {
+            Text(
+                "Messages", style = MaterialTheme.typography.titleLarge,
+                color = Ink.ink, modifier = Modifier.padding(horizontal = 20.dp),
+            )
+            EmptyState("The messenger has not been ported to native yet. Open the web app or the bundled build to message someone.")
+        }
+
+        is Screen.Activity -> Column(
+            Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars).padding(top = 16.dp),
+        ) {
+            Text(
+                "Notifications", style = MaterialTheme.typography.titleLarge,
+                color = Ink.ink, modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+            )
+            ActivityScreen(
+                userId = userId, repo = repo,
+                onOpenProfile = { push(Screen.Profile(it)) },
+                onOpenGame = { push(Screen.Game(it)) },
+                onOpened = vm::clearUnread,
+            )
+        }
+
+        is Screen.Profile -> Column(
+            Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars)
+                .padding(top = if (entry.tab) 54.dp else 8.dp),
+        ) {
+            ProfileScreen(
+                username = screen.username, viewerId = userId, repo = repo,
+                onBack = if (entry.tab) null else pop,
+                onOpenGame = { push(Screen.Game(it)) },
+                onOpenSettings = { push(Screen.Settings) },
+            )
+        }
+
+        is Screen.Game -> GameScreen(
+            gameId = screen.id, userId = userId, repo = repo,
+            onBack = pop,
+            onOpenProfile = { push(Screen.Profile(it)) },
+        )
+
+        is Screen.Settings -> SettingsScreen(
+            profile = profile, userId = userId, repo = repo,
+            onBack = pop,
+            // Signing out swaps the whole shell for the sign-in screen,
+            // which drops this stack with it.
+            onSignOut = { vm.signOut() },
+        )
     }
 }
 
