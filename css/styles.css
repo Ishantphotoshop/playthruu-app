@@ -2731,6 +2731,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
   display: flex; align-items: center; justify-content: center;
   width: 34px; height: 34px; margin: -4px -8px -4px 0; flex-shrink: 0;
   color: var(--ink-dim);
+  transform: translateY(2.5px);
 }
 .see-more-icon svg { width: 18px; height: 18px; }
 
