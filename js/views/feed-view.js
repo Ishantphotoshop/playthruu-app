@@ -439,33 +439,16 @@ async function paintDiscovery(slot) {
     }
     if (startActive !== activeId) return; // the collection changed meanwhile
     const batch = games.slice(shown, shown + BATCH);
-    // The whole block appears at once: every cover is downloaded and
-    // decoded off-screen first (placeholders hold the space), then the
-    // block swaps in and fades up together, instead of posters popping in
-    // one by one as each image lands.
-    const tpl = document.createElement('template');
-    tpl.innerHTML = batch.length ? rowsHtml(batch, shown) : '';
-    const imgs = [...tpl.content.querySelectorAll('img')];
-    await Promise.race([
-      Promise.all(imgs.map((im) => { const pre = new Image(); pre.decoding = 'async'; pre.src = im.getAttribute('src'); return pre.decode().catch(() => {}); })),
-      new Promise((r) => setTimeout(r, 2500)),
-    ]);
-    if (startActive !== activeId) return;
+    // The frames go in straight away (their shimmer is the loading
+    // state) and each cover fades up inside its own frame as it arrives;
+    // see .poster-frame__img. Covers are usually already cached by the
+    // prefetch, so most fade in almost at once.
     if (listEl) {
       if (shown === 0) listEl.innerHTML = '';
       else qsa('[data-ph]', listEl).forEach((ph) => ph.remove());
-      const tiles = [...tpl.content.children];
-      imgs.forEach((im) => im.classList.add('is-loaded'));
-      listEl.append(tpl.content);
-      wireRows(listEl);
-      if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
-        // A slow wash in reading order: each poster fades up with a small
-        // rise and settle over 0.7s, 45ms after the one before it.
-        // Opacity and transform only, so it runs on the compositor.
-        tiles.forEach((t, i) => t.animate(
-          [{ opacity: 0, transform: 'translateY(8px) scale(0.985)' }, { opacity: 1, transform: 'none' }],
-          { duration: 700, delay: i * 45, easing: 'cubic-bezier(.2,.6,.2,1)', fill: 'backwards' },
-        ));
+      if (batch.length) {
+        listEl.insertAdjacentHTML('beforeend', rowsHtml(batch, shown));
+        wireRows(listEl);
       }
     }
     shown += batch.length;

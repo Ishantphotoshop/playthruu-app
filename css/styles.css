@@ -1995,7 +1995,9 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .poster-frame__img {
   position: relative; z-index: 1; width: 100%; height: 100%;
   object-fit: cover;
-  opacity: 0; transition: opacity 0.35s ease;
+  /* Fades up slowly inside the frame once decoded; opacity only, so it
+     stays on the compositor however many load at once. */
+  opacity: 0; transition: opacity 0.7s cubic-bezier(.2,.6,.2,1);
 }
 .poster-frame__img.is-loaded { opacity: 1; }
 @media (prefers-reduced-motion: reduce) {
