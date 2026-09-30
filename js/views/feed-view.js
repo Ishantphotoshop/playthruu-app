@@ -536,15 +536,19 @@ async function paintDiscovery(slot) {
     overlay.innerHTML = `
       <button type="button" class="modal__close draw-close" data-close aria-label="Close">&times;</button>
       <div class="draw" role="dialog" aria-label="Random pick from ${esc(collection.label)}">
-        <div class="draw-stage"></div>
+        <div class="draw-board">
+          <svg class="draw-strings" aria-hidden="true"></svg>
+          <div class="draw-stage"></div>
+          <div class="draw-crew"></div>
+        </div>
         <div class="draw-info" aria-live="polite">
           <h3 class="draw-info__title"></h3>
           <p class="draw-info__meta"></p>
         </div>
         <div class="draw-actions">
-          <button type="button" class="draw-act" data-draw>${iconCardStack()}<span>Draw again</span></button>
-          <button type="button" class="draw-act draw-act--go" data-open>${iconPlay()}<span>Open</span></button>
-          <button type="button" class="draw-act" data-save>${iconBookmark()}<span>Want to play</span></button>
+          <button type="button" class="draw-act draw-act--go" data-open><span>Open the game</span></button>
+          <button type="button" class="draw-act" data-save><span>Add to Want to play</span></button>
+          <button type="button" class="draw-act" data-draw><span>Draw again</span></button>
         </div>
       </div>`;
     document.body.appendChild(overlay);
@@ -555,6 +559,13 @@ async function paintDiscovery(slot) {
     const titleEl = qs('.draw-info__title', overlay);
     const metaEl = qs('.draw-info__meta', overlay);
     const acts = qsa('.draw-act', overlay);
+    const board = qs('.draw-board', overlay);
+    const strings = qs('.draw-strings', overlay);
+    const crewEl = qs('.draw-crew', overlay);
+    // People you follow, fetched once per draw session; each pick's friend
+    // activity is looked up alongside its art, so it's there on reveal.
+    const followingP = state.user ? api.getFollowingIdSet(state.user.id).catch(() => new Set()) : Promise.resolve(new Set());
+    let crew = [];
     const btnDraw = qs('[data-draw]', overlay);
     const btnOpen = qs('[data-open]', overlay);
     const btnSave = qs('[data-save]', overlay);
@@ -632,7 +643,8 @@ async function paintDiscovery(slot) {
         im.decoding = 'async';
         im.src = art;
         const ready = im.decode().catch(() => {});
-        return { g, art, ready };
+        const friends = followingP.then((ids) => api.getFriendActivityForGame(g, ids)).catch(() => []);
+        return { g, art, ready, friends };
       });
     }
     let nextUp = prepare(); // starts during the opening shuffle
@@ -640,6 +652,40 @@ async function paintDiscovery(slot) {
     function hideResult() {
       drawEl.classList.remove('is-landed');
       acts.forEach((b) => { b.disabled = true; });
+      crewEl.innerHTML = '';
+      strings.innerHTML = '';
+    }
+
+    // Friends who played, are playing or want this game, pinned round the
+    // card as photos with a string back to it. Nothing at all when nobody
+    // has; the board just shows the card.
+    const crewLabel = (c) => (c.status === 'played' ? (c.rating ? `Played ★${Number(c.rating)}` : 'Played') : c.status === 'playing' ? 'Playing now' : 'Wants to play');
+    function pinCrew() {
+      if (!crew.length) return;
+      const w = board.clientWidth;
+      const cardL = (w - 176) / 2;
+      const spots = [[cardL - 78, 16, -6], [cardL + 176 + 14, 58, 5], [cardL - 74, 132, 4]];
+      crewEl.innerHTML = crew.map((c, i) => {
+        const [x, y, r] = spots[i];
+        const name = c.profile.display_name || c.profile.username || 'Friend';
+        const face = c.profile.avatar_url
+          ? `<img src="${esc(c.profile.avatar_url)}" alt="" loading="eager" decoding="async">`
+          : `<b>${esc(name[0].toUpperCase())}</b>`;
+        return `<button type="button" class="draw-pin" data-user="${esc(c.profile.username || '')}" style="left:${x}px;top:${y}px;--r:${r}deg">
+          <span class="draw-pin__face">${face}</span><span class="draw-pin__name">${esc(name)}</span><span class="draw-pin__what">${crewLabel(c)}</span></button>`;
+      }).join('');
+      // Strings run from each photo's pin to under the card's centre, so a
+      // tilt of the card never shows a loose end.
+      const cx = w / 2; const cy = 118;
+      strings.setAttribute('viewBox', `0 0 ${w} 250`);
+      strings.innerHTML = crew.map((c, i) => {
+        const [x, y] = spots[i];
+        const len = Math.hypot(cx - (x + 32), cy - (y + 4));
+        return `<line x1="${x + 32}" y1="${y + 4}" x2="${cx}" y2="${cy}" style="stroke-dasharray:${len};stroke-dashoffset:${len}"/>`;
+      }).join('');
+      if (reduce) { qsa('line', strings).forEach((l) => { l.style.strokeDashoffset = 0; }); return; }
+      qsa('line', strings).forEach((l, i) => run(l, [{ strokeDashoffset: l.style.strokeDasharray }, { strokeDashoffset: 0 }], { duration: 300, delay: 60 + i * 90, easing: 'cubic-bezier(.3,.6,.3,1)', fill: 'forwards' }));
+      qsa('.draw-pin', crewEl).forEach((el, i) => run(el, [{ opacity: 0, transform: `translateY(-14px) rotate(var(--r)) scale(1.15)` }, { opacity: 1, transform: 'rotate(var(--r))' }], { duration: 260, delay: 140 + i * 90, easing: 'cubic-bezier(.3,1.4,.5,1)', fill: 'backwards' }));
     }
 
     function showResult() {
@@ -650,10 +696,10 @@ async function paintDiscovery(slot) {
       saved = null;
       drawEl.classList.add('is-landed');
       acts.forEach((b) => { b.disabled = false; });
-      run(qs('.draw-info', overlay), [{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'none' }], { duration: 280, easing: 'cubic-bezier(.2,.8,.2,1)' });
-      acts.forEach((b, i) => {
-        run(b, [{ opacity: 0, translate: '0 60px' }, { opacity: 1, translate: '0 0' }], { duration: reduce ? 1 : 360, delay: reduce ? 0 : 120 + i * 90, easing: 'cubic-bezier(.2,.8,.2,1)', fill: 'backwards' });
-      });
+      pinCrew();
+      // The slip and the three orders slam in from the left, one after
+      // another, the way the mockup does it.
+      [qs('.draw-info', overlay), ...acts].forEach((el, i) => run(el, [{ opacity: 0, translate: '-60px 0' }, { opacity: 1, translate: '0 0' }], { duration: reduce ? 1 : 260, delay: reduce ? 0 : 80 + i * 60, easing: 'cubic-bezier(.2,.9,.3,1.15)', fill: 'backwards' }));
     }
 
     async function deal({ shuffle }) {
@@ -685,7 +731,8 @@ async function paintDiscovery(slot) {
       if (my !== token) return;
       let art;
       let artReady;
-      if (item) { pick = item.g; art = item.art; artReady = item.ready; }
+      let friendsP = Promise.resolve([]);
+      if (item) { pick = item.g; art = item.art; artReady = item.ready; friendsP = item.friends; }
       else { pick = localPick(); seen.add(keyOf(pick)); art = artOf(pick); artReady = Promise.resolve(); }
       nextUp = prepare(); // the one after this, while this one is being looked at
       const cards = liveCards();
@@ -705,6 +752,12 @@ async function paintDiscovery(slot) {
       await done(run(qs('.draw-card__inner', top), [{ transform: 'rotateY(0)' }, { transform: 'rotateY(180deg)' }], { duration: reduce ? 1 : 460, easing: 'cubic-bezier(.3,.1,.2,1)', fill: 'forwards' }));
       if (my !== token) return;
       cards.slice(0, -1).forEach((c) => run(c, [{ opacity: 1 }, { opacity: 0 }], { duration: 250, fill: 'forwards' }));
+      // Slapped down and pinned: from the lift to flat on the board, a
+      // little crooked, with a strip of tape.
+      top.insertAdjacentHTML('beforeend', '<i class="draw-card__tape"></i>');
+      run(top, [{ transform: 'translateY(-22px) scale(1.04)' }, { transform: 'rotate(-2.5deg)' }], { duration: reduce ? 1 : 220, easing: 'cubic-bezier(.3,1.4,.5,1)', fill: 'forwards' });
+      crew = await Promise.race([friendsP, new Promise((r) => setTimeout(() => r([]), 800))]);
+      if (my !== token) return;
       busy = false;
       startTilt(top);
       showResult();
@@ -717,11 +770,17 @@ async function paintDiscovery(slot) {
       endTilt();
       buzz(6);
       const gone = current;
-      await done(run(gone, [{ transform: 'translateY(-22px) scale(1.04)', opacity: 1 }, { transform: 'translate(300px,-40px) rotate(18deg)', opacity: 0 }], { duration: reduce ? 1 : 280, easing: 'cubic-bezier(.4,0,.8,.4)', fill: 'forwards' }));
+      await done(run(gone, [{ transform: 'rotate(-2.5deg)', opacity: 1 }, { transform: 'translate(300px,-40px) rotate(18deg)', opacity: 0 }], { duration: reduce ? 1 : 280, easing: 'cubic-bezier(.4,0,.8,.4)', fill: 'forwards' }));
       gone.classList.add('is-gone');
       stack();
       liveCards().forEach((c) => run(c, [{ opacity: 0.2 }, { opacity: 1 }], { duration: 200, fill: 'forwards' }));
       deal({ shuffle: false });
+    });
+    crewEl.addEventListener('click', (e) => {
+      const pin = e.target.closest('.draw-pin');
+      if (!pin?.dataset.user || busy) return;
+      close();
+      navigate(`/profile/${encodeURIComponent(pin.dataset.user)}`);
     });
     btnOpen.addEventListener('click', async () => {
       if (busy || !pick) return;
@@ -747,7 +806,7 @@ async function paintDiscovery(slot) {
     const setSaved = (on) => {
       btnSave.classList.toggle('draw-act--saved', on);
       btnSave.setAttribute('aria-pressed', on ? 'true' : 'false');
-      qs('span', btnSave).textContent = on ? 'In backlog' : 'Want to play';
+      qs('span', btnSave).textContent = on ? 'On your list ✓' : 'Add to Want to play';
     };
     btnSave.addEventListener('click', async () => {
       if (busy || !pick || saving) return;

@@ -2601,6 +2601,39 @@ export async function updateLog(logId, updates) {
   return data;
 }
 
+// What people you follow did with one game, newest first, one entry each:
+// [{ profile, status: 'played' | 'playing' | 'backlog', rating }], at most
+// `limit`. `game` may be a catalogue row or IGDB-only data (matched by
+// igdb_id); a game nobody has added yet simply has no entries.
+export async function getFriendActivityForGame(game, followingIds, limit = 3) {
+  if (!game || !followingIds?.size) return [];
+  let gameId = /^[0-9a-f-]{36}$/.test(String(game.id || '')) ? game.id : null;
+  if (!gameId && game.igdb_id) {
+    const { data } = await supabase.from('games').select('id').eq('igdb_id', game.igdb_id).maybeSingle();
+    gameId = data?.id || null;
+  }
+  if (!gameId) return [];
+  const { data, error } = await supabase
+    .from('logs')
+    .select('user_id, status, rating, created_at, profiles!logs_user_id_fkey(id, username, display_name, avatar_url)')
+    .eq('game_id', gameId)
+    .eq('is_public', true)
+    .in('user_id', [...followingIds])
+    .in('status', ['played', 'playing', 'backlog'])
+    .order('created_at', { ascending: false })
+    .limit(20);
+  if (error) throw error;
+  const seen = new Set();
+  const out = [];
+  for (const l of await filterBlocked(data || [])) {
+    if (seen.has(l.user_id) || !l.profiles) continue;
+    seen.add(l.user_id);
+    out.push({ profile: l.profiles, status: l.status, rating: l.rating });
+    if (out.length === limit) break;
+  }
+  return out;
+}
+
 // The user's own (non-replay) entry for a game, if any: { id, status }.
 export async function getOwnLogForGame(userId, gameId) {
   const { data, error } = await supabase
