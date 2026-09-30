@@ -3,6 +3,7 @@ import { state } from '../state.js';
 import {
   topBar, navBar, homeTabs, feedSectionHead, activityCard, emptyState, spinner, skeletonRow, iconStamp, iconUser, iconFilter,
   trendingStrip, wireTrendingStrip, friendsPlayingCard, posterFrame, openReportSheet, iconChevronRight,
+  iconDice, iconBookmark,
 } from '../components.js';
 import { toast, qs, qsa, esc, timeAgo, enableSwipeToDismiss, promptSignIn, tapFeedback, pulseLogTab } from '../utils.js';
 import { openLogComposer } from './log-composer.js';
@@ -271,13 +272,19 @@ async function paintDiscovery(slot) {
     slot.innerHTML = `
       <div class="feed-section-head">
         <h2 class="section-heading">Bored? Try these</h2>
-        <button type="button" class="filter-btn filter-btn--sm" id="discovery-filter" aria-label="Change collection">
-          ${iconFilter()}
-        </button>
+        <div class="feed-section-head__actions">
+          <button type="button" class="filter-btn filter-btn--sm random-btn" id="discovery-random" aria-label="Pick a random game">
+            ${iconDice()}
+          </button>
+          <button type="button" class="filter-btn filter-btn--sm" id="discovery-filter" aria-label="Change collection">
+            ${iconFilter()}
+          </button>
+        </div>
       </div>
       <div class="discovery-grid" id="discovery-list">${games.length ? rowsHtml(games, 0) : skeletonTiles(9)}</div>
       <div id="discovery-more"></div>`;
     qs('#discovery-filter', slot).addEventListener('click', openPicker);
+    qs('#discovery-random', slot).addEventListener('click', openSpin);
     if (games.length) wireRows(qs('#discovery-list', slot));
   }
 
@@ -453,6 +460,196 @@ async function paintDiscovery(slot) {
         reset();
       });
     });
+  }
+
+  // Random pick: a slot-machine reel through the games already loaded for
+  // the collection being viewed, landing on one of them at random. Never
+  // the same game twice in a row when there's more than one to pick from.
+  let lastPickKey = null;
+  function openSpin() {
+    if (!games.length) { toast('Still loading this collection. Try again in a second.'); return; }
+    const collection = activeCollection();
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML = `
+      <div class="modal spin-sheet" role="dialog" aria-label="Random pick">
+        <header class="modal__header">
+          <div>
+            <h2>Random pick</h2>
+            <p class="spin-sheet__from">From ${esc(collection.label)}</p>
+          </div>
+          <button class="modal__close" data-close aria-label="Close">&times;</button>
+        </header>
+        <div class="modal__body">
+          <div class="spin-reel" aria-hidden="true"><div class="spin-reel__strip"></div></div>
+          <div class="spin-result" aria-live="polite">
+            <h3 class="spin-result__title"></h3>
+            <p class="spin-result__meta"></p>
+          </div>
+          <div class="spin-actions">
+            <button type="button" class="btn btn--accent btn--block" data-open disabled>Open game</button>
+            <div class="spin-actions__row">
+              <button type="button" class="btn btn--ghost" data-save disabled>${iconBookmark()}<span>Save</span></button>
+              <button type="button" class="btn btn--ghost" data-again disabled>${iconDice()}<span>Spin again</span></button>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    document.body.style.overflow = 'hidden';
+
+    const reel = qs('.spin-reel', overlay);
+    const strip = qs('.spin-reel__strip', overlay);
+    const result = qs('.spin-result', overlay);
+    const titleEl = qs('.spin-result__title', overlay);
+    const metaEl = qs('.spin-result__meta', overlay);
+    const btnOpen = qs('[data-open]', overlay);
+    const btnSave = qs('[data-save]', overlay);
+    const btnAgain = qs('[data-again]', overlay);
+    const keyOf = (g) => g.igdb_id ?? g.id ?? g.title;
+    const rand = (arr) => arr[Math.floor(Math.random() * arr.length)];
+    const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let anim = null;
+    let raf = 0;
+    let closed = false;
+    let pick = null;
+
+    const close = () => {
+      closed = true;
+      anim?.cancel();
+      cancelAnimationFrame(raf);
+      overlay.remove();
+      document.body.style.overflow = '';
+    };
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+    qs('[data-close]', overlay).addEventListener('click', close);
+    enableSwipeToDismiss(qs('.modal', overlay), close);
+
+    // Light haptic ticks as posters pass the window, only once the reel
+    // has slowed enough for them to be felt as separate clicks.
+    function ticks(pitch, centreOffset) {
+      let last = -1;
+      let lastAt = 0;
+      const frame = (now) => {
+        const m = new DOMMatrixReadOnly(getComputedStyle(strip).transform);
+        const idx = Math.round((centreOffset - m.m42) / pitch);
+        if (idx !== last) {
+          if (last !== -1 && now - lastAt > 55) { try { navigator.vibrate?.(4); } catch { /* unsupported */ } }
+          last = idx;
+          lastAt = now;
+        }
+        raf = requestAnimationFrame(frame);
+      };
+      raf = requestAnimationFrame(frame);
+    }
+
+    function land() {
+      cancelAnimationFrame(raf);
+      result.classList.remove('spin-result--rolling');
+      titleEl.textContent = pick.title;
+      metaEl.textContent = [pick.release_year, pick.genre].filter(Boolean).join(' · ');
+      btnOpen.disabled = false;
+      btnSave.disabled = false;
+      btnAgain.disabled = false;
+      tapFeedback();
+    }
+
+    async function spin() {
+      btnOpen.disabled = true;
+      btnSave.disabled = true;
+      btnAgain.disabled = true;
+      qs('span', btnSave).textContent = 'Save';
+      result.classList.add('spin-result--rolling');
+      titleEl.textContent = 'Rolling…';
+      metaEl.textContent = '';
+
+      const pool = games.slice();
+      const fresh = pool.filter((g) => keyOf(g) !== lastPickKey);
+      pick = rand(fresh.length ? fresh : pool);
+      lastPickKey = keyOf(pick);
+      const fillers = pool.length > 1 ? pool.filter((g) => keyOf(g) !== keyOf(pick)) : pool;
+      // ~24 posters roll past before the pick, plus one after it so the
+      // reel window never shows an empty slot below the landed game.
+      // No poster twice in a row, which reads as the reel stalling.
+      const seq = [];
+      while (seq.length < 24) {
+        const g = rand(fillers);
+        if (fillers.length > 1 && seq.length && keyOf(seq[seq.length - 1]) === keyOf(g)) continue;
+        seq.push(g);
+      }
+      const target = seq.length;
+      const items = [...seq, pick, rand(fillers)];
+      strip.getAnimations().forEach((a) => a.cancel());
+      strip.style.transform = '';
+      strip.innerHTML = items.map((g) => `<div class="spin-reel__item">${posterFrame(g.cover_url, g.title, 'spin-reel__cover')}</div>`).join('');
+      const imgs = qsa('img', strip);
+      imgs.forEach((img) => { img.loading = 'eager'; });
+
+      // Fractional rects, not offsetTop/offsetHeight: those round to whole
+      // pixels, and a third of a pixel per poster adds up to a visibly
+      // off-centre landing 24 posters down.
+      const kids = strip.children;
+      const r0 = kids[0].getBoundingClientRect();
+      const itemH = r0.height;
+      const pitch = kids[1].getBoundingClientRect().top - r0.top;
+      const centreOffset = reel.getBoundingClientRect().height / 2 - itemH / 2;
+      const yFor = (i) => centreOffset - i * pitch;
+      const start = yFor(1);
+      const end = yFor(target);
+      strip.style.transform = `translateY(${start}px)`;
+
+      // The landing posters have to be painted before the reel slows onto
+      // them; the fast part blurs past anything still loading.
+      const settle = imgs.slice(target - 4).map((img) => img.decode().catch(() => {}));
+      await Promise.race([Promise.all(settle), new Promise((r) => setTimeout(r, 1200))]);
+      if (closed) return;
+
+      if (reduceMotion) {
+        strip.style.transform = `translateY(${end}px)`;
+        land();
+        return;
+      }
+      ticks(pitch, centreOffset);
+      anim = strip.animate([
+        { transform: `translateY(${start}px)`, easing: 'cubic-bezier(0.12, 0.72, 0.18, 1)' },
+        { transform: `translateY(${end - 10}px)`, offset: 0.92, easing: 'cubic-bezier(0.3, 0, 0.3, 1)' },
+        { transform: `translateY(${end}px)` },
+      ], { duration: 3400, fill: 'forwards' });
+      try { await anim.finished; } catch { return; }
+      if (closed) return;
+      land();
+    }
+
+    btnAgain.addEventListener('click', spin);
+    btnOpen.addEventListener('click', async () => {
+      if (!state.user) { promptSignIn('Sign in to open games.'); return; }
+      btnOpen.disabled = true;
+      try {
+        const saved = await api.addGame(pick, state.user.id);
+        close();
+        navigate(`/game/${saved.id}`);
+      } catch (err) {
+        toast(err.message || 'Could not open that game.', 'error');
+        btnOpen.disabled = false;
+      }
+    });
+    btnSave.addEventListener('click', async () => {
+      if (!state.user) { promptSignIn('Sign in to save games.'); return; }
+      btnSave.disabled = true;
+      try {
+        const saved = await api.addGame(pick, state.user.id);
+        await api.createLog({ game_id: saved.id, user_id: state.user.id, status: 'backlog', is_public: true });
+        pulseLogTab();
+        tapFeedback();
+        qs('span', btnSave).textContent = 'Saved';
+        toast(`Saved ${saved.title} to your backlog.`, 'success');
+      } catch (err) {
+        toast(err.message || 'Could not save that game.', 'error');
+        btnSave.disabled = false;
+      }
+    });
+
+    spin();
   }
 
   // Full reset whenever the collection changes — without clearing page

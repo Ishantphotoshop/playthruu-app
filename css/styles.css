@@ -1200,6 +1200,10 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .filter-btn svg, .filter-btn--sm svg { width: 20px; height: 20px; transform: translate(0.29px, 1.29px); }
 .filter-btn--sm svg { width: 14px; height: 14px; }
 .filter-btn:active, .filter-btn--sm:active { transform: scale(0.94); background: var(--surface-raised); }
+/* Dice + filter share the Bored header's right side. The die is drawn
+   centred, so it drops the funnel's optical nudge. */
+.feed-section-head__actions { display: flex; align-items: center; gap: var(--space-2); }
+.filter-btn--sm.random-btn svg { transform: none; }
 
 /* --- discovery shelf --- */
 .collection-list { display: flex; flex-direction: column; gap: var(--space-2); }
@@ -4680,6 +4684,37 @@ a.gd-credit__name { text-decoration: none; }
    label, and a chevron that slides in. The active row lights an accent
    bar and glows. No emojis, no cards — just a tight, confident list. */
 .mood-list { display: flex; flex-direction: column; gap: 6px; padding-bottom: var(--space-2); }
+
+/* ---- random pick sheet (Bored? Try these) --------------------------- */
+/* A reel window one poster tall with a slice of the posters above and
+   below showing, faded at both edges, so it reads as a strip rolling
+   past rather than one image swapping. Posters use the app's poster
+   radius at 1.3x the grid size. */
+.spin-sheet__from { margin-top: 2px; font-size: 12.5px; font-weight: 600; color: var(--ink-dim); }
+.spin-reel {
+  --reel-w: calc(var(--poster-w) * 1.3);
+  --reel-peek: 44px;
+  position: relative; overflow: hidden;
+  height: calc(var(--reel-w) * 4 / 3 + 2 * var(--reel-peek));
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 var(--reel-peek), #000 calc(100% - var(--reel-peek)), transparent 100%);
+          mask-image: linear-gradient(to bottom, transparent 0, #000 var(--reel-peek), #000 calc(100% - var(--reel-peek)), transparent 100%);
+}
+.spin-reel__strip { display: flex; flex-direction: column; align-items: center; gap: var(--poster-gap); will-change: transform; }
+.spin-reel__item { width: var(--reel-w); flex-shrink: 0; }
+.spin-reel__cover { width: 100%; aspect-ratio: var(--ratio-card); border-radius: var(--poster-radius); }
+/* No per-poster fade-in here: at reel speed it just makes posters look
+   half-loaded. */
+.spin-reel .poster-frame__img { opacity: 1; transition: none; }
+.spin-result { min-height: 44px; margin: 14px 0 16px; text-align: center; }
+.spin-result__title {
+  font-family: var(--font-display); font-weight: 800; font-size: 17px; line-height: 1.25;
+  color: var(--ink); overflow-wrap: anywhere;
+}
+.spin-result--rolling .spin-result__title { color: var(--ink-faint); font-weight: 700; }
+.spin-result__meta { margin-top: 3px; font-size: 12.5px; color: var(--ink-dim); }
+.spin-actions { display: flex; flex-direction: column; gap: var(--space-2); }
+.spin-actions__row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); }
+.spin-actions .btn svg { width: 18px; height: 18px; flex-shrink: 0; }
 .mood-row {
   position: relative; display: flex; align-items: center; gap: 14px;
   width: 100%; padding: 15px 16px 15px 18px;
