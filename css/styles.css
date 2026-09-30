@@ -1207,7 +1207,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    This small nudge is optical correction on top of that, not undoing
    it. */
 .filter-btn svg, .filter-btn--sm svg { width: 20px; height: 20px; transform: translate(0.29px, 1.29px); }
-.filter-btn--sm svg { width: 14px; height: 14px; }
+.filter-btn--sm svg { width: 17px; height: 17px; }
 .filter-btn:active, .filter-btn--sm:active { transform: scale(0.94); background: var(--surface-raised); }
 /* Dice + filter share the Bored header's right side. The die is drawn
    centred, so it drops the funnel's optical nudge. */

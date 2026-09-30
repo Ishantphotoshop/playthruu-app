@@ -428,8 +428,7 @@ async function paintDiscovery(slot) {
     // Placeholders go INTO the grid, the same size as posters, and are
     // swapped for them in place, so the page never grows then shrinks.
     // Skipped when the next block is already fetched.
-    const needsNetwork = games.length - shown < BATCH && hasMore;
-    if (listEl && shown && needsNetwork) {
+    if (listEl && shown) {
       listEl.insertAdjacentHTML('beforeend', Array.from({ length: BATCH }, () => `<div class="skeleton skeleton--tile" data-ph></div>`).join(''));
     }
     try {
@@ -440,12 +439,27 @@ async function paintDiscovery(slot) {
     }
     if (startActive !== activeId) return; // the collection changed meanwhile
     const batch = games.slice(shown, shown + BATCH);
+    // The whole block appears at once: every cover is downloaded and
+    // decoded off-screen first (placeholders hold the space), then the
+    // block swaps in and fades up together, instead of posters popping in
+    // one by one as each image lands.
+    const tpl = document.createElement('template');
+    tpl.innerHTML = batch.length ? rowsHtml(batch, shown) : '';
+    const imgs = [...tpl.content.querySelectorAll('img')];
+    await Promise.race([
+      Promise.all(imgs.map((im) => { const pre = new Image(); pre.decoding = 'async'; pre.src = im.getAttribute('src'); return pre.decode().catch(() => {}); })),
+      new Promise((r) => setTimeout(r, 2500)),
+    ]);
+    if (startActive !== activeId) return;
     if (listEl) {
-      qsa('[data-ph]', listEl).forEach((ph) => ph.remove());
-      if (batch.length) {
-        if (shown === 0) listEl.innerHTML = rowsHtml(batch, 0);
-        else listEl.insertAdjacentHTML('beforeend', rowsHtml(batch, shown));
-        wireRows(listEl);
+      if (shown === 0) listEl.innerHTML = '';
+      else qsa('[data-ph]', listEl).forEach((ph) => ph.remove());
+      const tiles = [...tpl.content.children];
+      imgs.forEach((im) => im.classList.add('is-loaded'));
+      listEl.append(tpl.content);
+      wireRows(listEl);
+      if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        tiles.forEach((t) => t.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 380, easing: 'ease-out' }));
       }
     }
     shown += batch.length;
