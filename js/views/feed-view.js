@@ -515,14 +515,15 @@ async function paintDiscovery(slot) {
     const done = (a) => a.finished.catch(() => {});
     const pause = (ms) => (skip || reduce ? Promise.resolve() : new Promise((r) => setTimeout(r, ms)));
     const onKey = (e) => { if (e.key === 'Escape') close(); };
-    let close = function close() {
+    function close() {
       token++;
+      stopTilt();
       anims.forEach((a) => { try { a.cancel(); } catch { /* already gone */ } });
       overlay.remove();
       document.body.style.overflow = '';
       document.removeEventListener('keydown', onKey);
       window.removeEventListener('hashchange', close);
-    };
+    }
     document.addEventListener('keydown', onKey);
     window.addEventListener('hashchange', close);
     overlay.__dismiss = () => close();
@@ -597,8 +598,8 @@ async function paintDiscovery(slot) {
 
     async function deal({ shuffle }) {
       const my = ++token;
-      busy = true; skip = false; tiltOn = false;
-      stage.style.transform = '';
+      busy = true; skip = false;
+      endTilt();
       hideResult();
       pick = null;
       let art = '';
@@ -629,20 +630,22 @@ async function paintDiscovery(slot) {
       const cards = liveCards();
       const top = cards[cards.length - 1];
       current = top;
-      qs('.draw-card__front img', top).src = art;
+      const img = qs('.draw-card__front img', top);
+      img.decoding = 'async';
+      img.src = art;
       const chip = qs('.draw-card__chip', top);
       chip.textContent = [genreOf(pick), pick.release_year].filter(Boolean).join(' · ');
       await done(run(top, [{ transform: 'none' }, { transform: 'translateY(-22px) scale(1.04)' }], { duration: reduce ? 1 : 230, easing: 'cubic-bezier(.2,.8,.2,1)', fill: 'forwards' }));
       if (my !== token) return;
       if (chip.textContent) run(chip, [{ opacity: 0, transform: 'translate(-50%,6px)' }, { opacity: 1, transform: 'translate(-50%,0)' }], { duration: 220, fill: 'forwards' });
-      await Promise.all([pause(420), Promise.race([artReady, new Promise((r) => setTimeout(r, 900))])]);
+      await Promise.all([pause(420), Promise.race([artReady.then(() => img.decode()).catch(() => {}), new Promise((r) => setTimeout(r, 900))])]);
       if (my !== token) return;
       buzz(12);
       await done(run(qs('.draw-card__inner', top), [{ transform: 'rotateY(0)' }, { transform: 'rotateY(180deg)' }], { duration: reduce ? 1 : 520, easing: 'cubic-bezier(.3,.1,.2,1)', fill: 'forwards' }));
       if (my !== token) return;
       cards.slice(0, -1).forEach((c) => run(c, [{ opacity: 1 }, { opacity: 0 }], { duration: 250, fill: 'forwards' }));
       busy = false;
-      tiltOn = true;
+      startTilt(top);
       showResult();
     }
 
@@ -650,6 +653,7 @@ async function paintDiscovery(slot) {
       if (busy || !current) return;
       busy = true;
       hideResult();
+      endTilt();
       buzz(6);
       const gone = current;
       await done(run(gone, [{ transform: 'translateY(-22px) scale(1.04)', opacity: 1 }, { transform: 'translate(300px,-40px) rotate(18deg)', opacity: 0 }], { duration: reduce ? 1 : 340, easing: 'cubic-bezier(.4,0,.8,.4)', fill: 'forwards' }));
@@ -691,30 +695,112 @@ async function paintDiscovery(slot) {
       }
     });
 
-    // Gyro tilt once a card is showing: the deck follows the phone (or the
-    // mouse on desktop) and a soft highlight circles the card.
+    // Live tilt once the card is showing: the deck leans with the phone (the
+    // mouse on desktop) and a soft light slides across the art.
+    //
+    // It follows how the phone MOVES from where it was held when the card
+    // landed, not a fixed angle, so even a small turn registers however the
+    // phone is held, and a slow drift re-centres it when the grip changes.
+    // The reading goes through a quaternion because the plain beta/gamma
+    // angles jump around when the phone is held upright. On screen it is
+    // just two transforms, written once per frame from one rAF loop that
+    // stops as soon as the card is still: nothing is repainted, and nothing
+    // runs while the phone is not moving.
+    const TILT_MAX = 16;   // deg the card can lean
+    const TILT_GAIN = 1.6; // card degrees per degree the phone turns
+    const DRIFT = 2;       // s for the rest pose to catch up with a new grip
+    const EASE = 0.035;    // s of smoothing between sensor readings
+    const D2R = Math.PI / 180;
     let tiltOn = false;
-    const tilt = (x, y) => {
-      if (!tiltOn) return;
-      x = Math.max(-1, Math.min(1, x)); y = Math.max(-1, Math.min(1, y));
-      stage.style.transform = `perspective(900px) rotateX(${(-y * 14).toFixed(2)}deg) rotateY(${(x * 16).toFixed(2)}deg)`;
-      stage.style.setProperty('--gx', `${50 + x * 45}%`);
-      stage.style.setProperty('--gy', `${50 + y * 45}%`);
+    let listening = true;
+    let rest = null;       // the rest pose, as a quaternion
+    let restAt = 0;
+    let tx = 0; let ty = 0; // where the lean is heading (deg)
+    let cx = 0; let cy = 0; // where it is now
+    let raf = 0; let lastFrame = 0;
+    let gloss = null;
+    const soft = (v) => TILT_MAX * Math.tanh(v / TILT_MAX); // leans harder, never snaps at the limit
+    const mul = (a, b) => [
+      a[0] * b[0] - a[1] * b[1] - a[2] * b[2] - a[3] * b[3],
+      a[0] * b[1] + a[1] * b[0] + a[2] * b[3] - a[3] * b[2],
+      a[0] * b[2] - a[1] * b[3] + a[2] * b[0] + a[3] * b[1],
+      a[0] * b[3] + a[1] * b[2] - a[2] * b[1] + a[3] * b[0],
+    ];
+    // deviceorientation angles (Z-X'-Y'') as a quaternion, per the spec
+    const quat = (alpha, beta, gamma) => {
+      const x = (beta * D2R) / 2; const y = (gamma * D2R) / 2; const z = (alpha * D2R) / 2;
+      const cX = Math.cos(x); const cY = Math.cos(y); const cZ = Math.cos(z);
+      const sX = Math.sin(x); const sY = Math.sin(y); const sZ = Math.sin(z);
+      return [cX * cY * cZ - sX * sY * sZ, sX * cY * cZ - cX * sY * sZ, cX * sY * cZ + sX * cY * sZ, cX * cY * sZ + sX * sY * cZ];
     };
-    const onOrient = (e) => { if (e.gamma == null) return; tilt((e.gamma || 0) / 30, ((e.beta || 0) - 45) / 30); };
-    const onMouse = (e) => tilt((e.clientX / innerWidth - 0.5) * 2, (e.clientY / innerHeight - 0.5) * 2);
-    if (!reduce) {
-      const DOE = window.DeviceOrientationEvent;
-      const start = () => {
-        window.addEventListener('deviceorientation', onOrient);
-        window.addEventListener('pointermove', onMouse);
-      };
-      if (DOE && typeof DOE.requestPermission === 'function') {
-        DOE.requestPermission().then((r) => { if (r === 'granted') start(); else window.addEventListener('pointermove', onMouse); }).catch(() => window.addEventListener('pointermove', onMouse));
-      } else start();
+    const frame = (t) => {
+      raf = 0;
+      const dt = lastFrame ? Math.min(0.05, (t - lastFrame) / 1000) : 1 / 60;
+      lastFrame = t;
+      const k = 1 - Math.exp(-dt / EASE);
+      cx += (tx - cx) * k;
+      cy += (ty - cy) * k;
+      const still = Math.abs(tx - cx) < 0.01 && Math.abs(ty - cy) < 0.01;
+      if (still) { cx = tx; cy = ty; lastFrame = 0; }
+      const flat = !cx && !cy;
+      stage.style.transform = flat ? '' : `perspective(800px) rotateX(${cx.toFixed(2)}deg) rotateY(${cy.toFixed(2)}deg)`;
+      if (gloss) gloss.style.transform = flat ? '' : `translate3d(${(cy * 2.6).toFixed(1)}px, ${(-cx * 2.6).toFixed(1)}px, 0)`;
+      if (!still) raf = requestAnimationFrame(frame);
+    };
+    const aim = (x, y) => {
+      tx = x; ty = y;
+      if (!raf) raf = requestAnimationFrame(frame);
+    };
+    const onOrient = (e) => {
+      if (!tiltOn || e.beta == null) return;
+      const q = quat(e.alpha || 0, e.beta, e.gamma || 0);
+      if (!rest) { rest = q; restAt = e.timeStamp; return; }
+      // drift the rest pose toward the current one
+      const k = 1 - Math.exp(-Math.min(0.25, (e.timeStamp - restAt) / 1000) / DRIFT);
+      restAt = e.timeStamp;
+      const sign = rest[0] * q[0] + rest[1] * q[1] + rest[2] * q[2] + rest[3] * q[3] < 0 ? -1 : 1;
+      const blend = rest.map((v, i) => v + (q[i] * sign - v) * k);
+      const len = Math.hypot(...blend);
+      rest = blend.map((v) => v / len);
+      // the turn from the rest pose to now, around the phone's own axes
+      const r = mul([rest[0], -rest[1], -rest[2], -rest[3]], q);
+      const w = r[0] < 0 ? -2 : 2;
+      aim(soft(-TILT_GAIN * (w * r[1]) / D2R), soft(TILT_GAIN * (w * r[2]) / D2R));
+    };
+    const onMouse = (e) => {
+      if (!tiltOn || e.pointerType === 'touch') return;
+      aim(-(e.clientY / innerHeight - 0.5) * 2 * TILT_MAX, (e.clientX / innerWidth - 0.5) * 2 * TILT_MAX);
+    };
+    function startTilt(card) {
+      if (reduce) return;
+      tiltOn = true;
+      rest = null;
+      gloss = qs('.draw-card__gloss', card);
     }
-    const baseClose = close;
-    close = () => { window.removeEventListener('deviceorientation', onOrient); window.removeEventListener('pointermove', onMouse); baseClose(); };
+    function endTilt() {
+      tiltOn = false;
+      aim(0, 0);
+    }
+    function stopTilt() {
+      tiltOn = false;
+      listening = false;
+      if (raf) cancelAnimationFrame(raf);
+      raf = 0;
+      window.removeEventListener('deviceorientation', onOrient);
+      window.removeEventListener('pointermove', onMouse);
+    }
+    if (!reduce) {
+      window.addEventListener('pointermove', onMouse, { passive: true });
+      const DOE = window.DeviceOrientationEvent;
+      if (typeof DOE?.requestPermission === 'function') {
+        // iOS asks once, and only from a tap: this one.
+        DOE.requestPermission()
+          .then((r) => { if (r === 'granted' && listening) window.addEventListener('deviceorientation', onOrient); })
+          .catch(() => {});
+      } else if (DOE) {
+        window.addEventListener('deviceorientation', onOrient);
+      }
+    }
 
     deal({ shuffle: true });
   }
