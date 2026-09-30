@@ -2727,6 +2727,10 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
    touch below the heading text's own vertical centre — same offset on
    every heading (verified), but asked to be nudged up to sit level
    with the text specifically, not just consistent with itself. */
+/* LOCKED — position signed off by the user (2026-09-30). Do not change
+   the size, margin or translateY here, and re-check the arrow still sits
+   the same against the heading after any change to .section-heading's
+   font-size or .feed-section-head's layout. */
 .see-more-icon {
   display: flex; align-items: center; justify-content: center;
   width: 34px; height: 34px; margin: -4px -8px -4px 0; flex-shrink: 0;
