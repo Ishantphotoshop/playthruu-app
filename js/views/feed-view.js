@@ -873,6 +873,7 @@ async function paintDiscovery(slot) {
     let cx = 0; let cy = 0; // where it is now
     let raf = 0; let lastFrame = 0;
     let gloss = null;
+    const layers = [[crewEl, 1.4], [strings, 1.4], [qs('.draw-info', overlay), 0.8], [qs('.draw-actions', overlay), 0.5]];
     const soft = (v) => TILT_MAX * Math.tanh(v / TILT_MAX); // leans harder, never snaps at the limit
     const mul = (a, b) => [
       a[0] * b[0] - a[1] * b[1] - a[2] * b[2] - a[3] * b[3],
@@ -899,6 +900,10 @@ async function paintDiscovery(slot) {
       const flat = !cx && !cy;
       stage.style.transform = flat ? '' : `perspective(800px) rotateX(${cx.toFixed(2)}deg) rotateY(${cy.toFixed(2)}deg)`;
       if (gloss) gloss.style.transform = flat ? '' : `translate3d(${(cy * 2.6).toFixed(1)}px, ${(-cx * 2.6).toFixed(1)}px, 0)`;
+      // The rest of the board moves in layers with the card: friends'
+      // photos and their strings float nearest, the slip and the orders a
+      // little less, so the whole screen reads as one live scene.
+      for (const [el, depth] of layers) el.style.translate = flat ? '' : `${(cy * depth).toFixed(1)}px ${(-cx * depth).toFixed(1)}px`;
       if (!still) raf = requestAnimationFrame(frame);
     };
     const aim = (x, y) => {
