@@ -259,11 +259,14 @@ async function paintDiscovery(slot) {
   let hasMore = cached?.hasMore ?? true;
   let loading = false;
   let games = cached?.games || [];
-  // Posters go on screen 18 at a time (six full rows of 3); games
+  // Posters go on screen 12 at a time (four full rows of 3); games
   // fetched beyond that wait in `games` until the next scroll. A page of
   // results is 20 minus whatever has no cover, so appending pages as
   // they came left ragged rows (8, then 1-3-3-2).
-  const BATCH = 18;
+  const BATCH = 12;
+  // The next page is fetched in the background as soon as a block is on
+  // screen, so scrolling to the end rarely waits on the network.
+  let prefetching = null;
   let shown = Math.min(games.length, cached?.shown ?? (Math.floor(games.length / BATCH) * BATCH || games.length));
   const more = () => games.length > shown || hasMore;
   let observer = null;
@@ -397,6 +400,7 @@ async function paintDiscovery(slot) {
     // api.js), not a browseGames() filter like every other collection
     // here — one full page, then hasMore is simply false.
     const collection = activeCollection();
+    const forId = activeId;
     const isGoty = collection.id === 'goty';
     // A rotating collection starts further into its own ranking
     // depending on the fortnight (see rotationPage in api.js), so the
@@ -406,6 +410,7 @@ async function paintDiscovery(slot) {
     const res = isGoty
       ? { games: page === 1 ? await api.resolveGotyWinners() : [], hasMore: false }
       : await api.browseGames({ ...collection.params, page: page + startPage - 1 });
+    if (forId !== activeId) return; // switched collection mid-fetch
     // Only games WITH cover art — the grid is poster-only.
     games = [...games, ...res.games.filter((g) => g.cover_url)];
     hasMore = res.hasMore;
@@ -418,6 +423,7 @@ async function paintDiscovery(slot) {
     paintFooter();
     const startActive = activeId;
     try {
+      if (prefetching) await prefetching;
       while (games.length - shown < BATCH && hasMore) await fetchPage();
     } catch {
       hasMore = false;
@@ -435,6 +441,9 @@ async function paintDiscovery(slot) {
     shown += batch.length;
     setCached(DISCOVERY_CACHE_KEY, { activeId, page, hasMore, games, shown });
     loading = false;
+    if (games.length - shown < BATCH && hasMore && !prefetching) {
+      prefetching = fetchPage().catch(() => {}).finally(() => { prefetching = null; });
+    }
     if (!batch.length && !games.length) {
       const moreEl = qs('#discovery-more', slot);
       if (moreEl) moreEl.innerHTML = `<p class="muted">Couldn't load this right now.</p>`;
@@ -821,7 +830,7 @@ async function paintDiscovery(slot) {
   // the old one and paginate from wherever the last one left off.
   function reset() {
     if (observer) observer.disconnect();
-    page = 1; hasMore = true; loading = false; games = []; shown = 0;
+    page = 1; hasMore = true; loading = false; games = []; shown = 0; prefetching = null;
     shell();
     loadMore();
   }
