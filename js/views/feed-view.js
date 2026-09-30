@@ -459,7 +459,13 @@ async function paintDiscovery(slot) {
       listEl.append(tpl.content);
       wireRows(listEl);
       if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
-        tiles.forEach((t) => t.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 380, easing: 'ease-out' }));
+        // A slow wash in reading order: each poster fades up with a small
+        // rise and settle over 0.7s, 45ms after the one before it.
+        // Opacity and transform only, so it runs on the compositor.
+        tiles.forEach((t, i) => t.animate(
+          [{ opacity: 0, transform: 'translateY(8px) scale(0.985)' }, { opacity: 1, transform: 'none' }],
+          { duration: 700, delay: i * 45, easing: 'cubic-bezier(.2,.6,.2,1)', fill: 'backwards' },
+        ));
       }
     }
     shown += batch.length;
