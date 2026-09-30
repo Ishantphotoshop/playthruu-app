@@ -379,7 +379,7 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
     if (!list) return;
     qsa('[data-skeleton]', list).forEach((el) => el.remove());
     list.insertAdjacentHTML('beforeend', batch.map((g, i) => `
-      <button type="button" class="discovery-tile" data-idx="${offset + i}" aria-label="${esc(g.title)}">
+      <button type="button" class="discovery-tile" data-idx="${offset + i}" data-igdb-id="${esc(String(g.igdb_id ?? ''))}" data-year="${esc(String(g.release_year ?? g.year ?? ''))}" aria-label="${esc(g.title)}">
         ${posterFrame(g.cover_url, g.title, 'discovery-tile__cover')}
       </button>`).join(''));
     qsa('.discovery-tile', list).forEach((el) => {

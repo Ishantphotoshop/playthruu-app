@@ -678,57 +678,78 @@ function handleSignedOut() {
 // alone (Bored grid, trending) are matched by title, the same lookup
 // Search uses, and added to the catalogue if they are new.
 function wirePosterLongPress() {
-  const HOLD_MS = 450;
+  // Held for a full second: buzz, then the sheet slides up from the bottom.
+  const HOLD_MS = 1000;
   let timer = 0;
   let start = null;
   let swallowClick = false;
   const cancel = () => { clearTimeout(timer); timer = 0; start = null; };
 
   async function gameFor(frame) {
-    const link = frame.closest('a[href^="#/game/"], [href^="#/game/"]') || (frame.matches('a[href^="#/game/"]') ? frame : null);
+    const link = frame.closest('[href^="#/game/"]');
     const id = link?.getAttribute('href').match(/^#\/game\/([0-9a-f-]{36})$/)?.[1];
     if (id) return api.getGame(id);
     const title = (qs('img', frame)?.alt || '').replace(/ cover$/, '').trim();
     if (!title) return null;
+    // IGDB-backed tiles carry their id: one catalogue lookup, no search.
+    const tile = frame.closest('[data-igdb-id]');
+    const igdbId = Number(tile?.dataset.igdbId);
+    if (igdbId) {
+      const cover = qs('img', frame)?.getAttribute('src') || '';
+      return api.addGame({ igdb_id: igdbId, title, cover_url: cover.replace(/t_[a-z0-9_]+/, 't_cover_big'), release_year: Number(tile.dataset.year) || null }, state.user.id);
+    }
     const { results: found = [] } = await api.searchGamesEverywhere(title, 5);
     const g = found.find((x) => (x.title || '').toLowerCase() === title.toLowerCase()) || found[0];
     if (!g) return null;
     return g.id ? g : api.addGame(g, state.user.id);
   }
 
-  document.addEventListener('pointerdown', (e) => {
-    if (e.button !== 0) return;
-    const frame = e.target.closest?.('.poster-frame');
+  function press(target, x, y) {
+    const frame = target.closest?.('.poster-frame');
     if (!frame || frame.closest('.modal-overlay, .draw-overlay')) return;
     cancel();
-    start = { x: e.clientX, y: e.clientY };
+    start = { x, y };
+    // Look the game up while the finger is still down, so the sheet is
+    // ready the moment the hold completes instead of a beat after it.
+    const lookup = state.user ? gameFor(frame) : null;
+    lookup?.catch(() => {});
     timer = setTimeout(async () => {
-      timer = 0;
+      timer = 0; start = null;
       swallowClick = true;
-      setTimeout(() => { swallowClick = false; }, 800);
+      setTimeout(() => { swallowClick = false; }, 1200);
+      buzz([20]);
       if (!state.user) { promptSignIn('Sign in to log games.'); return; }
-      buzz(15);
       try {
-        const game = await gameFor(frame);
+        const game = await lookup;
         if (!game) { toast('Could not find that game.', 'error'); return; }
         openLogComposer({ game, onSaved: refreshCurrentView });
       } catch (err) {
         toast(err.message || 'Could not open the log sheet.', 'error');
       }
     }, HOLD_MS);
+  }
+  const moved = (x, y) => { if (start && Math.hypot(x - start.x, y - start.y) > 12) cancel(); };
+
+  // Touch has its own listeners: a phone's pointer stream is cancelled by
+  // the browser's own long-press handling (link preview, context menu)
+  // well before a second is up, which is what made the hold unreliable.
+  document.addEventListener('touchstart', (e) => {
+    if (e.touches.length !== 1) { cancel(); return; }
+    press(e.target, e.touches[0].clientX, e.touches[0].clientY);
   }, { passive: true });
-  // A drag or scroll is not a hold.
-  document.addEventListener('pointermove', (e) => {
-    if (start && Math.hypot(e.clientX - start.x, e.clientY - start.y) > 10) cancel();
-  }, { passive: true });
-  ['pointerup', 'pointercancel', 'scroll'].forEach((t) => document.addEventListener(t, () => { if (timer) cancel(); }, { passive: true, capture: true }));
-  // The finger lifting after a hold must not also open the poster's link.
+  document.addEventListener('touchmove', (e) => moved(e.touches[0].clientX, e.touches[0].clientY), { passive: true });
+  document.addEventListener('touchend', () => { if (timer) cancel(); }, { passive: true });
+  document.addEventListener('mousedown', (e) => { if (e.button === 0) press(e.target, e.clientX, e.clientY); });
+  document.addEventListener('mousemove', (e) => moved(e.clientX, e.clientY));
+  document.addEventListener('mouseup', () => { if (timer) cancel(); });
+  document.addEventListener('scroll', () => { if (timer) cancel(); }, { passive: true, capture: true });
+  // Letting go after a hold must not also open the poster.
   document.addEventListener('click', (e) => {
-    if (swallowClick && e.target.closest?.('.poster-frame, .discovery-tile, .trending-card, a[href^="#/game/"]')) {
+    if (swallowClick && e.target.closest?.('.poster-frame, .discovery-tile, .trending-card, [href^="#/game/"]')) {
       e.preventDefault(); e.stopPropagation(); swallowClick = false;
     }
   }, true);
-  // No "save image" menu on a held poster.
+  // No context menu / link preview on a held poster.
   document.addEventListener('contextmenu', (e) => { if (e.target.closest?.('.poster-frame')) e.preventDefault(); });
 }
 

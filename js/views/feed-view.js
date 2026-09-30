@@ -221,7 +221,7 @@ async function paintForYou(slot) {
     ${feedSectionHead('Picked for you')}
     <div class="foryou-strip" id="foryou-strip">
       ${picks.map((p, i) => `
-        <button type="button" class="foryou-card" data-idx="${i}" aria-label="${esc(p.game.title)}">
+        <button type="button" class="foryou-card" data-idx="${i}" data-igdb-id="${esc(String(p.game.igdb_id ?? ''))}" data-year="${esc(String(p.game.release_year ?? p.game.year ?? ''))}" aria-label="${esc(p.game.title)}">
           ${posterFrame(p.game.cover_url, p.game.title, 'foryou-card__cover')}
         </button>`).join('')}
     </div>`;
@@ -296,7 +296,7 @@ async function paintDiscovery(slot) {
   // backlog without leaving the grid — see wireRows below.
   function rowsHtml(batch, offset) {
     return batch.map((g, i) => `
-      <button type="button" class="discovery-tile" data-idx="${offset + i}" aria-label="${esc(g.title)}${g.gotyYear ? ` — ${g.gotyYear} Game of the Year` : ''}">
+      <button type="button" class="discovery-tile" data-idx="${offset + i}" data-igdb-id="${esc(String(g.igdb_id ?? ''))}" data-year="${esc(String(g.release_year ?? g.year ?? ''))}" aria-label="${esc(g.title)}${g.gotyYear ? ` — ${g.gotyYear} Game of the Year` : ''}">
         ${posterFrame(g.cover_url, g.title, 'discovery-tile__cover')}
         ${g.gotyYear ? `<span class="discovery-goty-badge">${g.gotyYear}</span>` : ''}
         <span class="discovery-tile__saved" aria-hidden="true">${iconBookmarkFilled()}</span>
