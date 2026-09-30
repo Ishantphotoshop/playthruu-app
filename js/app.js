@@ -718,15 +718,18 @@ function wirePosterLongPress() {
       swallowClick = true;
       setTimeout(() => { swallowClick = false; }, 1200);
       if (!state.user) { buzz([20]); promptSignIn('Sign in to log games.'); return; }
-      try {
-        const game = await lookup;
-        if (!game) { toast('Could not find that game.', 'error'); return; }
-        // The buzz lands with the sheet, not before it.
-        buzz([20]);
-        openLogComposer({ game, onSaved: refreshCurrentView });
-      } catch (err) {
-        toast(err.message || 'Could not open the log sheet.', 'error');
-      }
+      // Open at once with what the poster already shows (title, cover,
+      // year); the catalogue lookup started on press finishes behind the
+      // sheet, and saving waits for it.
+      const img = qs('img', frame);
+      const tile = frame.closest('[data-year]');
+      const standIn = {
+        title: (img?.alt || '').replace(/ cover$/, '').trim(),
+        cover_url: (img?.getAttribute('src') || '').replace(/t_[a-z0-9_]+/, 't_cover_big'),
+        release_year: Number(tile?.dataset.year) || null,
+      };
+      buzz([20]);
+      openLogComposer({ game: standIn, resolveGame: lookup.then((g) => { if (!g) throw new Error('not found'); return g; }), onSaved: refreshCurrentView });
     }, HOLD_MS);
   }
   const moved = (x, y) => { if (start && Math.hypot(x - start.x, y - start.y) > 12) cancel(); };

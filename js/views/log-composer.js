@@ -24,13 +24,18 @@ import {
 //   openLogComposer({ game })               log that game
 //   openLogComposer({ existingLog })        edit an entry
 //   openLogComposer({ game, defaultReplay }) a fresh entry for a replay
-export function openLogComposer({ game = null, existingLog = null, defaultReplay = false, onSaved = () => {} } = {}) {
+// resolveGame: a promise for the saved game when `game` is only a stand-in
+// (title + cover), so the sheet can open instantly while the catalogue
+// lookup finishes behind it. Saving waits for it.
+export function openLogComposer({ game = null, resolveGame = null, existingLog = null, defaultReplay = false, onSaved = () => {} } = {}) {
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
   document.body.appendChild(overlay);
   document.body.style.overflow = 'hidden';
 
   let selectedGame = game || existingLog?.games || null;
+  let pendingGame = resolveGame;
+  pendingGame?.then((g) => { if (g && pendingGame === resolveGame) selectedGame = g; }).catch(() => {});
 
   const draft = {
     status: existingLog?.status || 'played',
@@ -205,6 +210,10 @@ export function openLogComposer({ game = null, existingLog = null, defaultReplay
 
   // ---------------------------------------------------------- the save
   async function save() {
+    if (pendingGame) {
+      try { const real = await pendingGame; if (real) selectedGame = real; } catch { toast('Could not find that game.', 'error'); return; }
+      pendingGame = null;
+    }
     const g = selectedGame;
 
     // A game that hasn't come out can't have been played or be in
@@ -319,8 +328,8 @@ export function openLogComposer({ game = null, existingLog = null, defaultReplay
         if (found.length) recordRecentSearch(q, 'games');
         results.innerHTML = combinedGameResultsList(found);
         wireCombinedGameResults(results, found, {
-          onLocal: (picked) => { selectedGame = picked; paintForm(); },
-          onRemote: async (picked) => { selectedGame = await api.addGame(picked, state.user.id); paintForm(); },
+          onLocal: (picked) => { pendingGame = null; selectedGame = picked; paintForm(); },
+          onRemote: async (picked) => { pendingGame = null; selectedGame = await api.addGame(picked, state.user.id); paintForm(); },
         });
         if (directorObserver) directorObserver.disconnect();
         directorObserver = wireResultDirectors(results, found, api);
