@@ -841,7 +841,10 @@ export function iconSearch() { return `<svg viewBox="0 0 24 24" fill="none"><cir
 export function iconFilter() { return `<svg viewBox="0 0 24 24" fill="none"><path d="M4 4h16l-6 8v6l-4 2v-8z" fill="currentColor"/></svg>`; }
 // Random pick's action cards: a small fanned pair of cards (draw another)
 // and a solid play triangle (open the game).
-export function iconCardStack() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><rect x="8" y="3.5" width="11" height="15" rx="1.6"/><path d="M5.5 6.5 4.2 7a1.4 1.4 0 0 0-.8 1.8l3.9 10.6a1.4 1.4 0 0 0 1.8.8l1.4-.5"/></svg>`; }
+// Three cards fanned like a hand, flat and solid the way card-game icons
+// draw them: the two behind at half strength, cut back so a clean gap
+// frames the front card, which has a diamond knocked out of it.
+export function iconCardStack() { return `<svg viewBox="0 0 24 24"><defs><mask id="card-stack-cut" maskUnits="userSpaceOnUse" x="0" y="0" width="24" height="24"><rect width="24" height="24" fill="#fff"/><rect x="6.1" y="3.1" width="11.8" height="15.8" rx="3" fill="#000"/></mask></defs><g fill="currentColor" mask="url(#card-stack-cut)" opacity="0.5"><rect x="7.5" y="4.5" width="9" height="13" rx="1.8" transform="rotate(-28 12 20)"/><rect x="7.5" y="4.5" width="9" height="13" rx="1.8" transform="rotate(28 12 20)"/></g><path fill="currentColor" fill-rule="evenodd" d="M9.3 4.5h5.4a1.8 1.8 0 0 1 1.8 1.8v9.4a1.8 1.8 0 0 1-1.8 1.8H9.3a1.8 1.8 0 0 1-1.8-1.8V6.3a1.8 1.8 0 0 1 1.8-1.8zM12 7.9 9.8 11l2.2 3.1 2.2-3.1z"/></svg>`; }
 export function iconPlay() { return `<svg viewBox="0 0 24 24"><path fill="currentColor" d="M8 5.2v13.6a1 1 0 0 0 1.5.86l11-6.8a1 1 0 0 0 0-1.72l-11-6.8A1 1 0 0 0 8 5.2z"/></svg>`; }
 // Random pick: a solid die showing three, pips knocked out, so it carries
 // the same filled weight as the filter funnel it sits beside.

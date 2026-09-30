@@ -542,7 +542,7 @@ async function paintDiscovery(slot) {
           <p class="draw-info__meta"></p>
         </div>
         <div class="draw-actions">
-          <button type="button" class="draw-act" data-draw>${iconCardStack()}<span>Draw</span></button>
+          <button type="button" class="draw-act" data-draw>${iconCardStack()}<span>Draw again</span></button>
           <button type="button" class="draw-act draw-act--go" data-open>${iconPlay()}<span>Open</span></button>
           <button type="button" class="draw-act" data-save>${iconBookmark()}<span>Want to play</span></button>
         </div>
@@ -646,7 +646,8 @@ async function paintDiscovery(slot) {
       titleEl.textContent = pick.title;
       metaEl.textContent = [pick.release_year, genreOf(pick), pick.igdb_rating ? `★ ${(pick.igdb_rating / 20).toFixed(1)}` : '']
         .filter(Boolean).join(' · ');
-      qs('span', btnSave).textContent = 'Want to play';
+      setSaved(false);
+      saved = null;
       drawEl.classList.add('is-landed');
       acts.forEach((b) => { b.disabled = false; });
       run(qs('.draw-info', overlay), [{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'none' }], { duration: 280, easing: 'cubic-bezier(.2,.8,.2,1)' });
@@ -736,23 +737,57 @@ async function paintDiscovery(slot) {
         btnOpen.disabled = false;
       }
     });
+    // Want to play is a toggle. The card turns green the moment you tap
+    // it and the backlog entry is written behind it; tap again and the
+    // entry this made is removed. Nothing reloads, and a failure puts the
+    // card back. A game you had already logged (played, playing) is left
+    // exactly as it was.
+    let saved = null;     // { logId, pickKey } once in the backlog
+    let saving = false;
+    const setSaved = (on) => {
+      btnSave.classList.toggle('draw-act--saved', on);
+      btnSave.setAttribute('aria-pressed', on ? 'true' : 'false');
+      qs('span', btnSave).textContent = on ? 'In backlog' : 'Want to play';
+    };
     btnSave.addEventListener('click', async () => {
-      if (busy || !pick) return;
+      if (busy || !pick || saving) return;
       if (!state.user) { promptSignIn('Sign in to save games.'); return; }
       const g = pick;
-      btnSave.disabled = true;
-      try {
-        const saved = await api.addGame(g, state.user.id);
-        await api.createLog({ game_id: saved.id, user_id: state.user.id, status: 'backlog', is_public: true });
-        markPagesStale();
-        buzz([10, 40, 14]);
-        pulseLogTab();
-        if (pick === g) qs('span', btnSave).textContent = 'Added';
-        toast(`Added ${saved.title} to Want to Play.`, 'success');
-      } catch (err) {
-        toast(err.message || 'Could not save that game.', 'error');
-        btnSave.disabled = false;
+      saving = true;
+      if (saved && saved.pickKey === keyOf(g)) {
+        const was = saved;
+        saved = null;
+        setSaved(false);
+        buzz(6);
+        try {
+          await api.deleteLog(was.logId);
+          markPagesStale();
+        } catch (err) {
+          if (pick === g) { saved = was; setSaved(true); }
+          toast(err.message || 'Could not remove that.', 'error');
+        }
+        saving = false;
+        return;
       }
+      setSaved(true);
+      buzz([10, 40, 14]);
+      try {
+        const game = await api.addGame(g, state.user.id);
+        const had = await api.getOwnLogForGame(state.user.id, game.id);
+        if (had && had.status !== 'backlog') {
+          if (pick === g) setSaved(false);
+          toast(`${game.title} is already in your diary.`);
+        } else {
+          const log = had || await api.createLog({ game_id: game.id, user_id: state.user.id, status: 'backlog', is_public: true });
+          if (pick === g) saved = { logId: log.id, pickKey: keyOf(g) };
+          markPagesStale();
+          pulseLogTab();
+        }
+      } catch (err) {
+        if (pick === g) setSaved(false);
+        toast(err.message || 'Could not save that game.', 'error');
+      }
+      saving = false;
     });
 
     // Live tilt once the card is showing: the deck leans with the phone (the

@@ -2601,6 +2601,20 @@ export async function updateLog(logId, updates) {
   return data;
 }
 
+// The user's own (non-replay) entry for a game, if any: { id, status }.
+export async function getOwnLogForGame(userId, gameId) {
+  const { data, error } = await supabase
+    .from('logs')
+    .select('id, status')
+    .eq('user_id', userId)
+    .eq('game_id', gameId)
+    .or('is_replay.is.null,is_replay.eq.false')
+    .order('created_at', { ascending: true })
+    .limit(1);
+  if (error) throw error;
+  return data?.[0] || null;
+}
+
 export async function deleteLog(logId) {
   const { error } = await supabase.from('logs').delete().eq('id', logId);
   if (error) throw error;
