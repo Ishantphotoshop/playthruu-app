@@ -514,14 +514,14 @@ async function paintDiscovery(slot) {
     const done = (a) => a.finished.catch(() => {});
     const pause = (ms) => (skip || reduce ? Promise.resolve() : new Promise((r) => setTimeout(r, ms)));
     const onKey = (e) => { if (e.key === 'Escape') close(); };
-    function close() {
+    let close = function close() {
       token++;
       anims.forEach((a) => { try { a.cancel(); } catch { /* already gone */ } });
       overlay.remove();
       document.body.style.overflow = '';
       document.removeEventListener('keydown', onKey);
       window.removeEventListener('hashchange', close);
-    }
+    };
     document.addEventListener('keydown', onKey);
     window.addEventListener('hashchange', close);
     qs('[data-close]', overlay).addEventListener('click', close);
@@ -534,22 +534,44 @@ async function paintDiscovery(slot) {
     const cardHTML = () => `
       <div class="draw-card"><div class="draw-card__inner">
         <div class="draw-card__face draw-card__back">${iconBrandMark()}<span class="draw-card__chip"></span></div>
-        <div class="draw-card__face draw-card__front"><img alt=""></div>
+        <div class="draw-card__face draw-card__front"><img alt=""><i class="draw-card__gloss"></i></div>
       </div></div>`;
     const liveCards = () => qsa('.draw-card:not(.is-gone)', stage);
     const stack = () => liveCards().forEach((c, i) => { c.style.top = `${-i * 1.6}px`; c.style.left = `${-i * 0.6}px`; c.style.zIndex = i; });
     const fan = (i) => `translateX(${i % 2 ? 80 : -80}px) rotate(${i % 2 ? 7 : -7}deg)`;
     const genreOf = (g) => (g.genre || '').split(',')[0].replace('Role-playing (RPG)', 'RPG').trim();
 
-    function choose() {
-      let fresh = games.filter((g) => !drawn.keys.has(keyOf(g)));
-      if (!fresh.length) {
-        drawn.keys.clear();
-        fresh = games.filter((g) => !pick || keyOf(g) !== keyOf(pick));
-        if (!fresh.length) fresh = games.slice();
+    // Fully random: a random page deep into the collection's own ranking
+    // (not just what is loaded on screen), falling back to the loaded
+    // games if the request fails or comes back empty. The seen-set covers
+    // both sources so nothing repeats within a session.
+    const seen = drawn.keys;
+    const localPick = () => {
+      let fresh = games.filter((g) => !seen.has(keyOf(g)));
+      if (!fresh.length) fresh = games.slice();
+      return fresh[Math.floor(Math.random() * fresh.length)];
+    };
+    async function choose() {
+      const c = collection;
+      if (c.id !== 'goty') {
+        for (let tries = 0; tries < 2; tries++) {
+          try {
+            const pg = 1 + Math.floor(Math.random() * 40);
+            const res = await Promise.race([
+              api.browseGames({ ...c.params, page: pg }),
+              new Promise((_, rej) => setTimeout(() => rej(new Error('slow')), 3500)),
+            ]);
+            const fresh = (res.games || []).filter((g) => g.cover_url && !seen.has(keyOf(g)));
+            if (fresh.length) {
+              const g = fresh[Math.floor(Math.random() * fresh.length)];
+              seen.add(keyOf(g));
+              return g;
+            }
+          } catch { /* try again, then fall back */ }
+        }
       }
-      const g = fresh[Math.floor(Math.random() * fresh.length)];
-      drawn.keys.add(keyOf(g));
+      const g = localPick();
+      seen.add(keyOf(g));
       return g;
     }
 
@@ -573,11 +595,16 @@ async function paintDiscovery(slot) {
 
     async function deal({ shuffle }) {
       const my = ++token;
-      busy = true; skip = false;
+      busy = true; skip = false; tiltOn = false;
+      stage.style.transform = '';
       hideResult();
-      pick = choose();
-      const art = pick.cover_url ? igdbSized(pick.cover_url, '720p') : placeholderCover(pick.title);
-      const artReady = new Promise((r) => { const im = new Image(); im.onload = im.onerror = r; im.src = art; });
+      pick = null;
+      let art = '';
+      const picking = choose().then((g) => {
+        pick = g;
+        art = g.cover_url ? igdbSized(g.cover_url, '720p') : placeholderCover(g.title);
+        return new Promise((r) => { const im = new Image(); im.onload = im.onerror = r; im.src = art; });
+      });
 
       if (shuffle || liveCards().length < 3) {
         stage.innerHTML = Array.from({ length: 7 }, cardHTML).join('');
@@ -593,6 +620,10 @@ async function paintDiscovery(slot) {
         }
       }
 
+      const artReady = picking;
+      await Promise.race([picking, new Promise((r) => setTimeout(r, 6000))]);
+      if (my !== token) return;
+      if (!pick) { pick = localPick(); art = igdbSized(pick.cover_url, '720p'); }
       const cards = liveCards();
       const top = cards[cards.length - 1];
       current = top;
@@ -609,6 +640,7 @@ async function paintDiscovery(slot) {
       if (my !== token) return;
       cards.slice(0, -1).forEach((c) => run(c, [{ opacity: 1 }, { opacity: 0 }], { duration: 250, fill: 'forwards' }));
       busy = false;
+      tiltOn = true;
       showResult();
     }
 
@@ -655,6 +687,31 @@ async function paintDiscovery(slot) {
         btnSave.disabled = false;
       }
     });
+
+    // Gyro tilt once a card is showing: the deck follows the phone (or the
+    // mouse on desktop) and a soft highlight circles the card.
+    let tiltOn = false;
+    const tilt = (x, y) => {
+      if (!tiltOn) return;
+      x = Math.max(-1, Math.min(1, x)); y = Math.max(-1, Math.min(1, y));
+      stage.style.transform = `perspective(900px) rotateX(${(-y * 14).toFixed(2)}deg) rotateY(${(x * 16).toFixed(2)}deg)`;
+      stage.style.setProperty('--gx', `${50 + x * 45}%`);
+      stage.style.setProperty('--gy', `${50 + y * 45}%`);
+    };
+    const onOrient = (e) => { if (e.gamma == null) return; tilt((e.gamma || 0) / 30, ((e.beta || 0) - 45) / 30); };
+    const onMouse = (e) => tilt((e.clientX / innerWidth - 0.5) * 2, (e.clientY / innerHeight - 0.5) * 2);
+    if (!reduce) {
+      const DOE = window.DeviceOrientationEvent;
+      const start = () => {
+        window.addEventListener('deviceorientation', onOrient);
+        window.addEventListener('pointermove', onMouse);
+      };
+      if (DOE && typeof DOE.requestPermission === 'function') {
+        DOE.requestPermission().then((r) => { if (r === 'granted') start(); else window.addEventListener('pointermove', onMouse); }).catch(() => window.addEventListener('pointermove', onMouse));
+      } else start();
+    }
+    const baseClose = close;
+    close = () => { window.removeEventListener('deviceorientation', onOrient); window.removeEventListener('pointermove', onMouse); baseClose(); };
 
     deal({ shuffle: true });
   }

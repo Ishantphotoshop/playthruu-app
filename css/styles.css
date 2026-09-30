@@ -4693,7 +4693,7 @@ a.gd-credit__name { text-decoration: none; }
    jumps when the result appears. */
 .draw-overlay {
   position: fixed; inset: 0; z-index: 100;
-  background: rgba(6, 8, 10, 0.92);
+  background: rgba(0, 0, 0, 0.95);
   display: flex; align-items: center; justify-content: center;
   padding: calc(var(--safe-top) + 56px) 16px calc(var(--safe-bottom) + 24px);
   overflow: hidden;
@@ -4709,18 +4709,29 @@ a.gd-credit__name { text-decoration: none; }
   backface-visibility: hidden; -webkit-backface-visibility: hidden;
 }
 .draw-card__back {
-  background: var(--surface); border: 1px solid var(--line-strong);
+  background: #000; border-radius: 10px;
   display: grid; place-items: center;
-  box-shadow: inset 0 0 0 7px var(--surface), inset 0 0 0 8px var(--line);
 }
-.draw-card__back svg { width: 46px; height: 46px; color: var(--ink-ghost); }
+.draw-card__back::before {
+  content: ''; position: absolute; inset: 3px; border-radius: 8px; padding: 1.5px;
+  background: linear-gradient(135deg, #e0c060, #d8b545 50%, #cfa93a);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+}
+.draw-card__back svg { width: 34px; height: 34px; color: #fff; }
 .draw-card__chip {
   position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);
   font-size: 10.5px; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase;
-  background: var(--surface-high); color: var(--ink);
+  background: #000; color: #e0c060; border: 1px solid rgba(216,181,69,0.6);
   padding: 4px 9px; border-radius: 4px; white-space: nowrap; opacity: 0;
 }
-.draw-card__front { transform: rotateY(180deg); background: #000; border: 1px solid rgba(255,255,255,0.10); }
+.draw-card__front { transform: rotateY(180deg); background: #000; border: 1px solid rgba(216,181,69,0.55); border-radius: 10px; }
+.draw-card__gloss {
+  position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(circle at var(--gx, 50%) var(--gy, 30%), rgba(255,244,210,0.28), rgba(255,244,210,0) 55%);
+  mix-blend-mode: soft-light;
+}
+.draw-stage { transition: transform 0.12s linear; will-change: transform; }
 .draw-card__front img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .draw-card.is-gone { display: none; }
 .draw-info { margin-top: 22px; min-height: 70px; padding: 0 8px; text-align: center; visibility: hidden; }
@@ -4734,8 +4745,8 @@ a.gd-credit__name { text-decoration: none; }
 .draw-act {
   width: 80px; height: 106px; padding: 0 6px;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 9px;
-  border-radius: 5px; background: var(--surface); border: 1px solid var(--line-strong);
-  box-shadow: inset 0 0 0 5px var(--surface), inset 0 0 0 6px var(--line);
+  border-radius: 9px; background: #000; border: 1px solid rgba(216,181,69,0.35);
+  box-shadow: inset 0 0 0 4px #000, inset 0 0 0 5px rgba(216,181,69,0.75);
   color: var(--ink); font-weight: 800; font-size: 12px; line-height: 1.2; text-align: center;
   transition: transform 0.22s cubic-bezier(.2,.8,.2,1);
 }
@@ -4748,8 +4759,8 @@ a.gd-credit__name { text-decoration: none; }
 }
 .draw-act:focus-visible { transform: translateY(-8px); }
 .draw-act--go {
-  background: var(--accent); color: var(--bg); border-color: transparent;
-  box-shadow: inset 0 0 0 5px var(--accent), inset 0 0 0 6px rgba(0,0,0,0.22);
+  background: linear-gradient(135deg, #e0c060, #cfa93a); color: #000; border-color: transparent;
+  box-shadow: inset 0 0 0 4px #d8b545, inset 0 0 0 5px rgba(0,0,0,0.3);
 }
 .draw-act:disabled { pointer-events: none; }
 .mood-row {
