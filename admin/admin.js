@@ -15,7 +15,7 @@
 // built from the app's own .stamp component.
 
 import { supabase } from '../js/supabase-client.js';
-import { searchGamesEverywhere, addGame, getPresenceFor, getUsageFor, getBackdropOptions } from '../js/api.js';
+import { searchGamesEverywhere, addGame, getPresenceFor, getUsageFor, getBackdropOptions, getCoverOptions } from '../js/api.js';
 import { esc, qs as qsDoc, qsa as qsaDoc, toast, timeAgo } from '../js/utils.js';
 import {
   emptyState, spinner, avatarImg, ratingHistogram, wireRatingHistogram,
@@ -2049,23 +2049,28 @@ function wireGameRows(host) {
 // art doesn't change often enough to be worth tracking staleness for),
 // with its own loading and empty states since it depends on two flaky
 // third-party APIs rather than our own database.
-function openBackdropPicker(game, onPick) {
-  openSheet('Choose a backdrop', `
-    <p class="modal__hint">Every screenshot and artwork IGDB and RAWG have for this game. Screenshots are listed first — artwork key art is what tends to carry the game's own logo baked into it.</p>
-    <div id="bp-body">${skeletonPanel()}</div>`, async (sheet, close) => {
-    const body = qs('#bp-body', sheet);
+// Shared by the cover and backdrop pickers below — fetches the given
+// kind of art, shows it as a clickable thumbnail grid, and hands the
+// chosen one back through onPick. `fetchFn` is getCoverOptions or
+// getBackdropOptions; `tag(opt)` labels each tile (source, and kind/
+// pixel size where there is one).
+function openArtPicker({ title, hint, game, fetchFn, tag, onPick }) {
+  openSheet(title, `
+    <p class="modal__hint">${hint}</p>
+    <div id="ap-body">${skeletonPanel()}</div>`, async (sheet, close) => {
+    const body = qs('#ap-body', sheet);
     let options;
     try {
-      options = await getBackdropOptions(game);
+      options = await fetchFn(game);
     } catch {
       body.innerHTML = emptyState('Could not reach IGDB/RAWG right now.');
       return;
     }
-    if (!options.length) { body.innerHTML = emptyState('No screenshots or artwork found for this game.'); return; }
+    if (!options.length) { body.innerHTML = emptyState('Nothing official found for this game.'); return; }
     body.innerHTML = `<div class="adm-art-grid">${options.map((o, i) => `
       <button type="button" class="adm-art-tile" data-i="${i}">
         <img src="${esc(o.thumbUrl)}" alt="" loading="lazy">
-        <span class="adm-art-tile__tag">${o.source === 'igdb' ? 'IGDB' : 'RAWG'} · ${o.kind}</span>
+        <span class="adm-art-tile__tag">${esc(tag(o))}</span>
       </button>`).join('')}</div>`;
     qsa('.adm-art-tile', body).forEach((btn) => btn.addEventListener('click', () => {
       onPick(options[Number(btn.dataset.i)].url);
@@ -2074,39 +2079,65 @@ function openBackdropPicker(game, onPick) {
   });
 }
 
+function openCoverPicker(game, onPick) {
+  openArtPicker({
+    title: 'Choose a cover', game, fetchFn: getCoverOptions, onPick,
+    hint: 'Only official box art — IGDB’s own cover and RAWG’s store image for this game. Nothing fan-made.',
+    tag: (o) => (o.source === 'igdb' ? `IGDB${o.w ? ` · ${o.w}×${o.h}px` : ''}` : 'RAWG'),
+  });
+}
+
+function openBackdropPicker(game, onPick) {
+  openArtPicker({
+    title: 'Choose a backdrop', game, fetchFn: getBackdropOptions, onPick,
+    hint: 'Every screenshot and artwork IGDB and RAWG have for this game. Screenshots are listed first — artwork key art is what tends to carry the game’s own logo baked into it.',
+    tag: (o) => `${o.source === 'igdb' ? 'IGDB' : 'RAWG'} · ${o.kind}`,
+  });
+}
+
+// One slot in the Artwork row below — a cover or a backdrop, shown as a
+// framed preview with its own "Change…" button. The raw URL (for a
+// paste-in-a-link fix, or IGDB's "upgrade to 1080p" swap) lives behind
+// the Advanced disclosure instead of sitting on screen by default — two
+// big preview blocks each trailed by their own URL field and button row
+// was most of what made the old layout read as cluttered.
+function artSlot({ id, wide, label, url }) {
+  return `
+    <div class="adm-art-slot">
+      <div class="adm-art-slot__frame${wide ? ' adm-art-slot__frame--wide' : ''}">
+        <img id="${id}-preview" src="${esc(url || '')}" alt="" ${url ? '' : 'hidden'} onerror="this.hidden=true">
+        <span class="adm-art-slot__empty" id="${id}-empty" ${url ? 'hidden' : ''}>No ${label.toLowerCase()}</span>
+      </div>
+      <button type="button" class="btn btn--ghost btn--pill btn--block" id="${id}-pick">Change ${label.toLowerCase()}…</button>
+      <span class="adm-row__sub" id="${id}-dim">${url ? 'measuring…' : '—'}</span>
+    </div>`;
+}
+
 function openGameEditor(game) {
   openSheet('Edit game', `
     <p class="modal__hint">Corrects what the catalog stores. Everyone's logs of this game keep pointing at it.</p>
-    <div class="adm-editor-preview">
-      <img class="adm-thumb adm-thumb--big" id="g-preview" src="${esc(game.cover_url || '')}" alt=""
-           onerror="this.classList.add('is-broken')">
-      <span class="adm-editor-preview__meta">
-        <span class="adm-row__sub">IGDB ${game.igdb_id ?? '—'} · RAWG ${game.rawg_id ?? '—'}</span>
-        <span class="adm-row__sub" id="g-dim">—</span>
-      </span>
+
+    <span class="adm-field-group">Artwork</span>
+    <div class="adm-art-pair">
+      ${artSlot({ id: 'g-cover', label: 'Cover', url: game.cover_url })}
+      ${artSlot({ id: 'g-bg', wide: true, label: 'Backdrop', url: game.background_url })}
     </div>
+    <button type="button" class="link-btn" id="g-advanced-toggle">Edit image URLs directly</button>
+    <div id="g-advanced" hidden>
+      <label class="field"><span>Cover URL</span><input id="g-cover-url" value="${esc(game.cover_url || '')}" placeholder="https://…"></label>
+      <div class="adm-btn-row" style="margin-top:0">
+        <button class="btn btn--pill" id="g-hires">Upgrade to 1080p</button>
+        <button class="btn btn--pill" id="g-copy-id">Copy id</button>
+      </div>
+      <label class="field"><span>Backdrop URL</span><input id="g-bg-url" value="${esc(game.background_url || '')}" placeholder="https://…"></label>
+      <div class="adm-btn-row" style="margin-top:0">
+        <button class="btn btn--pill" id="g-bg-hires">Upgrade to 1080p</button>
+        <button class="btn btn--pill" id="g-bg-clear">Clear</button>
+      </div>
+    </div>
+
+    <span class="adm-field-group">Details</span>
     <label class="field"><span>Title</span><input id="g-title" value="${esc(game.title || '')}"></label>
-    <label class="field"><span>Cover URL</span><input id="g-cover" value="${esc(game.cover_url || '')}" placeholder="https://…"></label>
-    <div class="adm-btn-row" style="margin-top:0">
-      <button class="btn btn--pill" id="g-hires">Upgrade to 1080p</button>
-      <button class="btn btn--pill" id="g-copy-id">Copy id</button>
-    </div>
-
-    <div class="adm-editor-preview" id="g-bg-preview-wrap" ${game.background_url ? '' : 'hidden'}>
-      <img class="adm-thumb adm-thumb--wide" id="g-bg-preview" src="${esc(game.background_url || '')}" alt=""
-           onerror="this.classList.add('is-broken')">
-      <span class="adm-editor-preview__meta">
-        <span class="adm-row__sub">Backdrop — behind the title on the game page</span>
-        <span class="adm-row__sub" id="g-bg-dim">—</span>
-      </span>
-    </div>
-    <label class="field"><span>Backdrop URL</span><input id="g-bg" value="${esc(game.background_url || '')}" placeholder="https://…"></label>
-    <div class="adm-btn-row" style="margin-top:0">
-      <button class="btn btn--pill" id="g-bg-pick">Choose image…</button>
-      <button class="btn btn--pill" id="g-bg-hires">Upgrade to 1080p</button>
-      <button class="btn btn--pill" id="g-bg-clear">Clear</button>
-    </div>
-
     <label class="field"><span>Release year</span><input id="g-year" type="number" inputmode="numeric" value="${esc(game.release_year || '')}" placeholder="2024"></label>
     <div class="field-row">
       <label class="field"><span>Genre</span><input id="g-genre" value="${esc(game.genre || '')}" placeholder="Action, RPG"></label>
@@ -2117,67 +2148,66 @@ function openGameEditor(game) {
       <label class="field"><span>Publisher</span><input id="g-pub" value="${esc(game.publisher || '')}"></label>
     </div>
     <label class="field"><span>Description</span><textarea id="g-desc" rows="4" placeholder="What shows under the trailer on the game page.">${esc(game.description || '')}</textarea></label>
+    <p class="adm-row__sub">IGDB ${game.igdb_id ?? '—'} · RAWG ${game.rawg_id ?? '—'}</p>
     <div class="adm-btn-row">
       <button class="btn" data-act="cancel">Cancel</button>
       <button class="btn btn--accent" id="g-save">Save</button>
     </div>`, (sheet, close) => {
-    const cover = qs('#g-cover', sheet);
-    const preview = qs('#g-preview', sheet);
-    const dim = qs('#g-dim', sheet);
-    const bg = qs('#g-bg', sheet);
-    const bgPreview = qs('#g-bg-preview', sheet);
-    const bgPreviewWrap = qs('#g-bg-preview-wrap', sheet);
-    const bgDim = qs('#g-bg-dim', sheet);
+    const coverUrlField = qs('#g-cover-url', sheet);
+    const bgUrlField = qs('#g-bg-url', sheet);
 
-    // Reports the real pixel size of whatever URL is in the box, which is
-    // the fastest way to spot a cover that's technically present but far
-    // too small to sit on a game page. Same idea for the backdrop below.
-    const measure = () => {
-      preview.classList.remove('is-broken');
-      preview.src = cover.value.trim();
-      dim.textContent = 'measuring…';
-      const probe = new Image();
-      probe.onload = () => { dim.textContent = `${probe.naturalWidth}×${probe.naturalHeight}px`; };
-      probe.onerror = () => { dim.textContent = 'could not load'; };
-      probe.src = cover.value.trim();
-    };
-    if (cover.value.trim()) measure();
-    cover.addEventListener('change', measure);
+    // One slot wires up the same way for cover and backdrop alike: its
+    // framed preview, its "measuring…" pixel size, and the raw-URL field
+    // behind Advanced that a direct paste or the 1080p swap writes into.
+    function wireSlot(id, urlField) {
+      const preview = qs(`#${id}-preview`, sheet);
+      const empty = qs(`#${id}-empty`, sheet);
+      const dim = qs(`#${id}-dim`, sheet);
+      const setUrl = (url, { fromPick = false } = {}) => {
+        urlField.value = url || '';
+        if (url) {
+          preview.src = url; preview.hidden = false; empty.hidden = true;
+          dim.textContent = 'measuring…';
+          const probe = new Image();
+          probe.onload = () => { dim.textContent = `${probe.naturalWidth}×${probe.naturalHeight}px`; };
+          probe.onerror = () => { dim.textContent = 'could not load'; preview.hidden = true; empty.hidden = false; };
+          probe.src = url;
+        } else {
+          preview.hidden = true; empty.hidden = false; dim.textContent = '—';
+        }
+        if (fromPick) toast('Set — remember to Save', 'success');
+      };
+      urlField.addEventListener('change', () => setUrl(urlField.value.trim()));
+      if (urlField.value.trim()) setUrl(urlField.value.trim());
+      return setUrl;
+    }
+    const setCover = wireSlot('g-cover', coverUrlField);
+    const setBg = wireSlot('g-bg', bgUrlField);
 
-    const measureBg = () => {
-      const url = bg.value.trim();
-      bgPreviewWrap.hidden = !url;
-      if (!url) return;
-      bgPreview.classList.remove('is-broken');
-      bgPreview.src = url;
-      bgDim.textContent = 'measuring…';
-      const probe = new Image();
-      probe.onload = () => { bgDim.textContent = `${probe.naturalWidth}×${probe.naturalHeight}px`; };
-      probe.onerror = () => { bgDim.textContent = 'could not load'; };
-      probe.src = url;
-    };
-    bg.addEventListener('change', measureBg);
+    qs('#g-advanced-toggle', sheet).addEventListener('click', (e) => {
+      const panel = qs('#g-advanced', sheet);
+      panel.hidden = !panel.hidden;
+      e.currentTarget.textContent = panel.hidden ? 'Edit image URLs directly' : 'Hide image URLs';
+    });
+
+    qs('#g-cover-pick', sheet).addEventListener('click', () => openCoverPicker(game, (url) => setCover(url, { fromPick: true })));
+    qs('#g-bg-pick', sheet).addEventListener('click', () => openBackdropPicker(game, (url) => setBg(url, { fromPick: true })));
 
     // IGDB serves the same image at several sizes off one URL; this is
     // the same swap the main app does when it stores a cover.
     qs('#g-hires', sheet).addEventListener('click', () => {
-      const url = cover.value.trim();
+      const url = coverUrlField.value.trim();
       if (!url.includes('images.igdb.com')) { toast('Only IGDB covers have size variants', 'error'); return; }
-      cover.value = url.replace(/\/t_[a-z0-9_]+\//i, '/t_1080p/');
-      measure();
+      setCover(url.replace(/\/t_[a-z0-9_]+\//i, '/t_1080p/'));
       toast('Switched to 1080p', 'success');
     });
     qs('#g-bg-hires', sheet).addEventListener('click', () => {
-      const url = bg.value.trim();
+      const url = bgUrlField.value.trim();
       if (!url.includes('images.igdb.com')) { toast('Only IGDB images have size variants', 'error'); return; }
-      bg.value = url.replace(/\/t_[a-z0-9_]+\//i, '/t_1080p/');
-      measureBg();
+      setBg(url.replace(/\/t_[a-z0-9_]+\//i, '/t_1080p/'));
       toast('Switched to 1080p', 'success');
     });
-    qs('#g-bg-clear', sheet).addEventListener('click', () => { bg.value = ''; measureBg(); });
-    qs('#g-bg-pick', sheet).addEventListener('click', () => {
-      openBackdropPicker(game, (url) => { bg.value = url; measureBg(); toast('Backdrop set — remember to Save', 'success'); });
-    });
+    qs('#g-bg-clear', sheet).addEventListener('click', () => setBg(''));
     qs('#g-copy-id', sheet).addEventListener('click', () => copy(game.id, 'Game id copied'));
 
     qs('[data-act="cancel"]', sheet).addEventListener('click', close);
@@ -2189,8 +2219,8 @@ function openGameEditor(game) {
       btn.disabled = true;
       const { error } = await supabase.from('games').update({
         title,
-        cover_url: cover.value.trim() || null,
-        background_url: bg.value.trim() || null,
+        cover_url: coverUrlField.value.trim() || null,
+        background_url: bgUrlField.value.trim() || null,
         release_year: yearRaw ? Number(yearRaw) : null,
         genre: qs('#g-genre', sheet).value.trim() || null,
         platform: qs('#g-platform', sheet).value.trim() || null,

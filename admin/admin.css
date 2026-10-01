@@ -589,16 +589,30 @@ a.btn { text-decoration: none; }
   margin: 0 2px var(--space-2);
 }
 
-/* Cover preview inside the game editor, with its measured pixel size —
-   a cover can be present and still be far too small for a game page. */
-.adm-editor-preview {
-  display: flex; gap: var(--space-3); align-items: center;
-  padding: var(--space-3); margin-bottom: var(--space-3);
-  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-m);
+/* A small caps label breaking the game editor into named sections
+   (Artwork, Details) — cheaper than another heading size, and the only
+   structure the old single long scroll of fields was missing. */
+.adm-field-group {
+  display: block; font-size: var(--text-label); font-weight: 700; letter-spacing: 0.04em;
+  text-transform: uppercase; color: var(--ink-faint); margin: var(--space-4) 2px var(--space-2);
 }
-.adm-thumb--big { width: 58px; }
+.adm-field-group:first-child { margin-top: 0; }
+
+/* The game editor's cover + backdrop side by side, each a framed
+   preview with one "Change…" button under it — the raw URL field (for
+   a paste-in fix or the 1080p swap) lives behind the Advanced
+   disclosure below instead of sitting here by default. */
+.adm-art-pair { display: flex; gap: var(--space-3); margin-bottom: var(--space-3); }
+.adm-art-slot { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-2); align-items: center; }
+.adm-art-slot__frame {
+  width: 100%; aspect-ratio: var(--ratio-card); border-radius: var(--radius-m);
+  background: var(--surface); border: 1px solid var(--line);
+  display: grid; place-items: center; overflow: hidden;
+}
+.adm-art-slot__frame--wide { aspect-ratio: 16/9; }
+.adm-art-slot__frame img { width: 100%; height: 100%; object-fit: cover; }
+.adm-art-slot__empty { font-size: var(--text-label); color: var(--ink-faint); padding: 0 var(--space-2); text-align: center; }
 .adm-thumb.is-broken { visibility: hidden; }
-.adm-editor-preview__meta { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 
 /* The backdrop picker's grid of every screenshot/artwork IGDB and RAWG
    have for a game — same 4:3 ratio as the backdrop itself gets cropped

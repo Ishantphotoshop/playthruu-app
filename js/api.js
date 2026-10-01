@@ -1843,6 +1843,48 @@ export async function getBackdropOptions(game) {
   return out;
 }
 
+// Every real cover IGDB and RAWG have for a game, for the admin catalog
+// editor's "choose a cover" picker. Deliberately narrow on purpose:
+// IGDB's own box art (the `covers` endpoint — its real pixel size is
+// fetched too, so "best quality" is something the admin can actually
+// see before picking) and RAWG's own hero image for the game, both
+// sourced from real store/publisher assets. NEVER SteamGridDB — this
+// app already tried SteamGridDB as a cover source once and reverted it
+// (see the note on getGameArt below): its grids are predominantly
+// fan-made/alternate cover art, explicit fan edits in their own
+// descriptions, not official box art, and that's not an acceptable
+// substitute for a game's real cover. Each entry is
+// { url, thumbUrl, source, w, h }; `w`/`h` are only known for IGDB.
+export async function getCoverOptions(game) {
+  const out = [];
+  if (game.igdb_id) {
+    try {
+      const [c] = await igdb('covers', `fields image_id,width,height; where game = ${game.igdb_id};`);
+      if (c?.image_id) {
+        out.push({
+          url: igdbImageUrl(c.image_id, '1080p'), thumbUrl: igdbImageUrl(c.image_id, 'cover_big'),
+          source: 'igdb', w: c.width, h: c.height,
+        });
+      }
+    } catch { /* RAWG below still gets a chance */ }
+  }
+  try {
+    let image = null;
+    if (RAWG_API_KEY && game.title) {
+      const url = game.rawg_id
+        ? `https://api.rawg.io/api/games/${game.rawg_id}?key=${RAWG_API_KEY}`
+        : `https://api.rawg.io/api/games?key=${RAWG_API_KEY}&search=${encodeURIComponent(game.title)}&page_size=1`;
+      const res = await fetchWithTimeout(url, {}, 2500);
+      if (res.ok) {
+        const data = await res.json();
+        image = (game.rawg_id ? data : data.results?.[0])?.background_image || null;
+      }
+    }
+    if (image) out.push({ url: image, thumbUrl: image, source: 'rawg' });
+  } catch { /* IGDB above still stands */ }
+  return out;
+}
+
 // Full detail for a game that ISN'T in the local catalogue yet — one
 // live IGDB query returning everything a game page needs to actually
 // render (same shape mapIgdbGame produces, plus the extra description/
