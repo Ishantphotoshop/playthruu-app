@@ -22,6 +22,14 @@
    stretching to fill it. Scoped to the admin build; the app's own
    stylesheet is untouched. */
 #app { height: min(100dvh, 1000px); }
+/* Each screen's kept container (see paint()/showPage() in admin.js):
+   display:contents keeps it out of layout entirely, so its own header +
+   .view-body still land as direct flex children of #app exactly as if
+   there were no wrapper. [hidden] (an authored rule, not the UA
+   default — display:contents would otherwise outrank the browser's own
+   low-priority [hidden] rule) is what actually hides an off-screen one. */
+.adm-page { display: contents; }
+.adm-page[hidden] { display: none; }
 
 /* ---------------------------------------------------------- identity */
 /* The build is marked with the app's own .stamp rather than a different

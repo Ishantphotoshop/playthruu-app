@@ -16,7 +16,7 @@
 
 import { supabase } from '../js/supabase-client.js';
 import { searchGamesEverywhere, addGame, getPresenceFor, getUsageFor, getBackdropOptions } from '../js/api.js';
-import { esc, qs, qsa, toast, timeAgo } from '../js/utils.js';
+import { esc, qs as qsDoc, qsa as qsaDoc, toast, timeAgo } from '../js/utils.js';
 import {
   emptyState, spinner, avatarImg, ratingHistogram, wireRatingHistogram,
   iconBack, iconChevronRight, iconChevronUp, iconChevronDown,
@@ -54,6 +54,41 @@ const MIGRATIONS = [
 const ONLINE_WINDOW_MS = 3 * 60 * 1000;
 
 const root = document.getElementById('app');
+
+// One persistent container per screen name, kept mounted (just hidden,
+// never torn down) once built — the same idea the main app's router
+// uses for its own back stack, scoped down to fit how this app actually
+// navigates: every screen here is a flat, named destination (Home,
+// Games, People, …), not a deep stack of distinct records, so a screen
+// is kept by NAME rather than by history entry. Going back to one shows
+// it exactly as it was left — scroll position, a typed search, open
+// filters, loaded rows — with nothing refetched or rebuilt. Reset to {}
+// wherever root.innerHTML is replaced wholesale (signing out, the setup
+// screen, the boot loader) so a stale detached reference never lingers.
+let pageEls = {};
+
+// Most screens' elements share generic ids (#list, #g-q and the like all
+// repeat across screens), which was never a problem when only one
+// screen's HTML existed in the document at a time. Now that every
+// visited screen stays mounted (just hidden), an unscoped qs('#list')
+// would find whichever screen's #list happens to come first in the
+// DOM — not necessarily the one actually on screen. These shadow the
+// plain qs/qsa with versions that default to the CURRENTLY VISIBLE
+// screen's own container instead of the whole document; an explicit
+// second argument (a sheet, a row, a specific host) still works exactly
+// as before and always wins.
+function qs(sel, scope) { return qsDoc(sel, scope || pageEls[state.screen] || root); }
+function qsa(sel, scope) { return qsaDoc(sel, scope || pageEls[state.screen] || root); }
+
+// Every screen's own paintXxx() does a fetch, then writes HTML into its
+// generic-id elements (#list and the like). Call this right after an
+// await, before any such write: if the admin has since navigated to a
+// different screen, it bails out instead of painting fresh results into
+// whatever screen now happens to be visible. The screen this was for
+// stays exactly as it was — it's kept, so it'll simply catch up next
+// time it's genuinely visited again, which is the same "may be a little
+// stale" tradeoff a kept screen already accepts by design.
+function stillOn(screen) { return state.screen === screen; }
 
 const state = {
   user: null,
@@ -200,9 +235,30 @@ function header(title, { back = false } = {}) {
     </header>`;
 }
 
+// Builds (once) or repaints a screen's own persistent container —
+// `state.screen` says which one, set by render() just before this runs.
+// Only ever called from inside a SCREENS.xxx function, and only on a
+// screen's first visit (render() skips straight to showPage() on every
+// later one), so this is "lay the page out" rather than "redraw it".
 function paint(html) {
-  root.innerHTML = html;
-  qs('#go-back')?.addEventListener('click', () => go('home'));
+  const screen = state.screen;
+  let el = pageEls[screen];
+  if (!el) {
+    el = document.createElement('div');
+    el.className = 'adm-page';
+    root.appendChild(el);
+    pageEls[screen] = el;
+  }
+  el.innerHTML = html;
+  showPage(screen);
+  qs('#go-back', el)?.addEventListener('click', () => go('home'));
+}
+
+// Shows the named screen's container and hides every other kept one —
+// no DOM is removed, so whatever's mid-type or mid-scroll on a hidden
+// screen is exactly as it was next time it's shown.
+function showPage(screen) {
+  Object.keys(pageEls).forEach((name) => { pageEls[name].hidden = name !== screen; });
 }
 
 // ------------------------------------------------------------ routing
@@ -219,11 +275,14 @@ function go(screen) {
 
 const SCREENS = {};
 
-function render(screen) {
-  // The dashboard's own refresh loop must not keep running (and keep
-  // hitting the database) once you've moved off it.
-  if (state.screen === 'home' && screen !== 'home') clearInterval(dashboardTimer);
+function render(requested) {
+  const screen = SCREENS[requested] ? requested : 'home';
   state.screen = screen;
+  // Already built and kept from an earlier visit — just reveal it,
+  // nothing to refetch or rebuild. The dashboard's own refresh loop
+  // already gates its work on `state.screen === 'home'`, so leaving it
+  // mounted-but-hidden costs nothing; it simply stops polling.
+  if (pageEls[screen]) { showPage(screen); return; }
   (SCREENS[screen] || SCREENS.home)();
 }
 
@@ -279,6 +338,7 @@ window.addEventListener('hashchange', () => {
 // GATE SCREENS
 // ============================================================
 function loginScreen() {
+  pageEls = {}; // signing out invalidates every kept screen
   root.innerHTML = `
     <div class="adm-gate">
       <div class="adm-gate__mark"></div>
@@ -322,6 +382,7 @@ const grantSql = (userId) =>
 // only have once signed in. So they're deliberately ONE screen handing
 // over ONE block to paste, rather than several rounds of copy-run-return.
 function setupScreen(userId, { missing, needsAdmin }) {
+  pageEls = {};
   const jobs = missing.length + (needsAdmin ? 1 : 0);
   root.innerHTML = `
     <div class="adm-gate">
@@ -483,6 +544,7 @@ function iconRefresh() { return `<svg viewBox="0 0 24 24" fill="none" stroke="cu
 // small queries and a few reduces — far simpler than a wall of COUNT
 // round-trips or server-side aggregates, and it powers the charts too.
 async function loadDashboard({ quiet = false } = {}) {
+  const screen = state.screen;
   const now = Date.now();
   const day = 86400000;
   const iso = (ms) => new Date(ms).toISOString();
@@ -499,7 +561,12 @@ async function loadDashboard({ quiet = false } = {}) {
   const logs = logsRes.data || [];
   const gamesCount = gamesCountRes.count ?? null;
   const online = (presenceRes.data || []).length;
+  // The open-reports badge reads this from anywhere (the palette, the
+  // home tile), so it updates even if home itself isn't what's visible
+  // right now — only the DOM writes below need to wait on still being
+  // the active screen.
   state.openReports = reportsRes.count || 0;
+  if (!stillOn(screen)) return;
 
   // --- headline counts ---
   const players = profiles.length;
@@ -774,6 +841,7 @@ async function setSetting(key, value) {
 }
 
 async function paintTrendingMode() {
+  const screen = state.screen;
   const host = qs('#mode-card');
   if (!host) return;
 
@@ -785,9 +853,11 @@ async function paintTrendingMode() {
   try {
     mode = await getSetting('trending_mode', 'lead');
   } catch (err) {
+    if (!stillOn(screen)) return;
     host.innerHTML = `<p class="adm-hint" style="margin:0">Couldn't read the trending setting — ${esc(err.message)}</p>`;
     return;
   }
+  if (!stillOn(screen)) return;
 
   host.innerHTML = `
     <div class="adm-switch-row">
@@ -811,12 +881,14 @@ async function paintTrendingMode() {
 }
 
 async function paintCurated() {
+  const screen = state.screen;
   const host = qs('#list');
   if (!host) return;
   const { data, error } = await supabase
     .from('curated_trending')
     .select('id, position, game_id, games(id, title, cover_url, release_year)')
     .order('position', { ascending: true });
+  if (!stillOn(screen)) return;
 
   if (error) { host.innerHTML = emptyState(error.message); return; }
   if (!data?.length) {
@@ -1006,6 +1078,7 @@ SCREENS.news = function news() {
 };
 
 async function paintNews() {
+  const screen = state.screen;
   const host = qs('#list');
   if (!host) return;
   host.innerHTML = spinner();
@@ -1018,7 +1091,7 @@ async function paintNews() {
     ? query.or('flagged_incorrect.eq.true,needs_update.eq.true')
     : query.eq('status', newsTab);
   const { data, error } = await query;
-  if (!qs('#list')) return;
+  if (!stillOn(screen)) return;
   if (error) { host.innerHTML = emptyState(error.message); return; }
   if (!data?.length) {
     host.innerHTML = emptyState(newsTab === 'review' ? 'Nothing waiting for review.' : 'Nothing here.', { icon: iconNewspaper() });
@@ -1203,9 +1276,11 @@ SCREENS.announce = function announce() {
 };
 
 async function paintAnnouncements() {
+  const screen = state.screen;
   const host = qs('#list');
   if (!host) return;
   const { data, error } = await supabase.from('announcements').select('*').order('created_at', { ascending: false });
+  if (!stillOn(screen)) return;
   if (error) { host.innerHTML = emptyState(error.message); return; }
   if (!data?.length) { host.innerHTML = emptyState('No banners yet.', { icon: iconMegaphone() }); return; }
 
@@ -1266,6 +1341,7 @@ SCREENS.activity = function activity() {
 };
 
 async function paintActivity() {
+  const screen = state.screen;
   const host = qs('#list');
   if (!host) return;
   let sel = supabase
@@ -1279,6 +1355,7 @@ async function paintActivity() {
   if (activityFilter === 'loved') sel = sel.eq('loved', true);
 
   const { data, error } = await sel;
+  if (!stillOn(screen)) return;
 
   if (error) { host.innerHTML = emptyState(error.message); return; }
   if (!data?.length) { host.innerHTML = emptyState('Nothing logged yet.', { icon: iconDiary() }); return; }
@@ -1342,9 +1419,19 @@ SCREENS.people = function people() {
   sync();
 
   let timer;
+  const ownScreen = state.screen; // this listener is forever People's, however state.screen drifts later
   qs('#u-q').addEventListener('input', (e) => {
     clearTimeout(timer);
-    timer = setTimeout(() => { peopleView.query = e.target.value.trim(); paintPeople(); }, 260);
+    timer = setTimeout(() => {
+      peopleView.query = e.target.value.trim();
+      // Still on People when the debounce actually fires: repaint now.
+      // Navigated elsewhere in the meantime: just drop the kept copy —
+      // paintPeople() would otherwise run against whatever screen IS
+      // showing right now (most ids repeat across screens) instead of
+      // this one. Deleting it means People rebuilds fresh, with the
+      // query already updated, the next time it's genuinely visited.
+      if (stillOn(ownScreen)) paintPeople(); else delete pageEls[ownScreen];
+    }, 260);
   });
   qsa('[data-sort]').forEach((btn) => btn.addEventListener('click', () => {
     peopleView.sort = btn.dataset.sort; sync(); paintPeople();
@@ -1371,6 +1458,7 @@ async function exportPeople() {
 }
 
 async function paintPeople() {
+  const screen = state.screen;
   const host = qs('#list');
   if (!host) return;
   const { query, sort, filter } = peopleView;
@@ -1384,6 +1472,7 @@ async function paintPeople() {
   if (filter === 'suspended') q = q.eq('is_suspended', true);
 
   const { data, error } = await q;
+  if (!stillOn(screen)) return;
   if (error) { host.innerHTML = emptyState(error.message); return; }
 
   // Presence and usage both come from a second/third query keyed on the
@@ -1392,6 +1481,7 @@ async function paintPeople() {
   // what it's called.
   const ids = (data || []).map((p) => p.id);
   const [seen, usage] = await Promise.all([getPresenceFor(ids), getUsageFor(ids)]);
+  if (!stillOn(screen)) return;
 
   let rows = [...(data || [])];
   if (filter === 'online') rows = rows.filter((p) => presenceOf(seen[p.id]).online);
@@ -1563,6 +1653,7 @@ SCREENS.reports = function reports() {
 };
 
 async function paintReports() {
+  const screen = state.screen;
   const host = qs('#list');
   if (!host) return;
   let q = supabase.from('reports').select('*').order('created_at', { ascending: false }).limit(120);
@@ -1570,6 +1661,7 @@ async function paintReports() {
   if (reportsFilter === 'resolved') q = q.eq('status', 'resolved');
 
   const { data, error } = await q;
+  if (!stillOn(screen)) return;
   if (error) { host.innerHTML = emptyState(error.message); return; }
 
   const countEl = qs('#r-count');
@@ -1584,6 +1676,7 @@ async function paintReports() {
   let names = {};
   if (reporterIds.length) {
     const { data: profs } = await supabase.from('profiles').select('id, username').in('id', reporterIds);
+    if (!stillOn(screen)) return;
     names = Object.fromEntries((profs || []).map((p) => [p.id, p.username]));
   }
 
@@ -1644,14 +1737,19 @@ SCREENS.comments = function comments() {
       <div id="list" style="margin-top:var(--space-3)">${skeletonRows(6, { thumb: false })}</div>
     </main>`);
   let timer;
+  const ownScreen = state.screen; // this listener is forever Comments', however state.screen drifts later
   qs('#c-q').addEventListener('input', (e) => {
     clearTimeout(timer);
-    timer = setTimeout(() => { commentsQuery = e.target.value.trim(); paintComments(); }, 260);
+    timer = setTimeout(() => {
+      commentsQuery = e.target.value.trim();
+      if (stillOn(ownScreen)) paintComments(); else delete pageEls[ownScreen];
+    }, 260);
   });
   paintComments();
 };
 
 async function paintComments() {
+  const screen = state.screen;
   const host = qs('#list');
   if (!host) return;
   let sel = supabase
@@ -1659,6 +1757,7 @@ async function paintComments() {
     .order('created_at', { ascending: false }).limit(120);
   if (commentsQuery) sel = sel.ilike('body', `%${commentsQuery}%`);
   const { data, error } = await sel;
+  if (!stillOn(screen)) return;
 
   if (error) { host.innerHTML = emptyState(error.message); return; }
   const countEl = qs('#c-count');
@@ -1669,6 +1768,7 @@ async function paintComments() {
   let authors = {};
   if (authorIds.length) {
     const { data: profs } = await supabase.from('profiles').select('id, username, display_name, avatar_url').in('id', authorIds);
+    if (!stillOn(screen)) return;
     authors = Object.fromEntries((profs || []).map((p) => [p.id, p]));
   }
 
@@ -1760,9 +1860,13 @@ SCREENS.games = function games() {
   syncChips();
 
   let timer;
+  const ownScreen = state.screen; // this listener is forever Games', however state.screen drifts later
   qs('#g-q').addEventListener('input', (e) => {
     clearTimeout(timer);
-    timer = setTimeout(() => { gamesView.query = e.target.value.trim(); gamesView.page = 0; paintGames(); }, 260);
+    timer = setTimeout(() => {
+      gamesView.query = e.target.value.trim(); gamesView.page = 0;
+      if (stillOn(ownScreen)) paintGames(); else delete pageEls[ownScreen];
+    }, 260);
   });
   qsa('#g-filters [data-filter]').forEach((b) => b.addEventListener('click', () => {
     gamesView.filter = b.dataset.filter; gamesView.page = 0; syncChips(); paintGames();
@@ -1805,6 +1909,7 @@ async function exportGames() {
 // `append` keeps what's on screen and adds the next page under it, which
 // is what the Load more button wants; a fresh filter repaints instead.
 async function paintGames({ append = false } = {}) {
+  const screen = state.screen;
   const host = qs('#list');
   if (!host) return;
   if (!append) host.innerHTML = skeletonRows(6);
@@ -1814,6 +1919,7 @@ async function paintGames({ append = false } = {}) {
     gamesQuery().range(from, from + GAMES_PAGE - 1),
     append ? Promise.resolve(null) : gamesQuery({ head: true }),
   ]);
+  if (!stillOn(screen)) return;
   if (error) { host.innerHTML = emptyState(error.message); return; }
 
   const countEl = qs('#g-count');
@@ -2117,14 +2223,19 @@ SCREENS.lists = function lists() {
       <div id="list">${skeletonRows(6, { thumb: false })}</div>
     </main>`);
   let timer;
+  const ownScreen = state.screen; // this listener is forever Lists', however state.screen drifts later
   qs('#l-q').addEventListener('input', (e) => {
     clearTimeout(timer);
-    timer = setTimeout(() => { listsQuery = e.target.value.trim(); paintLists(); }, 260);
+    timer = setTimeout(() => {
+      listsQuery = e.target.value.trim();
+      if (stillOn(ownScreen)) paintLists(); else delete pageEls[ownScreen];
+    }, 260);
   });
   paintLists();
 };
 
 async function paintLists() {
+  const screen = state.screen;
   const host = qs('#list');
   if (!host) return;
   let sel = supabase
@@ -2132,6 +2243,7 @@ async function paintLists() {
     .order('created_at', { ascending: false }).limit(120);
   if (listsQuery) sel = sel.ilike('name', `%${listsQuery}%`);
   const { data, error } = await sel;
+  if (!stillOn(screen)) return;
   if (error) { host.innerHTML = emptyState(error.message); return; }
   const countEl = qs('#l-count');
   if (countEl) countEl.textContent = `${fmtNum((data || []).length)} lists`;
@@ -2146,6 +2258,7 @@ async function paintLists() {
     ownerIds.length ? supabase.from('profiles').select('id, username').in('id', ownerIds) : Promise.resolve({ data: [] }),
     supabase.from('list_items').select('list_id').in('list_id', listIds),
   ]);
+  if (!stillOn(screen)) return;
   const owners = Object.fromEntries((ownersRes.data || []).map((p) => [p.id, p.username]));
   const counts = {};
   (itemsRes.data || []).forEach((it) => { counts[it.list_id] = (counts[it.list_id] || 0) + 1; });
@@ -2190,11 +2303,13 @@ SCREENS.waitlist = function waitlist() {
 };
 
 async function paintWaitlist() {
+  const screen = state.screen;
   const host = qs('#list');
   if (!host) return;
   const { data, error } = await supabase
     .from('waitlist').select('id, email, source, created_at')
     .order('created_at', { ascending: false }).limit(500);
+  if (!stillOn(screen)) return;
   if (error) { host.innerHTML = emptyState(error.message); return; }
 
   const stats = qs('#wl-stats');
@@ -2258,6 +2373,7 @@ async function settingExists(key) {
 }
 
 async function boot() {
+  pageEls = {};
   root.innerHTML = '<div class="boot-loader"><div class="boot-loader__mark"></div></div>';
 
   const { data: { session } } = await supabase.auth.getSession();
