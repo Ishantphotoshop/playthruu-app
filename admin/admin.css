@@ -592,6 +592,21 @@ a.btn { text-decoration: none; }
 .adm-thumb.is-broken { visibility: hidden; }
 .adm-editor-preview__meta { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 
+/* The backdrop picker's grid of every screenshot/artwork IGDB and RAWG
+   have for a game — same 4:3 ratio as the backdrop itself gets cropped
+   to on the game page, so what's picked here is what it'll look like. */
+.adm-art-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: var(--space-2); }
+.adm-art-tile {
+  position: relative; aspect-ratio: 4/3; border-radius: var(--radius-s); overflow: hidden;
+  background: var(--surface); border: 1px solid var(--line);
+}
+.adm-art-tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.adm-art-tile:hover, .adm-art-tile:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.adm-art-tile__tag {
+  position: absolute; left: 4px; bottom: 4px; font-size: 9.5px; font-weight: 600; letter-spacing: 0.02em;
+  color: #fff; background: rgba(0, 0, 0, 0.65); border-radius: 4px; padding: 2px 5px; text-transform: uppercase;
+}
+
 /* Reordering the Trending list by dragging rather than stepping a row up
    one position at a time. */
 .adm-row--dragging { opacity: 0.45; }

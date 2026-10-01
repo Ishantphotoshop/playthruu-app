@@ -263,12 +263,21 @@ function igdbImageUrl(imageId, size = 'cover_big') {
   return imageId ? `https://images.igdb.com/igdb/image/upload/t_${size}/${imageId}.jpg` : null;
 }
 
-// Picks one random screenshot/artwork as the backdrop behind a game's
-// title — mirroring how Letterboxd shows a still behind a film's
-// poster. Random (not "always the first one") so the same game doesn't
-// look identical on every visit.
+// Picks the backdrop that sits behind a game's title — mirroring how
+// Letterboxd shows a still behind a film's poster. Screenshots (real,
+// raw captures of the game running) are preferred over artworks
+// (promotional key art), because key art routinely has the game's own
+// logo or title baked right into the image — that's what made games
+// like Elden Ring show their name twice on their own page. Artworks are
+// only used as a fallback when a game has no screenshots at all.
+//
+// This runs exactly once per game — at add time (mapIgdbGame) or at
+// first enrichment (enrichGameDetails, guarded by `if
+// (!game.background_url)`) — and the result is saved to the row, so a
+// game's backdrop never changes again on its own. An admin can still
+// replace it by hand from the catalog editor's image picker.
 function pickBackgroundUrl(g) {
-  const pool = [...(g.artworks || []), ...(g.screenshots || [])];
+  const pool = (g.screenshots?.length ? g.screenshots : g.artworks) || [];
   if (!pool.length) return null;
   const pick = pool[Math.floor(Math.random() * pool.length)];
   return igdbImageUrl(pick.image_id, '1080p');
@@ -1789,6 +1798,49 @@ export async function enrichGameDetails(game) {
     if (!error) return data;
   } catch { /* fall through to returning the un-enriched game */ }
   return { ...game, ...updates };
+}
+
+// Every real backdrop candidate IGDB and RAWG have for a game, for the
+// admin catalog editor's "choose an image" picker — the human eye
+// picking the best-looking one beats any automatic heuristic, so this
+// hands over everything there is rather than one auto-picked guess.
+// Screenshots are listed first (the safe ones — see pickBackgroundUrl
+// above), then artworks, then whatever RAWG has. Each entry is
+// { url, thumbUrl, source, kind }; `url` is what gets saved as
+// background_url, `thumbUrl` is a small fast-loading preview.
+export async function getBackdropOptions(game) {
+  const out = [];
+  if (game.igdb_id) {
+    try {
+      const q = `fields artworks.image_id,screenshots.image_id; where id = ${game.igdb_id};`;
+      const [detail] = await igdb('games', q);
+      (detail?.screenshots || []).forEach((s) => out.push({
+        url: igdbImageUrl(s.image_id, '1080p'), thumbUrl: igdbImageUrl(s.image_id, 'screenshot_med'),
+        source: 'igdb', kind: 'screenshot',
+      }));
+      (detail?.artworks || []).forEach((a) => out.push({
+        url: igdbImageUrl(a.image_id, '1080p'), thumbUrl: igdbImageUrl(a.image_id, 'screenshot_med'),
+        source: 'igdb', kind: 'artwork',
+      }));
+    } catch { /* IGDB down — RAWG below still gets a chance */ }
+  }
+  // RAWG by id when we have one; otherwise a one-shot title search just
+  // for this picker, same as searchRawg does for the search box.
+  try {
+    let rawgId = game.rawg_id;
+    if (!rawgId && RAWG_API_KEY && game.title) {
+      const res = await fetchWithTimeout(`https://api.rawg.io/api/games?key=${RAWG_API_KEY}&search=${encodeURIComponent(game.title)}&page_size=1`, {}, 2500);
+      if (res.ok) { const data = await res.json(); rawgId = data.results?.[0]?.id; }
+    }
+    if (rawgId && RAWG_API_KEY) {
+      const res = await fetchWithTimeout(`https://api.rawg.io/api/games/${rawgId}/screenshots?key=${RAWG_API_KEY}`, {}, 2500);
+      if (res.ok) {
+        const data = await res.json();
+        (data.results || []).forEach((s) => { if (s.image) out.push({ url: s.image, thumbUrl: s.image, source: 'rawg', kind: 'screenshot' }); });
+      }
+    }
+  } catch { /* RAWG down — whatever IGDB gave above still stands */ }
+  return out;
 }
 
 // Full detail for a game that ISN'T in the local catalogue yet — one
