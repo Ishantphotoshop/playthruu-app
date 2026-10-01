@@ -657,6 +657,7 @@ async function paintDiscovery(slot) {
       acts.forEach((b) => { b.disabled = true; });
       crewEl.innerHTML = '';
       strings.innerHTML = '';
+      board.classList.remove('has-crew');
     }
 
     // Friends who played, are playing or want this game, pinned round the
@@ -667,7 +668,11 @@ async function paintDiscovery(slot) {
       if (!crew.length) return;
       const w = board.clientWidth;
       const cardL = (w - 176) / 2;
-      const spots = [[cardL - 78, 16, -6], [cardL + 176 + 14, 58, 5], [cardL - 74, 132, 4]];
+      // Below the card, as on the mockup: left, right, and the middle one
+      // a little lower, each a little crooked.
+      const mid = w / 2 - 32;
+      const spots = [[mid - 104, 252, -6], [mid + 104, 252, 5], [mid, 264, 2]];
+      board.classList.add('has-crew');
       crewEl.innerHTML = crew.map((c, i) => {
         const [x, y, r] = spots[i];
         const name = c.profile.display_name || c.profile.username || 'Friend';
@@ -679,8 +684,8 @@ async function paintDiscovery(slot) {
       }).join('');
       // Strings run from each photo's pin to under the card's centre, so a
       // tilt of the card never shows a loose end.
-      const cx = w / 2; const cy = 118;
-      strings.setAttribute('viewBox', `0 0 ${w} 250`);
+      const cx = w / 2; const cy = 124;
+      strings.setAttribute('viewBox', `0 0 ${w} ${board.clientHeight}`);
       strings.innerHTML = crew.map((c, i) => {
         const [x, y] = spots[i];
         const len = Math.hypot(cx - (x + 32), cy - (y + 4));
@@ -758,7 +763,7 @@ async function paintDiscovery(slot) {
       // Slapped down and pinned: from the lift to flat on the board, a
       // little crooked, with a strip of tape.
       top.insertAdjacentHTML('beforeend', '<i class="draw-card__tape"></i>');
-      run(top, [{ transform: 'translateY(-22px) scale(1.04)' }, { transform: 'rotate(-2.5deg)' }], { duration: reduce ? 1 : 220, easing: 'cubic-bezier(.3,1.4,.5,1)', fill: 'forwards' });
+      run(top, [{ transform: 'translateY(-22px) scale(1.04)' }, { transform: 'rotate(-3deg)' }], { duration: reduce ? 1 : 220, easing: 'cubic-bezier(.3,1.4,.5,1)', fill: 'forwards' });
       crew = await Promise.race([friendsP, new Promise((r) => setTimeout(() => r([]), 800))]);
       if (my !== token) return;
       busy = false;
@@ -773,7 +778,7 @@ async function paintDiscovery(slot) {
       endTilt();
       buzz(6);
       const gone = current;
-      await done(run(gone, [{ transform: 'rotate(-2.5deg)', opacity: 1 }, { transform: 'translate(300px,-40px) rotate(18deg)', opacity: 0 }], { duration: reduce ? 1 : 280, easing: 'cubic-bezier(.4,0,.8,.4)', fill: 'forwards' }));
+      await done(run(gone, [{ transform: 'rotate(-3deg)', opacity: 1 }, { transform: 'translate(300px,-40px) rotate(18deg)', opacity: 0 }], { duration: reduce ? 1 : 280, easing: 'cubic-bezier(.4,0,.8,.4)', fill: 'forwards' }));
       gone.classList.add('is-gone');
       stack();
       liveCards().forEach((c) => run(c, [{ opacity: 0.2 }, { opacity: 1 }], { duration: 200, fill: 'forwards' }));
