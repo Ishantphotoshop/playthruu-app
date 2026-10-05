@@ -202,16 +202,31 @@ const DISCOVERY_CACHE_KEY = 'discovery';
 // Renders nothing at all when there is nothing personal to say, rather
 // than falling back to something generic under a "picked for you"
 // heading, which would be a lie about where it came from.
+//
+// The strip shows FORYOU_SHOWN picks; the rest of the ranked pool waits
+// behind them. Whenever anything is logged, from anywhere (double-tap
+// here, the hold composer, a game page), every visible pick now in the
+// diary fades out and the next one from the pool takes its place. When
+// the pool runs low it is rebuilt, which also folds in whatever was just
+// played as a new seed.
+const FORYOU_SHOWN = 12;
+let forYouOnLogs = null;
+
 async function paintForYou(slot) {
   if (!slot || !state.user) return;
-  let picks = [];
+  const userId = state.user.id;
+  let pool = [];
   try {
-    picks = await api.getRecommendations(state.user.id, { limit: 12 });
+    pool = await api.getRecommendations(userId);
   } catch {
     slot.innerHTML = '';
     return;
   }
-  if (!picks.length) { slot.innerHTML = ''; return; }
+  if (!pool.length) { slot.innerHTML = ''; return; }
+
+  const shown = pool.splice(0, FORYOU_SHOWN);
+  const seen = new Set(shown.map((p) => p.game.igdb_id));
+  pool.forEach((p) => seen.add(p.game.igdb_id));
 
   // feedSectionHead (with no see-more), not a bare <h2>: every other
   // section on this page is built from it, and one section using a
@@ -219,31 +234,103 @@ async function paintForYou(slot) {
   // tighter than the gap above all the others.
   slot.innerHTML = `
     ${feedSectionHead('Picked for you')}
-    <div class="foryou-strip" id="foryou-strip">
-      ${picks.map((p, i) => `
-        <button type="button" class="foryou-card" data-idx="${i}" data-igdb-id="${esc(String(p.game.igdb_id ?? ''))}" data-year="${esc(String(p.game.release_year ?? p.game.year ?? ''))}" aria-label="${esc(p.game.title)}">
-          ${posterFrame(p.game.cover_url, p.game.title, 'foryou-card__cover')}
-        </button>`).join('')}
-    </div>`;
+    <div class="foryou-strip" id="foryou-strip">${shown.map(cardHtml).join('')}</div>`;
+  const strip = qs('#foryou-strip', slot);
+  qsa('.foryou-card', strip).forEach((btn, i) => wireCard(btn, shown[i]));
 
-  qsa('.foryou-card', slot).forEach((btn) => {
-    btn.addEventListener('click', async () => {
-      const pick = picks[Number(btn.dataset.idx)];
-      if (!pick) return;
-      // A friend's recommendation already points at a real row; an IGDB
-      // one has to be added before there is a page to open.
-      if (pick.local) { navigate(`/game/${pick.game.id}`); return; }
-      btn.disabled = true;
-      try {
-        const saved = await api.addGame(pick.game, state.user.id);
-        navigate(`/game/${saved.id}`);
-      } catch (err) {
-        toast(err.message || 'Could not open that game.', 'error');
-      } finally {
-        btn.disabled = false;
+  function cardHtml(p) {
+    return `
+      <button type="button" class="foryou-card" data-igdb-id="${esc(String(p.game.igdb_id ?? ''))}" data-year="${esc(String(p.game.release_year ?? ''))}" aria-label="${esc(p.game.title)}">
+        ${posterFrame(p.game.cover_url, p.game.title, 'foryou-card__cover')}
+        <span class="discovery-tile__saved" aria-hidden="true">${iconBookmarkFilled()}</span>
+      </button>`;
+  }
+
+  // Tap opens the game; double-tap saves it to the backlog. The single
+  // tap waits out the double-tap window first, otherwise the first tap
+  // of a double would already be navigating away.
+  function wireCard(btn, pick) {
+    let timer = null;
+    btn.addEventListener('click', () => {
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+        quickSave(btn, pick);
+        return;
       }
+      timer = setTimeout(() => { timer = null; open(btn, pick); }, 260);
     });
-  });
+  }
+
+  async function open(btn, pick) {
+    btn.disabled = true;
+    try {
+      const saved = await api.addGame(pick.game, userId);
+      navigate(`/game/${saved.id}`);
+    } catch (err) {
+      toast(err.message || 'Could not open that game.', 'error');
+      btn.disabled = false;
+    }
+  }
+
+  async function quickSave(btn, pick) {
+    if (btn.dataset.saving) return;
+    btn.dataset.saving = '1';
+    const badge = qs('.discovery-tile__saved', btn);
+    badge.classList.remove('is-popping'); void badge.offsetWidth; badge.classList.add('is-popping');
+    tapFeedback();
+    try {
+      const saved = await api.addGame(pick.game, userId);
+      await api.createLog({ game_id: saved.id, user_id: userId, status: 'backlog', is_public: true });
+      markPagesStale();
+      pulseLogTab();
+      toast(`Saved ${saved.title} to your backlog.`, 'success');
+      // createLog fires logs:changed, which swaps this card out.
+    } catch (err) {
+      toast(err.message || 'Could not save that game.', 'error');
+      delete btn.dataset.saving;
+    }
+  }
+
+  async function nextPick(diary) {
+    for (;;) {
+      if (pool.length < 4 && !nextPick.refilling) {
+        nextPick.refilling = api.getRecommendations(userId).then((fresh) => {
+          fresh.forEach((p) => { if (!seen.has(p.game.igdb_id)) { seen.add(p.game.igdb_id); pool.push(p); } });
+        }).catch(() => {}).finally(() => { nextPick.refilling = null; });
+      }
+      if (!pool.length && nextPick.refilling) await nextPick.refilling;
+      const p = pool.shift();
+      if (!p) return null;
+      if (!diary.igdb.has(p.game.igdb_id)) return p;
+    }
+  }
+
+  async function onLogs() {
+    if (!strip.isConnected) { window.removeEventListener('logs:changed', onLogs); return; }
+    let diary;
+    try { diary = await api.getDiaryGameKeys(userId); } catch { return; }
+    const gone = qsa('.foryou-card', strip).filter((btn) => diary.igdb.has(Number(btn.dataset.igdbId)));
+    for (const btn of gone) {
+      const next = await nextPick(diary);
+      btn.classList.add('is-leaving');
+      await new Promise((r) => setTimeout(r, 380)); // past the save badge pop
+      if (!next) { btn.remove(); continue; }
+      const tmp = document.createElement('div');
+      tmp.innerHTML = cardHtml(next).trim();
+      const card = tmp.firstElementChild;
+      card.classList.add('is-entering');
+      btn.replaceWith(card);
+      wireCard(card, next);
+      requestAnimationFrame(() => requestAnimationFrame(() => card.classList.remove('is-entering')));
+    }
+    if (!qs('.foryou-card', strip)) slot.innerHTML = '';
+    setCached(FEED_CACHE_KEY, qs('#feed-sections')?.innerHTML || '');
+  }
+
+  if (forYouOnLogs) window.removeEventListener('logs:changed', forYouOnLogs);
+  forYouOnLogs = onLogs;
+  window.addEventListener('logs:changed', onLogs);
 }
 
 // stateful (page, scroll position through a paginated list, which mood

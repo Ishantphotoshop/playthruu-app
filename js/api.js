@@ -4953,243 +4953,211 @@ export async function getStoryViewers(storyId) {
 }
 
 // ============================================================
-// RECOMMENDATIONS
+// RECOMMENDATIONS — "Picked for you"
 // ============================================================
-// Personalised, and able to say WHY — a recommendation with no reason
-// attached is indistinguishable from a list of popular games, which is
-// what Discover already has plenty of.
+// Built only from what this person has actually PLAYED (logs marked
+// played or playing). Backlog is a wish, not taste, and other people's
+// diaries are not your taste either, so neither seeds anything. Someone
+// who hasn't played anything yet gets nothing back, and the feed hides
+// the section until they have, rather than filling it with generic
+// "popular" picks under a heading that claims they're personal.
 //
-// Two signals, in order of how much they are worth:
+// How a pick earns its place:
 //
-//   1. What the people you follow rated highly and you have not played.
-//      This is far and away the strongest one: it is a real person's
-//      opinion, from someone you chose to follow.
-//   2. More of what you already rate highly yourself, by genre, pulled
-//      from IGDB so the pool is not limited to games somebody here has
-//      already added.
+//   1. Seeds. Every played/playing game is a seed, weighted by how
+//      recently it was logged (half-life of a month, so what you're into
+//      now leads), how you rated it (a 5 counts far more than a 3;
+//      unrated is neutral, since most logs never get a rating), and a
+//      bump for anything you're playing right now. Rated below 3 or
+//      dropped flips it into an ANTI-seed: games like it are pushed down.
+//   2. Candidates. IGDB's similar_games graph for every seed and
+//      anti-seed, in one request. Each candidate scores the sum of
+//      (seed weight x how near the top of that seed's list it sits), so a
+//      game three of your recent favourites all point at beats one only a
+//      single title mentions. Anti-seeds subtract.
+//   3. Shaping. A taste profile (genres, themes, camera perspective of
+//      what you played, weighted the same way) scores how well each
+//      candidate fits, which filters out the graph's odd links; a
+//      Bayesian quality prior (IGDB rating shrunk toward average by how
+//      few people rated it) separates a beloved classic from an obscure
+//      one-review game; unreleased games, DLC, bundles and packs are out.
+//   4. Variety. Picked greedily, and every pick that comes from the same
+//      seed, or the same series, as one already taken is discounted, so
+//      one big game you played doesn't fill the whole strip with its own
+//      sequels.
 //
-// Anything already in your diary — played, playing, backlog or dropped —
-// is excluded from both. Recommending a game somebody has already
-// finished is the fastest way to look like you are not paying attention.
+// Anything already in the diary in any status (played, playing, backlog,
+// dropped) never comes back. The result is a ranked POOL longer than the
+// strip shows, so the feed can swap in the next one the moment a pick is
+// saved, without asking IGDB again.
 
-function tasteProfile(myLogs) {
-  const genres = new Map();
-  for (const log of myLogs) {
-    const rating = Number(log.rating);
-    if (!rating || rating < 3.5) continue;
-    const raw = log.games?.genre;
-    if (!raw) continue;
-    // games.genre is a comma-separated label list from IGDB.
-    for (const g of String(raw).split(',').map((s) => s.trim()).filter(Boolean)) {
-      // A 5 counts for more than a 3.5, so a genre someone loves beats
-      // one they merely tolerate even if they have played fewer of them.
-      genres.set(g, (genres.get(g) || 0) + (rating - 3));
-    }
-  }
-  return [...genres.entries()].sort((a, b) => b[1] - a[1]).map(([label]) => label);
+const DAY_MS = 86400000;
+
+function seedWeight(log, now) {
+  const age = Math.max(0, (now - new Date(log.created_at).getTime()) / DAY_MS);
+  const recency = Math.max(0.15, 0.5 ** (age / 30));
+  const r = Number(log.rating) || 0;
+  const taste = !r ? 1 : r >= 4.5 ? 1.7 : r >= 4 ? 1.35 : r >= 3.5 ? 1 : 0.6;
+  const now_ = log.status === 'playing' ? 1.25 : 1;
+  return recency * taste * now_;
 }
 
-// Games IGDB itself considers similar to a batch of seed games, in ONE
-// pair of requests rather than one pair per seed. Returns a Map of
-// igdb_id -> { game, seeds, best, rating } so the caller can rank by
-// how many seeds pointed at the same title.
-async function similarToMany(seedIgdbIds, perSeed = 14) {
-  const out = new Map();
-  if (!seedIgdbIds.length) return out;
-  const details = await igdb('games', `fields similar_games; where id = (${seedIgdbIds.join(',')});`);
+export async function getRecommendations(userId, { pool = 40 } = {}) {
+  const { data: myLogs } = await supabase
+    .from('logs')
+    .select('game_id, rating, status, created_at, games!logs_game_id_fkey(id, igdb_id)')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+  const mine = myLogs || [];
+  const now = Date.now();
 
-  // Which seeds pointed at each candidate, and how near the top of that
-  // seed's list it sat — IGDB orders similar_games most-similar first,
-  // so position is real signal and worth keeping.
-  const hits = new Map(); // candidateId -> { seeds:Set, best:number }
+  // Excluded whatever its status: anything in the diary at all.
+  const playedLocal = new Set(mine.map((l) => l.game_id).filter(Boolean));
+  const playedIgdb = new Set(mine.map((l) => l.games?.igdb_id).filter(Boolean));
+
+  // Seeds and anti-seeds, one entry per game (its strongest log).
+  const seeds = new Map(); // igdb_id -> weight
+  const anti = new Map();
+  for (const l of mine) {
+    const id = l.games?.igdb_id;
+    if (!id) continue;
+    const r = Number(l.rating) || 0;
+    const disliked = l.status === 'dropped' || (r && r < 3);
+    if (disliked) { anti.set(id, Math.max(anti.get(id) || 0, seedWeight({ ...l, rating: 0 }, now))); continue; }
+    if (l.status !== 'played' && l.status !== 'playing') continue;
+    const w = seedWeight(l, now);
+    if (w > (seeds.get(id) || 0)) seeds.set(id, w);
+  }
+  if (!seeds.size) return []; // nothing played yet: the section stays hidden
+
+  const topSeeds = [...seeds.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12);
+  const topAnti = [...anti.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6);
+  const graphIds = [...topSeeds, ...topAnti].map(([id]) => id);
+
+  const details = await igdb('games',
+    `fields similar_games,genres,themes,player_perspectives; where id = (${graphIds.join(',')}); limit 50;`);
+  const seedW = new Map(topSeeds);
+  const antiW = new Map(topAnti);
+
+  // Taste profile: genre, theme and camera perspective tags of what was
+  // played, each weighted by its seed. A tag carried by every recent
+  // favourite ends up near 1, one only a single old game had near 0.
+  const tagsOf = (g) => [
+    ...(g.genres || []).map((x) => 'g' + (x.id ?? x)),
+    ...(g.themes || []).map((x) => 't' + (x.id ?? x)),
+    ...(g.player_perspectives || []).map((x) => 'p' + (x.id ?? x)),
+  ];
+  const taste = new Map();
+  let tasteMass = 0;
   for (const d of details) {
-    const ids = (d.similar_games || []).slice(0, perSeed);
-    ids.forEach((id, rank) => {
-      if (!hits.has(id)) hits.set(id, { seeds: new Set(), best: rank });
-      const h = hits.get(id);
-      h.seeds.add(d.id);
-      if (rank < h.best) h.best = rank;
+    const w = seedW.get(d.id);
+    if (!w) continue;
+    tasteMass += w;
+    for (const t of tagsOf(d)) taste.set(t, (taste.get(t) || 0) + w);
+  }
+  const cands = new Map(); // id -> { score, seed (strongest contributor) }
+  for (const d of details) {
+    const ws = seedW.get(d.id);
+    const wa = antiW.get(d.id);
+    (d.similar_games || []).slice(0, 20).forEach((cid, rank) => {
+      if (playedIgdb.has(cid) || seedW.has(cid)) return;
+      const pos = 1 / (1 + rank * 0.25);
+      const c = cands.get(cid) || { score: 0, seed: null, seedBest: 0 };
+      if (ws) {
+        c.score += ws * pos;
+        if (ws * pos > c.seedBest) { c.seedBest = ws * pos; c.seed = d.id; }
+      }
+      if (wa) c.score -= 0.7 * wa * pos;
+      cands.set(cid, c);
     });
   }
-  if (!hits.size) return out;
+  const positive = [...cands.entries()].filter(([, c]) => c.score > 0)
+    .sort((a, b) => b[1].score - a[1].score).slice(0, 250);
+  if (!positive.length) return [];
 
-  // Apicalypse caps a single where-clause, and the ranking below only
-  // ever uses the head of the list anyway.
-  const ids = [...hits.keys()].slice(0, 300);
-  const games = await igdb('games',
-    `fields name,cover.image_id,first_release_date,total_rating,genres.name; where id = (${ids.join(',')}) & cover != null; limit 300;`);
-  for (const g of games) {
-    const h = hits.get(g.id);
-    if (!h) continue;
-    out.set(g.id, {
+  const ids = positive.map(([id]) => id);
+  const rows = await igdb('games',
+    `fields name,cover.image_id,first_release_date,total_rating,total_rating_count,genres.id,genres.name,themes,player_perspectives,category,collection,franchises; `
+    + `where id = (${ids.join(',')}) & cover != null; limit 250;`);
+
+  const nowSec = now / 1000;
+  const scored = [];
+  for (const g of rows) {
+    // 1 DLC, 3 bundle, 5 mod, 6 episode, 7 season, 13 pack, 14 update
+    if ([1, 3, 5, 6, 7, 13, 14].includes(g.category)) continue;
+    if (!g.first_release_date || g.first_release_date > nowSec) continue;
+    const c = cands.get(g.id);
+    const genres = (g.genres || []).map((x) => x.name);
+    // How well its tags match the taste profile, averaged so a game
+    // tagged with everything doesn't win by volume. This is what keeps a
+    // space RPG out of a horror player's strip when IGDB's graph happens
+    // to link them.
+    const tags = tagsOf(g);
+    const fit = tags.length && tasteMass
+      ? tags.reduce((s, t) => s + (taste.get(t) || 0), 0) / tags.length / tasteMass
+      : 0.3;
+    const n = g.total_rating_count || 0;
+    const quality = ((g.total_rating || 65) * n + 65 * 20) / (n + 20); // shrunk toward 65
+    // 65 -> 0.5, 80 -> 1, 90 -> 1.35: a well-loved game clearly beats a
+    // forgettable one the graph happened to mention.
+    const qualityF = Math.max(0.15, Math.min(1.5, (quality - 50) / 30));
+    // How many people have rated it at all: a game nobody has heard of
+    // isn't a "for you" pick no matter how its three reviewers felt.
+    const reachF = 0.45 + 0.55 * Math.min(1, Math.log10(1 + n) / 2.3);
+    // The graph score is square-rooted so one heavily-linked seed can't
+    // drown out fit and quality, and fit is squared because the useful
+    // spread sits in a narrow band (about 0.4 to 0.8).
+    const fitF = Math.max(0.15, Math.min(2, (fit / 0.6) ** 2));
+    const score = Math.sqrt(c.score) * fitF * qualityF ** 1.3 * reachF ** 1.5;
+    scored.push({
+      score,
+      seed: c.seed,
+      series: g.collection || (g.franchises || [])[0] || null,
       game: {
         igdb_id: g.id,
         title: g.name,
         cover_url: igdbImageUrl(g.cover?.image_id, '1080p'),
-        release_year: g.first_release_date ? new Date(g.first_release_date * 1000).getFullYear() : null,
-        genre: g.genres?.[0]?.name || null,
+        release_year: new Date(g.first_release_date * 1000).getFullYear(),
+        genre: genres.slice(0, 2).join(', ') || null,
       },
-      seeds: h.seeds,
-      best: h.best,
-      rating: g.total_rating || 0,
     });
+  }
+
+  // Variety: greedy pick, discounting repeats of the same seed or series.
+  const out = [];
+  const seedUses = new Map();
+  const seriesUses = new Map();
+  const left = scored.slice();
+  while (out.length < pool && left.length) {
+    let bestI = 0;
+    let bestV = -Infinity;
+    for (let i = 0; i < left.length; i++) {
+      const x = left[i];
+      const v = x.score
+        * 0.7 ** (seedUses.get(x.seed) || 0)
+        * (x.series ? 0.45 ** (seriesUses.get(x.series) || 0) : 1);
+      if (v > bestV) { bestV = v; bestI = i; }
+    }
+    const [pick] = left.splice(bestI, 1);
+    seedUses.set(pick.seed, (seedUses.get(pick.seed) || 0) + 1);
+    if (pick.series) seriesUses.set(pick.series, (seriesUses.get(pick.series) || 0) + 1);
+    out.push({ game: pick.game, local: false });
   }
   return out;
 }
 
-// "Picked for you": games like the ones this person has actually been
-// playing lately.
-//
-// This used to lead with what the people you follow rated highly, which
-// is a fine signal but is not personal to YOUR taste — on an account
-// following a handful of people it mostly reproduced their diary. It is
-// now seeded from your OWN most recent logs and answered with IGDB's
-// similarity graph, so the strip tracks what you are into right now and
-// moves as you log things.
-//
-// Nothing already in the diary can come back: every candidate is checked
-// against both the local row ids and the igdb ids of everything logged,
-// in any status — played, playing, backlog or dropped. Recommending a
-// game you have already finished is the one mistake this section
-// cannot make.
-export async function getRecommendations(userId, { limit = 18 } = {}) {
-  const [{ data: myLogs }, followingSet] = await Promise.all([
-    supabase
-      .from('logs')
-      .select('game_id, rating, status, created_at, games!logs_game_id_fkey(id, title, genre, igdb_id)')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false }),
-    getFollowingIdSet(userId),
-  ]);
-
-  const mine = myLogs || [];
-  const out = [];
-  const taken = new Set();
-
-  // Two sets, because the two sources identify a game differently: a
-  // friend's log carries the LOCAL row (a uuid), while an IGDB browse
-  // result has only an igdb_id and no local row at all until somebody
-  // adds it. Checking just one of them would let a game already sitting
-  // in the diary come back as a recommendation through the other path.
-  const playedLocal = new Set(mine.map((l) => l.game_id).filter(Boolean));
-  const playedIgdb = new Set(mine.map((l) => l.games?.igdb_id).filter(Boolean));
-
-  const push = (game, reason) => {
-    if (!game) return;
-    const local = !!game.id;
-    if (local && (playedLocal.has(game.id) || taken.has(game.id))) return;
-    if (!local) {
-      if (!game.igdb_id) return;
-      const key = `igdb:${game.igdb_id}`;
-      if (playedIgdb.has(game.igdb_id) || taken.has(key)) return;
-      taken.add(key);
-    } else {
-      taken.add(game.id);
-    }
-    // `local` tells the caller whether tapping through can navigate
-    // straight to a game page or has to add the row first.
-    out.push({ game, reason, local });
-  };
-
-  // ---- 1. more like what you have been playing lately ----
-  // Seeds are the most recent logs, but a game you disliked is a bad
-  // thing to ask for more of — anything rated below 3 is skipped, while
-  // an unrated log still counts (most logs never get a rating, and
-  // bothering to log it at all is signal enough).
-  const seeds = [];
-  const seenSeed = new Set();
-  for (const l of mine) {
-    const id = l.games?.igdb_id;
-    if (!id || seenSeed.has(id)) continue;
-    if (l.rating && Number(l.rating) < 3) continue;
-    seenSeed.add(id);
-    seeds.push(id);
-    if (seeds.length >= 8) break;
+// What's in this person's diary right now, any status — so the feed can
+// drop a pick the moment it's saved, from wherever it was saved.
+export async function getDiaryGameKeys(userId) {
+  const { data } = await supabase
+    .from('logs')
+    .select('game_id, games!logs_game_id_fkey(igdb_id)')
+    .eq('user_id', userId);
+  const igdb = new Set();
+  const local = new Set();
+  for (const l of data || []) {
+    if (l.game_id) local.add(l.game_id);
+    if (l.games?.igdb_id) igdb.add(l.games.igdb_id);
   }
-
-  if (seeds.length) {
-    try {
-      const cands = [...(await similarToMany(seeds)).values()]
-        .filter((c) => !playedIgdb.has(c.game.igdb_id))
-        // Agreeing seeds first (a game three of your recent titles all
-        // point at is a far better bet than one only a single title
-        // does), then how near the top of those lists it sat, then
-        // IGDB's own rating as the tie-break.
-        .sort((a, b) => (b.seeds.size - a.seeds.size) || (a.best - b.best) || (b.rating - a.rating));
-      for (const c of cands) {
-        if (out.length >= limit) break;
-        push(c.game, 'Like what you have been playing');
-      }
-    } catch { /* fall through to the passes below rather than returning nothing */ }
-  }
-
-  // ---- 2. what your people rated highly ----
-  // A backstop now rather than the lead: it only gets a look in when
-  // your own recent play has not filled the strip.
-  const followingIds = [...followingSet];
-  if (out.length < limit && followingIds.length) {
-    try {
-      const { data: theirs } = await supabase
-        .from('logs')
-        .select(`game_id, rating, user_id,
-          games!logs_game_id_fkey(id, title, cover_url, genre, release_year),
-          profiles!logs_user_id_fkey(id, username, display_name)`)
-        .in('user_id', followingIds)
-        .gte('rating', 4)
-        .eq('is_public', true)
-        .order('rating', { ascending: false })
-        .limit(200);
-
-      // Several friends rating the same game is a much stronger signal
-      // than one, so they are grouped and the count goes in the reason.
-      const byGame = new Map();
-      for (const row of (theirs || [])) {
-        if (!row.games || playedLocal.has(row.game_id)) continue;
-        if (!byGame.has(row.game_id)) byGame.set(row.game_id, { game: row.games, fans: [], total: 0 });
-        const entry = byGame.get(row.game_id);
-        entry.fans.push(row.profiles?.display_name || row.profiles?.username || 'someone');
-        entry.total += Number(row.rating);
-      }
-      const ranked = [...byGame.values()].sort((a, b) => {
-        if (b.fans.length !== a.fans.length) return b.fans.length - a.fans.length;
-        return (b.total / b.fans.length) - (a.total / a.fans.length);
-      });
-      for (const entry of ranked) {
-        if (out.length >= limit) break;
-        const avg = (entry.total / entry.fans.length).toFixed(1);
-        const reason = entry.fans.length === 1
-          ? `${entry.fans[0]} rated this ${avg}`
-          : `${entry.fans.length} people you follow rated this ${avg}`;
-        push(entry.game, reason);
-      }
-    } catch {
-      // Fall through to the genre pass rather than returning nothing.
-    }
-  }
-
-  // ---- 3. more of what you already like ----
-  const topGenres = tasteProfile(mine);
-  for (const label of topGenres.slice(0, 3)) {
-    if (out.length >= limit) break;
-    const match = BROWSE_GENRES.find((g) => g.label.toLowerCase() === label.toLowerCase()
-      || label.toLowerCase().includes(g.label.toLowerCase()));
-    if (!match) continue;
-    try {
-      const { games } = await browseGames({ genre: match.value, sort: 'top_rated', minRating: '75' });
-      for (const g of games) {
-        if (out.length >= limit) break;
-        push(g, `Because you rate ${label} highly`);
-      }
-    } catch { /* one genre failing should not empty the list */ }
-  }
-
-  // ---- 4. nothing to go on yet ----
-  if (!out.length) {
-    try {
-      const { games } = await browseGames({ sort: 'top_rated', minRating: '85' });
-      for (const g of games.slice(0, limit)) push(g, 'Highly rated right now');
-    } catch { /* an empty list is handled by the caller */ }
-  }
-
-  return out.slice(0, limit);
+  return { igdb, local };
 }

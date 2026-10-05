@@ -6520,6 +6520,8 @@ a.gd-credit__name { text-decoration: none; }
   background: none; border: none; color: var(--ink); cursor: pointer;
 }
 .foryou-card:active { transform: scale(0.97); }
+.foryou-card { position: relative; transition: opacity 0.35s ease; }
+.foryou-card.is-leaving, .foryou-card.is-entering { opacity: 0; }
 .foryou-card__cover { width: 100%; border-radius: var(--poster-radius); overflow: hidden; aspect-ratio: var(--ratio-card); }
 .foryou-card__cover img { width: 100%; display: block; }
 
