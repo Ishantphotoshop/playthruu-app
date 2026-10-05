@@ -631,10 +631,6 @@ async function paintDiscovery(slot) {
           <div class="draw-stage"></div>
           <div class="draw-crew"></div>
         </div>
-        <div class="draw-info" aria-live="polite">
-          <h3 class="draw-info__title"></h3>
-          <p class="draw-info__meta"></p>
-        </div>
         <div class="draw-actions">
           <button type="button" class="draw-act draw-act--go" data-open><span>Open<br>the game</span></button>
           <button type="button" class="draw-act" data-save><span>Want<br>to play</span></button>
@@ -646,8 +642,6 @@ async function paintDiscovery(slot) {
 
     const drawEl = qs('.draw', overlay);
     const stage = qs('.draw-stage', overlay);
-    const titleEl = qs('.draw-info__title', overlay);
-    const metaEl = qs('.draw-info__meta', overlay);
     const acts = qsa('.draw-act', overlay);
     const board = qs('.draw-board', overlay);
     const strings = qs('.draw-strings', overlay);
@@ -784,17 +778,14 @@ async function paintDiscovery(slot) {
     }
 
     function showResult() {
-      titleEl.textContent = pick.title;
-      metaEl.textContent = [pick.release_year, genreOf(pick), pick.igdb_rating ? `★ ${(pick.igdb_rating / 20).toFixed(1)}` : '']
-        .filter(Boolean).join(' · ');
       setSaved(false);
       saved = null;
       drawEl.classList.add('is-landed');
       acts.forEach((b) => { b.disabled = false; });
       pinCrew();
-      // The slip and the three orders slam in from the left, one after
-      // another, the way the mockup does it.
-      [qs('.draw-info', overlay), ...acts].forEach((el, i) => run(el, [{ opacity: 0, translate: '-60px 0' }, { opacity: 1, translate: '0 0' }], { duration: reduce ? 1 : 260, delay: reduce ? 0 : 80 + i * 60, easing: 'cubic-bezier(.2,.9,.3,1.15)', fill: 'backwards' }));
+      // The three orders slam in from the left, one after another, the
+      // way the mockup does it.
+      acts.forEach((el, i) => run(el, [{ opacity: 0, translate: '-60px 0' }, { opacity: 1, translate: '0 0' }], { duration: reduce ? 1 : 260, delay: reduce ? 0 : 80 + i * 60, easing: 'cubic-bezier(.2,.9,.3,1.15)', fill: 'backwards' }));
     }
 
     async function deal({ shuffle }) {
@@ -968,7 +959,7 @@ async function paintDiscovery(slot) {
     let cx = 0; let cy = 0; // where it is now
     let raf = 0; let lastFrame = 0;
     let gloss = null;
-    const layers = [[crewEl, 1.4], [strings, 1.4], [qs('.draw-info', overlay), 0.8], [qs('.draw-actions', overlay), 0.5]];
+    const layers = [[crewEl, 1.4], [strings, 1.4], [qs('.draw-actions', overlay), 0.5]];
     const soft = (v) => TILT_MAX * Math.tanh(v / TILT_MAX); // leans harder, never snaps at the limit
     const mul = (a, b) => [
       a[0] * b[0] - a[1] * b[1] - a[2] * b[2] - a[3] * b[3],

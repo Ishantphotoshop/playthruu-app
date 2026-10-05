@@ -4770,19 +4770,13 @@ a.gd-credit__name { text-decoration: none; }
 .draw-pin__face img { width: 100%; height: 100%; object-fit: cover; }
 .draw-pin__name { font-size: 9px; font-weight: 800; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .draw-pin__what { font-size: 9px; font-weight: 800; line-height: 1.2; }
-.draw-info {
-  margin-top: 12px; width: 100%; max-width: 330px; padding: 6px 10px; background: #f4f0e6; color: #000;
-  transform: rotate(-1.5deg); visibility: hidden;
-}
-.draw-info__title { margin: 0; font-family: var(--font-display); font-weight: 800; font-size: 15px; line-height: 1.2; text-transform: uppercase; }
-.draw-info__meta { margin: 2px 0 0; font-size: 10px; font-weight: 700; color: #555; font-variant-numeric: tabular-nums; }
 /* Three equal paper tabs in one row, not a stack of strips: the actions
    stop reading as a list to work through and the whole block is a third
    of the height, which is what the pinned card and the crew photos above
    it actually need. Labels are two short lines, centred, so all three
    tabs are the same shape whatever the words are. */
-.draw-actions { display: flex; gap: 6px; width: 100%; max-width: 330px; margin-top: 18px; visibility: hidden; }
-.draw.is-landed .draw-info, .draw.is-landed .draw-actions { visibility: visible; }
+.draw-actions { display: flex; gap: 6px; width: 100%; max-width: 330px; margin-top: 22px; visibility: hidden; }
+.draw.is-landed .draw-actions { visibility: visible; }
 .draw-act {
   flex: 1; min-width: 0; padding: 11px 6px; display: grid; place-items: center; text-align: center;
   background: #f4f0e6; color: #000; font-weight: 800; font-size: 11px; line-height: 1.15; text-transform: uppercase;
