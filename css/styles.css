@@ -4776,15 +4776,18 @@ a.gd-credit__name { text-decoration: none; }
 }
 .draw-info__title { margin: 0; font-family: var(--font-display); font-weight: 800; font-size: 15px; line-height: 1.2; text-transform: uppercase; }
 .draw-info__meta { margin: 2px 0 0; font-size: 10px; font-weight: 700; color: #555; font-variant-numeric: tabular-nums; }
-.draw-actions { display: flex; flex-direction: column; gap: 7px; width: 100%; max-width: 330px; margin-top: 22px; visibility: hidden; }
+/* Three equal paper tabs in one row, not a stack of strips: the actions
+   stop reading as a list to work through and the whole block is a third
+   of the height, which is what the pinned card and the crew photos above
+   it actually need. Labels are two short lines, centred, so all three
+   tabs are the same shape whatever the words are. */
+.draw-actions { display: flex; gap: 6px; width: 100%; max-width: 330px; margin-top: 18px; visibility: hidden; }
 .draw.is-landed .draw-info, .draw.is-landed .draw-actions { visibility: visible; }
 .draw-act {
-  padding: 9px 12px; display: flex; align-items: center; gap: 8px; text-align: left;
-  background: #f4f0e6; color: #000; font-weight: 800; font-size: 13.5px; text-transform: uppercase;
-  transform: rotate(1deg); transition: transform 0.12s ease, background-color 0.15s ease, color 0.15s ease;
+  flex: 1; min-width: 0; padding: 11px 6px; display: grid; place-items: center; text-align: center;
+  background: #f4f0e6; color: #000; font-weight: 800; font-size: 11px; line-height: 1.15; text-transform: uppercase;
+  transition: transform 0.12s ease, background-color 0.15s ease, color 0.15s ease;
 }
-.draw-act::before { content: '▸'; font-size: 11px; }
-.draw-act:nth-child(2) { transform: rotate(-1deg); }
 .draw-act:active { transform: translateY(2px); }
 .draw-act--go { background: #e60012; color: #fff; }
 .draw-act--saved { background: #000; color: #fff; }

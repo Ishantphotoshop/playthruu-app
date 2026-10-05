@@ -636,9 +636,9 @@ async function paintDiscovery(slot) {
           <p class="draw-info__meta"></p>
         </div>
         <div class="draw-actions">
-          <button type="button" class="draw-act draw-act--go" data-open><span>Open the game</span></button>
-          <button type="button" class="draw-act" data-save><span>Add to Want to play</span></button>
-          <button type="button" class="draw-act" data-draw><span>Draw again</span></button>
+          <button type="button" class="draw-act draw-act--go" data-open><span>Open<br>the game</span></button>
+          <button type="button" class="draw-act" data-save><span>Want<br>to play</span></button>
+          <button type="button" class="draw-act" data-draw><span>Draw<br>again</span></button>
         </div>
       </div>`;
     document.body.appendChild(overlay);
@@ -901,7 +901,7 @@ async function paintDiscovery(slot) {
     const setSaved = (on) => {
       btnSave.classList.toggle('draw-act--saved', on);
       btnSave.setAttribute('aria-pressed', on ? 'true' : 'false');
-      qs('span', btnSave).textContent = on ? 'On your list ✓' : 'Add to Want to play';
+      qs('span', btnSave).innerHTML = on ? 'On your<br>list ✓' : 'Want<br>to play';
     };
     btnSave.addEventListener('click', async () => {
       if (busy || !pick || saving) return;
