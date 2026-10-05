@@ -4715,8 +4715,11 @@ a.gd-credit__name { text-decoration: none; }
 }
 .draw-close { position: absolute; top: calc(var(--safe-top) + 12px); right: 16px; z-index: 2; }
 .draw { display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 420px; }
-.draw-stage { position: relative; width: 176px; height: 235px; margin-top: 10px; perspective: 1100px; }
-.draw-card { position: absolute; width: 176px; height: 235px; }
+.draw-stage { position: relative; width: 176px; height: 235px; margin-top: 10px; perspective: 1100px; transform-style: preserve-3d; }
+/* Both of these have to keep their 3D, or the card is flattened into a
+   picture before the stage turns it — which is what made a card turned
+   past edge-on show a mirrored front instead of its back. */
+.draw-card { position: absolute; width: 176px; height: 235px; transform-style: preserve-3d; }
 .draw-card__inner { position: absolute; inset: 0; transform-style: preserve-3d; }
 .draw-card__face {
   position: absolute; inset: 0; border-radius: var(--poster-radius); overflow: hidden;
