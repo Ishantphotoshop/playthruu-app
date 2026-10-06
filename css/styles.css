@@ -4720,26 +4720,17 @@ a.gd-credit__name { text-decoration: none; }
 .draw-scene { width: 100%; perspective: 1100px; perspective-origin: 50% 42%; }
 .draw-stage { position: relative; width: 100%; height: var(--sh, 300px); transform-style: preserve-3d; }
 
-/* The back of the cubby and the shelf the cases stand on. */
-.draw-wall, .draw-board { position: absolute; left: 50%; display: block; pointer-events: none; }
-/* The wall is set well back so that no case, however it is turned, ever
-   dips behind it. */
-.draw-wall { transform: translateX(-50%) translateZ(-60px); }
-.draw-board { transform: translateX(-50%); }
-.draw-wall {
-  background:
-    linear-gradient(90deg, rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0) 14%, rgba(0, 0, 0, 0) 86%, rgba(0, 0, 0, 0.35)),
-    linear-gradient(180deg, rgba(4, 7, 11, 0.78), rgba(10, 15, 22, 0.5));
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-}
-/* The shelf: a lit top surface that widens toward you, then its front
-   lip. Drawn as one strip so there is no seam between them. */
+/* The shelf: a lit top surface, then its front lip, drawn as one strip so
+   there is no seam between them. It runs well past both edges of the
+   screen - no end in sight, so this reads as part of a longer shelf
+   rather than a tray sitting in the middle of the page. Nothing behind
+   the cases: the blurred app is the backdrop. */
 .draw-board {
-  height: 24px;
+  position: absolute; left: 50%; display: block; pointer-events: none;
+  height: 34px;
   background:
-    linear-gradient(180deg, #55657a 0, #55657a 1px, #3d4a5b 1px, #2c3744 14px, #1c242e 14px, #1c242e 15px, #29323e 15px, #1a212a 24px);
-  -webkit-clip-path: polygon(2% 0, 98% 0, 100% 100%, 0 100%);
-  clip-path: polygon(2% 0, 98% 0, 100% 100%, 0 100%);
+    linear-gradient(180deg, #5d6e84 0, #5d6e84 1px, #45526408 1px, #3c4958 2px, #2b3643 16px,
+      #19212a 16px, #19212a 17px, #2b3441 17px, #1d242e 27px, #141a22 34px);
 }
 
 /* A game case, as a box, standing edge on so its SPINE faces you. The
@@ -4754,10 +4745,13 @@ a.gd-credit__name { text-decoration: none; }
   cursor: pointer; -webkit-tap-highlight-color: transparent;
 }
 .draw-case__face { position: absolute; }
+/* The cover, as it sits in a real case: the art behind a sheet of clear
+   plastic, so it carries the case's own rounded corners, a highlight
+   down the folded edge and a faint sheen across the face. */
 .draw-case__front {
   inset: 0; transform: translateZ(calc(var(--fd) / 2));
   overflow: hidden; backface-visibility: hidden; background: #0d1117;
-  border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 2px;
+  border: 1px solid rgba(255, 255, 255, 0.16); border-radius: 4px;
 }
 /* The spine: near-black plastic, lit a little down its middle, with the
    PlayThruu mark and nothing else - a shelf of game titles in 11px type
@@ -4772,17 +4766,27 @@ a.gd-credit__name { text-decoration: none; }
   background: linear-gradient(90deg, #0b0e12, #1d242d 42%, #0a0d11);
   color: #7d8c9c;
 }
-.draw-case__spine svg { width: 74%; max-width: 22px; display: block; }
+.draw-case__spine svg { width: 62%; max-width: 15px; display: block; }
 .draw-case__front img { width: 100%; height: 100%; object-fit: cover; display: block; }
-/* The crease down the left of a case where the cover folds. */
+/* The fold down the left of the cover, where it wraps round into the
+   spine: a dark crease with the light catching the ridge beside it. */
 .draw-case__hinge {
-  position: absolute; top: 0; bottom: 0; left: 0; width: 7%; pointer-events: none;
-  background: linear-gradient(90deg, rgba(0, 0, 0, 0.4), rgba(255, 255, 255, 0.12) 55%, rgba(0, 0, 0, 0.2));
+  position: absolute; top: 0; bottom: 0; left: 0; width: 6.5%; pointer-events: none;
+  background: linear-gradient(90deg,
+    rgba(0, 0, 0, 0.55) 0, rgba(0, 0, 0, 0.3) 28%,
+    rgba(255, 255, 255, 0.16) 62%, rgba(255, 255, 255, 0.03) 78%, rgba(0, 0, 0, 0.22));
 }
-/* Plastic: a faint diagonal sheen, static. */
+/* The plastic itself: a faint diagonal sheen across the sleeve, and the
+   light sitting along the top and right edges where the case is moulded.
+   Static - it is the shape of the object, not an animation. */
 .draw-case__sheen {
-  position: absolute; inset: 0; pointer-events: none;
-  background: linear-gradient(115deg, rgba(255, 255, 255, 0.17) 0%, rgba(255, 255, 255, 0) 30%, rgba(255, 255, 255, 0) 70%, rgba(255, 255, 255, 0.06) 100%);
+  position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
+  background:
+    linear-gradient(115deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0) 32%,
+      rgba(255, 255, 255, 0) 68%, rgba(255, 255, 255, 0.07) 100%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0) 3%),
+    linear-gradient(270deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0) 2.5%),
+    linear-gradient(0deg, rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0) 4%);
 }
 .draw-case__edge {
   top: 0; height: 100%; width: var(--fd); left: calc(50% - var(--fd) / 2);

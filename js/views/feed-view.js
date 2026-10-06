@@ -688,6 +688,7 @@ async function paintDiscovery(slot) {
     function close() {
       token++;
       stopTilt();
+      offTilt();
       anims.forEach((a) => { try { a.cancel(); } catch { /* already gone */ } });
       overlay.remove();
       document.body.style.overflow = '';
@@ -736,27 +737,39 @@ async function paintDiscovery(slot) {
     // the one thing this moment cannot afford.
     const RATIO = 0.72;   // width / height of a game case
     const TURN = 87;      // deg: edge on, with a sliver of cover showing
+    const N = 12;         // cases on the shelf
+    const PERSP = 1100;   // matches the scene's perspective, in css
+    // The shelf is set back and the cover is held forward, and the gap
+    // between the two is what stops the shelf passing through the cover
+    // when it turns: a cover turning end over end sweeps half its own
+    // height in Z, and at this size that is about 130px either way.
+    const SHELF_Z = -90;
+    const FEAT_Z = 120;
     let M = null;
     function measure() {
       const vw = overlay.clientWidth || window.innerWidth;
       const vh = overlay.clientHeight || window.innerHeight;
       // What is left once the title block, the buttons and the padding are out.
       const availH = Math.max(190, vh - 56 - 24 - 56 - 108 - 24);
-      const fw = Math.min(208, vw * 0.52, availH * 0.78 * RATIO);
+      const fw = Math.min(224, vw * 0.56, availH * 0.8 * RATIO);
       const fh = fw / RATIO;
       const fd = Math.max(13, Math.round(fw * 0.115));
-      const s = Math.min(0.9, (availH * 0.62) / fh);
-      // How much of a case you actually see from the side: its spine, plus
-      // the sliver of cover the few degrees of turn leave showing. Spacing
-      // them by anything less stacks each cover over the next one's spine,
-      // and the row stops reading as spines at all.
-      const seenW = (fd + fw * Math.cos(TURN * Math.PI / 180)) * s;
-      const step = seenW + 2;
-      const room = Math.min(vw, 760) - 36;
-      const n = Math.max(6, Math.min(18, Math.floor(room / step)));
+      // The row is laid out to run PAST both edges of the screen, so the
+      // shelf reads as part of a longer one rather than a tray with both
+      // ends in view. The twelve cases fill that width, and their scale
+      // falls out of the spacing: from the side a case is its spine plus
+      // the sliver of cover the few degrees of turn leave showing, and
+      // that has to come to just under one step - any more and each cover
+      // stacks over the next case's spine and the spines disappear.
+      // Set back, the shelf is drawn smaller, so the spacing is worked out
+      // where it is actually seen - on screen - and converted back.
+      const back = PERSP / (PERSP - SHELF_Z);
+      const step = Math.max(24, (vw * 1.08) / N / back);
+      const sliver = Math.cos(TURN * Math.PI / 180);
+      const s = Math.max(0.28, Math.min(0.56, (step - 3 / back) / (fd + fw * sliver)));
       const sh = fh + 26;
-      const restBottom = sh - 20;
-      return { n, fw, fh, fd, s, step, sh, restBottom, restY: restBottom - fh, featY: (sh - fh) / 2 - 6 };
+      const restBottom = sh - 26;
+      return { n: N, fw, fh, fd, s, step, sh, restBottom, restY: restBottom - fh, featY: (sh - fh) / 2 - 10, vw };
     }
     const mid = () => (M.n - 1) / 2;
     const slotX = (i) => (i - mid()) * M.step;
@@ -768,12 +781,14 @@ async function paintDiscovery(slot) {
     // angle out of each case's own turn makes every spine equally square
     // on, and the 90 - TURN that is left is the sliver of cover you see
     // down the near edge of all of them.
-    const PERSP = 1100;
-    const slotA = (i) => (90 - (TURN === 90 ? 0 : 90 - TURN)) - Math.atan(slotX(i) / PERSP) * 180 / Math.PI;
-    const restT = (i, lift = 0) => `translate3d(${slotX(i)}px, ${M.restY - lift}px, 0px) rotateY(${slotA(i)}deg) scale(${M.s})`;
-    const tipT = (i) => `translate3d(${slotX(i)}px, ${M.restY - 10}px, 14px) rotateY(${slotA(i) - 4}deg) rotateX(-9deg) scale(${M.s})`;
-    const outT = (i) => `translate3d(${slotX(i)}px, ${M.restY - 4}px, 112px) rotateY(${slotA(i) - 12}deg) rotateX(-3deg) scale(${M.s * 1.02})`;
-    const featT = () => `translate3d(0px, ${M.featY}px, 120px) rotateY(0deg) scale(1)`;
+    const slotA = (i) => TURN - Math.atan(slotX(i) / (PERSP - SHELF_Z)) * 180 / Math.PI;
+    const restT = (i, lift = 0) => `translate3d(${slotX(i)}px, ${M.restY - lift}px, ${SHELF_Z}px) rotateY(${slotA(i)}deg) scale(${M.s})`;
+    const tipT = (i) => `translate3d(${slotX(i)}px, ${M.restY - 10}px, ${SHELF_Z + 16}px) rotateY(${slotA(i) - 4}deg) rotateX(-9deg) scale(${M.s})`;
+    const outT = (i) => `translate3d(${slotX(i)}px, ${M.restY - 6}px, ${SHELF_Z + 120}px) rotateY(${slotA(i) - 14}deg) rotateX(-3deg) scale(${M.s * 1.06})`;
+    // Held forward, and scaled back by exactly what being that much nearer
+    // magnifies it, so the cover arrives the size it was designed to be
+    // instead of swelling into the title underneath it.
+    const featT = () => `translate3d(0px, ${M.featY}px, ${FEAT_Z}px) rotateY(0deg) scale(${((PERSP - FEAT_Z) / PERSP).toFixed(4)})`;
     const casesEl = () => qsa('.draw-case', stage);
 
     function applyLayout() {
@@ -782,15 +797,19 @@ async function paintDiscovery(slot) {
       stage.style.setProperty('--fw', `${M.fw}px`);
       stage.style.setProperty('--fh', `${M.fh}px`);
       stage.style.setProperty('--fd', `${M.fd}px`);
-      const span = M.n * M.step + 18;
-      const wall = qs('.draw-wall', stage);
+      const span = Math.max(M.n * M.step, M.vw) * 1.35;
       const board = qs('.draw-board', stage);
       // Big enough to put the whole shelf in shadow, small enough that its
       // edges never reach the title or the buttons below.
       const dim = qs('.draw-dim', stage);
-      if (dim) Object.assign(dim.style, { width: `${span * 1.7}px`, height: `${M.sh * 1.18}px`, top: `${-M.sh * 0.09}px`, marginLeft: `${span * -0.85}px` });
-      if (wall) Object.assign(wall.style, { width: `${span}px`, height: `${M.fh * M.s + 22}px`, top: `${M.restBottom - M.fh * M.s - 14}px` });
-      if (board) Object.assign(board.style, { width: `${span + 14}px`, top: `${M.restBottom}px` });
+      if (dim) Object.assign(dim.style, { width: `${span}px`, height: `${M.sh * 1.18}px`, top: `${-M.sh * 0.09}px`, marginLeft: `${span * -0.5}px` });
+      // The cases stand ON the shelf, not in front of it: it starts a few
+      // pixels under their feet, so there is no hairline of nothing
+      // between the two - which is what made them look like they were
+      // floating half in the air.
+      if (board) Object.assign(board.style, { width: `${span}px`, marginLeft: `${span * -0.5}px`, top: `${M.restBottom - 5}px` });
+      if (board) board.style.transform = `translateZ(${SHELF_Z - 2}px)`;
+      if (dim) dim.style.transform = `translateZ(${SHELF_Z + 40}px)`;
       casesEl().forEach((c, i) => {
         if (c === current) { c.style.transform = featT(); baseT = featT(); } else c.style.transform = restT(i);
       });
@@ -822,7 +841,7 @@ async function paintDiscovery(slot) {
     function buildShelf() {
       M = measure();
       const onScreen = games.filter((g) => g.cover_url).sort(() => Math.random() - 0.5);
-      stage.innerHTML = `<i class="draw-wall"></i>${Array.from({ length: M.n }, (_, i) => caseHTML(i)).join('')}<i class="draw-dim"></i><i class="draw-board"></i>`;
+      stage.innerHTML = `${Array.from({ length: M.n }, (_, i) => caseHTML(i)).join('')}<i class="draw-dim"></i><i class="draw-board"></i>`;
       const cs = casesEl();
       cs.forEach((el, i) => fill(el, onScreen[i % Math.max(1, onScreen.length)] || localPick()));
       current = null;
@@ -879,6 +898,18 @@ async function paintDiscovery(slot) {
       const i = Number(el.dataset.i);
       pick = gameOf.get(el);
       const friendsP = friendsFor(pick);
+      // The shelf runs on small art; the one being held gets the big file,
+      // swapped in only once it has decoded so the cover never visibly
+      // jumps from one resolution to the other while it is turning.
+      if (pick.cover_url) {
+        const big = igdbSized(pick.cover_url, '1080p');
+        const im = new Image();
+        im.decoding = 'async';
+        im.src = big;
+        im.decode().then(() => {
+          if (gameOf.get(el) === pick) qs('.draw-case__front img', el).src = big;
+        }).catch(() => {});
+      }
       busy = true;
       hideResult();
       stopTilt();
@@ -891,18 +922,16 @@ async function paintDiscovery(slot) {
       // case's spine to nothing and turns the shelf into paper slivers.
       tween(qs('.draw-dim', stage), [{ opacity: 0 }, { opacity: 1 }], { duration: 440, easing: 'ease-out' }, { opacity: '1' });
 
-      // 1. the finger: the top tips toward you and the case lifts a little
-      await tween(el, [{ transform: restT(i) }, { transform: tipT(i) }], { duration: 320, easing: 'cubic-bezier(.3,.9,.4,1)' }, { transform: tipT(i) });
-      if (my !== token) return false;
+      // One unbroken move: a finger hooks the top edge and tips it toward
+      // you, it comes out of the row, and it turns to face you on the way
+      // in. No stop between taking it and seeing what it is.
       buzz(8);
-      // 2. drawn out of the row, still edge on
-      await tween(el, [{ transform: tipT(i) }, { transform: outT(i) }], { duration: 420, easing: 'cubic-bezier(.25,.75,.3,1)' }, { transform: outT(i) });
-      if (my !== token) return false;
-      // 3. held there for a beat
-      await pause(200);
-      if (my !== token) return false;
-      // 4. turned to face you, arriving in the middle
-      await tween(el, [{ transform: outT(i) }, { transform: featT() }], { duration: 760, easing: 'cubic-bezier(.3,.05,.2,1)' }, { transform: featT() });
+      await tween(el, [
+        { transform: restT(i), offset: 0 },
+        { transform: tipT(i), offset: 0.22, easing: 'cubic-bezier(.3,.9,.4,1)' },
+        { transform: outT(i), offset: 0.48, easing: 'cubic-bezier(.3,.6,.4,1)' },
+        { transform: featT(), offset: 1 },
+      ], { duration: 1020, easing: 'cubic-bezier(.3,.08,.2,1)' }, { transform: featT() });
       if (my !== token) return false;
 
       current = el;
@@ -1056,40 +1085,77 @@ async function paintDiscovery(slot) {
     });
 
     // ------------------------------------------------------------- live
-    // Once a cover is out it stays alive in your hand: it leans with the
-    // phone, or follows the pointer on a desktop. A small lean, never a
-    // spin - it is a case being held, not a thing being swung around. One
-    // rAF loop, one element, and it stops the moment the lean settles.
-    const LEAN = 13;      // deg, the most it ever leans
-    const EASE = 0.045;   // s of smoothing
+    // Once a cover is out it is a thing in your hand: it holds its place in
+    // the air and the phone moves around it, all the way round if you turn
+    // far enough - turn the phone over and you are looking at the back of
+    // the case. The pose it starts from is whatever grip you were in when
+    // it arrived, so there is no "correct" way to be holding the phone.
+    //
+    // The reading goes through a quaternion and is applied as a matrix
+    // rather than two Euler angles: pulled apart into rotateX/rotateY the
+    // turn fights itself past a quarter turn and the cover flips instead of
+    // carrying on round. One rAF loop, one element, and it stops the moment
+    // the motion settles.
+    const EASE = 0.045;   // s of smoothing between readings
     const D2R = Math.PI / 180;
     let baseT = '';
     let tiltEl = null;
-    let rest = null;
-    let tx = 0; let ty = 0; let cx = 0; let cy = 0;
+    let rest = null;      // the pose the phone was in when the cover arrived
+    let qt = [1, 0, 0, 0];
+    let qc = [1, 0, 0, 0];
     let raf = 0; let lastFrame = 0;
-    const soft = (v) => LEAN * Math.tanh(v / LEAN);
+    const mul = (a, b) => [
+      a[0] * b[0] - a[1] * b[1] - a[2] * b[2] - a[3] * b[3],
+      a[0] * b[1] + a[1] * b[0] + a[2] * b[3] - a[3] * b[2],
+      a[0] * b[2] - a[1] * b[3] + a[2] * b[0] + a[3] * b[1],
+      a[0] * b[3] + a[1] * b[2] - a[2] * b[1] + a[3] * b[0],
+    ];
+    // deviceorientation angles (Z-X'-Y'') as a quaternion, per the spec
+    const quat = (alpha, beta, gamma) => {
+      const x = (beta * D2R) / 2; const y = (gamma * D2R) / 2; const z = (alpha * D2R) / 2;
+      const cX = Math.cos(x); const cY = Math.cos(y); const cZ = Math.cos(z);
+      const sX = Math.sin(x); const sY = Math.sin(y); const sZ = Math.sin(z);
+      return [cX * cY * cZ - sX * sY * sZ, sX * cY * cZ - cX * sY * sZ, cX * sY * cZ + sX * cY * sZ, cX * cY * sZ + sX * sY * cZ];
+    };
+    const norm = (q) => { const l = Math.hypot(...q) || 1; return q.map((v) => v / l); };
+    const mat = (q) => {
+      const [w, x, y, z] = q;
+      const m = [
+        1 - 2 * (y * y + z * z), 2 * (x * y + z * w), 2 * (x * z - y * w), 0,
+        2 * (x * y - z * w), 1 - 2 * (x * x + z * z), 2 * (y * z + x * w), 0,
+        2 * (x * z + y * w), 2 * (y * z - x * w), 1 - 2 * (x * x + y * y), 0,
+        0, 0, 0, 1,
+      ];
+      return `matrix3d(${m.map((v) => v.toFixed(5)).join(',')})`;
+    };
     const frame = (t) => {
       raf = 0;
       const dt = lastFrame ? Math.min(0.05, (t - lastFrame) / 1000) : 1 / 60;
       lastFrame = t;
       const k = 1 - Math.exp(-dt / EASE);
-      cx += (tx - cx) * k;
-      cy += (ty - cy) * k;
-      const still = Math.abs(tx - cx) < 0.01 && Math.abs(ty - cy) < 0.01;
-      if (still) { cx = tx; cy = ty; lastFrame = 0; }
-      if (tiltEl) tiltEl.style.transform = `${baseT} rotateX(${cx.toFixed(2)}deg) rotateY(${cy.toFixed(2)}deg)`;
+      // Shortest way round, so a turn past the back never unwinds the long way.
+      const dot = qc[0] * qt[0] + qc[1] * qt[1] + qc[2] * qt[2] + qc[3] * qt[3];
+      const sgn = dot < 0 ? -1 : 1;
+      qc = norm(qc.map((v, i) => v + (qt[i] * sgn - v) * k));
+      const still = Math.abs(Math.abs(dot) - 1) < 1e-6;
+      if (still) { qc = qt.slice(); lastFrame = 0; }
+      if (tiltEl) tiltEl.style.transform = Math.abs(qc[0]) > 0.99999 ? baseT : `${baseT} ${mat(qc)}`;
       if (!still) raf = requestAnimationFrame(frame);
     };
-    const aim = (x, y) => { tx = x; ty = y; if (!raf) raf = requestAnimationFrame(frame); };
+    const aimQ = (q) => { qt = norm(q); if (!raf) raf = requestAnimationFrame(frame); };
     const onOrient = (e) => {
       if (!tiltEl || e.beta == null) return;
-      if (!rest) { rest = { b: e.beta, g: e.gamma || 0 }; return; }
-      aim(soft(-(e.beta - rest.b) * 1.4), soft(((e.gamma || 0) - rest.g) * 1.4));
+      const q = quat(e.alpha || 0, e.beta, e.gamma || 0);
+      if (!rest) { rest = q; return; }
+      aimQ(mul([rest[0], -rest[1], -rest[2], -rest[3]], q));
     };
+    // Desktop: the pointer stands in for the phone, a half turn corner to
+    // corner, so the same cover can be looked around with a mouse.
     const onMouse = (e) => {
       if (!tiltEl || e.pointerType === 'touch') return;
-      aim(-(e.clientY / innerHeight - 0.5) * 2 * LEAN, (e.clientX / innerWidth - 0.5) * 2 * LEAN);
+      const ax = -(e.clientY / innerHeight - 0.5) * 180 * D2R;
+      const ay = (e.clientX / innerWidth - 0.5) * 180 * D2R;
+      aimQ(mul([Math.cos(ax / 2), Math.sin(ax / 2), 0, 0], [Math.cos(ay / 2), 0, Math.sin(ay / 2), 0]));
     };
     function startTilt(el) {
       if (reduce) return;
@@ -1098,22 +1164,21 @@ async function paintDiscovery(slot) {
     function stopTilt() {
       tiltEl = null;
       if (raf) cancelAnimationFrame(raf);
-      raf = 0; tx = 0; ty = 0; cx = 0; cy = 0; lastFrame = 0;
+      raf = 0; qt = [1, 0, 0, 0]; qc = [1, 0, 0, 0]; lastFrame = 0;
     }
+    const offTilt = () => {
+      window.removeEventListener('pointermove', onMouse);
+      window.removeEventListener('deviceorientation', onOrient);
+    };
     if (!reduce) {
       window.addEventListener('pointermove', onMouse, { passive: true });
       const DOE = window.DeviceOrientationEvent;
       if (typeof DOE?.requestPermission === 'function') {
+        // iOS asks once, and only from a tap: this one.
         DOE.requestPermission().then((r) => { if (r === 'granted') window.addEventListener('deviceorientation', onOrient); }).catch(() => {});
       } else if (DOE) {
         window.addEventListener('deviceorientation', onOrient);
       }
-      const offTilt = () => { window.removeEventListener('pointermove', onMouse); window.removeEventListener('deviceorientation', onOrient); };
-      const closeWas = overlay.__dismiss;
-      overlay.__dismiss = () => { offTilt(); closeWas(); };
-      qs('[data-close]', overlay).addEventListener('click', offTilt);
-      window.addEventListener('hashchange', offTilt);
-      document.addEventListener('keydown', (e) => { if (e.key === 'Escape') offTilt(); });
     }
 
     open(true);
