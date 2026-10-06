@@ -4696,101 +4696,122 @@ a.gd-credit__name { text-decoration: none; }
    bar and glows. No emojis, no cards — just a tight, confident list. */
 .mood-list { display: flex; flex-direction: column; gap: 6px; padding-bottom: var(--space-2); }
 
-/* ---- random pick: card draw (Bored? Try these) ----------------------- */
-/* The collection as a deck of cards: it shuffles, the top card flips to
-   the pick, and three action cards deal out underneath, fanned like a
-   hand. Square 5px corners like the posters, no pill or round buttons.
-   The info and actions keep their space while hidden so the deck never
-   jumps when the result appears. */
+/* ---- random pick: the game shelf (Bored? Try these) -------------------
+   A shelf of game cases standing side by side. One is pulled out toward
+   you and turns to face the screen, and its title arrives last. Cases are
+   real 3D boxes (cover, two edges, back), but everything that moves is a
+   transform or an opacity - nothing animates layout, shadows or filters -
+   and only the case in play is ever promoted to its own layer. The app's
+   flat-UI rule clears every box-shadow, so depth here is gradients: the
+   shelf's lit top edge, the dark cubby behind, the sheen on the plastic. */
 .draw-overlay {
   position: fixed; inset: 0; z-index: 100;
-  /* The page behind stays, blurred and dimmed, so the pick sits in front
-     of the app rather than on a flat colour. No texture, nothing drawn
-     on it: just the app, out of focus. */
+  /* The page behind stays, blurred and dimmed: the app, out of focus. */
   background: rgba(10, 14, 20, 0.5);
-  -webkit-backdrop-filter: blur(22px) saturate(1.1);
-  backdrop-filter: blur(22px) saturate(1.1);
+  -webkit-backdrop-filter: blur(18px) saturate(1.1);
+  backdrop-filter: blur(18px) saturate(1.1);
   display: flex; align-items: center; justify-content: center;
   padding: calc(var(--safe-top) + 56px) 16px calc(var(--safe-bottom) + 24px);
   overflow: hidden;
   animation: fade-in 260ms ease;
 }
 .draw-close { position: absolute; top: calc(var(--safe-top) + 12px); right: 16px; z-index: 2; }
-.draw { display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 420px; }
-.draw-stage { position: relative; width: 176px; height: 235px; margin-top: 10px; perspective: 1100px; }
-.draw-card { position: absolute; width: 176px; height: 235px; }
-.draw-card__inner { position: absolute; inset: 0; transform-style: preserve-3d; }
-.draw-card__face {
-  position: absolute; inset: 0; border-radius: var(--poster-radius); overflow: hidden;
-  backface-visibility: hidden; -webkit-backface-visibility: hidden;
+.draw { display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 560px; }
+.draw-scene { width: 100%; perspective: 1100px; perspective-origin: 50% 42%; }
+.draw-stage { position: relative; width: 100%; height: var(--sh, 300px); transform-style: preserve-3d; }
+
+/* The back of the cubby and the shelf the cases stand on. */
+.draw-wall, .draw-board { position: absolute; left: 50%; display: block; pointer-events: none; }
+/* The wall is set well back so that no case, however it is turned, ever
+   dips behind it. */
+.draw-wall { transform: translateX(-50%) translateZ(-60px); }
+.draw-board { transform: translateX(-50%); }
+.draw-wall {
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0) 14%, rgba(0, 0, 0, 0) 86%, rgba(0, 0, 0, 0.35)),
+    linear-gradient(180deg, rgba(4, 7, 11, 0.78), rgba(10, 15, 22, 0.5));
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
-.draw-card__back {
-  background: var(--surface); border: 1px solid var(--line-strong);
-  display: grid; place-items: center;
-  box-shadow: inset 0 0 0 7px var(--surface), inset 0 0 0 8px var(--line);
+/* The shelf: a lit top surface that widens toward you, then its front
+   lip. Drawn as one strip so there is no seam between them. */
+.draw-board {
+  height: 24px;
+  background:
+    linear-gradient(180deg, #55657a 0, #55657a 1px, #3d4a5b 1px, #2c3744 14px, #1c242e 14px, #1c242e 15px, #29323e 15px, #1a212a 24px);
+  -webkit-clip-path: polygon(2% 0, 98% 0, 100% 100%, 0 100%);
+  clip-path: polygon(2% 0, 98% 0, 100% 100%, 0 100%);
 }
-.draw-card__back svg { width: 46px; height: 46px; color: var(--ink-ghost); }
-.draw-card__chip {
-  position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);
-  font-size: 10.5px; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase;
-  background: var(--surface-high); color: var(--ink);
-  padding: 4px 9px; border-radius: 4px; white-space: nowrap; opacity: 0;
+
+/* A game case, as a box. The element is built at the size it has when
+   pulled out; the shelf scales it down (see applyLayout), so the artwork
+   is always sharp. */
+.draw-case {
+  position: absolute; left: 50%; top: 0;
+  width: var(--fw); height: var(--fh); margin-left: calc(var(--fw) / -2);
+  transform-style: preserve-3d; transform-origin: 50% 100%;
+  backface-visibility: hidden;
 }
-.draw-card__front { transform: rotateY(180deg); background: #000; border: 1px solid rgba(255,255,255,0.10); }
-.draw-card__front img { width: 100%; height: 100%; object-fit: cover; display: block; }
-/* The light that slides across the art as the card tilts (see the tilt in
-   feed-view.js). Larger than the card and moved only by transform, so a
-   tilt never repaints it; its gradient is clear at the edges, so the
-   overhang never shows. */
-.draw-card__gloss {
-  position: absolute; inset: -25%; pointer-events: none;
-  background: radial-gradient(ellipse 40% 30% at 40% 33%, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0) 100%);
+.draw-case__face { position: absolute; }
+.draw-case__front {
+  inset: 0; transform: translateZ(calc(var(--fd) / 2));
+  overflow: hidden; backface-visibility: hidden; background: #0d1117;
+  border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 2px;
 }
-.draw-stage { will-change: transform; }
-.draw-card.is-gone { display: none; }
-/* The pick, friends' photos strung to it, and three actions underneath -
-   all in the app's own slate and green, over the blurred page. Straight
-   edges, no rounded boxes. */
-.draw-board { position: relative; width: 100%; max-width: 360px; height: 250px; display: flex; justify-content: center; }
-.draw-board.has-crew { height: 352px; }
-.draw-strings { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
-.draw-strings line { stroke: var(--accent); stroke-opacity: 0.7; stroke-width: 2; }
-.draw-board .draw-stage { margin-top: 6px; z-index: 1; }
-.draw-board .draw-card__front {
-  /* The slab: a stack of one-pixel steps down and to the right reads as
-     the card's thickness, then a long soft shadow lifts it off the page.
-     (This is the half of a Photoshop bevel that sits OUTSIDE the layer.) */
-  /* the shadows themselves live with the flat-UI exception, further down:
-     that rule is !important and nothing here could beat it */
+.draw-case__front img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* The crease down the left of a case where the cover folds. */
+.draw-case__hinge {
+  position: absolute; top: 0; bottom: 0; left: 0; width: 7%; pointer-events: none;
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0.4), rgba(255, 255, 255, 0.12) 55%, rgba(0, 0, 0, 0.2));
 }
-/* The bevel itself, drawn over the art: Bevel & Emboss, inner bevel, a
-   few pixels wide. Four differently-coloured borders meet at 45-degree
-   mitres, which is exactly what a bevel is - light catching the top and
-   left edges, falling into shadow on the bottom and right. The inset
-   shadows soften both into the art, and the gradient is the emboss: a
-   faint sweep from lit corner to dark one across the whole face. */
-.draw-card__front::after {
-  content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 2;
-  border-style: solid; border-width: 4px;
-  border-color: rgba(255, 255, 255, 0.42) rgba(0, 0, 0, 0.38) rgba(0, 0, 0, 0.5) rgba(255, 255, 255, 0.3);
-  border-radius: inherit;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0) 30%, rgba(0, 0, 0, 0) 62%, rgba(0, 0, 0, 0.3) 100%);
+/* Plastic: a faint diagonal sheen, static. */
+.draw-case__sheen {
+  position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(115deg, rgba(255, 255, 255, 0.17) 0%, rgba(255, 255, 255, 0) 30%, rgba(255, 255, 255, 0) 70%, rgba(255, 255, 255, 0.06) 100%);
 }
-.draw-crew { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
-.draw-pin {
-  position: absolute; width: 64px; padding: 4px 4px 6px; background: var(--surface); color: var(--ink);
-  border: 1px solid var(--line-strong, var(--line));
-  display: flex; flex-direction: column; align-items: center; text-align: center;
-  font-size: 9px; font-weight: 800; transform: rotate(var(--r)); pointer-events: auto;
+/* The one pass of light when a case lands; hidden the rest of the time. */
+.draw-case__glint {
+  position: absolute; top: -10%; bottom: -10%; left: 0; width: 38%; opacity: 0; pointer-events: none;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0));
+  transform: translateX(-130%) skewX(-18deg);
 }
-.draw-pin__face { width: 100%; height: 44px; background: var(--surface-raised); color: var(--ink); display: grid; place-items: center; overflow: hidden; font-weight: 800; font-size: 20px; margin-bottom: 3px; }
-.draw-pin__face img { width: 100%; height: 100%; object-fit: cover; }
-.draw-pin__name { font-size: 9px; font-weight: 800; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.draw-pin__what { font-size: 9px; font-weight: 800; line-height: 1.2; }
-/* Three equal tabs in one row, not a stack of strips: a third of the
-   height, and all three are the same shape whatever the words are. They
-   are fixed in place - nothing on this screen moves them. */
-.draw-actions { display: flex; gap: 6px; width: 100%; max-width: 330px; margin-top: 22px; visibility: hidden; }
+.draw-case__side {
+  top: 0; height: 100%; width: var(--fd); left: calc(50% - var(--fd) / 2);
+  background: linear-gradient(90deg, #232d39, #141a22 60%, #1b232d);
+}
+.draw-case__side--l { transform: translateX(calc(var(--fw) / -2)) rotateY(90deg); background: linear-gradient(90deg, #10151b, #1e2732 50%, #10151b); }
+.draw-case__side--r { transform: translateX(calc(var(--fw) / 2)) rotateY(90deg); }
+.draw-case__back {
+  inset: 0; transform: translateZ(calc(var(--fd) / -2)) rotateY(180deg);
+  background: #161d26; backface-visibility: hidden;
+}
+/* Where a case meets the shelf: a soft dark ellipse that goes when it
+   is lifted away. */
+.draw-case__cast {
+  position: absolute; left: 4%; right: 4%; bottom: -5%; height: 8%; pointer-events: none;
+  background: radial-gradient(ellipse at 50% 45%, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0) 70%);
+}
+
+/* The title block: held in place (so nothing jumps when it arrives),
+   invisible until the case has landed. */
+.draw-info {
+  width: 100%; max-width: 360px; min-height: 104px; margin-top: 14px; text-align: center; opacity: 0;
+}
+.draw-title { margin: 0; font-weight: 800; font-size: 23px; line-height: 1.14; color: var(--ink); text-wrap: balance; }
+.draw-title span { display: inline-block; }
+.draw-rule { display: block; width: 38px; height: 2px; margin: 10px auto 0; background: var(--accent); transform: scaleX(0); }
+.draw-meta { margin: 9px 0 0; font-size: 12.5px; font-weight: 700; letter-spacing: 0.04em; color: var(--ink-dim); }
+.draw-crew { display: flex; justify-content: center; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.draw-friend {
+  display: flex; align-items: center; gap: 6px; padding: 3px 9px 3px 3px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-s);
+  color: var(--ink-dim); font-size: 11.5px; font-weight: 700;
+}
+.draw-friend__face { width: 20px; height: 20px; border-radius: 50%; overflow: hidden; background: var(--surface-raised); display: grid; place-items: center; font-size: 10px; font-weight: 800; color: var(--ink); }
+.draw-friend__face img { width: 100%; height: 100%; object-fit: cover; }
+
+/* Three equal tabs in one row, fixed in place - nothing on this screen
+   moves them. */
+.draw-actions { display: flex; gap: 6px; width: 100%; max-width: 330px; margin-top: 12px; visibility: hidden; }
 .draw.is-landed .draw-actions { visibility: visible; }
 .draw-act {
   flex: 1; min-width: 0; padding: 11px 6px; display: grid; place-items: center; text-align: center;
@@ -5983,23 +6004,6 @@ a.gd-credit__name { text-decoration: none; }
 *, *::before, *::after {
   box-shadow: none !important;
   text-shadow: none !important;
-}
-/* The one exception: the random-pick card. It is a physical object, a
-   slab with a bevelled edge, and a bevel IS shadows - a lit edge, a dark
-   edge and a stack of steps for thickness. Hard edges and a short contact
-   shadow, no glow. Same selectors as the rules up in the draw section,
-   repeated here only because the sweep above is !important and has to be
-   beaten by something equally so, at higher specificity. */
-.draw-overlay .draw-board .draw-card__front {
-  box-shadow:
-    1px 1px 0 #6b7d93, 2px 2px 0 #5a6b80, 3px 3px 0 #4a5a6d, 4px 4px 0 #3b4959, 5px 5px 0 #2d3946, 6px 6px 0 #222c37,
-    9px 12px 12px rgba(0, 0, 0, 0.4) !important;
-}
-.draw-overlay .draw-board .draw-card__front::after {
-  box-shadow:
-    inset 1.5px 1.5px 1px rgba(255, 255, 255, 0.55),
-    inset -1.5px -1.5px 2px rgba(0, 0, 0, 0.6),
-    inset 0 0 0 1px rgba(0, 0, 0, 0.4) !important;
 }
 /* drop-shadow glows on icons and marks */
 .tabbar__item svg,

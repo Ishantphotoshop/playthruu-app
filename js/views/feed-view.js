@@ -625,9 +625,13 @@ async function paintDiscovery(slot) {
     overlay.innerHTML = `
       <button type="button" class="modal__close draw-close" data-close aria-label="Close">&times;</button>
       <div class="draw" role="dialog" aria-label="Random pick from ${esc(collection.label)}">
-        <div class="draw-board">
-          <svg class="draw-strings" aria-hidden="true"></svg>
+        <div class="draw-scene">
           <div class="draw-stage"></div>
+        </div>
+        <div class="draw-info" aria-live="polite">
+          <h2 class="draw-title"><span></span></h2>
+          <i class="draw-rule"></i>
+          <p class="draw-meta"></p>
           <div class="draw-crew"></div>
         </div>
         <div class="draw-actions">
@@ -641,10 +645,12 @@ async function paintDiscovery(slot) {
 
     const drawEl = qs('.draw', overlay);
     const stage = qs('.draw-stage', overlay);
-    const acts = qsa('.draw-act', overlay);
-    const board = qs('.draw-board', overlay);
-    const strings = qs('.draw-strings', overlay);
+    const infoEl = qs('.draw-info', overlay);
+    const titleEl = qs('.draw-title span', overlay);
+    const ruleEl = qs('.draw-rule', overlay);
+    const metaEl = qs('.draw-meta', overlay);
     const crewEl = qs('.draw-crew', overlay);
+    const acts = qsa('.draw-act', overlay);
     // People you follow, fetched once per draw session; each pick's friend
     // activity is looked up alongside its art, so it's there on reveal.
     const followingP = state.user ? api.getFollowingIdSet(state.user.id).catch(() => new Set()) : Promise.resolve(new Set());
@@ -659,20 +665,36 @@ async function paintDiscovery(slot) {
     let busy = false;
     let skip = false;
     let pick = null;
-    let current = null;
+    let current = null;   // the case that is out of the shelf
+    let lastSlot = -1;
 
-    const run = (el, kf, opt) => { const a = el.animate(kf, opt); anims.push(a); return a; };
-    const done = (a) => a.finished.catch(() => {});
+    // One tween helper for everything on this screen. The element's inline
+    // style is the source of truth: every animation ends by writing its
+    // final values there and cancelling itself, so nothing is left holding
+    // a fill, a resize can re-lay-out cleanly, and Skip is just "finish
+    // whatever is running".
+    const dur = (ms) => (reduce ? 1 : ms);
+    function tween(el, keyframes, opt, final) {
+      const a = el.animate(keyframes, { fill: 'both', ...opt, duration: dur(opt.duration), delay: reduce ? 0 : (opt.delay || 0) });
+      anims.push(a);
+      return a.finished.then(() => {
+        if (final) Object.assign(el.style, final);
+        a.cancel();
+      }, () => { /* cancelled by close() */ }).then(() => {
+        const k = anims.indexOf(a);
+        if (k >= 0) anims.splice(k, 1);
+      });
+    }
     const pause = (ms) => (skip || reduce ? Promise.resolve() : new Promise((r) => setTimeout(r, ms)));
     const onKey = (e) => { if (e.key === 'Escape') close(); };
     function close() {
       token++;
-      stopTilt();
       anims.forEach((a) => { try { a.cancel(); } catch { /* already gone */ } });
       overlay.remove();
       document.body.style.overflow = '';
       document.removeEventListener('keydown', onKey);
       window.removeEventListener('hashchange', close);
+      window.removeEventListener('resize', onResize);
     }
     document.addEventListener('keydown', onKey);
     window.addEventListener('hashchange', close);
@@ -681,17 +703,9 @@ async function paintDiscovery(slot) {
     overlay.addEventListener('click', (e) => {
       if (e.target.closest('button')) return;
       if (busy) { skip = true; anims.forEach((a) => { try { a.finish(); } catch { /* already gone */ } }); return; }
-      if (e.target === overlay || e.target === drawEl) close();
+      if (e.target === overlay || e.target === drawEl || e.target.classList.contains('draw-scene') || e.target === stage) close();
     });
 
-    const cardHTML = () => `
-      <div class="draw-card"><div class="draw-card__inner">
-        <div class="draw-card__face draw-card__back">${iconBrandMark()}<span class="draw-card__chip"></span></div>
-        <div class="draw-card__face draw-card__front"><img alt=""><i class="draw-card__gloss"></i></div>
-      </div></div>`;
-    const liveCards = () => qsa('.draw-card:not(.is-gone)', stage);
-    const stack = () => liveCards().forEach((c, i) => { c.style.top = `${-i * 1.6}px`; c.style.left = `${-i * 0.6}px`; c.style.zIndex = i; });
-    const fan = (i) => `translateX(${i % 2 ? 80 : -80}px) rotate(${i % 2 ? 7 : -7}deg)`;
     const genreOf = (g) => (g.genre || '').split(',')[0].replace('Role-playing (RPG)', 'RPG').trim();
 
     // Fully random: a random page deep into the collection's own ranking
@@ -716,7 +730,7 @@ async function paintDiscovery(slot) {
       seen.add(keyOf(g));
       return g;
     }
-    // The NEXT card is picked and its art downloaded and decoded while the
+    // The NEXT pick is chosen and its art downloaded and decoded while the
     // current one is on screen, so Draw only has to play the animation.
     const artOf = (g) => (g.cover_url ? igdbSized(g.cover_url, '720p') : placeholderCover(g.title));
     function prepare() {
@@ -730,50 +744,134 @@ async function paintDiscovery(slot) {
         return { g, art, ready, friends };
       });
     }
-    let nextUp = prepare(); // starts during the opening shuffle
+    let nextUp = prepare(); // starts while the shelf is still coming in
 
+    // ------------------------------------------------------------ layout
+    // A shelf of game cases standing side by side, drawn in real 3D: each
+    // case is a box (cover, two edges, a back) so it has true thickness
+    // when it is angled, and the whole row is turned a little toward the
+    // middle. Each case is built at the size it will be when pulled out
+    // and scaled DOWN to stand on the shelf, never the other way round:
+    // scaling a small layer up leaves the artwork soft, and a cover that
+    // arrives blurry is the opposite of the moment.
+    const RATIO = 0.72; // width / height of a game case
+    let M = null;
+    function measure() {
+      const vw = overlay.clientWidth || window.innerWidth;
+      const vh = overlay.clientHeight || window.innerHeight;
+      const wide = vw >= 700;
+      // Four on a phone so each case has presence, five on a large
+      // phone or small tablet, seven on a desktop.
+      const n = wide ? 7 : vw >= 480 ? 5 : 4;
+      const gap = wide ? 12 : 8;
+      // What is left for the shelf once the title block, the three buttons
+      // and the screen's own padding are taken out.
+      const availH = Math.max(200, vh - 56 - 24 - 56 - 108 - 24);
+      const fw = Math.min(214, vw * 0.54, availH * 0.8 * RATIO);
+      const fh = fw / RATIO;
+      const cw = Math.min(110, (Math.min(vw, 720) - 32 - gap * (n - 1)) / n);
+      const s = cw / fw;
+      const ch = fh * s;
+      const sh = fh + 28;
+      const restBottom = sh / 2 + ch / 2;
+      return { n, gap, fw, fh, fd: Math.max(12, fw * 0.13), cw, s, ch, sh, restBottom, restY: restBottom - fh, featY: (sh - fh) / 2 };
+    }
+    const mid = () => (M.n - 1) / 2;
+    const slotX = (i) => (i - mid()) * (M.cw + M.gap);
+    // Turned in toward the middle, a few degrees more at each end.
+    const slotA = (i) => ((i - mid()) / mid()) * -20;
+    const slotZ = (i) => -Math.abs(i - mid()) * 3;
+    const restT = (i, lift = 0) => `translate3d(${slotX(i)}px, ${M.restY - lift}px, ${slotZ(i)}px) rotateY(${slotA(i)}deg) scale(${M.s})`;
+    const pullT = (i) => `translate3d(${slotX(i)}px, ${M.restY - 16}px, 80px) rotateY(${slotA(i) * 0.6}deg) scale(${M.s * 1.08})`;
+    const featT = () => `translate3d(0px, ${M.featY}px, 70px) rotateY(0deg) scale(1)`;
+    const casesEl = () => qsa('.draw-case', stage);
+
+    function applyLayout() {
+      M = measure();
+      stage.style.setProperty('--sh', `${M.sh}px`);
+      stage.style.setProperty('--fw', `${M.fw}px`);
+      stage.style.setProperty('--fh', `${M.fh}px`);
+      stage.style.setProperty('--fd', `${M.fd}px`);
+      const span = (M.n * (M.cw + M.gap) + 28) * 1.04; // the wall sits back in depth, so it is drawn a little smaller
+      const wall = qs('.draw-wall', stage);
+      const board = qs('.draw-board', stage);
+      if (wall) Object.assign(wall.style, { width: `${span}px`, height: `${M.ch + 30}px`, top: `${M.restBottom - M.ch - 16}px` });
+      if (board) Object.assign(board.style, { width: `${span + 12}px`, top: `${M.restBottom}px` });
+      casesEl().forEach((c, i) => {
+        c.style.transform = c === current ? featT() : restT(i);
+      });
+    }
+    let resizeRaf = 0;
+    function onResize() {
+      cancelAnimationFrame(resizeRaf);
+      resizeRaf = requestAnimationFrame(() => { if (!busy) applyLayout(); });
+    }
+    window.addEventListener('resize', onResize);
+
+    const caseHTML = (i, g) => `
+      <div class="draw-case" data-i="${i}">
+        <div class="draw-case__face draw-case__front"><img alt="" decoding="async" src="${esc(g.cover_url ? igdbSized(g.cover_url, 'cover_big') : placeholderCover(g.title))}"><i class="draw-case__hinge"></i><i class="draw-case__sheen"></i><i class="draw-case__glint"></i></div>
+        <div class="draw-case__face draw-case__side draw-case__side--l"></div>
+        <div class="draw-case__face draw-case__side draw-case__side--r"></div>
+        <div class="draw-case__face draw-case__back"></div>
+        <i class="draw-case__cast"></i>
+      </div>`;
+
+    function buildShelf() {
+      M = measure();
+      // Real covers from the collection already on screen, so the shelf is
+      // full of the same games the grid below is showing.
+      const filler = games.filter((g) => g.cover_url);
+      const order = filler.slice().sort(() => Math.random() - 0.5);
+      const covers = Array.from({ length: M.n }, (_, i) => order[i % Math.max(1, order.length)] || { title: '' });
+      stage.innerHTML = `<i class="draw-wall"></i><i class="draw-board"></i>${covers.map((g, i) => caseHTML(i, g)).join('')}`;
+      current = null;
+      applyLayout();
+    }
+
+    // ------------------------------------------------------------ result
     function hideResult() {
       drawEl.classList.remove('is-landed');
       acts.forEach((b) => { b.disabled = true; });
       crewEl.innerHTML = '';
-      strings.innerHTML = '';
-      board.classList.remove('has-crew');
+      infoEl.style.opacity = '0';
+      // Back to the pre-reveal state, so the next title wipes in from
+      // nothing instead of appearing already written.
+      titleEl.style.opacity = '0';
+      ruleEl.style.transform = 'scaleX(0)';
+      metaEl.style.opacity = '0';
+      crewEl.style.opacity = '0';
     }
 
-    // Friends who played, are playing or want this game, pinned round the
-    // card as photos with a string back to it. Nothing at all when nobody
-    // has; the board just shows the card.
+    // Friends who played, are playing or want this game: a small chip each
+    // under the title. Nothing at all when nobody has.
     const crewLabel = (c) => (c.status === 'played' ? (c.rating ? `Played ★${Number(c.rating)}` : 'Played') : c.status === 'playing' ? 'Playing now' : 'Wants to play');
-    function pinCrew() {
-      if (!crew.length) return;
-      const w = board.clientWidth;
-      const cardL = (w - 176) / 2;
-      // Below the card, as on the mockup: left, right, and the middle one
-      // a little lower, each a little crooked.
-      const mid = w / 2 - 32;
-      const spots = [[mid - 104, 252, -6], [mid + 104, 252, 5], [mid, 264, 2]];
-      board.classList.add('has-crew');
-      crewEl.innerHTML = crew.map((c, i) => {
-        const [x, y, r] = spots[i];
+    function crewHTML() {
+      return crew.slice(0, 3).map((c) => {
         const name = c.profile.display_name || c.profile.username || 'Friend';
         const face = c.profile.avatar_url
-          ? `<img src="${esc(c.profile.avatar_url)}" alt="" loading="eager" decoding="async">`
+          ? `<img src="${esc(c.profile.avatar_url)}" alt="" decoding="async">`
           : `<b>${esc(name[0].toUpperCase())}</b>`;
-        return `<button type="button" class="draw-pin" data-user="${esc(c.profile.username || '')}" style="left:${x}px;top:${y}px;--r:${r}deg">
-          <span class="draw-pin__face">${face}</span><span class="draw-pin__name">${esc(name)}</span><span class="draw-pin__what">${crewLabel(c)}</span></button>`;
+        return `<button type="button" class="draw-friend" data-user="${esc(c.profile.username || '')}"><span class="draw-friend__face">${face}</span><span>${esc(name)} · ${crewLabel(c)}</span></button>`;
       }).join('');
-      // Strings run from each photo's pin to under the card's centre, so a
-      // tilt of the card never shows a loose end.
-      const cx = w / 2; const cy = 124;
-      strings.setAttribute('viewBox', `0 0 ${w} ${board.clientHeight}`);
-      strings.innerHTML = crew.map((c, i) => {
-        const [x, y] = spots[i];
-        const len = Math.hypot(cx - (x + 32), cy - (y + 4));
-        return `<line x1="${x + 32}" y1="${y + 4}" x2="${cx}" y2="${cy}" style="stroke-dasharray:${len};stroke-dashoffset:${len}"/>`;
-      }).join('');
-      if (reduce) { qsa('line', strings).forEach((l) => { l.style.strokeDashoffset = 0; }); return; }
-      qsa('line', strings).forEach((l, i) => run(l, [{ strokeDashoffset: l.style.strokeDasharray }, { strokeDashoffset: 0 }], { duration: 300, delay: 60 + i * 90, easing: 'cubic-bezier(.3,.6,.3,1)', fill: 'forwards' }));
-      qsa('.draw-pin', crewEl).forEach((el, i) => run(el, [{ opacity: 0, transform: `translateY(-14px) rotate(var(--r)) scale(1.15)` }, { opacity: 1, transform: 'rotate(var(--r))' }], { duration: 260, delay: 140 + i * 90, easing: 'cubic-bezier(.3,1.4,.5,1)', fill: 'backwards' }));
+    }
+
+    // The title is the last thing to arrive. It wipes in from the left
+    // while the letters pull together from wide spacing, with a short
+    // accent rule drawing under it; the details follow a beat behind.
+    async function revealInfo(my) {
+      titleEl.textContent = pick.title;
+      metaEl.textContent = [pick.release_year, genreOf(pick)].filter(Boolean).join(' · ');
+      crewEl.innerHTML = crewHTML();
+      infoEl.style.opacity = '1';
+      const wipe = tween(titleEl, [
+        { opacity: 0, clipPath: 'inset(0 100% 0 0)', letterSpacing: '0.28em', transform: 'translateY(8px)' },
+        { opacity: 1, clipPath: 'inset(0 0% 0 0)', letterSpacing: '0.01em', transform: 'translateY(0)' },
+      ], { duration: 760, easing: 'cubic-bezier(.2,.8,.2,1)' }, { opacity: '1', clipPath: 'none', letterSpacing: '0.01em', transform: 'none' });
+      tween(ruleEl, [{ transform: 'scaleX(0)' }, { transform: 'scaleX(1)' }], { duration: 520, delay: 300, easing: 'cubic-bezier(.2,.8,.2,1)' }, { transform: 'scaleX(1)' });
+      [metaEl, crewEl].forEach((el, i) => tween(el, [{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'translateY(0)' }], { duration: 420, delay: 380 + i * 90, easing: 'ease-out' }, { opacity: '1', transform: 'none' }));
+      await wipe;
+      if (my !== token) return;
     }
 
     function showResult() {
@@ -781,35 +879,58 @@ async function paintDiscovery(slot) {
       saved = null;
       drawEl.classList.add('is-landed');
       acts.forEach((b) => { b.disabled = false; });
-      pinCrew();
-      // The three orders slam in from the left, one after another, the
-      // way the mockup does it.
-      acts.forEach((el, i) => run(el, [{ opacity: 0, translate: '-60px 0' }, { opacity: 1, translate: '0 0' }], { duration: reduce ? 1 : 260, delay: reduce ? 0 : 80 + i * 60, easing: 'cubic-bezier(.2,.9,.3,1.15)', fill: 'backwards' }));
+      // The three buttons are fixed: they do not move, and they are there
+      // from the moment the cover lands.
+      tween(qs('.draw-actions', overlay), [{ opacity: 0 }, { opacity: 1 }], { duration: 260 }, { opacity: '1' });
+    }
+
+    // ------------------------------------------------------------- deal
+    // The scan: a lift passes along the shelf, left to right and back,
+    // slowing as it goes, and settles on the case that is about to come out.
+    async function scan(my, target) {
+      const n = M.n;
+      const path = [];
+      for (let i = 0; i < n; i++) path.push(i);
+      for (let i = n - 2; i >= target; i--) path.push(i);
+      if (path[path.length - 1] !== target) path.push(target);
+      const cs = casesEl();
+      for (let k = 0; k < path.length && !skip; k++) {
+        const i = path[k];
+        const last = k === path.length - 1;
+        const el = cs[i];
+        const ms = 70 + k * 9;
+        if (last) {
+          await tween(el, [{ transform: restT(i) }, { transform: restT(i, 12) }], { duration: 160, easing: 'cubic-bezier(.2,.8,.2,1)' }, { transform: restT(i, 12) });
+        } else {
+          tween(el, [{ transform: restT(i) }, { transform: restT(i, 9) }, { transform: restT(i) }], { duration: ms * 2, easing: 'ease-in-out' }, { transform: restT(i) });
+          await pause(ms);
+        }
+        if (my !== token) return;
+      }
+      if (skip) { cs[target].style.transform = restT(target, 12); }
     }
 
     async function deal({ shuffle }) {
       const my = ++token;
       busy = true; skip = false;
-      endTilt();
       hideResult();
       pick = null;
       const picking = nextUp || prepare();
       nextUp = null;
 
-      if (shuffle || liveCards().length < 3) {
-        stage.innerHTML = Array.from({ length: 7 }, cardHTML).join('');
-        stack();
-        // Riffles only when the draw opens; a used-up deck mid-session is
-        // swapped for a fresh one silently, so every Draw is as quick.
-        if (!reduce && shuffle) {
-          const cards = liveCards();
-          for (let r = 0; r < 2 && !skip; r++) {
-            await Promise.all(cards.map((c, i) => done(run(c, [{ transform: 'none' }, { transform: fan(i) }], { duration: 200, easing: 'cubic-bezier(.3,0,.2,1)', fill: 'forwards' }))));
-            if (my !== token) return;
-            await Promise.all(cards.map((c, i) => done(run(c, [{ transform: fan(i) }, { transform: 'none' }], { duration: 240, delay: i * 28, easing: 'cubic-bezier(.2,.8,.2,1)', fill: 'forwards' }))));
-            if (my !== token) return;
-          }
-        }
+      let entrance = Promise.resolve();
+      if (shuffle) {
+        buildShelf();
+        const cs = casesEl();
+        cs.forEach((c) => { c.style.opacity = '0'; });
+        // The shelf comes in from the middle outward: each case rises a
+        // little as it fades up, so it reads as stocked rather than shown.
+        entrance = Promise.all(cs.map((c, i) => tween(c, [
+          { opacity: 0, transform: restT(i).replace(/translate3d\(([-\d.]+)px, ([-\d.]+)px/, (_, x, y) => `translate3d(${x}px, ${Number(y) + 34}px`) },
+          { opacity: 1, transform: restT(i) },
+        ], { duration: 460, delay: Math.abs(i - mid()) * 55, easing: 'cubic-bezier(.2,.8,.2,1)' }, { opacity: '1', transform: restT(i) })));
+        tween(qs('.draw-wall', stage), [{ opacity: 0 }, { opacity: 1 }], { duration: 400 }, { opacity: '1' });
+        tween(qs('.draw-board', stage), [{ opacity: 0 }, { opacity: 1 }], { duration: 400 }, { opacity: '1' });
       }
 
       const item = await Promise.race([picking, new Promise((r) => setTimeout(r, 4000))]).catch(() => null);
@@ -820,50 +941,70 @@ async function paintDiscovery(slot) {
       if (item) { pick = item.g; art = item.art; artReady = item.ready; friendsP = item.friends; }
       else { pick = localPick(); seen.add(keyOf(pick)); art = artOf(pick); artReady = Promise.resolve(); }
       nextUp = prepare(); // the one after this, while this one is being looked at
-      const cards = liveCards();
-      const top = cards[cards.length - 1];
-      current = top;
-      const img = qs('.draw-card__front img', top);
-      img.decoding = 'async';
+
+      // Which slot it comes out of: random, and never the same one twice
+      // running, with the pick's own artwork put on that case.
+      let slot = Math.floor(Math.random() * M.n);
+      if (slot === lastSlot) slot = (slot + 1 + Math.floor(Math.random() * (M.n - 1))) % M.n;
+      lastSlot = slot;
+      const cs = casesEl();
+      const chosen = cs[slot];
+      const img = qs('.draw-case__front img', chosen);
       img.src = art;
-      const chip = qs('.draw-card__chip', top);
-      chip.textContent = [genreOf(pick), pick.release_year].filter(Boolean).join(' · ');
-      await done(run(top, [{ transform: 'none' }, { transform: 'translateY(-22px) scale(1.04)' }], { duration: reduce ? 1 : 230, easing: 'cubic-bezier(.2,.8,.2,1)', fill: 'forwards' }));
+      await Promise.all([entrance, Promise.race([artReady.then(() => img.decode()).catch(() => {}), new Promise((r) => setTimeout(r, 900))])]);
       if (my !== token) return;
-      if (chip.textContent) run(chip, [{ opacity: 0, transform: 'translate(-50%,6px)' }, { opacity: 1, transform: 'translate(-50%,0)' }], { duration: 220, fill: 'forwards' });
-      await Promise.all([pause(shuffle ? 380 : 220), Promise.race([artReady.then(() => img.decode()).catch(() => {}), new Promise((r) => setTimeout(r, 900))])]);
+
+      await scan(my, slot);
       if (my !== token) return;
-      buzz(12);
-      await done(run(qs('.draw-card__inner', top), [{ transform: 'rotateY(0)' }, { transform: 'rotateY(180deg)' }], { duration: reduce ? 1 : 460, easing: 'cubic-bezier(.3,.1,.2,1)', fill: 'forwards' }));
+      buzz(10);
+
+      // Everything else steps back while the chosen case slides out of its
+      // place - forward first, off the shelf - and then comes up and across
+      // to the middle, turning to face you.
+      cs.forEach((c, i) => { if (c !== chosen) tween(c, [{ opacity: 1 }, { opacity: 0.32 }], { duration: 520, easing: 'ease-out' }, { opacity: '0.32' }); });
+      tween(qs('.draw-case__cast', chosen), [{ opacity: 1 }, { opacity: 0 }], { duration: 300 }, { opacity: '0' });
+      chosen.style.zIndex = '5';
+      await tween(chosen, [
+        { transform: restT(slot, 12), offset: 0 },
+        { transform: pullT(slot), offset: 0.34, easing: 'cubic-bezier(.2,.8,.2,1)' },
+        { transform: featT(), offset: 1 },
+      ], { duration: 820, easing: 'cubic-bezier(.3,.1,.2,1)' }, { transform: featT() });
       if (my !== token) return;
-      cards.slice(0, -1).forEach((c) => run(c, [{ opacity: 1 }, { opacity: 0 }], { duration: 250, fill: 'forwards' }));
-      // Dropped into place: from the lift to flat, a little crooked.
-      run(top, [{ transform: 'translateY(-22px) scale(1.04)' }, { transform: 'rotate(-3deg)' }], { duration: reduce ? 1 : 220, easing: 'cubic-bezier(.3,1.4,.5,1)', fill: 'forwards' });
-      crew = await Promise.race([friendsP, new Promise((r) => setTimeout(() => r([]), 800))]);
+      current = chosen;
+      // One pass of light across the cover as it arrives.
+      tween(qs('.draw-case__glint', chosen), [{ transform: 'translateX(-130%) skewX(-18deg)', opacity: 0.9 }, { transform: 'translateX(230%) skewX(-18deg)', opacity: 0.9 }], { duration: 900, easing: 'ease-in-out' }, { opacity: '0' });
+
+      crew = await Promise.race([friendsP, new Promise((r) => setTimeout(() => r([]), 700))]);
       if (my !== token) return;
       busy = false;
-      startTilt(top);
       showResult();
+      await revealInfo(my);
     }
 
     btnDraw.addEventListener('click', async () => {
       if (busy || !current) return;
       busy = true;
+      const my = ++token;
+      skip = false;
       hideResult();
-      endTilt();
       buzz(6);
-      const gone = current;
-      await done(run(gone, [{ transform: 'rotate(-3deg)', opacity: 1 }, { transform: 'translate(300px,-40px) rotate(18deg)', opacity: 0 }], { duration: reduce ? 1 : 280, easing: 'cubic-bezier(.4,0,.8,.4)', fill: 'forwards' }));
-      gone.classList.add('is-gone');
-      stack();
-      liveCards().forEach((c) => run(c, [{ opacity: 0.2 }, { opacity: 1 }], { duration: 200, fill: 'forwards' }));
+      // The cover goes back into its place on the shelf, and the shelf
+      // fills back in around it, before the next one is chosen.
+      const back = current;
+      const i = Number(back.dataset.i);
+      current = null;
+      back.style.zIndex = '';
+      qsa('.draw-case', stage).forEach((c) => { if (c !== back) tween(c, [{ opacity: 0.32 }, { opacity: 1 }], { duration: 380 }, { opacity: '1' }); });
+      tween(qs('.draw-case__cast', back), [{ opacity: 0 }, { opacity: 1 }], { duration: 380 }, { opacity: '1' });
+      await tween(back, [{ transform: featT() }, { transform: pullT(i) }, { transform: restT(i) }], { duration: 480, easing: 'cubic-bezier(.4,0,.2,1)' }, { transform: restT(i) });
+      if (my !== token) return;
       deal({ shuffle: false });
     });
     crewEl.addEventListener('click', (e) => {
-      const pin = e.target.closest('.draw-pin');
-      if (!pin?.dataset.user || busy) return;
+      const chip = e.target.closest('.draw-friend');
+      if (!chip?.dataset.user || busy) return;
       close();
-      navigate(`/profile/${encodeURIComponent(pin.dataset.user)}`);
+      navigate(`/profile/${encodeURIComponent(chip.dataset.user)}`);
     });
     btnOpen.addEventListener('click', async () => {
       if (busy || !pick) return;
@@ -879,11 +1020,11 @@ async function paintDiscovery(slot) {
         btnOpen.disabled = false;
       }
     });
-    // Want to play is a toggle. The card turns green the moment you tap
+    // Want to play is a toggle. The button turns green the moment you tap
     // it and the backlog entry is written behind it; tap again and the
     // entry this made is removed. Nothing reloads, and a failure puts the
-    // card back. A game you had already logged (played, playing) is left
-    // exactly as it was.
+    // button back. A game you had already logged (played, playing) is
+    // left exactly as it was.
     let saved = null;     // { logId, pickKey } once in the backlog
     let saving = false;
     const setSaved = (on) => {
@@ -931,120 +1072,6 @@ async function paintDiscovery(slot) {
       }
       saving = false;
     });
-
-    // Live tilt once the card is showing: the deck leans with the phone (the
-    // mouse on desktop) and a soft light slides across the art.
-    //
-    // It follows how the phone MOVES from where it was held when the card
-    // landed, not a fixed angle, so even a small turn registers however the
-    // phone is held, and a slow drift re-centres it when the grip changes.
-    // The reading goes through a quaternion because the plain beta/gamma
-    // angles jump around when the phone is held upright. On screen it is
-    // just two transforms, written once per frame from one rAF loop that
-    // stops as soon as the card is still: nothing is repainted, and nothing
-    // runs while the phone is not moving.
-    const TILT_MAX = 16;   // deg the card can lean
-    const TILT_GAIN = 1.6; // card degrees per degree the phone turns
-    const DRIFT = 2;       // s for the rest pose to catch up with a new grip
-    const EASE = 0.035;    // s of smoothing between sensor readings
-    const D2R = Math.PI / 180;
-    let tiltOn = false;
-    let listening = true;
-    let rest = null;       // the rest pose, as a quaternion
-    let restAt = 0;
-    let tx = 0; let ty = 0; // where the lean is heading (deg)
-    let cx = 0; let cy = 0; // where it is now
-    let raf = 0; let lastFrame = 0;
-    let gloss = null;
-    // The three buttons are deliberately NOT in here: they stay put while
-    // everything else moves, so they are always where the thumb expects.
-    const layers = [[crewEl, 1.4], [strings, 1.4]];
-    const soft = (v) => TILT_MAX * Math.tanh(v / TILT_MAX); // leans harder, never snaps at the limit
-    const mul = (a, b) => [
-      a[0] * b[0] - a[1] * b[1] - a[2] * b[2] - a[3] * b[3],
-      a[0] * b[1] + a[1] * b[0] + a[2] * b[3] - a[3] * b[2],
-      a[0] * b[2] - a[1] * b[3] + a[2] * b[0] + a[3] * b[1],
-      a[0] * b[3] + a[1] * b[2] - a[2] * b[1] + a[3] * b[0],
-    ];
-    // deviceorientation angles (Z-X'-Y'') as a quaternion, per the spec
-    const quat = (alpha, beta, gamma) => {
-      const x = (beta * D2R) / 2; const y = (gamma * D2R) / 2; const z = (alpha * D2R) / 2;
-      const cX = Math.cos(x); const cY = Math.cos(y); const cZ = Math.cos(z);
-      const sX = Math.sin(x); const sY = Math.sin(y); const sZ = Math.sin(z);
-      return [cX * cY * cZ - sX * sY * sZ, sX * cY * cZ - cX * sY * sZ, cX * sY * cZ + sX * cY * sZ, cX * cY * sZ + sX * sY * cZ];
-    };
-    const frame = (t) => {
-      raf = 0;
-      const dt = lastFrame ? Math.min(0.05, (t - lastFrame) / 1000) : 1 / 60;
-      lastFrame = t;
-      const k = 1 - Math.exp(-dt / EASE);
-      cx += (tx - cx) * k;
-      cy += (ty - cy) * k;
-      const still = Math.abs(tx - cx) < 0.01 && Math.abs(ty - cy) < 0.01;
-      if (still) { cx = tx; cy = ty; lastFrame = 0; }
-      const flat = !cx && !cy;
-      stage.style.transform = flat ? '' : `perspective(800px) rotateX(${cx.toFixed(2)}deg) rotateY(${cy.toFixed(2)}deg)`;
-      if (gloss) gloss.style.transform = flat ? '' : `translate3d(${(cy * 2.6).toFixed(1)}px, ${(-cx * 2.6).toFixed(1)}px, 0)`;
-      // The rest of the board moves in layers with the card: friends'
-      // photos and their strings float nearest, the slip and the orders a
-      // little less, so the whole screen reads as one live scene.
-      for (const [el, depth] of layers) el.style.translate = flat ? '' : `${(cy * depth).toFixed(1)}px ${(-cx * depth).toFixed(1)}px`;
-      if (!still) raf = requestAnimationFrame(frame);
-    };
-    const aim = (x, y) => {
-      tx = x; ty = y;
-      if (!raf) raf = requestAnimationFrame(frame);
-    };
-    const onOrient = (e) => {
-      if (!tiltOn || e.beta == null) return;
-      const q = quat(e.alpha || 0, e.beta, e.gamma || 0);
-      if (!rest) { rest = q; restAt = e.timeStamp; return; }
-      // drift the rest pose toward the current one
-      const k = 1 - Math.exp(-Math.min(0.25, (e.timeStamp - restAt) / 1000) / DRIFT);
-      restAt = e.timeStamp;
-      const sign = rest[0] * q[0] + rest[1] * q[1] + rest[2] * q[2] + rest[3] * q[3] < 0 ? -1 : 1;
-      const blend = rest.map((v, i) => v + (q[i] * sign - v) * k);
-      const len = Math.hypot(...blend);
-      rest = blend.map((v) => v / len);
-      // the turn from the rest pose to now, around the phone's own axes
-      const r = mul([rest[0], -rest[1], -rest[2], -rest[3]], q);
-      const w = r[0] < 0 ? -2 : 2;
-      aim(soft(-TILT_GAIN * (w * r[1]) / D2R), soft(TILT_GAIN * (w * r[2]) / D2R));
-    };
-    const onMouse = (e) => {
-      if (!tiltOn || e.pointerType === 'touch') return;
-      aim(-(e.clientY / innerHeight - 0.5) * 2 * TILT_MAX, (e.clientX / innerWidth - 0.5) * 2 * TILT_MAX);
-    };
-    function startTilt(card) {
-      if (reduce) return;
-      tiltOn = true;
-      rest = null;
-      gloss = qs('.draw-card__gloss', card);
-    }
-    function endTilt() {
-      tiltOn = false;
-      aim(0, 0);
-    }
-    function stopTilt() {
-      tiltOn = false;
-      listening = false;
-      if (raf) cancelAnimationFrame(raf);
-      raf = 0;
-      window.removeEventListener('deviceorientation', onOrient);
-      window.removeEventListener('pointermove', onMouse);
-    }
-    if (!reduce) {
-      window.addEventListener('pointermove', onMouse, { passive: true });
-      const DOE = window.DeviceOrientationEvent;
-      if (typeof DOE?.requestPermission === 'function') {
-        // iOS asks once, and only from a tap: this one.
-        DOE.requestPermission()
-          .then((r) => { if (r === 'granted' && listening) window.addEventListener('deviceorientation', onOrient); })
-          .catch(() => {});
-      } else if (DOE) {
-        window.addEventListener('deviceorientation', onOrient);
-      }
-    }
 
     deal({ shuffle: true });
   }
