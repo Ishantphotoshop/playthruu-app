@@ -275,13 +275,26 @@ async function runLookup(igdbGameId: number): Promise<Pair[]> {
   if (!game) throw new Error("unknown game");
 
   const sources = await searchWeb(game.name, game.year);
+  // Nothing to read is not the same as nothing to find: the search
+  // itself failed (bad key, rate limit, outage). Saying "this game has
+  // no cast" and standing by it for 30 days would be a lie told on the
+  // strength of an outage.
+  if (!sources.length) throw new Error("search returned nothing (check TAVILY_API_KEY)");
+
   const pairs = new Map<string, Pair>();
+  let failed = 0;
+  let lastError = "";
   for (const source of sources) {
     let entries: RawEntry[] = [];
     try {
       entries = await extractCast(source.text);
-    } catch {
-      continue; // one bad page must not lose the pages that worked
+    } catch (err) {
+      // One bad page must not lose the pages that worked — but EVERY
+      // page failing is the extractor being down or unpaid, not a game
+      // without a cast, and is raised as such below.
+      failed++;
+      lastError = String((err as Error)?.message || err);
+      continue;
     }
     const host = hostOf(source.url);
     for (const entry of entries) {
@@ -302,6 +315,7 @@ async function runLookup(igdbGameId: number): Promise<Pair[]> {
       pairs.set(k, pair);
     }
   }
+  if (failed === sources.length) throw new Error(`extraction failed: ${lastError}`);
   return [...pairs.values()];
 }
 
