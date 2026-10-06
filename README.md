@@ -34,6 +34,8 @@ js/                                  app code (plain ES modules, no bundler need
   config.js                           ← you paste your Supabase project details here (step 2)
 supabase/functions/igdb-proxy/       Edge Function that talks to IGDB (step 3)
 supabase/functions/news-proxy/       Edge Function that merges gaming RSS feeds (step 3b)
+supabase/functions/fetch-cast/       Edge Function that finds a game's cast (step 3c)
+migrations/                          one-off SQL to paste into Supabase as features are added
 manifest.json                       makes it installable as an app
 service-worker.js                   offline caching
 icons/                               app icons
@@ -154,6 +156,150 @@ npx supabase functions deploy news-proxy
 
 Without it deployed, the News tab shows "Couldn't load news right now" —
 nothing else in the app is affected.
+
+## Step 3c — Turn on the Cast tab (10 min)
+
+The Cast tab on a game page lists who voiced and who performed each
+character ("Ashley Johnson — Ellie — voice + mocap"). It is backed by
+**your own database**, not by anyone's API: the first person to open a
+game's Cast tab triggers one web lookup, the result is saved, and
+everybody after that reads it straight out of Postgres. Over time your
+tables become your own cast API, and it gets cheaper the more it is used.
+
+Skipping this step costs you nothing else — the Cast tab just says "No
+cast found yet" and the rest of the app is untouched.
+
+Two free accounts are needed, one for searching the web and one for
+reading the pages it finds.
+
+**1. Get a Tavily key** (web search, free tier)
+
+Sign up at <https://app.tavily.com> → **API Keys** → copy the key (it
+starts with `tvly-`).
+
+**2. Get an Anthropic key** (reads the pages, free credit to start)
+
+Sign up at <https://console.anthropic.com> → **API Keys** → **Create
+Key** → copy it (it starts with `sk-ant-`). Extraction runs on Claude
+Haiku, the cheapest model — a game works out to a fraction of a cent, and
+it is paid once per game ever.
+
+**3. Create the tables**
+
+In the Supabase dashboard: **SQL Editor** → **New query** → paste the
+whole of `migrations/2026-10-06_cast.sql` → **Run**. (Safe to run twice.)
+
+Or, from this folder in PowerShell, if you'd rather use the CLI:
+
+```powershell
+npx supabase link --project-ref YOUR_PROJECT_REF
+Get-Content migrations/2026-10-06_cast.sql | npx supabase db query
+```
+
+**4. Store the two keys as secrets and deploy the function**
+
+Keys live on the server and never in the app's JavaScript. From this
+folder in PowerShell, in order:
+
+```powershell
+npx supabase login
+npx supabase link --project-ref YOUR_PROJECT_REF
+npx supabase secrets set TAVILY_API_KEY=tvly-xxxxxxxx
+npx supabase secrets set ANTHROPIC_API_KEY=sk-ant-xxxxxxxx
+npx supabase functions deploy fetch-cast
+```
+
+Your project ref is the random-looking part of your Supabase URL
+(`https://<THIS-BIT>.supabase.co`), also shown under **Settings → General
+→ Reference ID**.
+
+Dashboard alternative for this step: **Edge Functions → Create function**,
+name it exactly `fetch-cast`, paste the contents of
+`supabase/functions/fetch-cast/index.ts`, **Deploy**; then **Project
+Settings → Edge Functions → Secrets** (older dashboards: **Settings →
+Edge Functions → Environment variables**) → add `TAVILY_API_KEY` and
+`ANTHROPIC_API_KEY`.
+
+Optional third secret: `MAX_LOOKUPS_PER_DAY` (default 30) caps how many
+*new* games may be looked up per day, so nothing can burn through the
+free tiers in an afternoon. Games already saved are never affected by it.
+
+```powershell
+npx supabase secrets set MAX_LOOKUPS_PER_DAY=30
+```
+
+**5. Test it with three games you know**
+
+```powershell
+$ref = "YOUR_PROJECT_REF"
+$anon = "YOUR_ANON_KEY"
+foreach ($id in 1009, 1020, 7346) {
+  Write-Host "`n--- igdb $id ---"
+  curl.exe -s -X POST "https://$ref.functions.supabase.co/fetch-cast" `
+    -H "Authorization: Bearer $anon" -H "Content-Type: application/json" `
+    -d "{""igdb_game_id"": $id}"
+}
+```
+
+Those three ids are The Last of Us, Grand Theft Auto V and The Legend of
+Zelda: Breath of the Wild. Your anon key is the same one already in
+`js/config.js`.
+
+The first call for a game takes a few seconds — it is searching and
+reading. Run the same command again and it should come back instantly:
+that is the saved copy, which is the entire point. Expect JSON like:
+
+```json
+{"status":"done","cast":[{"person":"Troy Baker","character":"Joel","role_type":"voice_and_mocap","verified":true,"source_urls":["https://..."]}]}
+```
+
+`"status"` tells you which path it took:
+
+| status | meaning |
+| --- | --- |
+| `done` | cast found (saved, and returned from the table from now on) |
+| `none` | looked, found nothing. Won't look again for 30 days |
+| `busy` | another lookup is running, or the daily cap is spent. Try later |
+| `error` | something failed; the message says what. The next visit retries |
+
+**6. Put it live**
+
+The app itself is plain static files, so publishing it is the same as
+every other change — commit and push, and GitHub Pages serves it at
+app.playthruu.com within a minute or two:
+
+```powershell
+git add -A
+git commit -m "Cast tab"
+git push origin main
+```
+
+The service worker's `CACHE_VERSION` in `service-worker.js` is bumped
+whenever app files change (it is already bumped for this one), which is
+what makes phones pick up the new files instead of serving yesterday's
+copy from cache.
+
+### What it does, and what it won't do
+
+- Cast is **text only** — names, characters, and the links it came from.
+  No photos, deliberately: the free database is 500 MB and a cast list is
+  a few hundred bytes.
+- A name found on **two or more different sites** is shown plainly. A
+  name only one site had is shown with an **unverified** tag rather than
+  hidden — one decent source beats an empty tab, as long as the page says
+  which it is.
+- mobygames.com, behindthevoiceactors.com and imdb.com are **excluded**:
+  their terms forbid automated extraction. They are left out of the
+  search *and* dropped again by hostname in the function, so a stray
+  result can't sneak through.
+- The page the model reads is treated as **data, never instructions** —
+  a web page telling the model what to do is ignored by design.
+- The browser only ever sends an **IGDB game id**. The game's name and
+  year are looked up server-side, so nobody can point your paid search
+  key at a search of their own choosing.
+- Nothing can write to these tables from the app. Row Level Security
+  gives everyone read access and no one write access; only the Edge
+  Function, holding the service-role key, inserts anything.
 
 ## Step 4 — Try it locally
 

@@ -6535,3 +6535,42 @@ a.gd-credit__name { text-decoration: none; }
    the creator's own row read as one run-on word, "you admin". */
 .group-info__dot { color: var(--ink-faint); font-weight: 400; margin: 0 3px; }
 
+
+/* ---- game page: Cast tab -------------------------------------------
+   A credit, not a profile: no photo, no chevron, nothing to tap
+   through to — these people have no page in the app. Name over
+   character, tags on the right, the same hairline rhythm as .crew-row
+   so the two tabs read as one list that changed its columns. */
+.cast-list { display: flex; flex-direction: column; }
+.cast-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 11px 0; border-bottom: 1px solid var(--line);
+}
+.cast-row[hidden] { display: none; }
+.cast-row__who { min-width: 0; }
+.cast-row__name { display: block; font-weight: 600; font-size: 15px; }
+.cast-row__char { display: block; font-size: 12.5px; color: var(--ink-dim); margin-top: 2px; }
+.cast-row__tags { display: flex; gap: 6px; flex-shrink: 0; }
+.cast-tag {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+  padding: 3px 7px; border-radius: var(--radius-s);
+  background: var(--surface-raised); color: var(--ink-dim);
+}
+/* Said quietly on purpose. It marks a credit only one site carried,
+   which is a caveat, not a warning. */
+.cast-tag--unverified { background: none; color: var(--ink-faint); box-shadow: inset 0 0 0 1px var(--line); }
+/* The skeleton row holds the same height as a real one, so the list
+   doesn't jump when the names arrive. */
+.cast-row--skeleton { display: block; padding: 13px 0 14px; }
+.cast-row--skeleton .skeleton--line-sm { margin-top: 6px; }
+.cast-sources { margin-top: 12px; }
+.cast-sources__summary {
+  cursor: pointer; font-size: 12px; font-weight: 600; color: var(--ink-dim);
+  list-style: none; padding: 4px 0;
+}
+.cast-sources__summary::-webkit-details-marker { display: none; }
+.cast-sources__summary::before { content: '▸ '; }
+.cast-sources[open] .cast-sources__summary::before { content: '▾ '; }
+.cast-sources__list { margin: 2px 0 0; padding-left: 14px; display: flex; flex-direction: column; gap: 4px; }
+.cast-sources__list a { font-size: 12.5px; color: var(--accent-bright); word-break: break-all; }
+.cast-foot { margin: 10px 0 0; font-size: 11.5px; color: var(--ink-faint); }

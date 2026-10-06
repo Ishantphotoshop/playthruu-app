@@ -9,6 +9,7 @@ import { openLogComposer } from './log-composer.js';
 import { openAddToListPicker } from './lists-view.js';
 import { refreshCurrentView, navigate } from '../router.js';
 import { wireLogCards } from './feed-view.js';
+import { paintCast } from './cast-view.js';
 
 // Simple geometric marks for the "Playable on" row — not literal brand
 // logos (nothing here is verified pixel-accurate without a live render,
@@ -374,12 +375,11 @@ export async function renderGameView(root, { id, igdbId }) {
     recordRecentlyViewed(game);
     loadCastDirector();
 
-    // Runs after the page has already painted (castDirectorData starts
-    // null, which paintTabContent's Cast branch renders as a spinner —
-    // see below). Updates the header's director chip and cast-preview
-    // avatars, plus the Cast tab itself if it's the one currently open,
-    // once the real result is in — no arbitrary cutoff, it just shows
-    // up whenever it's actually ready.
+    // Runs after the page has already painted. Updates the header's
+    // director chip, and the Crew tab if that is the one open, once the
+    // real result is in — no arbitrary cutoff, it just shows up whenever
+    // it's actually ready. (Cast no longer comes from here: see
+    // js/views/cast-view.js.)
     async function loadCastDirector() {
       try {
         castDirectorData = await api.getGameCastAndDirector(game);
@@ -397,9 +397,10 @@ export async function renderGameView(root, { id, igdbId }) {
           game.developer,
         );
       }
-      // Both tabs resolve from this same castDirectorData fetch — whichever
-      // one is open needs repainting once the real result lands, not just Cast.
-      if (activeTab === 'cast' || activeTab === 'crew') paintTabContent();
+      // Only Crew rides on this fetch now — Cast has its own source and
+      // its own loading state, and repainting it here would start a
+      // second lookup on top of the one already running.
+      if (activeTab === 'crew') paintTabContent();
     }
 
     // Shared by "More from [Studio]" and "Similar games" below — both are
@@ -954,22 +955,11 @@ export async function renderGameView(root, { id, igdbId }) {
       const slot = qs('#game-tab-content', body);
       if (!slot) return;
       if (activeTab === 'cast') {
-        if (castDirectorData === null) {
-          // The real loading state now — cast/director loads after the
-          // rest of the page (see loadCastDirector above), so this
-          // shows until that resolves, however long it actually takes.
-          slot.innerHTML = spinner();
-          return;
-        }
-        const cast = castDirectorData.cast;
-
-        // Director already shows next to the game's title (#director-slot
-        // in the header above) — repeating it here just duplicated it.
-        // This tab is voice cast only now.
-        slot.innerHTML = cast.length
-          ? creditListHtml(cast, (p) => (p.characters.length ? p.characters.join(', ') : 'Voice actor'))
-          : `<p class="gd-empty">No cast listed for this game on Wikidata yet — coverage there is community-maintained.</p>`;
-        wireShowMore(slot);
+        // Owns its own loading, empty and error states, and its own
+        // fetch — it no longer rides along on the Wikidata lookup that
+        // still feeds the director credit and the Crew tab. See
+        // js/views/cast-view.js.
+        paintCast(slot, game);
         return;
       }
       if (activeTab === 'crew') {

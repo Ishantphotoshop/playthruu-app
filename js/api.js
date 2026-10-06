@@ -24,6 +24,13 @@ const STEAMGRIDDB_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/steamgriddb-proxy
 // session) is ever asked for or stored — only the online ID they type.
 const PSN_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/psn-proxy`;
 
+// Cast — who voiced and performed a game's characters. The rows live in
+// our own tables (people / game_cast, see migrations/2026-10-06_cast.sql),
+// which anyone may read; the fetch-cast Edge Function is what fills them
+// in the first time a game is asked about, and is the only thing allowed
+// to write to them.
+const CAST_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/fetch-cast`;
+
 // Every outbound call in this file goes through here.
 //
 // Without a timeout, a source that is DOWN doesn't fail — it hangs. A
@@ -5160,4 +5167,54 @@ export async function getDiaryGameKeys(userId) {
     if (l.games?.igdb_id) igdb.add(l.games.igdb_id);
   }
   return { igdb, local };
+}
+
+// ------------------------------------------------------------
+// CAST — our own tables, filled once per game from the public web
+// ------------------------------------------------------------
+// Two steps, in this order on purpose. The table read is a plain
+// Postgres query that answers in milliseconds and costs nothing, and for
+// every game anybody has already opened it is the whole story. Only a
+// game nobody has ever asked about reaches the Edge Function, which is
+// where the searching and the spending happen (see
+// supabase/functions/fetch-cast).
+//
+// `status` comes back as 'done', 'none' (looked, nothing out there),
+// 'busy' (someone else is looking right now, or today's lookup budget is
+// spent — ask again later) or 'error'.
+export async function getGameCast(igdbGameId) {
+  const id = Number(igdbGameId);
+  if (!Number.isInteger(id) || id <= 0) return { status: 'none', cast: [] };
+
+  const { data } = await supabase
+    .from('game_cast')
+    .select('character_name, role_type, verified, source_urls, people(name)')
+    .eq('igdb_game_id', id);
+  const saved = (data || [])
+    .map((r) => ({
+      person: r.people?.name || '',
+      character: r.character_name || '',
+      role_type: r.role_type,
+      verified: r.verified,
+      source_urls: r.source_urls || [],
+    }))
+    .filter((r) => r.person);
+  if (saved.length) return { status: 'done', cast: saved };
+
+  // Nothing saved: ask the function to go and find out. Given a longer
+  // budget than the app's usual 3.5s because this one really does go
+  // and read the web — the view shows a skeleton the whole time.
+  const res = await fetchWithTimeout(CAST_FUNCTION_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${SUPABASE_ANON_KEY}` },
+    body: JSON.stringify({ igdb_game_id: id }),
+  }, 45000);
+  // A 404 is the function not being deployed yet (see README step 3c).
+  // That is "we have no cast for this", not an error worth putting on
+  // the page in red — the app has to behave itself before the setup
+  // step is done, not just after.
+  if (res.status === 404) return { status: 'none', cast: [] };
+  if (!res.ok) throw new Error('Could not load the cast.');
+  const body = await res.json();
+  return { status: body.status || 'none', cast: Array.isArray(body.cast) ? body.cast : [] };
 }
