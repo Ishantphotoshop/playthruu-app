@@ -177,12 +177,13 @@ reading the pages it finds.
 Sign up at <https://app.tavily.com> → **API Keys** → copy the key (it
 starts with `tvly-`).
 
-**2. Get an Anthropic key** (reads the pages, free credit to start)
+**2. Get a Gemini key** (reads the pages, free, no card)
 
-Sign up at <https://console.anthropic.com> → **API Keys** → **Create
-Key** → copy it (it starts with `sk-ant-`). Extraction runs on Claude
-Haiku, the cheapest model — a game works out to a fraction of a cent, and
-it is paid once per game ever.
+Go to <https://aistudio.google.com/apikey> → sign in with a Google
+account → **Create API key** → copy it (it starts with `AIza`). The free
+tier needs no billing and no card. Pulling names out of a page that
+already lists them is an easy job, so this runs on Flash, the small fast
+model, and the daily cap below keeps it inside the free tier.
 
 **3. Create the tables**
 
@@ -205,7 +206,7 @@ folder in PowerShell, in order:
 npx supabase login
 npx supabase link --project-ref YOUR_PROJECT_REF
 npx supabase secrets set TAVILY_API_KEY=tvly-xxxxxxxx
-npx supabase secrets set ANTHROPIC_API_KEY=sk-ant-xxxxxxxx
+npx supabase secrets set GEMINI_API_KEY=AIzaxxxxxxxx
 npx supabase functions deploy fetch-cast
 ```
 
@@ -218,11 +219,12 @@ name it exactly `fetch-cast`, paste the contents of
 `supabase/functions/fetch-cast/index.ts`, **Deploy**; then **Project
 Settings → Edge Functions → Secrets** (older dashboards: **Settings →
 Edge Functions → Environment variables**) → add `TAVILY_API_KEY` and
-`ANTHROPIC_API_KEY`.
+`GEMINI_API_KEY`.
 
-Optional third secret: `MAX_LOOKUPS_PER_DAY` (default 30) caps how many
-*new* games may be looked up per day, so nothing can burn through the
-free tiers in an afternoon. Games already saved are never affected by it.
+Optional extra secrets: `MAX_LOOKUPS_PER_DAY` (default 30) caps how many
+*new* games may be looked up per day, so nothing can run past the free
+tiers, and `GEMINI_MODEL` swaps which model reads the pages. Games
+already saved are never affected by the cap.
 
 ```powershell
 npx supabase secrets set MAX_LOOKUPS_PER_DAY=30

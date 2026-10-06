@@ -13,7 +13,7 @@
 //   3. Someone else looking right now? Say busy; the page tries later.
 //   4. Search the public web with Tavily, minus the sites whose terms
 //      forbid automated extraction.
-//   5. Ask Claude Haiku to pull the cast out of EACH page separately —
+//   5. Ask a model to pull the cast out of EACH page separately —
 //      separately, because which page a name came from is what makes
 //      step 6 possible.
 //   6. A name/character pair seen on two or more different DOMAINS is
@@ -27,19 +27,21 @@
 // expose to the internet.
 //
 // Setup:
-//   npx supabase secrets set TAVILY_API_KEY=... ANTHROPIC_API_KEY=...
+//   npx supabase secrets set TAVILY_API_KEY=... GEMINI_API_KEY=...
 //   npx supabase functions deploy fetch-cast
 // Optional: MAX_LOOKUPS_PER_DAY (default 30) caps NEW lookups per day,
 // so a crawler opening a thousand game pages cannot spend a month of
 // free credits in an afternoon.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import Anthropic from "npm:@anthropic-ai/sdk@0.131.0";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const TAVILY_API_KEY = Deno.env.get("TAVILY_API_KEY") ?? "";
-const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY") ?? "";
+const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY") ?? "";
+// Flash is the cheap, fast tier and this is an easy job — the cast is
+// already written on the page, the model only has to pick it out.
+const GEMINI_MODEL = Deno.env.get("GEMINI_MODEL") ?? "gemini-3.8-flash";
 const MAX_LOOKUPS_PER_DAY = Number(Deno.env.get("MAX_LOOKUPS_PER_DAY") ?? "30");
 
 const CORS_HEADERS = {
@@ -159,9 +161,10 @@ async function searchWeb(name: string, year: number | null): Promise<Source[]> {
 // ---- the model --------------------------------------------------------
 // The one place an LLM is used, and the only place a provider name
 // appears, so swapping provider later is this function and nothing else.
+// Currently Gemini Flash, picked for having a free tier that needs no
+// card: this feature is not worth a bill, and the job — copy the names
+// out of the text in front of you — does not need a large model.
 type RawEntry = { person: string; character: string; role_type: string };
-
-const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
 
 const CAST_SCHEMA = {
   type: "object",
@@ -205,20 +208,28 @@ const SYSTEM = [
 ].join("\n");
 
 export async function extractCast(text: string): Promise<RawEntry[]> {
-  const res = await anthropic.messages.create({
-    model: "claude-haiku-4-5-20251001",
-    max_tokens: 4000,
-    system: SYSTEM,
-    messages: [{
-      role: "user",
-      content: `Extract the cast from this page text.\n\n<page_text>\n${text}\n</page_text>`,
-    }],
-    output_config: { format: { type: "json_schema", schema: CAST_SCHEMA } },
+  const res = await fetch("https://generativelanguage.googleapis.com/v1beta/interactions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-goog-api-key": GEMINI_API_KEY },
+    body: JSON.stringify({
+      model: GEMINI_MODEL,
+      system_instruction: SYSTEM,
+      input: `Extract the cast from this page text.\n\n<page_text>\n${text}\n</page_text>`,
+      response_format: { type: "text", mime_type: "application/json", schema: CAST_SCHEMA },
+    }),
   });
-  const block = res.content.find((b) => b.type === "text");
-  if (!block || block.type !== "text") return [];
+  if (!res.ok) throw new Error(`${res.status} ${(await res.text()).slice(0, 300)}`);
+  const body = await res.json();
+  // outputText is the convenience field; the steps array is where the
+  // text actually lives, and is read as a fallback so a response that
+  // leaves outputText out still works.
+  const out: string = body.outputText ?? (body.steps ?? [])
+    .flatMap((s: { content?: { type?: string; text?: string }[] }) => s.content ?? [])
+    .filter((c: { type?: string }) => c.type === "text")
+    .map((c: { text?: string }) => c.text ?? "")
+    .join("");
   try {
-    const parsed = JSON.parse(block.text);
+    const parsed = JSON.parse(out);
     return Array.isArray(parsed?.cast) ? parsed.cast : [];
   } catch {
     return [];
@@ -347,8 +358,8 @@ async function save(igdbGameId: number, pairs: Pair[]) {
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS_HEADERS });
-  if (!TAVILY_API_KEY || !ANTHROPIC_API_KEY) {
-    return json({ error: "TAVILY_API_KEY / ANTHROPIC_API_KEY are not set as Supabase secrets yet." }, 500);
+  if (!TAVILY_API_KEY || !GEMINI_API_KEY) {
+    return json({ error: "TAVILY_API_KEY / GEMINI_API_KEY are not set as Supabase secrets yet." }, 500);
   }
 
   let igdbGameId = 0;
