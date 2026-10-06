@@ -735,7 +735,12 @@ async function paintDiscovery(slot) {
     // be when it is out and scaled down on the shelf, never the other way
     // round - a cover scaled up from thumbnail size arrives soft, which is
     // the one thing this moment cannot afford.
-    const RATIO = 0.72;   // width / height of a game case
+    // 3:4, which is what IGDB serves every cover at. The case was 0.72
+    // before - close to a real DVD case, but a hair narrower than the art,
+    // so every cover was being cropped a few percent at the sides and read
+    // as squashed. Matching the artwork exactly means nothing is cut and
+    // nothing is stretched.
+    const RATIO = 0.75;   // width / height of a game case
     const TURN = 87;      // deg: edge on, with a sliver of cover showing
     const N = 12;         // cases on the shelf
     const PERSP = 1100;   // matches the scene's perspective, in css
@@ -797,7 +802,10 @@ async function paintDiscovery(slot) {
       stage.style.setProperty('--fw', `${M.fw}px`);
       stage.style.setProperty('--fh', `${M.fh}px`);
       stage.style.setProperty('--fd', `${M.fd}px`);
-      const span = Math.max(M.n * M.step, M.vw) * 1.35;
+      // The plank is exactly as long as the row of cases, so it never
+      // shows a bare end with nothing standing on it. Both run past the
+      // edges of the screen together.
+      const span = M.n * M.step * 1.02;
       const board = qs('.draw-board', stage);
       // Big enough to put the whole shelf in shadow, small enough that its
       // edges never reach the title or the buttons below.
