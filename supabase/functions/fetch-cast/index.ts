@@ -66,7 +66,7 @@ const BLOCKED_DOMAINS = [
 ];
 
 const NAME_MAX = 80;
-const PHOTOS_PER_RUN = 20;    // Wikipedia lookups per game, at most
+const PHOTOS_PER_RUN = 100;   // new names given a portrait lookup per game
 const SOURCES_READ = 4;       // pages actually sent to the model
 const LOOKUP_TTL_DAYS = 30;   // how long a "nothing found" answer stands
 const PENDING_STALE_MS = 5 * 60 * 1000; // a crashed lookup stops blocking after this
@@ -270,67 +270,46 @@ export async function extractCast(sources: { label: string; text: string }[]): P
 }
 
 // ---- portraits --------------------------------------------------------
-// Wikipedia's page summary API: free, public, needs no key, and the
-// picture stays on Wikimedia's servers - we only ever keep the URL.
+// Wikipedia, through the one endpoint that takes FIFTY titles at a time:
+// a whole cast is one request. The per-page summary API would be one
+// request per person, and Wikipedia rate-limits anonymous callers hard
+// enough that a cast of fifty comes back mostly 429 - which, counted as
+// "this person has no photo", would be a face missing for good.
 //
-// A name is looked up as a page title first, then through title search
-// for the many names that are not spelled exactly as their article
-// ("W Earl Brown" -> "W. Earl Brown"). It hits for actors with an
-// article and misses for everyone else, which is most of a cast list -
-// which is why the app draws an initial-letter tile as a normal state
-// rather than an error, exactly as it already does for directors.
-//
-// Three outcomes, not two. "found" and "none" are answers and are
-// recorded; "retry" means Wikipedia said 429 or fell over, and recording
-// THAT as "this person has no photo" would be permanent, on the strength
-// of a moment's rate limiting.
-type Photo = { status: "found"; url: string } | { status: "none" } | { status: "retry" };
-
+// Free, no key, and only the URL is kept; the picture itself stays on
+// Wikimedia's servers. Plenty of voice actors have no article at all, so
+// a miss is the normal case, not a failure - which is why the app draws
+// an initial-letter tile, exactly as the director credit already does.
 const WIKI_HEADERS = { "Api-User-Agent": "PlayThruu/1.0 (https://playthruu.com)" };
+const PERFORMER = /\b(actor|actress|voice|performer|singer|comedian|musician)\b/;
 
-function usablePortrait(d: Record<string, any>): string | null {
-  // 'standard' rules out disambiguation pages, the usual way a common
-  // name resolves to something that is not a person.
-  if (d?.type !== "standard" || !d?.thumbnail?.source) return null;
-  // And the article has to be about a performer: "Nathan Drake" has an
-  // article and a picture, and it is not a photograph of a human.
-  const blurb = `${d.description ?? ""} ${d.extract ?? ""}`.toLowerCase();
-  if (!/\b(actor|actress|voice|performer|singer|comedian|musician)\b/.test(blurb)) return null;
-  return d.thumbnail.source as string;
+// Titles come back normalised, redirected and reordered, so matching is
+// on a flattened form of the name rather than the string we sent.
+const flat = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+async function photosFor(names: string[]): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  const url = "https://en.wikipedia.org/w/api.php?action=query&format=json&formatversion=2"
+    + "&prop=pageimages%7Cdescription&piprop=thumbnail&pithumbsize=320&redirects=1&titles="
+    + encodeURIComponent(names.join("|"));
+  const res = await fetch(url, { headers: WIKI_HEADERS });
+  if (!res.ok) throw new Error(`wikipedia ${res.status}`);
+  const data = await res.json();
+  const wanted = new Map(names.map((n) => [flat(n), n]));
+  for (const page of data?.query?.pages ?? []) {
+    const name = wanted.get(flat(page.title ?? ""));
+    if (!name || !page.thumbnail?.source) continue;
+    // The article has to be about a performer: "Nathan Drake" has an
+    // article, and its picture is not a photograph of a human.
+    if (!PERFORMER.test(String(page.description ?? "").toLowerCase())) continue;
+    out.set(name, page.thumbnail.source);
+  }
+  return out;
 }
 
-async function photoFor(name: string): Promise<Photo> {
-  const summary = async (title: string): Promise<Photo> => {
-    const res = await fetch(
-      `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`,
-      { headers: WIKI_HEADERS },
-    );
-    if (res.status === 404) return { status: "none" };
-    if (!res.ok) return { status: "retry" };
-    const url = usablePortrait(await res.json());
-    return url ? { status: "found", url } : { status: "none" };
-  };
-
-  const direct = await summary(name.replace(/ /g, "_"));
-  if (direct.status !== "none") return direct;
-
-  // Not under that exact title: ask Wikipedia which page it means.
-  const res = await fetch(
-    `https://en.wikipedia.org/w/rest.php/v1/search/title?q=${encodeURIComponent(name)}&limit=1`,
-    { headers: WIKI_HEADERS },
-  );
-  if (!res.ok) return { status: res.status === 404 ? "none" : "retry" };
-  const key = (await res.json())?.pages?.[0]?.key;
-  if (!key) return { status: "none" };
-  return await summary(key);
-}
-
-// New names only, and one at a time: Wikipedia rate-limits anonymous
-// callers hard enough that a handful of parallel requests comes back 429,
-// and a 429 counted as "no photo" would be a face missing forever. Capped
-// per run too - a cast of a hundred must not become a hundred serial
-// requests inside one function call. Whatever is left over keeps
-// image_checked false and is picked up the next time this person appears.
+// Only names never looked up before. A whole batch failing leaves them
+// unchecked rather than recorded as having no photo, so a bad minute at
+// Wikipedia costs nothing but a retry on the next lookup.
 async function addPhotos(names: string[]) {
   const { data: pending } = await db
     .from("people")
@@ -338,18 +317,19 @@ async function addPhotos(names: string[]) {
     .in("name", names)
     .eq("image_checked", false)
     .limit(PHOTOS_PER_RUN);
-  for (const person of pending ?? []) {
-    let photo: Photo;
+  const todo = pending ?? [];
+  for (let i = 0; i < todo.length; i += 50) {
+    const batch = todo.slice(i, i + 50);
+    let found: Map<string, string>;
     try {
-      photo = await photoFor(person.name);
+      found = await photosFor(batch.map((p: { name: string }) => p.name));
     } catch {
-      photo = { status: "retry" };
+      continue;
     }
-    if (photo.status === "retry") continue; // ask again another day
-    await db.from("people")
-      .update({ image_url: photo.status === "found" ? photo.url : null, image_checked: true })
-      .eq("id", person.id);
-    await new Promise((r) => setTimeout(r, 250));
+    await Promise.all(batch.map((p: { id: string; name: string }) =>
+      db.from("people")
+        .update({ image_url: found.get(p.name) ?? null, image_checked: true })
+        .eq("id", p.id)));
   }
 }
 
