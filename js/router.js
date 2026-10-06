@@ -263,6 +263,22 @@ function stepBack() {
 // True when the entry we are on belongs to an open overlay.
 export function onOverlayEntry() { return !!history.state?.ov; }
 
+// Resolves once the history entry of an overlay that was just closed has
+// been dropped. Anything that closes one sheet and immediately opens
+// another has to wait for this: the new sheet pushes its own entry, and
+// the Back still in flight from the old one then lands on it, sees an
+// overlay with no entry to match, and closes it. That is how "Write a
+// review" opened the composer for a frame and then lost it.
+//
+// The removal is noticed by the MutationObserver in trackOverlays, one
+// task after the element leaves the page, so this yields a task first to
+// let that start the Back before checking whether one is in flight.
+export function afterOverlayClosed() {
+  return new Promise((done) => {
+    setTimeout(() => { if (backInFlight) afterBack.push(done); else done(); }, 0);
+  });
+}
+
 export function trackOverlays({ selector, dismiss, onAllClosed }) {
   overlaySelector = selector;
   if (dismiss) dismissOverlay = dismiss;

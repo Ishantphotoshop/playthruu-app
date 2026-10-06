@@ -7,7 +7,7 @@ import {
 import { esc, starRow, formatDate, timeAgo, qs, qsa, toast, promptSignIn, recordRecentlyViewed, pulseLogTab, enableSwipeToDismiss } from '../utils.js';
 import { openLogComposer } from './log-composer.js';
 import { openAddToListPicker } from './lists-view.js';
-import { refreshCurrentView, navigate } from '../router.js';
+import { refreshCurrentView, navigate, afterOverlayClosed } from '../router.js';
 import { wireLogCards } from './feed-view.js';
 import { paintCast } from './cast-view.js';
 
@@ -486,7 +486,22 @@ export async function renderGameView(root, { id, igdbId }) {
       try {
         const saved = await api.addGame(game, state.user.id);
         game = saved;
+        const before = location.hash;
         navigate(`/game/${saved.id}`);
+        // Hand back only once the URL swap has actually landed. The
+        // callers open a sheet the moment this returns, and the app closes
+        // every open overlay on a hashchange (closeStrayOverlays, app.js)
+        // - which fires a task AFTER navigate() returns. Without this wait
+        // the sheet opened, then was swept away by the very navigation
+        // that had just saved the game: "Write a review" did nothing, and
+        // so did Add to lists, on any game opened without an account row.
+        if (location.hash !== before) {
+          await new Promise((landed) => {
+            const done = () => { window.removeEventListener('hashchange', done); setTimeout(landed, 0); };
+            window.addEventListener('hashchange', done);
+            setTimeout(done, 800); // never hang the sheet on a navigation that was cancelled
+          });
+        }
         return saved;
       } catch (err) {
         toast(err.message || 'Could not save that game.', 'error');
@@ -1430,15 +1445,23 @@ function openLogSheet({ game, ownLog, replayCount, ensureSavedGame, onChanged, o
     if (act === 'review' || act === 'again') {
       const current = await commit();
       close();
+      // The next sheet must not open until this one's history entry is
+      // gone - see afterOverlayClosed in router.js.
+      await afterOverlayClosed();
       if (act === 'again') {
         const saved = await ensureSavedGame();
-        if (saved) openLogComposer({ game, defaultReplay: true, onSaved: onChanged });
+        if (saved) openLogComposer({ game: saved, defaultReplay: true, onSaved: onChanged });
         return;
       }
       if (current) openLogComposer({ existingLog: current, onSaved: onChanged });
       else {
         const saved = await ensureSavedGame();
-        if (saved) openLogComposer({ game, onSaved: onChanged });
+        // The row ensureSavedGame just returned, NOT `game`: this sheet was
+        // opened with the copy from before the game was in the catalogue,
+        // which has no id, and the composer files the log against its id.
+        // Handing it the stale copy meant a review on any game opened
+        // without a saved row was written with game_id null and refused.
+        if (saved) openLogComposer({ game: saved, onSaved: onChanged });
       }
       return;
     }
@@ -1446,6 +1469,7 @@ function openLogSheet({ game, ownLog, replayCount, ensureSavedGame, onChanged, o
     if (act === 'list') {
       await commit();
       close();
+      await afterOverlayClosed();
       await onAddToList?.();
       return;
     }

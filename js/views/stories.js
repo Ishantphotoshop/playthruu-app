@@ -44,6 +44,10 @@ export async function paintStoryRail(slot) {
     return;
   }
 
+  // The rail was fetched a moment ago; if the session ended in between
+  // (signing out, or the account changing underneath the feed), there is
+  // no one left to draw it for.
+  if (!state.user) { slot.innerHTML = ''; return; }
   const meId = state.user.id;
   const mine = groups.find((g) => g.author.id === meId);
   // The add button doubles as your own ring once you have posted — one

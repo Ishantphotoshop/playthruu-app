@@ -27,7 +27,6 @@ export async function renderFeedView(root, { initialTab = 'feed' } = {}) {
   // notification bell, so having a second one in the header was just a
   // duplicate of the same destination.
   root.innerHTML = topBar('', { home: true }) + homeTabs(activeTab) + `<div class="view-body" id="feed-body"></div>` + navBar('/feed');
-  wireStamp(root);
   const body = qs('#feed-body', root);
   wirePullToRefresh(body);
 
@@ -1188,17 +1187,6 @@ async function paintCurrentlyPlaying(slot) {
 // this one only ever flashes on briefly, so it reads better solid.
 function iconBookmarkFilled() {
   return `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 3.8h12a1 1 0 0 1 1 1V20.5l-7-4.1-7 4.1V4.8a1 1 0 0 1 1-1z"/></svg>`;
-}
-
-function wireStamp(root) {
-  // the center "Log" nav button opens the modal directly instead of routing
-  const logTab = qs('.tabbar__item--primary', root);
-  if (logTab) {
-    logTab.addEventListener('click', (e) => {
-      e.preventDefault();
-      openLogComposer({ onSaved: () => refreshCurrentView() });
-    });
-  }
 }
 
 // Pull-down-to-refresh, touch only. Only engages when the feed is
