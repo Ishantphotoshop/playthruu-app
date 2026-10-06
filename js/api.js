@@ -5188,11 +5188,12 @@ export async function getGameCast(igdbGameId) {
 
   const { data } = await supabase
     .from('game_cast')
-    .select('character_name, role_type, verified, source_urls, people(name)')
+    .select('character_name, role_type, verified, source_urls, people(name, image_url)')
     .eq('igdb_game_id', id);
   const saved = (data || [])
     .map((r) => ({
       person: r.people?.name || '',
+      photo: r.people?.image_url || null,
       character: r.character_name || '',
       role_type: r.role_type,
       verified: r.verified,

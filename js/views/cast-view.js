@@ -14,10 +14,15 @@ import { esc, qs, qsa } from '../utils.js';
 // circle, and it is the same wait only ever paid once per game, by
 // whoever happens to open it first.
 //
-// Everything on screen says where it came from. A name only one site
-// carried is shown and tagged "unverified" rather than hidden: one
-// decent source is worth more than an empty tab, as long as the page is
-// honest about which it is. The sources themselves are one tap away.
+// Everything on screen says where it came from: the sources are one tap
+// away at the bottom. A name only one site carried is still shown — one
+// decent source is worth more than an empty tab — it simply sits below
+// the ones several sites agreed on.
+//
+// Portraits come from Wikipedia and are saved alongside the name (the
+// URL, not the picture). Most voice actors have no article, so the
+// initial-letter tile is the normal case rather than a failure, which is
+// exactly how the director credit on this same page already behaves.
 
 // Per-tab memory only — a tab switch away and back must not refetch, but
 // a reload should, since another visitor's lookup may have filled the
@@ -33,23 +38,35 @@ const ROLE_LABEL = {
 function skeletonRows(n = 5) {
   return `<div class="cast-list">${Array.from({ length: n }, () => `
     <div class="cast-row cast-row--skeleton">
-      <div class="skeleton skeleton--line" style="width:42%"></div>
-      <div class="skeleton skeleton--line skeleton--line-sm" style="width:26%"></div>
+      <span class="skeleton cast-row__photo"></span>
+      <div class="cast-row__who">
+        <div class="skeleton skeleton--line" style="width:58%"></div>
+        <div class="skeleton skeleton--line skeleton--line-sm" style="width:36%;margin-top:6px"></div>
+      </div>
     </div>`).join('')}</div>`;
+}
+
+// Same treatment as the director's portrait, down to the onerror swap:
+// a Commons file that 404s or refuses to be hotlinked falls back to the
+// letter tile instead of leaving a broken-image box in the list.
+function facePic(entry) {
+  const initial = esc((entry.person || '?').charAt(0).toUpperCase());
+  return entry.photo
+    ? `<img class="cast-row__photo" src="${esc(entry.photo)}" alt="" loading="lazy"
+            onerror="this.outerHTML='<span class=\'cast-row__photo cast-row__photo--initial\'>${initial}</span>'">`
+    : `<span class="cast-row__photo cast-row__photo--initial">${initial}</span>`;
 }
 
 function castRowHtml(entry) {
   const role = ROLE_LABEL[entry.role_type] || '';
   return `
     <div class="cast-row">
+      ${facePic(entry)}
       <div class="cast-row__who">
         <span class="cast-row__name">${esc(entry.person)}</span>
         ${entry.character ? `<span class="cast-row__char">${esc(entry.character)}</span>` : ''}
       </div>
-      <div class="cast-row__tags">
-        ${role ? `<span class="cast-tag">${esc(role)}</span>` : ''}
-        ${entry.verified ? '' : '<span class="cast-tag cast-tag--unverified">unverified</span>'}
-      </div>
+      ${role ? `<span class="cast-tag">${esc(role)}</span>` : ''}
     </div>`;
 }
 
@@ -69,10 +86,12 @@ function sourcesHtml(cast) {
     </details>`;
 }
 
-// Named and credited first, then everyone else, each group alphabetical.
-// A verified, named credit is the thing someone opened this tab to read.
+// The ones with a face and a character, that several sites agreed on,
+// first — that is what someone opened this tab to look at. `verified` no
+// longer shows as a label anywhere, but it is still the best signal of
+// which credits to lead with.
 function order(cast) {
-  const rank = (c) => (c.verified ? 0 : 2) + (c.character ? 0 : 1);
+  const rank = (c) => (c.verified ? 0 : 4) + (c.character ? 0 : 2) + (c.photo ? 0 : 1);
   return [...cast].sort((a, b) => rank(a) - rank(b) || a.person.localeCompare(b.person));
 }
 

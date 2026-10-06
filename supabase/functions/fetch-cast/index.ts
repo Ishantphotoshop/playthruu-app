@@ -21,7 +21,7 @@
 //   6. A name/character pair that appeared under two or more different
 //      SITES is marked verified. One site is still shown, tagged
 //      unverified.
-//   7. Save, and answer.
+//   7. Look up a photo for each new name on Wikipedia, save, and answer.
 //
 // The client sends an igdb_game_id and nothing else. The game's name and
 // year come from IGDB here, server-side, deliberately: a title sent by
@@ -66,6 +66,7 @@ const BLOCKED_DOMAINS = [
 ];
 
 const NAME_MAX = 80;
+const PHOTOS_PER_RUN = 20;    // Wikipedia lookups per game, at most
 const SOURCES_READ = 4;       // pages actually sent to the model
 const LOOKUP_TTL_DAYS = 30;   // how long a "nothing found" answer stands
 const PENDING_STALE_MS = 5 * 60 * 1000; // a crashed lookup stops blocking after this
@@ -268,6 +269,91 @@ export async function extractCast(sources: { label: string; text: string }[]): P
   }
 }
 
+// ---- portraits --------------------------------------------------------
+// Wikipedia's page summary API: free, public, needs no key, and the
+// picture stays on Wikimedia's servers - we only ever keep the URL.
+//
+// A name is looked up as a page title first, then through title search
+// for the many names that are not spelled exactly as their article
+// ("W Earl Brown" -> "W. Earl Brown"). It hits for actors with an
+// article and misses for everyone else, which is most of a cast list -
+// which is why the app draws an initial-letter tile as a normal state
+// rather than an error, exactly as it already does for directors.
+//
+// Three outcomes, not two. "found" and "none" are answers and are
+// recorded; "retry" means Wikipedia said 429 or fell over, and recording
+// THAT as "this person has no photo" would be permanent, on the strength
+// of a moment's rate limiting.
+type Photo = { status: "found"; url: string } | { status: "none" } | { status: "retry" };
+
+const WIKI_HEADERS = { "Api-User-Agent": "PlayThruu/1.0 (https://playthruu.com)" };
+
+function usablePortrait(d: Record<string, any>): string | null {
+  // 'standard' rules out disambiguation pages, the usual way a common
+  // name resolves to something that is not a person.
+  if (d?.type !== "standard" || !d?.thumbnail?.source) return null;
+  // And the article has to be about a performer: "Nathan Drake" has an
+  // article and a picture, and it is not a photograph of a human.
+  const blurb = `${d.description ?? ""} ${d.extract ?? ""}`.toLowerCase();
+  if (!/\b(actor|actress|voice|performer|singer|comedian|musician)\b/.test(blurb)) return null;
+  return d.thumbnail.source as string;
+}
+
+async function photoFor(name: string): Promise<Photo> {
+  const summary = async (title: string): Promise<Photo> => {
+    const res = await fetch(
+      `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`,
+      { headers: WIKI_HEADERS },
+    );
+    if (res.status === 404) return { status: "none" };
+    if (!res.ok) return { status: "retry" };
+    const url = usablePortrait(await res.json());
+    return url ? { status: "found", url } : { status: "none" };
+  };
+
+  const direct = await summary(name.replace(/ /g, "_"));
+  if (direct.status !== "none") return direct;
+
+  // Not under that exact title: ask Wikipedia which page it means.
+  const res = await fetch(
+    `https://en.wikipedia.org/w/rest.php/v1/search/title?q=${encodeURIComponent(name)}&limit=1`,
+    { headers: WIKI_HEADERS },
+  );
+  if (!res.ok) return { status: res.status === 404 ? "none" : "retry" };
+  const key = (await res.json())?.pages?.[0]?.key;
+  if (!key) return { status: "none" };
+  return await summary(key);
+}
+
+// New names only, and one at a time: Wikipedia rate-limits anonymous
+// callers hard enough that a handful of parallel requests comes back 429,
+// and a 429 counted as "no photo" would be a face missing forever. Capped
+// per run too - a cast of a hundred must not become a hundred serial
+// requests inside one function call. Whatever is left over keeps
+// image_checked false and is picked up the next time this person appears.
+async function addPhotos(names: string[]) {
+  const { data: pending } = await db
+    .from("people")
+    .select("id, name")
+    .in("name", names)
+    .eq("image_checked", false)
+    .limit(PHOTOS_PER_RUN);
+  for (const person of pending ?? []) {
+    let photo: Photo;
+    try {
+      photo = await photoFor(person.name);
+    } catch {
+      photo = { status: "retry" };
+    }
+    if (photo.status === "retry") continue; // ask again another day
+    await db.from("people")
+      .update({ image_url: photo.status === "found" ? photo.url : null, image_checked: true })
+      .eq("id", person.id);
+    await new Promise((r) => setTimeout(r, 250));
+  }
+}
+
+
 // ---- validation -------------------------------------------------------
 // Everything past this point treats the model's output the same way the
 // model was told to treat the web page: as something that arrived from
@@ -302,10 +388,11 @@ function key(person: string, character: string) {
 async function savedCast(igdbGameId: number) {
   const { data } = await db
     .from("game_cast")
-    .select("character_name, role_type, verified, source_urls, people(name)")
+    .select("character_name, role_type, verified, source_urls, people(name, image_url)")
     .eq("igdb_game_id", igdbGameId);
   return (data ?? []).map((r: Record<string, unknown>) => ({
     person: (r.people as { name: string } | null)?.name ?? "",
+    photo: (r.people as { image_url: string | null } | null)?.image_url ?? null,
     character: (r.character_name as string) ?? "",
     role_type: r.role_type as string,
     verified: r.verified as boolean,
@@ -365,6 +452,7 @@ async function save(igdbGameId: number, pairs: Pair[]) {
   });
   const { data: people } = await db.from("people").select("id, name").in("name", names);
   const idOf = new Map((people ?? []).map((p: { id: string; name: string }) => [p.name, p.id]));
+  await addPhotos(names);
 
   const rows = pairs
     .filter((p) => idOf.has(p.person))

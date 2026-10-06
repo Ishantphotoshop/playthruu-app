@@ -6537,32 +6537,37 @@ a.gd-credit__name { text-decoration: none; }
 
 
 /* ---- game page: Cast tab -------------------------------------------
-   A credit, not a profile: no photo, no chevron, nothing to tap
-   through to — these people have no page in the app. Name over
-   character, tags on the right, the same hairline rhythm as .crew-row
-   so the two tabs read as one list that changed its columns. */
+   A credit, not a profile: a portrait, the name, the character, and
+   nothing to tap through to — these people have no page in the app.
+   Same portrait and hairline rhythm as .crew-row next door, so Cast and
+   Crew read as one list that changed its middle column. */
 .cast-list { display: flex; flex-direction: column; }
 .cast-row {
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  padding: 11px 0; border-bottom: 1px solid var(--line);
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 0; border-bottom: 1px solid var(--line);
 }
 .cast-row[hidden] { display: none; }
-.cast-row__who { min-width: 0; }
+.cast-row__photo {
+  width: 42px; height: 42px; border-radius: 50%; object-fit: cover;
+  background: var(--surface-raised); flex-shrink: 0;
+}
+.cast-row__photo--initial {
+  display: grid; place-items: center;
+  color: var(--ink-dim); font-weight: 700; font-size: 15px;
+}
+/* Pushes the tag to the far edge and lets a long character name wrap
+   rather than shove it off. */
+.cast-row__who { min-width: 0; flex: 1; }
 .cast-row__name { display: block; font-weight: 600; font-size: 15px; }
 .cast-row__char { display: block; font-size: 12.5px; color: var(--ink-dim); margin-top: 2px; }
-.cast-row__tags { display: flex; gap: 6px; flex-shrink: 0; }
 .cast-tag {
   font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
   padding: 3px 7px; border-radius: var(--radius-s);
   background: var(--surface-raised); color: var(--ink-dim);
 }
-/* Said quietly on purpose. It marks a credit only one site carried,
-   which is a caveat, not a warning. */
-.cast-tag--unverified { background: none; color: var(--ink-faint); box-shadow: inset 0 0 0 1px var(--line); }
 /* The skeleton row holds the same height as a real one, so the list
    doesn't jump when the names arrive. */
-.cast-row--skeleton { display: block; padding: 13px 0 14px; }
-.cast-row--skeleton .skeleton--line-sm { margin-top: 6px; }
+.cast-row--skeleton .cast-row__who { width: 100%; }
 .cast-sources { margin-top: 12px; }
 .cast-sources__summary {
   cursor: pointer; font-size: 12px; font-weight: 600; color: var(--ink-dim);
