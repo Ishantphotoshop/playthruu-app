@@ -548,7 +548,7 @@ function cardWho(profile, rating, { playing = false, replayed = false, hasReview
   // rated and some are not. Currently playing is the one strip where it
   // can never fill: the game is not finished, so there is no rating, no
   // love and no review on ANY card in the row. There it buys no
-  // alignment and costs some: .card-who centres the 28px avatar against
+  // alignment and costs some: .card-who centres the 24px avatar against
   // the whole meta block, so a blank 14px line under the name drops the
   // face ~7px below the name it belongs to — measured, not guessed —
   // and that offset is the entire reason this footer read as a
@@ -558,7 +558,7 @@ function cardWho(profile, rating, { playing = false, replayed = false, hasReview
   const second = playing ? '' : `<span class="card-who__stars">${bits.join('')}</span>`;
   return `
     <a href="#/profile/${esc(profile.username)}" class="card-who">
-      <span class="card-who__avatar-wrap">${avatarImg(profile, 28)}</span>
+      <span class="card-who__avatar-wrap">${avatarImg(profile, 24)}</span>
       <span class="card-who__meta">
         <span class="card-who__name">${esc(profile.display_name || profile.username)}</span>
         ${second}

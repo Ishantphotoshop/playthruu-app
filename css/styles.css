@@ -1476,7 +1476,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    poster's width so nothing spills past the card edge. */
 .friend-card__poster, .activity-card__poster { display: block; }
 .card-who {
-  display: flex; align-items: center; gap: 5px; margin-top: 3px;
+  display: flex; align-items: center; gap: 4px; margin-top: 3px;
   width: var(--feed-card-w, 140px); max-width: var(--feed-card-w, 140px); /* == poster width, so it never overflows */
 }
 /* Every card in the row is the SAME width (--feed-card-w) — there's no
