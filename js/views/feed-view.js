@@ -652,7 +652,7 @@ async function paintDiscovery(slot) {
     const crewEl = qs('.draw-crew', overlay);
     const acts = qsa('.draw-act', overlay);
     // People you follow, fetched once per draw session; each pick's friend
-    // activity is looked up alongside its art, so it's there on reveal.
+    // activity is looked up while its case is being pulled out.
     const followingP = state.user ? api.getFollowingIdSet(state.user.id).catch(() => new Set()) : Promise.resolve(new Set());
     let crew = [];
     const btnDraw = qs('[data-draw]', overlay);
@@ -664,15 +664,13 @@ async function paintDiscovery(slot) {
     let token = 0;
     let busy = false;
     let skip = false;
-    let pick = null;
+    let pick = null;      // the game showing
     let current = null;   // the case that is out of the shelf
-    let lastSlot = -1;
 
-    // One tween helper for everything on this screen. The element's inline
-    // style is the source of truth: every animation ends by writing its
-    // final values there and cancelling itself, so nothing is left holding
-    // a fill, a resize can re-lay-out cleanly, and Skip is just "finish
-    // whatever is running".
+    // One tween helper. The element's inline style is the source of truth:
+    // every animation writes its final values there and cancels itself, so
+    // nothing is left holding a fill and the live tilt below can take over
+    // the same transform without fighting it.
     const dur = (ms) => (reduce ? 1 : ms);
     function tween(el, keyframes, opt, final) {
       const a = el.animate(keyframes, { fill: 'both', ...opt, duration: dur(opt.duration), delay: reduce ? 0 : (opt.delay || 0) });
@@ -689,6 +687,7 @@ async function paintDiscovery(slot) {
     const onKey = (e) => { if (e.key === 'Escape') close(); };
     function close() {
       token++;
+      stopTilt();
       anims.forEach((a) => { try { a.cancel(); } catch { /* already gone */ } });
       overlay.remove();
       document.body.style.overflow = '';
@@ -701,17 +700,18 @@ async function paintDiscovery(slot) {
     overlay.__dismiss = () => close();
     qs('[data-close]', overlay).addEventListener('click', close);
     overlay.addEventListener('click', (e) => {
-      if (e.target.closest('button')) return;
+      if (e.target.closest('button') || e.target.closest('.draw-case')) return;
       if (busy) { skip = true; anims.forEach((a) => { try { a.finish(); } catch { /* already gone */ } }); return; }
       if (e.target === overlay || e.target === drawEl || e.target.classList.contains('draw-scene') || e.target === stage) close();
     });
 
     const genreOf = (g) => (g.genre || '').split(',')[0].replace('Role-playing (RPG)', 'RPG').trim();
+    const artOf = (g) => (g.cover_url ? igdbSized(g.cover_url, 'cover_big') : placeholderCover(g.title));
 
-    // Fully random: a random page deep into the collection's own ranking
-    // (not just what is loaded on screen), falling back to the loaded
-    // games if the request fails or comes back empty. The seen-set covers
-    // both sources so nothing repeats within a session.
+    // Games for the shelf. The ones already on screen first - their covers
+    // are decoded and in cache, so the shelf is instant - topped up from
+    // the same deep random pool the old draw used, so a long session keeps
+    // turning up things the grid never showed.
     const seen = drawn.keys;
     const localPick = () => {
       let fresh = games.filter((g) => !seen.has(keyOf(g)));
@@ -720,70 +720,60 @@ async function paintDiscovery(slot) {
     };
     if (drawPool.id !== collection.id) { drawPool.id = collection.id; drawPool.games = []; }
     const pool = drawPool.games;
-    const refill = refillDrawPool;
-    async function choose() {
-      if (pool.length < 3) {
-        const filling = refill().catch(() => {});
-        if (!pool.length) await filling; // otherwise it tops up in the background
-      }
+    function freshGame() {
+      if (pool.length < 3) refillDrawPool().catch(() => {});
       const g = pool.length ? pool.splice(Math.floor(Math.random() * pool.length), 1)[0] : localPick();
       seen.add(keyOf(g));
       return g;
     }
-    // The NEXT pick is chosen and its art downloaded and decoded while the
-    // current one is on screen, so Draw only has to play the animation.
-    const artOf = (g) => (g.cover_url ? igdbSized(g.cover_url, '720p') : placeholderCover(g.title));
-    function prepare() {
-      return choose().then((g) => {
-        const art = artOf(g);
-        const im = new Image();
-        im.decoding = 'async';
-        im.src = art;
-        const ready = im.decode().catch(() => {});
-        const friends = followingP.then((ids) => api.getFriendActivityForGame(g, ids)).catch(() => []);
-        return { g, art, ready, friends };
-      });
-    }
-    let nextUp = prepare(); // starts while the shelf is still coming in
+    const friendsFor = (g) => followingP.then((ids) => api.getFriendActivityForGame(g, ids)).catch(() => []);
 
     // ------------------------------------------------------------ layout
-    // A shelf of game cases standing side by side, drawn in real 3D: each
-    // case is a box (cover, two edges, a back) so it has true thickness
-    // when it is angled, and the whole row is turned a little toward the
-    // middle. Each case is built at the size it will be when pulled out
-    // and scaled DOWN to stand on the shelf, never the other way round:
-    // scaling a small layer up leaves the artwork soft, and a cover that
-    // arrives blurry is the opposite of the moment.
-    const RATIO = 0.72; // width / height of a game case
+    // Cases stand edge on, like books: each is a real box and the face
+    // turned to you is its SPINE. Every case is built at the size it will
+    // be when it is out and scaled down on the shelf, never the other way
+    // round - a cover scaled up from thumbnail size arrives soft, which is
+    // the one thing this moment cannot afford.
+    const RATIO = 0.72;   // width / height of a game case
+    const TURN = 87;      // deg: edge on, with a sliver of cover showing
     let M = null;
     function measure() {
       const vw = overlay.clientWidth || window.innerWidth;
       const vh = overlay.clientHeight || window.innerHeight;
-      const wide = vw >= 700;
-      // Four on a phone so each case has presence, five on a large
-      // phone or small tablet, seven on a desktop.
-      const n = wide ? 7 : vw >= 480 ? 5 : 4;
-      const gap = wide ? 12 : 8;
-      // What is left for the shelf once the title block, the three buttons
-      // and the screen's own padding are taken out.
-      const availH = Math.max(200, vh - 56 - 24 - 56 - 108 - 24);
-      const fw = Math.min(214, vw * 0.54, availH * 0.8 * RATIO);
+      // What is left once the title block, the buttons and the padding are out.
+      const availH = Math.max(190, vh - 56 - 24 - 56 - 108 - 24);
+      const fw = Math.min(208, vw * 0.52, availH * 0.78 * RATIO);
       const fh = fw / RATIO;
-      const cw = Math.min(110, (Math.min(vw, 720) - 32 - gap * (n - 1)) / n);
-      const s = cw / fw;
-      const ch = fh * s;
-      const sh = fh + 28;
-      const restBottom = sh / 2 + ch / 2;
-      return { n, gap, fw, fh, fd: Math.max(12, fw * 0.13), cw, s, ch, sh, restBottom, restY: restBottom - fh, featY: (sh - fh) / 2 };
+      const fd = Math.max(13, Math.round(fw * 0.115));
+      const s = Math.min(0.9, (availH * 0.62) / fh);
+      // How much of a case you actually see from the side: its spine, plus
+      // the sliver of cover the few degrees of turn leave showing. Spacing
+      // them by anything less stacks each cover over the next one's spine,
+      // and the row stops reading as spines at all.
+      const seenW = (fd + fw * Math.cos(TURN * Math.PI / 180)) * s;
+      const step = seenW + 2;
+      const room = Math.min(vw, 760) - 36;
+      const n = Math.max(6, Math.min(18, Math.floor(room / step)));
+      const sh = fh + 26;
+      const restBottom = sh - 20;
+      return { n, fw, fh, fd, s, step, sh, restBottom, restY: restBottom - fh, featY: (sh - fh) / 2 - 6 };
     }
     const mid = () => (M.n - 1) / 2;
-    const slotX = (i) => (i - mid()) * (M.cw + M.gap);
-    // Turned in toward the middle, a few degrees more at each end.
-    const slotA = (i) => ((i - mid()) / mid()) * -20;
-    const slotZ = (i) => -Math.abs(i - mid()) * 3;
-    const restT = (i, lift = 0) => `translate3d(${slotX(i)}px, ${M.restY - lift}px, ${slotZ(i)}px) rotateY(${slotA(i)}deg) scale(${M.s})`;
-    const pullT = (i) => `translate3d(${slotX(i)}px, ${M.restY - 16}px, 80px) rotateY(${slotA(i) * 0.6}deg) scale(${M.s * 1.08})`;
-    const featT = () => `translate3d(0px, ${M.featY}px, 70px) rotateY(0deg) scale(1)`;
+    const slotX = (i) => (i - mid()) * M.step;
+    // Each case is turned to face the camera rather than the screen. A row
+    // of parallel cases does not read as spines: the camera sits in the
+    // middle, so the ones out at the ends are seen at an angle and the
+    // perspective gives back several degrees of cover - enough that a
+    // shelf of spines looked like a shelf of covers. Taking the viewing
+    // angle out of each case's own turn makes every spine equally square
+    // on, and the 90 - TURN that is left is the sliver of cover you see
+    // down the near edge of all of them.
+    const PERSP = 1100;
+    const slotA = (i) => (90 - (TURN === 90 ? 0 : 90 - TURN)) - Math.atan(slotX(i) / PERSP) * 180 / Math.PI;
+    const restT = (i, lift = 0) => `translate3d(${slotX(i)}px, ${M.restY - lift}px, 0px) rotateY(${slotA(i)}deg) scale(${M.s})`;
+    const tipT = (i) => `translate3d(${slotX(i)}px, ${M.restY - 10}px, 14px) rotateY(${slotA(i) - 4}deg) rotateX(-9deg) scale(${M.s})`;
+    const outT = (i) => `translate3d(${slotX(i)}px, ${M.restY - 4}px, 112px) rotateY(${slotA(i) - 12}deg) rotateX(-3deg) scale(${M.s * 1.02})`;
+    const featT = () => `translate3d(0px, ${M.featY}px, 120px) rotateY(0deg) scale(1)`;
     const casesEl = () => qsa('.draw-case', stage);
 
     function applyLayout() {
@@ -792,13 +782,17 @@ async function paintDiscovery(slot) {
       stage.style.setProperty('--fw', `${M.fw}px`);
       stage.style.setProperty('--fh', `${M.fh}px`);
       stage.style.setProperty('--fd', `${M.fd}px`);
-      const span = (M.n * (M.cw + M.gap) + 28) * 1.04; // the wall sits back in depth, so it is drawn a little smaller
+      const span = M.n * M.step + 18;
       const wall = qs('.draw-wall', stage);
       const board = qs('.draw-board', stage);
-      if (wall) Object.assign(wall.style, { width: `${span}px`, height: `${M.ch + 30}px`, top: `${M.restBottom - M.ch - 16}px` });
-      if (board) Object.assign(board.style, { width: `${span + 12}px`, top: `${M.restBottom}px` });
+      // Big enough to put the whole shelf in shadow, small enough that its
+      // edges never reach the title or the buttons below.
+      const dim = qs('.draw-dim', stage);
+      if (dim) Object.assign(dim.style, { width: `${span * 1.7}px`, height: `${M.sh * 1.18}px`, top: `${-M.sh * 0.09}px`, marginLeft: `${span * -0.85}px` });
+      if (wall) Object.assign(wall.style, { width: `${span}px`, height: `${M.fh * M.s + 22}px`, top: `${M.restBottom - M.fh * M.s - 14}px` });
+      if (board) Object.assign(board.style, { width: `${span + 14}px`, top: `${M.restBottom}px` });
       casesEl().forEach((c, i) => {
-        c.style.transform = c === current ? featT() : restT(i);
+        if (c === current) { c.style.transform = featT(); baseT = featT(); } else c.style.transform = restT(i);
       });
     }
     let resizeRaf = 0;
@@ -808,23 +802,29 @@ async function paintDiscovery(slot) {
     }
     window.addEventListener('resize', onResize);
 
-    const caseHTML = (i, g) => `
-      <div class="draw-case" data-i="${i}">
-        <div class="draw-case__face draw-case__front"><img alt="" decoding="async" src="${esc(g.cover_url ? igdbSized(g.cover_url, 'cover_big') : placeholderCover(g.title))}"><i class="draw-case__hinge"></i><i class="draw-case__sheen"></i><i class="draw-case__glint"></i></div>
-        <div class="draw-case__face draw-case__side draw-case__side--l"></div>
-        <div class="draw-case__face draw-case__side draw-case__side--r"></div>
-        <div class="draw-case__face draw-case__back"></div>
-        <i class="draw-case__cast"></i>
-      </div>`;
+    // ------------------------------------------------------------- shelf
+    const caseHTML = (i) => `
+      <button type="button" class="draw-case" data-i="${i}" aria-label="Pick this one">
+        <span class="draw-case__face draw-case__front"><img alt="" decoding="async"><i class="draw-case__hinge"></i><i class="draw-case__sheen"></i></span>
+        <span class="draw-case__face draw-case__spine">${iconBrandMark()}</span>
+        <span class="draw-case__face draw-case__edge"></span>
+        <span class="draw-case__face draw-case__back"></span>
+      </button>`;
+
+    const gameOf = new WeakMap();
+    function fill(el, g) {
+      gameOf.set(el, g);
+      const img = qs('.draw-case__front img', el);
+      if (img.dataset.src !== artOf(g)) { img.dataset.src = artOf(g); img.src = artOf(g); }
+      el.setAttribute('aria-label', `Pick ${g.title}`);
+    }
 
     function buildShelf() {
       M = measure();
-      // Real covers from the collection already on screen, so the shelf is
-      // full of the same games the grid below is showing.
-      const filler = games.filter((g) => g.cover_url);
-      const order = filler.slice().sort(() => Math.random() - 0.5);
-      const covers = Array.from({ length: M.n }, (_, i) => order[i % Math.max(1, order.length)] || { title: '' });
-      stage.innerHTML = `<i class="draw-wall"></i><i class="draw-board"></i>${covers.map((g, i) => caseHTML(i, g)).join('')}`;
+      const onScreen = games.filter((g) => g.cover_url).sort(() => Math.random() - 0.5);
+      stage.innerHTML = `<i class="draw-wall"></i>${Array.from({ length: M.n }, (_, i) => caseHTML(i)).join('')}<i class="draw-dim"></i><i class="draw-board"></i>`;
+      const cs = casesEl();
+      cs.forEach((el, i) => fill(el, onScreen[i % Math.max(1, onScreen.length)] || localPick()));
       current = null;
       applyLayout();
     }
@@ -835,16 +835,12 @@ async function paintDiscovery(slot) {
       acts.forEach((b) => { b.disabled = true; });
       crewEl.innerHTML = '';
       infoEl.style.opacity = '0';
-      // Back to the pre-reveal state, so the next title wipes in from
-      // nothing instead of appearing already written.
       titleEl.style.opacity = '0';
       ruleEl.style.transform = 'scaleX(0)';
       metaEl.style.opacity = '0';
       crewEl.style.opacity = '0';
     }
 
-    // Friends who played, are playing or want this game: a small chip each
-    // under the title. Nothing at all when nobody has.
     const crewLabel = (c) => (c.status === 'played' ? (c.rating ? `Played ★${Number(c.rating)}` : 'Played') : c.status === 'playing' ? 'Playing now' : 'Wants to play');
     function crewHTML() {
       return crew.slice(0, 3).map((c) => {
@@ -856,149 +852,136 @@ async function paintDiscovery(slot) {
       }).join('');
     }
 
-    // The title is the last thing to arrive. It wipes in from the left
-    // while the letters pull together from wide spacing, with a short
-    // accent rule drawing under it; the details follow a beat behind.
-    async function revealInfo(my) {
+    // The title is the last thing to arrive: it wipes in from the left
+    // while the letters pull together, a short rule draws under it, and
+    // the details follow a beat behind.
+    function revealInfo() {
       titleEl.textContent = pick.title;
       metaEl.textContent = [pick.release_year, genreOf(pick)].filter(Boolean).join(' · ');
       crewEl.innerHTML = crewHTML();
       infoEl.style.opacity = '1';
       const wipe = tween(titleEl, [
-        { opacity: 0, clipPath: 'inset(0 100% 0 0)', letterSpacing: '0.28em', transform: 'translateY(8px)' },
+        { opacity: 0, clipPath: 'inset(0 100% 0 0)', letterSpacing: '0.26em', transform: 'translateY(8px)' },
         { opacity: 1, clipPath: 'inset(0 0% 0 0)', letterSpacing: '0.01em', transform: 'translateY(0)' },
-      ], { duration: 760, easing: 'cubic-bezier(.2,.8,.2,1)' }, { opacity: '1', clipPath: 'none', letterSpacing: '0.01em', transform: 'none' });
-      tween(ruleEl, [{ transform: 'scaleX(0)' }, { transform: 'scaleX(1)' }], { duration: 520, delay: 300, easing: 'cubic-bezier(.2,.8,.2,1)' }, { transform: 'scaleX(1)' });
-      [metaEl, crewEl].forEach((el, i) => tween(el, [{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'translateY(0)' }], { duration: 420, delay: 380 + i * 90, easing: 'ease-out' }, { opacity: '1', transform: 'none' }));
-      await wipe;
-      if (my !== token) return;
+      ], { duration: 720, easing: 'cubic-bezier(.2,.8,.2,1)' }, { opacity: '1', clipPath: 'none', letterSpacing: '0.01em', transform: 'none' });
+      tween(ruleEl, [{ transform: 'scaleX(0)' }, { transform: 'scaleX(1)' }], { duration: 500, delay: 280, easing: 'cubic-bezier(.2,.8,.2,1)' }, { transform: 'scaleX(1)' });
+      [metaEl, crewEl].forEach((el, i) => tween(el, [{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'translateY(0)' }], { duration: 400, delay: 360 + i * 90, easing: 'ease-out' }, { opacity: '1', transform: 'none' }));
+      return wipe;
     }
 
-    function showResult() {
-      setSaved(false);
-      saved = null;
+    // --------------------------------------------------------- the pull
+    // One element, one unbroken move, the way a case actually comes off a
+    // shelf: a finger hooks the top edge and tips it toward you, it slides
+    // forward out of the row, hangs there a moment, and only then turns to
+    // show its cover. No swap, no second card - the spine you touched is
+    // the cover you end up looking at.
+    async function pullOut(el, my) {
+      const i = Number(el.dataset.i);
+      pick = gameOf.get(el);
+      const friendsP = friendsFor(pick);
+      busy = true;
+      hideResult();
+      stopTilt();
+      el.style.zIndex = '6';
+      stage.classList.add('is-picking');
+
+      // The shelf falls into shadow while this one is handled. This is a
+      // scrim set just in front of the row, NOT opacity on the cases: an
+      // opacity below 1 flattens a preserve-3d subtree, which collapses a
+      // case's spine to nothing and turns the shelf into paper slivers.
+      tween(qs('.draw-dim', stage), [{ opacity: 0 }, { opacity: 1 }], { duration: 440, easing: 'ease-out' }, { opacity: '1' });
+
+      // 1. the finger: the top tips toward you and the case lifts a little
+      await tween(el, [{ transform: restT(i) }, { transform: tipT(i) }], { duration: 320, easing: 'cubic-bezier(.3,.9,.4,1)' }, { transform: tipT(i) });
+      if (my !== token) return false;
+      buzz(8);
+      // 2. drawn out of the row, still edge on
+      await tween(el, [{ transform: tipT(i) }, { transform: outT(i) }], { duration: 420, easing: 'cubic-bezier(.25,.75,.3,1)' }, { transform: outT(i) });
+      if (my !== token) return false;
+      // 3. held there for a beat
+      await pause(200);
+      if (my !== token) return false;
+      // 4. turned to face you, arriving in the middle
+      await tween(el, [{ transform: outT(i) }, { transform: featT() }], { duration: 760, easing: 'cubic-bezier(.3,.05,.2,1)' }, { transform: featT() });
+      if (my !== token) return false;
+
+      current = el;
+      baseT = featT();
+      crew = await Promise.race([friendsP, new Promise((r) => setTimeout(() => r([]), 700))]);
+      if (my !== token) return false;
+      busy = false;
+      stage.classList.remove('is-picking');
       drawEl.classList.add('is-landed');
       acts.forEach((b) => { b.disabled = false; });
-      // The three buttons are fixed: they do not move, and they are there
-      // from the moment the cover lands.
-      tween(qs('.draw-actions', overlay), [{ opacity: 0 }, { opacity: 1 }], { duration: 260 }, { opacity: '1' });
+      setSaved(false);
+      saved = null;
+      tween(qs('.draw-actions', overlay), [{ opacity: 0 }, { opacity: 1 }], { duration: 240 }, { opacity: '1' });
+      startTilt(el);
+      revealInfo();
+      return true;
     }
 
-    // ------------------------------------------------------------- deal
-    // The scan: a lift passes along the shelf, left to right and back,
-    // slowing as it goes, and settles on the case that is about to come out.
-    async function scan(my, target) {
-      const n = M.n;
-      const path = [];
-      for (let i = 0; i < n; i++) path.push(i);
-      for (let i = n - 2; i >= target; i--) path.push(i);
-      if (path[path.length - 1] !== target) path.push(target);
-      const cs = casesEl();
-      for (let k = 0; k < path.length && !skip; k++) {
-        const i = path[k];
-        const last = k === path.length - 1;
-        const el = cs[i];
-        const ms = 70 + k * 9;
-        if (last) {
-          await tween(el, [{ transform: restT(i) }, { transform: restT(i, 12) }], { duration: 160, easing: 'cubic-bezier(.2,.8,.2,1)' }, { transform: restT(i, 12) });
-        } else {
-          tween(el, [{ transform: restT(i) }, { transform: restT(i, 9) }, { transform: restT(i) }], { duration: ms * 2, easing: 'ease-in-out' }, { transform: restT(i) });
-          await pause(ms);
-        }
-        if (my !== token) return;
-      }
-      if (skip) { cs[target].style.transform = restT(target, 12); }
+    // Back into its place, and a different game put on it, so the shelf
+    // never shows the same thing twice in a session.
+    async function putBack(el, my) {
+      const i = Number(el.dataset.i);
+      stopTilt();
+      current = null;
+      el.style.zIndex = '';
+      tween(qs('.draw-dim', stage), [{ opacity: 1 }, { opacity: 0 }], { duration: 340 }, { opacity: '0' });
+      await tween(el, [{ transform: featT() }, { transform: outT(i) }, { transform: restT(i) }], { duration: 520, easing: 'cubic-bezier(.4,0,.2,1)' }, { transform: restT(i) });
+      if (my !== token) return;
+      fill(el, freshGame());
     }
 
-    async function deal({ shuffle }) {
+    async function open(shuffle) {
       const my = ++token;
       busy = true; skip = false;
       hideResult();
-      pick = null;
-      const picking = nextUp || prepare();
-      nextUp = null;
-
-      let entrance = Promise.resolve();
       if (shuffle) {
         buildShelf();
         const cs = casesEl();
-        cs.forEach((c) => { c.style.opacity = '0'; });
-        // The shelf comes in from the middle outward: each case rises a
-        // little as it fades up, so it reads as stocked rather than shown.
-        entrance = Promise.all(cs.map((c, i) => tween(c, [
-          { opacity: 0, transform: restT(i).replace(/translate3d\(([-\d.]+)px, ([-\d.]+)px/, (_, x, y) => `translate3d(${x}px, ${Number(y) + 34}px`) },
-          { opacity: 1, transform: restT(i) },
-        ], { duration: 460, delay: Math.abs(i - mid()) * 55, easing: 'cubic-bezier(.2,.8,.2,1)' }, { opacity: '1', transform: restT(i) })));
-        tween(qs('.draw-wall', stage), [{ opacity: 0 }, { opacity: 1 }], { duration: 400 }, { opacity: '1' });
-        tween(qs('.draw-board', stage), [{ opacity: 0 }, { opacity: 1 }], { duration: 400 }, { opacity: '1' });
+        // Stocked from the middle outward, each case dropping into place.
+        // Transform only, for the same reason the dimming above is a scrim:
+        // a case that fades in is a case with no thickness while it fades.
+        await Promise.all(cs.map((c, i) => tween(c, [
+          { transform: restT(i, -34) },
+          { transform: restT(i) },
+        ], { duration: 420, delay: Math.abs(i - mid()) * 34, easing: 'cubic-bezier(.2,.8,.2,1)' }, { transform: restT(i) })));
+        if (my !== token) return;
       }
-
-      const item = await Promise.race([picking, new Promise((r) => setTimeout(r, 4000))]).catch(() => null);
-      if (my !== token) return;
-      let art;
-      let artReady;
-      let friendsP = Promise.resolve([]);
-      if (item) { pick = item.g; art = item.art; artReady = item.ready; friendsP = item.friends; }
-      else { pick = localPick(); seen.add(keyOf(pick)); art = artOf(pick); artReady = Promise.resolve(); }
-      nextUp = prepare(); // the one after this, while this one is being looked at
-
-      // Which slot it comes out of: random, and never the same one twice
-      // running, with the pick's own artwork put on that case.
-      let slot = Math.floor(Math.random() * M.n);
-      if (slot === lastSlot) slot = (slot + 1 + Math.floor(Math.random() * (M.n - 1))) % M.n;
-      lastSlot = slot;
       const cs = casesEl();
-      const chosen = cs[slot];
-      const img = qs('.draw-case__front img', chosen);
-      img.src = art;
-      await Promise.all([entrance, Promise.race([artReady.then(() => img.decode()).catch(() => {}), new Promise((r) => setTimeout(r, 900))])]);
-      if (my !== token) return;
-
-      await scan(my, slot);
-      if (my !== token) return;
-      buzz(10);
-
-      // Everything else steps back while the chosen case slides out of its
-      // place - forward first, off the shelf - and then comes up and across
-      // to the middle, turning to face you.
-      cs.forEach((c, i) => { if (c !== chosen) tween(c, [{ opacity: 1 }, { opacity: 0.32 }], { duration: 520, easing: 'ease-out' }, { opacity: '0.32' }); });
-      tween(qs('.draw-case__cast', chosen), [{ opacity: 1 }, { opacity: 0 }], { duration: 300 }, { opacity: '0' });
-      chosen.style.zIndex = '5';
-      await tween(chosen, [
-        { transform: restT(slot, 12), offset: 0 },
-        { transform: pullT(slot), offset: 0.34, easing: 'cubic-bezier(.2,.8,.2,1)' },
-        { transform: featT(), offset: 1 },
-      ], { duration: 820, easing: 'cubic-bezier(.3,.1,.2,1)' }, { transform: featT() });
-      if (my !== token) return;
-      current = chosen;
-      // One pass of light across the cover as it arrives.
-      tween(qs('.draw-case__glint', chosen), [{ transform: 'translateX(-130%) skewX(-18deg)', opacity: 0.9 }, { transform: 'translateX(230%) skewX(-18deg)', opacity: 0.9 }], { duration: 900, easing: 'ease-in-out' }, { opacity: '0' });
-
-      crew = await Promise.race([friendsP, new Promise((r) => setTimeout(() => r([]), 700))]);
-      if (my !== token) return;
-      busy = false;
-      showResult();
-      await revealInfo(my);
+      await pullOut(cs[Math.floor(Math.random() * cs.length)], my);
     }
+
+    // Tap any spine to take that one instead of waiting for the shuffle.
+    stage.addEventListener('click', async (e) => {
+      const el = e.target.closest('.draw-case');
+      if (!el || busy) return;
+      if (el === current) return;
+      const my = ++token;
+      // Clear the old title before the old case goes back, not after: the
+      // name of the game you have just moved on from should not sit under
+      // the shelf while the next one is being pulled.
+      busy = true;
+      hideResult();
+      if (current) { await putBack(current, my); if (my !== token) return; }
+      await pullOut(el, my);
+    });
 
     btnDraw.addEventListener('click', async () => {
       if (busy || !current) return;
-      busy = true;
       const my = ++token;
-      skip = false;
+      busy = true; skip = false;
       hideResult();
       buzz(6);
-      // The cover goes back into its place on the shelf, and the shelf
-      // fills back in around it, before the next one is chosen.
       const back = current;
-      const i = Number(back.dataset.i);
-      current = null;
-      back.style.zIndex = '';
-      qsa('.draw-case', stage).forEach((c) => { if (c !== back) tween(c, [{ opacity: 0.32 }, { opacity: 1 }], { duration: 380 }, { opacity: '1' }); });
-      tween(qs('.draw-case__cast', back), [{ opacity: 0 }, { opacity: 1 }], { duration: 380 }, { opacity: '1' });
-      await tween(back, [{ transform: featT() }, { transform: pullT(i) }, { transform: restT(i) }], { duration: 480, easing: 'cubic-bezier(.4,0,.2,1)' }, { transform: restT(i) });
+      stage.classList.add('is-picking');
+      await putBack(back, my);
       if (my !== token) return;
-      deal({ shuffle: false });
+      stage.classList.remove('is-picking');
+      const cs = casesEl().filter((c) => c !== back);
+      await pullOut(cs[Math.floor(Math.random() * cs.length)], my);
     });
     crewEl.addEventListener('click', (e) => {
       const chip = e.target.closest('.draw-friend');
@@ -1023,8 +1006,7 @@ async function paintDiscovery(slot) {
     // Want to play is a toggle. The button turns green the moment you tap
     // it and the backlog entry is written behind it; tap again and the
     // entry this made is removed. Nothing reloads, and a failure puts the
-    // button back. A game you had already logged (played, playing) is
-    // left exactly as it was.
+    // button back. A game you had already logged is left exactly as it was.
     let saved = null;     // { logId, pickKey } once in the backlog
     let saving = false;
     const setSaved = (on) => {
@@ -1073,7 +1055,68 @@ async function paintDiscovery(slot) {
       saving = false;
     });
 
-    deal({ shuffle: true });
+    // ------------------------------------------------------------- live
+    // Once a cover is out it stays alive in your hand: it leans with the
+    // phone, or follows the pointer on a desktop. A small lean, never a
+    // spin - it is a case being held, not a thing being swung around. One
+    // rAF loop, one element, and it stops the moment the lean settles.
+    const LEAN = 13;      // deg, the most it ever leans
+    const EASE = 0.045;   // s of smoothing
+    const D2R = Math.PI / 180;
+    let baseT = '';
+    let tiltEl = null;
+    let rest = null;
+    let tx = 0; let ty = 0; let cx = 0; let cy = 0;
+    let raf = 0; let lastFrame = 0;
+    const soft = (v) => LEAN * Math.tanh(v / LEAN);
+    const frame = (t) => {
+      raf = 0;
+      const dt = lastFrame ? Math.min(0.05, (t - lastFrame) / 1000) : 1 / 60;
+      lastFrame = t;
+      const k = 1 - Math.exp(-dt / EASE);
+      cx += (tx - cx) * k;
+      cy += (ty - cy) * k;
+      const still = Math.abs(tx - cx) < 0.01 && Math.abs(ty - cy) < 0.01;
+      if (still) { cx = tx; cy = ty; lastFrame = 0; }
+      if (tiltEl) tiltEl.style.transform = `${baseT} rotateX(${cx.toFixed(2)}deg) rotateY(${cy.toFixed(2)}deg)`;
+      if (!still) raf = requestAnimationFrame(frame);
+    };
+    const aim = (x, y) => { tx = x; ty = y; if (!raf) raf = requestAnimationFrame(frame); };
+    const onOrient = (e) => {
+      if (!tiltEl || e.beta == null) return;
+      if (!rest) { rest = { b: e.beta, g: e.gamma || 0 }; return; }
+      aim(soft(-(e.beta - rest.b) * 1.4), soft(((e.gamma || 0) - rest.g) * 1.4));
+    };
+    const onMouse = (e) => {
+      if (!tiltEl || e.pointerType === 'touch') return;
+      aim(-(e.clientY / innerHeight - 0.5) * 2 * LEAN, (e.clientX / innerWidth - 0.5) * 2 * LEAN);
+    };
+    function startTilt(el) {
+      if (reduce) return;
+      tiltEl = el; rest = null;
+    }
+    function stopTilt() {
+      tiltEl = null;
+      if (raf) cancelAnimationFrame(raf);
+      raf = 0; tx = 0; ty = 0; cx = 0; cy = 0; lastFrame = 0;
+    }
+    if (!reduce) {
+      window.addEventListener('pointermove', onMouse, { passive: true });
+      const DOE = window.DeviceOrientationEvent;
+      if (typeof DOE?.requestPermission === 'function') {
+        DOE.requestPermission().then((r) => { if (r === 'granted') window.addEventListener('deviceorientation', onOrient); }).catch(() => {});
+      } else if (DOE) {
+        window.addEventListener('deviceorientation', onOrient);
+      }
+      const offTilt = () => { window.removeEventListener('pointermove', onMouse); window.removeEventListener('deviceorientation', onOrient); };
+      const closeWas = overlay.__dismiss;
+      overlay.__dismiss = () => { offTilt(); closeWas(); };
+      qs('[data-close]', overlay).addEventListener('click', offTilt);
+      window.addEventListener('hashchange', offTilt);
+      document.addEventListener('keydown', (e) => { if (e.key === 'Escape') offTilt(); });
+    }
+
+    open(true);
   }
 
   // Full reset whenever the collection changes — without clearing page

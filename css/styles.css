@@ -4742,14 +4742,16 @@ a.gd-credit__name { text-decoration: none; }
   clip-path: polygon(2% 0, 98% 0, 100% 100%, 0 100%);
 }
 
-/* A game case, as a box. The element is built at the size it has when
-   pulled out; the shelf scales it down (see applyLayout), so the artwork
-   is always sharp. */
+/* A game case, as a box, standing edge on so its SPINE faces you. The
+   element is built at the size it has when pulled out and the shelf
+   scales it down (see applyLayout), so the artwork is sharp the moment
+   it turns around. It is a button: any spine can be tapped to take that
+   one. */
 .draw-case {
-  position: absolute; left: 50%; top: 0;
+  position: absolute; left: 50%; top: 0; padding: 0; border: 0; background: none;
   width: var(--fw); height: var(--fh); margin-left: calc(var(--fw) / -2);
   transform-style: preserve-3d; transform-origin: 50% 100%;
-  backface-visibility: hidden;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
 }
 .draw-case__face { position: absolute; }
 .draw-case__front {
@@ -4757,6 +4759,20 @@ a.gd-credit__name { text-decoration: none; }
   overflow: hidden; backface-visibility: hidden; background: #0d1117;
   border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 2px;
 }
+/* The spine: near-black plastic, lit a little down its middle, with the
+   PlayThruu mark and nothing else - a shelf of game titles in 11px type
+   would be a wall of noise, and the mark is what makes the row read as
+   one collection. rotateY(-90deg), not 90: the face has to look OUT of
+   the box, or the browser hides it as a backface and the shelf turns
+   into a row of blank slivers. */
+.draw-case__spine {
+  top: 0; height: 100%; width: var(--fd); left: calc(50% - var(--fd) / 2);
+  transform: translateX(calc(var(--fw) / -2)) rotateY(-90deg);
+  display: flex; align-items: center; justify-content: center; overflow: hidden;
+  background: linear-gradient(90deg, #0b0e12, #1d242d 42%, #0a0d11);
+  color: #7d8c9c;
+}
+.draw-case__spine svg { width: 74%; max-width: 22px; display: block; }
 .draw-case__front img { width: 100%; height: 100%; object-fit: cover; display: block; }
 /* The crease down the left of a case where the cover folds. */
 .draw-case__hinge {
@@ -4768,28 +4784,27 @@ a.gd-credit__name { text-decoration: none; }
   position: absolute; inset: 0; pointer-events: none;
   background: linear-gradient(115deg, rgba(255, 255, 255, 0.17) 0%, rgba(255, 255, 255, 0) 30%, rgba(255, 255, 255, 0) 70%, rgba(255, 255, 255, 0.06) 100%);
 }
-/* The one pass of light when a case lands; hidden the rest of the time. */
-.draw-case__glint {
-  position: absolute; top: -10%; bottom: -10%; left: 0; width: 38%; opacity: 0; pointer-events: none;
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0));
-  transform: translateX(-130%) skewX(-18deg);
-}
-.draw-case__side {
+.draw-case__edge {
   top: 0; height: 100%; width: var(--fd); left: calc(50% - var(--fd) / 2);
+  transform: translateX(calc(var(--fw) / 2)) rotateY(90deg);
   background: linear-gradient(90deg, #232d39, #141a22 60%, #1b232d);
 }
-.draw-case__side--l { transform: translateX(calc(var(--fw) / -2)) rotateY(90deg); background: linear-gradient(90deg, #10151b, #1e2732 50%, #10151b); }
-.draw-case__side--r { transform: translateX(calc(var(--fw) / 2)) rotateY(90deg); }
 .draw-case__back {
   inset: 0; transform: translateZ(calc(var(--fd) / -2)) rotateY(180deg);
   background: #161d26; backface-visibility: hidden;
 }
-/* Where a case meets the shelf: a soft dark ellipse that goes when it
-   is lifted away. */
-.draw-case__cast {
-  position: absolute; left: 4%; right: 4%; bottom: -5%; height: 8%; pointer-events: none;
-  background: radial-gradient(ellipse at 50% 45%, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0) 70%);
+/* The shelf in shadow while one case is out. A scrim standing just in
+   front of the row, rather than opacity on the cases themselves: any
+   opacity below 1 flattens a preserve-3d subtree, and a flattened case
+   has no spine - the whole shelf collapses into slivers of cover. */
+.draw-dim {
+  position: absolute; left: 50%; transform: translateZ(8px);
+  pointer-events: none; opacity: 0;
+  background: radial-gradient(ellipse at 50% 50%, rgba(8, 11, 16, 0.72), rgba(8, 11, 16, 0.6) 62%, rgba(8, 11, 16, 0) 100%);
 }
+/* Nothing on the shelf is interactive while a case is being pulled out,
+   so a second tap cannot start a second pull. */
+.draw-stage.is-picking .draw-case { pointer-events: none; }
 
 /* The title block: held in place (so nothing jumps when it arrives),
    invisible until the case has landed. */
