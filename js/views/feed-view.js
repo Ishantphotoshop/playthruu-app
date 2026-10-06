@@ -837,9 +837,7 @@ async function paintDiscovery(slot) {
       await done(run(qs('.draw-card__inner', top), [{ transform: 'rotateY(0)' }, { transform: 'rotateY(180deg)' }], { duration: reduce ? 1 : 460, easing: 'cubic-bezier(.3,.1,.2,1)', fill: 'forwards' }));
       if (my !== token) return;
       cards.slice(0, -1).forEach((c) => run(c, [{ opacity: 1 }, { opacity: 0 }], { duration: 250, fill: 'forwards' }));
-      // Slapped down and pinned: from the lift to flat on the board, a
-      // little crooked, with a strip of tape.
-      top.insertAdjacentHTML('beforeend', '<i class="draw-card__tape"></i>');
+      // Dropped into place: from the lift to flat, a little crooked.
       run(top, [{ transform: 'translateY(-22px) scale(1.04)' }, { transform: 'rotate(-3deg)' }], { duration: reduce ? 1 : 220, easing: 'cubic-bezier(.3,1.4,.5,1)', fill: 'forwards' });
       crew = await Promise.race([friendsP, new Promise((r) => setTimeout(() => r([]), 800))]);
       if (my !== token) return;
@@ -945,18 +943,23 @@ async function paintDiscovery(slot) {
     // just two transforms, written once per frame from one rAF loop that
     // stops as soon as the card is still: nothing is repainted, and nothing
     // runs while the phone is not moving.
-    const PARALLAX_MAX = 16; // deg of lean the board layers answer to
+    const TILT_MAX = 16;   // deg the card can lean
+    const TILT_GAIN = 1.6; // card degrees per degree the phone turns
+    const DRIFT = 2;       // s for the rest pose to catch up with a new grip
     const EASE = 0.035;    // s of smoothing between sensor readings
     const D2R = Math.PI / 180;
     let tiltOn = false;
     let listening = true;
-    let rest = null;       // the pose the phone was in when the card landed
-    let qt = [1, 0, 0, 0]; // where the card is turning to
-    let qc = [1, 0, 0, 0]; // where it is now
+    let rest = null;       // the rest pose, as a quaternion
+    let restAt = 0;
+    let tx = 0; let ty = 0; // where the lean is heading (deg)
+    let cx = 0; let cy = 0; // where it is now
     let raf = 0; let lastFrame = 0;
     let gloss = null;
-    const layers = [[crewEl, 1.4], [strings, 1.4], [qs('.draw-actions', overlay), 0.5]];
-    const soft = (v) => PARALLAX_MAX * Math.tanh(v / PARALLAX_MAX);
+    // The three buttons are deliberately NOT in here: they stay put while
+    // everything else moves, so they are always where the thumb expects.
+    const layers = [[crewEl, 1.4], [strings, 1.4]];
+    const soft = (v) => TILT_MAX * Math.tanh(v / TILT_MAX); // leans harder, never snaps at the limit
     const mul = (a, b) => [
       a[0] * b[0] - a[1] * b[1] - a[2] * b[2] - a[3] * b[3],
       a[0] * b[1] + a[1] * b[0] + a[2] * b[3] - a[3] * b[2],
@@ -970,72 +973,47 @@ async function paintDiscovery(slot) {
       const sX = Math.sin(x); const sY = Math.sin(y); const sZ = Math.sin(z);
       return [cX * cY * cZ - sX * sY * sZ, sX * cY * cZ - cX * sY * sZ, cX * sY * cZ + sX * cY * sZ, cX * cY * sZ + sX * sY * cZ];
     };
-    // A quaternion as a CSS matrix3d, so the card can hold ANY angle. The
-    // old version pulled two Euler angles out and fed them to rotateX/
-    // rotateY, which is why it could only lean: past about a quarter turn
-    // those angles fight each other and the card flips instead of
-    // continuing round.
-    const mat = (q) => {
-      const [w, x, y, z] = q;
-      const m = [
-        1 - 2 * (y * y + z * z), 2 * (x * y + z * w), 2 * (x * z - y * w), 0,
-        2 * (x * y - z * w), 1 - 2 * (x * x + z * z), 2 * (y * z + x * w), 0,
-        2 * (x * z + y * w), 2 * (y * z - x * w), 1 - 2 * (x * x + y * y), 0,
-        0, 0, 0, 1,
-      ];
-      return `matrix3d(${m.map((v) => v.toFixed(5)).join(',')})`;
-    };
-    const norm = (q) => { const l = Math.hypot(...q) || 1; return q.map((v) => v / l); };
     const frame = (t) => {
       raf = 0;
       const dt = lastFrame ? Math.min(0.05, (t - lastFrame) / 1000) : 1 / 60;
       lastFrame = t;
       const k = 1 - Math.exp(-dt / EASE);
-      // Shortest way round, so a turn past the back never unwinds the long way.
-      const dot = qc[0] * qt[0] + qc[1] * qt[1] + qc[2] * qt[2] + qc[3] * qt[3];
-      const sgn = dot < 0 ? -1 : 1;
-      qc = norm(qc.map((v, i) => v + (qt[i] * sgn - v) * k));
-      const still = Math.abs(Math.abs(dot) - 1) < 1e-6;
-      if (still) { qc = qt.slice(); lastFrame = 0; }
-      const flat = Math.abs(qc[0]) > 0.99999;
-      stage.style.transform = flat ? '' : `perspective(900px) ${mat(qc)}`;
-      // How far it is leaning, in degrees, for everything that only needs
-      // a nudge rather than the full turn.
-      const w2 = qc[0] < 0 ? -2 : 2;
-      const lx = soft((-w2 * qc[1]) / D2R); const ly = soft((w2 * qc[2]) / D2R);
-      if (gloss) gloss.style.transform = flat ? '' : `translate3d(${(ly * 2.6).toFixed(1)}px, ${(-lx * 2.6).toFixed(1)}px, 0)`;
+      cx += (tx - cx) * k;
+      cy += (ty - cy) * k;
+      const still = Math.abs(tx - cx) < 0.01 && Math.abs(ty - cy) < 0.01;
+      if (still) { cx = tx; cy = ty; lastFrame = 0; }
+      const flat = !cx && !cy;
+      stage.style.transform = flat ? '' : `perspective(800px) rotateX(${cx.toFixed(2)}deg) rotateY(${cy.toFixed(2)}deg)`;
+      if (gloss) gloss.style.transform = flat ? '' : `translate3d(${(cy * 2.6).toFixed(1)}px, ${(-cx * 2.6).toFixed(1)}px, 0)`;
       // The rest of the board moves in layers with the card: friends'
-      // photos and their strings float nearest, the orders a little less,
-      // so the whole screen reads as one live scene.
-      for (const [el, depth] of layers) el.style.translate = flat ? '' : `${(ly * depth).toFixed(1)}px ${(-lx * depth).toFixed(1)}px`;
+      // photos and their strings float nearest, the slip and the orders a
+      // little less, so the whole screen reads as one live scene.
+      for (const [el, depth] of layers) el.style.translate = flat ? '' : `${(cy * depth).toFixed(1)}px ${(-cx * depth).toFixed(1)}px`;
       if (!still) raf = requestAnimationFrame(frame);
     };
-    const aimQ = (q) => {
-      qt = norm(q);
+    const aim = (x, y) => {
+      tx = x; ty = y;
       if (!raf) raf = requestAnimationFrame(frame);
     };
-    // The card takes the phone's own turn, one for one and with nothing
-    // clamping it: hold the phone still and it holds still, turn the phone
-    // right round and the poster comes round with it, back of the card and
-    // all, as if it were pinned in the air in front of you. The pose it
-    // starts from is whatever grip you were in when the card landed, so it
-    // is facing you to begin with however you happen to be holding it.
     const onOrient = (e) => {
       if (!tiltOn || e.beta == null) return;
       const q = quat(e.alpha || 0, e.beta, e.gamma || 0);
-      if (!rest) { rest = q; return; }
-      aimQ(mul([rest[0], -rest[1], -rest[2], -rest[3]], q));
+      if (!rest) { rest = q; restAt = e.timeStamp; return; }
+      // drift the rest pose toward the current one
+      const k = 1 - Math.exp(-Math.min(0.25, (e.timeStamp - restAt) / 1000) / DRIFT);
+      restAt = e.timeStamp;
+      const sign = rest[0] * q[0] + rest[1] * q[1] + rest[2] * q[2] + rest[3] * q[3] < 0 ? -1 : 1;
+      const blend = rest.map((v, i) => v + (q[i] * sign - v) * k);
+      const len = Math.hypot(...blend);
+      rest = blend.map((v) => v / len);
+      // the turn from the rest pose to now, around the phone's own axes
+      const r = mul([rest[0], -rest[1], -rest[2], -rest[3]], q);
+      const w = r[0] < 0 ? -2 : 2;
+      aim(soft(-TILT_GAIN * (w * r[1]) / D2R), soft(TILT_GAIN * (w * r[2]) / D2R));
     };
-    // Desktop: the pointer stands in for the phone, across a half turn
-    // corner to corner, so the same card can be looked around with a mouse.
     const onMouse = (e) => {
       if (!tiltOn || e.pointerType === 'touch') return;
-      const ax = -(e.clientY / innerHeight - 0.5) * 180 * D2R;
-      const ay = (e.clientX / innerWidth - 0.5) * 180 * D2R;
-      aimQ(mul(
-        [Math.cos(ax / 2), Math.sin(ax / 2), 0, 0],
-        [Math.cos(ay / 2), 0, Math.sin(ay / 2), 0],
-      ));
+      aim(-(e.clientY / innerHeight - 0.5) * 2 * TILT_MAX, (e.clientX / innerWidth - 0.5) * 2 * TILT_MAX);
     };
     function startTilt(card) {
       if (reduce) return;
@@ -1045,7 +1023,7 @@ async function paintDiscovery(slot) {
     }
     function endTilt() {
       tiltOn = false;
-      aimQ([1, 0, 0, 0]);
+      aim(0, 0);
     }
     function stopTilt() {
       tiltOn = false;
