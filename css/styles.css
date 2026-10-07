@@ -4727,10 +4727,13 @@ a.gd-credit__name { text-decoration: none; }
    the cases: the blurred app is the backdrop. */
 .draw-board {
   position: absolute; left: 50%; display: block; pointer-events: none;
-  height: 34px;
+  /* A lit top surface, a dark edge, then the front lip - the top band is
+     what you see once the shelf is pitched toward you, and it is what
+     makes this read as a shelf rather than a line under the cases. */
+  height: 40px;
   background:
-    linear-gradient(180deg, #5d6e84 0, #5d6e84 1px, #45526408 1px, #3c4958 2px, #2b3643 16px,
-      #19212a 16px, #19212a 17px, #2b3441 17px, #1d242e 27px, #141a22 34px);
+    linear-gradient(180deg, #7f92a8 0 2px, #5d7089 2px 13px, #41505f 13px 15px,
+      #2b3643 15px 16px, #272f3c 16px 28px, #171d26 28px 40px);
 }
 
 /* A game case, as a box, standing edge on so its SPINE faces you. The

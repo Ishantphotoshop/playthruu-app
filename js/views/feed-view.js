@@ -749,6 +749,13 @@ async function paintDiscovery(slot) {
     // when it turns: a cover turning end over end sweeps half its own
     // height in Z, and at this size that is about 130px either way.
     const SHELF_Z = -90;
+    // Looked down on, slightly. The cases tip back on their heels and the
+    // plank opens its top surface toward you, which is what makes a row of
+    // spines read as standing ON something rather than floating in front of
+    // it. It is done here rather than by moving the camera on purpose: the
+    // camera belongs to the whole scene, and the one case that is out has
+    // to stay square on to be looked at.
+    const PITCH = 9;
     const FEAT_Z = 120;
     let M = null;
     function measure() {
@@ -787,9 +794,9 @@ async function paintDiscovery(slot) {
     // on, and the 90 - TURN that is left is the sliver of cover you see
     // down the near edge of all of them.
     const slotA = (i) => TURN - Math.atan(slotX(i) / (PERSP - SHELF_Z)) * 180 / Math.PI;
-    const restT = (i, lift = 0) => `translate3d(${slotX(i)}px, ${M.restY - lift}px, ${SHELF_Z}px) rotateY(${slotA(i)}deg) scale(${M.s})`;
-    const tipT = (i) => `translate3d(${slotX(i)}px, ${M.restY - 10}px, ${SHELF_Z + 16}px) rotateY(${slotA(i) - 4}deg) rotateX(-9deg) scale(${M.s})`;
-    const outT = (i) => `translate3d(${slotX(i)}px, ${M.restY - 6}px, ${SHELF_Z + 120}px) rotateY(${slotA(i) - 14}deg) rotateX(-3deg) scale(${M.s * 1.06})`;
+    const restT = (i, lift = 0) => `translate3d(${slotX(i)}px, ${M.restY - lift}px, ${SHELF_Z}px) rotateX(${PITCH}deg) rotateY(${slotA(i)}deg) scale(${M.s})`;
+    const tipT = (i) => `translate3d(${slotX(i)}px, ${M.restY - 10}px, ${SHELF_Z + 16}px) rotateX(${PITCH - 11}deg) rotateY(${slotA(i) - 4}deg) scale(${M.s})`;
+    const outT = (i) => `translate3d(${slotX(i)}px, ${M.restY - 6}px, ${SHELF_Z + 120}px) rotateX(${Math.round(PITCH / 3) - 6}deg) rotateY(${slotA(i) - 14}deg) scale(${M.s * 1.06})`;
     // Held forward, and scaled back by exactly what being that much nearer
     // magnifies it, so the cover arrives the size it was designed to be
     // instead of swelling into the title underneath it.
@@ -816,7 +823,12 @@ async function paintDiscovery(slot) {
       // between the two - which is what made them look like they were
       // floating half in the air.
       if (board) Object.assign(board.style, { width: `${span}px`, marginLeft: `${span * -0.5}px`, top: `${M.restBottom - 5}px` });
-      if (board) board.style.transform = `translateZ(${SHELF_Z - 2}px)`;
+      // Hinged along its back edge, so the pitch opens the top surface
+      // toward you instead of sinking the whole plank.
+      if (board) {
+        board.style.transformOrigin = '50% 0';
+        board.style.transform = `translateZ(${SHELF_Z - 2}px) rotateX(${PITCH}deg)`;
+      }
       if (dim) dim.style.transform = `translateZ(${SHELF_Z + 40}px)`;
       casesEl().forEach((c, i) => {
         if (c === current) { c.style.transform = featT(); baseT = featT(); } else c.style.transform = restT(i);
