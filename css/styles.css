@@ -1589,8 +1589,15 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
      inline on .stars, and an inline custom property beats any selector.
      The alternative is overriding .star's width AND .star--half's width
      separately, which is two places to keep in step and is exactly the
-     drift that produced the mismatch above. */
-  .card-who__stars .stars { --star-size: 9.5px !important; }
+     drift that produced the mismatch above.
+
+     A WHOLE pixel, not 9.5 — five flex items at a fractional width each
+     land on a different fractional sub-pixel offset (9.5, 19, 28.5...),
+     and a star glyph is rasterised slightly differently depending on
+     which fraction of a pixel it starts on, which is what read as the
+     row sitting unevenly (some glyphs a hair higher, some lower) rather
+     than as five identical stars. */
+  .card-who__stars .stars { --star-size: 10px !important; }
   /* Matched to the star height. */
   .card-who__icon { width: 9.5px; height: 9.5px; }
   /* 5 stars + replay + review at 9px with two 4px gaps is 71px; at a
@@ -4769,28 +4776,28 @@ a.gd-credit__name { text-decoration: none; }
 .draw-pin__face img { width: 100%; height: 100%; object-fit: cover; }
 .draw-pin__name { font-size: 9px; font-weight: 800; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .draw-pin__what { font-size: 9px; font-weight: 800; line-height: 1.2; }
-/* Same recipe as the Feed/News pill up top (.home-tabs__pill): one
-   full-width rounded bar in the surface colour, each item its own
-   equal flex:1 share with its own pill radius inside it, set in the
-   brand font (Unbounded) rather than the body one. Three equal tabs in
-   one row, not a stack of strips, and fixed in place - nothing on this
-   screen moves them. */
+/* Three separate pills, not one shared bar: each its own rounded box
+   with its own border, same light-gray surface colour on all three
+   (including Open the game — no accent fill picking it out), in the
+   brand font (Unbounded) rather than the body one. Fixed in place -
+   nothing on this screen moves them. */
 .draw-actions {
-  display: flex; align-items: center; gap: var(--space-1); width: 100%; max-width: 330px; margin-top: 22px;
-  background: var(--surface-raised); border: 1px solid var(--line); border-radius: var(--radius-pill);
-  padding: var(--space-1); visibility: hidden;
+  display: flex; align-items: center; gap: 8px; width: 100%; max-width: 330px; margin-top: 22px;
+  visibility: hidden;
 }
 .draw.is-landed .draw-actions { visibility: visible; }
 .draw-act {
-  flex: 1; min-width: 0; padding: 10px 6px; display: grid; place-items: center; text-align: center;
-  background: none; border: none; color: var(--ink);
+  flex: 1; min-width: 0; padding: 12px 6px; display: grid; place-items: center; text-align: center;
+  background: var(--surface-raised); border: 1px solid var(--line); color: var(--ink);
   font-family: var(--font-brand); font-weight: 700; font-size: 10.5px; line-height: 1.15;
   letter-spacing: -0.01em; text-transform: uppercase; border-radius: var(--radius-pill);
-  transition: transform 0.12s ease, background-color 0.15s ease, color 0.15s ease;
+  transition: transform 0.12s ease, background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 .draw-act:active { transform: translateY(2px); }
-.draw-act--go { background: var(--accent); color: var(--bg); }
-.draw-act--saved { background: var(--accent-dim); color: var(--accent); }
+/* "Want to play", once tapped on: the one place this row still uses the
+   accent, as a status readback (it IS saved now) rather than decoration -
+   a light tint and green text, not a loud fill. */
+.draw-act--saved { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
 .draw-act:disabled { pointer-events: none; }
 .mood-row {
   position: relative; display: flex; align-items: center; gap: 14px;

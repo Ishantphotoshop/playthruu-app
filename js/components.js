@@ -536,7 +536,12 @@ function cardWho(profile, rating, { playing = false, replayed = false, hasReview
     // printed twice on every tile — and it was the thing making that
     // row taller and busier than the ones around it.
   } else {
-    if (rating) bits.push(starRow(rating, { size: 11.5, round: true }));
+    // A whole pixel, not 11.5 — see the comment on the phone override of
+    // this size in styles.css: a fractional width lands each of the 5
+    // flex-laid-out stars on a different sub-pixel offset, so the mask
+    // rasterises each one slightly differently and the row reads as
+    // uneven even though every box is geometrically identical.
+    if (rating) bits.push(starRow(rating, { size: 12, round: true }));
     // Whether it's loved only shows on the review page itself — not
     // here in the feed byline. A relog shows instead, since it's the
     // thing that's actually new about this particular log entry.
