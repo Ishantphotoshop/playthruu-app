@@ -4730,8 +4730,17 @@ a.gd-credit__name { text-decoration: none; }
    back control in the app lives. */
 .draw-back {
   position: absolute; z-index: 2;
-  top: calc(var(--safe-top) + 12px); left: 16px;
+  top: calc(var(--safe-top) + 12px);
+  /* As far left as the screen itself allows — env() backs off for a
+     notch/rounded corner, 4px otherwise, rather than the --space-3
+     gutter every other back button sits at (that gutter is there to
+     line a button up with the text below it; nothing below this one
+     to line up with). The icon is pinned to the start of its own box
+     too, not centred in it — centring left ~9px of dead space between
+     the glyph and the edge this is meant to hug. */
+  left: max(env(safe-area-inset-left, 0px), 4px);
   width: 44px; height: 44px;
+  display: flex; align-items: center; justify-content: flex-start;
   background: none; border: none; color: #fff;
   filter: drop-shadow(0 1px 6px rgba(0,0,0,0.6));
 }
