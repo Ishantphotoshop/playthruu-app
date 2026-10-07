@@ -780,8 +780,9 @@ async function paintDiscovery(slot) {
     }
 
     function showResult() {
+      session++; // any save/remove still working for the last card gives up
       setSaved(false);
-      saved = null;
+      logRef = null;
       drawEl.classList.add('is-landed');
       acts.forEach((b) => { b.disabled = false; });
       pinCrew();
@@ -925,57 +926,70 @@ async function paintDiscovery(slot) {
     stage.addEventListener('mousemove', (e) => movePress(e.clientX, e.clientY));
     stage.addEventListener('mouseup', endPress);
     stage.addEventListener('contextmenu', (e) => { if (frontOfCurrent(e.target)) e.preventDefault(); });
-    // Want to play is a toggle. The card turns green the moment you tap
-    // it and the backlog entry is written behind it; tap again and the
-    // entry this made is removed. Nothing reloads, and a failure puts the
-    // card back. A game you had already logged (played, playing) is left
-    // exactly as it was.
-    let saved = null;     // { logId, pickKey } once in the backlog
-    let saving = false;
+    // Want to play is a toggle, and it has to feel instant even though
+    // saving one is really 2-3 requests deep (add the game, check for an
+    // existing log, create one) and removing it is a fourth. The button
+    // is the only thing that changes the moment you tap it — it never
+    // waits on a round trip — and a background loop drives the real
+    // backlog row toward whatever the button most recently showed,
+    // picking up again if you tap it again before that request lands.
+    // Tap, tap again, tap again all land correctly however fast they come.
+    let session = 0;      // bumped on every new card — stale work gives up
+    let uiSaved = false;  // what the button is showing right now
+    let logRef = null;    // { id } of the real backlog row, once one exists
+    let syncing = false;
     const setSaved = (on) => {
+      uiSaved = on;
       btnSave.classList.toggle('draw-act--saved', on);
       btnSave.setAttribute('aria-pressed', on ? 'true' : 'false');
       qs('span', btnSave).innerHTML = on ? 'On your<br>list ✓' : 'Want<br>to play';
     };
-    btnSave.addEventListener('click', async () => {
-      if (busy || !pick || saving) return;
-      if (!state.user) { promptSignIn('Sign in to save games.'); return; }
-      const g = pick;
-      saving = true;
-      if (saved && saved.pickKey === keyOf(g)) {
-        const was = saved;
-        saved = null;
-        setSaved(false);
-        buzz(6);
-        try {
-          await api.deleteLog(was.logId);
-          markPagesStale();
-        } catch (err) {
-          if (pick === g) { saved = was; setSaved(true); }
-          toast(err.message || 'Could not remove that.', 'error');
-        }
-        saving = false;
-        return;
-      }
-      setSaved(true);
-      buzz([10, 40, 14]);
+    async function syncSaved(mySession, g) {
+      if (syncing) return; // already driving toward the latest tap
+      syncing = true;
       try {
-        const game = await api.addGame(g, state.user.id);
-        const had = await api.getOwnLogForGame(state.user.id, game.id);
-        if (had && had.status !== 'backlog') {
-          if (pick === g) setSaved(false);
-          toast(`${game.title} is already in your diary.`);
-        } else {
-          const log = had || await api.createLog({ game_id: game.id, user_id: state.user.id, status: 'backlog', is_public: true });
-          if (pick === g) saved = { logId: log.id, pickKey: keyOf(g) };
-          markPagesStale();
-          pulseLogTab();
+        while (mySession === session && uiSaved !== !!logRef) {
+          if (uiSaved) {
+            const game = await api.addGame(g, state.user.id);
+            if (mySession !== session) return;
+            const had = await api.getOwnLogForGame(state.user.id, game.id);
+            if (mySession !== session) return;
+            if (had && had.status !== 'backlog') {
+              // Already played/playing — toggling this button can't
+              // override that, so it snaps back and says why.
+              setSaved(false);
+              toast(`${game.title} is already in your diary.`);
+              continue;
+            }
+            const log = had || await api.createLog({ game_id: game.id, user_id: state.user.id, status: 'backlog', is_public: true });
+            if (mySession !== session) return;
+            logRef = { id: log.id };
+            markPagesStale();
+            pulseLogTab();
+          } else {
+            const was = logRef;
+            logRef = null;
+            await api.deleteLog(was.id);
+            if (mySession !== session) return;
+            markPagesStale();
+          }
         }
       } catch (err) {
-        if (pick === g) setSaved(false);
-        toast(err.message || 'Could not save that game.', 'error');
+        if (mySession === session) {
+          setSaved(!!logRef); // fall back to whatever actually exists
+          toast(err.message || 'Could not update your backlog.', 'error');
+        }
+      } finally {
+        syncing = false;
       }
-      saving = false;
+    }
+    btnSave.addEventListener('click', () => {
+      if (busy || !pick) return;
+      if (!state.user) { promptSignIn('Sign in to save games.'); return; }
+      const next = !uiSaved;
+      setSaved(next);
+      buzz(next ? [10, 40, 14] : 6);
+      syncSaved(session, pick);
     });
 
     // Live tilt once the card is showing: the deck leans with the phone (the
