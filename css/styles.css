@@ -4722,7 +4722,21 @@ a.gd-credit__name { text-decoration: none; }
   overflow: hidden;
   animation: fade-in 260ms ease;
 }
-.draw-close { position: absolute; top: calc(var(--safe-top) + 12px); right: 16px; z-index: 2; }
+/* Same bare chevron as a game page's floating back button (.game-back)
+   — this screen sits over the blurred app the same way a game page's
+   hero sits under its own back arrow, so the recipe carries straight
+   over: no plate, no circle, just the stroke with a drop shadow to stay
+   legible over whatever art is behind it. Top-LEFT, where every other
+   back control in the app lives. */
+.draw-back {
+  position: absolute; z-index: 2;
+  top: calc(var(--safe-top) + 12px); left: 16px;
+  width: 44px; height: 44px;
+  background: none; border: none; color: #fff;
+  filter: drop-shadow(0 1px 6px rgba(0,0,0,0.6));
+}
+.draw-back:active { transform: scale(0.9); }
+.draw-back svg { width: 26px; height: 26px; stroke-width: 2.4; }
 .draw { display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 420px; }
 .draw-stage { position: relative; width: 176px; height: 235px; margin-top: 10px; perspective: 1100px; }
 .draw-card { position: absolute; width: 176px; height: 235px; }

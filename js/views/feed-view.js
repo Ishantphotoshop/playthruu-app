@@ -3,7 +3,7 @@ import { state } from '../state.js';
 import {
   topBar, navBar, homeTabs, feedSectionHead, activityCard, emptyState, spinner, skeletonRow, iconStamp, iconUser, iconFilter,
   trendingStrip, wireTrendingStrip, friendsPlayingCard, posterFrame, openReportSheet, iconChevronRight,
-  iconDice, iconBookmark, iconBrandMark, iconCardStack, iconPlay,
+  iconDice, iconBookmark, iconBrandMark, iconCardStack, iconPlay, iconBack,
 } from '../components.js';
 import { toast, qs, qsa, esc, timeAgo, enableSwipeToDismiss, promptSignIn, tapFeedback, pulseLogTab, igdbSized, placeholderCover } from '../utils.js';
 import { buzz } from '../haptics.js';
@@ -623,7 +623,7 @@ async function paintDiscovery(slot) {
     const overlay = document.createElement('div');
     overlay.className = 'draw-overlay';
     overlay.innerHTML = `
-      <button type="button" class="modal__close draw-close" data-close aria-label="Close">&times;</button>
+      <button type="button" class="draw-back" data-close aria-label="Back">${iconBack()}</button>
       <div class="draw" role="dialog" aria-label="Random pick from ${esc(collection.label)}">
         <div class="draw-board">
           <svg class="draw-strings" aria-hidden="true"></svg>
@@ -631,9 +631,8 @@ async function paintDiscovery(slot) {
           <div class="draw-crew"></div>
         </div>
         <div class="draw-actions">
-          <button type="button" class="draw-act draw-act--go" data-open><span>Open<br>the game</span></button>
-          <button type="button" class="draw-act" data-save><span>Want<br>to play</span></button>
           <button type="button" class="draw-act" data-draw><span>Draw<br>again</span></button>
+          <button type="button" class="draw-act" data-save><span>Want<br>to play</span></button>
         </div>
       </div>`;
     document.body.appendChild(overlay);
@@ -650,7 +649,6 @@ async function paintDiscovery(slot) {
     const followingP = state.user ? api.getFollowingIdSet(state.user.id).catch(() => new Set()) : Promise.resolve(new Set());
     let crew = [];
     const btnDraw = qs('[data-draw]', overlay);
-    const btnOpen = qs('[data-open]', overlay);
     const btnSave = qs('[data-save]', overlay);
     const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
     const keyOf = (g) => g.igdb_id ?? g.id ?? g.title;
@@ -681,6 +679,11 @@ async function paintDiscovery(slot) {
     overlay.addEventListener('click', (e) => {
       if (e.target.closest('button')) return;
       if (busy) { skip = true; anims.forEach((a) => { try { a.finish(); } catch { /* already gone */ } }); return; }
+      if (frontOfCurrent(e.target)) {
+        if (swallowClick) { swallowClick = false; return; } // just let go of a hold
+        openPickedGame();
+        return;
+      }
       if (e.target === overlay || e.target === drawEl) close();
     });
 
@@ -865,20 +868,63 @@ async function paintDiscovery(slot) {
       close();
       navigate(`/profile/${encodeURIComponent(pin.dataset.user)}`);
     });
-    btnOpen.addEventListener('click', async () => {
-      if (busy || !pick) return;
+    // The poster itself is now the "open" control — tap it to open the
+    // game, hold it to log it, same as any other poster in the app. One
+    // request in flight at a time so a double-tap can't fire two.
+    let opening = false;
+    async function openPickedGame() {
+      if (busy || !pick || opening) return;
       if (!state.user) { promptSignIn('Sign in to open games.'); return; }
+      opening = true;
       buzz(8);
-      btnOpen.disabled = true;
       try {
         const saved = await api.addGame(pick, state.user.id);
         close();
         navigate(`/game/${saved.id}`);
       } catch (err) {
         toast(err.message || 'Could not open that game.', 'error');
-        btnOpen.disabled = false;
+        opening = false;
       }
-    });
+    }
+    // Held for half a second: the log sheet slides up, same threshold and
+    // feel as wirePosterLongPress (app.js) uses on every other poster —
+    // this card just isn't a `.poster-frame`, so that global handler
+    // (which deliberately skips .draw-overlay) never reaches it, and this
+    // is its own copy of the same gesture.
+    const HOLD_MS = 500;
+    let pressTimer = 0;
+    let pressStart = null;
+    let swallowClick = false;
+    function frontOfCurrent(target) {
+      const front = target.closest?.('.draw-card__front');
+      return front && front.closest('.draw-card') === current ? front : null;
+    }
+    function cancelPress() { clearTimeout(pressTimer); pressTimer = 0; pressStart = null; }
+    function startPress(target, x, y) {
+      if (busy || !frontOfCurrent(target)) return;
+      cancelPress();
+      pressStart = { x, y };
+      pressTimer = setTimeout(() => {
+        pressTimer = 0; pressStart = null;
+        swallowClick = true;
+        setTimeout(() => { swallowClick = false; }, 1200);
+        if (!state.user) { buzz([20]); promptSignIn('Sign in to log games.'); return; }
+        buzz([20]);
+        openLogComposer({ game: pick, onSaved: () => {} });
+      }, HOLD_MS);
+    }
+    function movePress(x, y) { if (pressStart && Math.hypot(x - pressStart.x, y - pressStart.y) > 12) cancelPress(); }
+    function endPress() { if (pressTimer) cancelPress(); }
+    stage.addEventListener('touchstart', (e) => {
+      if (e.touches.length !== 1) { cancelPress(); return; }
+      startPress(e.target, e.touches[0].clientX, e.touches[0].clientY);
+    }, { passive: true });
+    stage.addEventListener('touchmove', (e) => movePress(e.touches[0].clientX, e.touches[0].clientY), { passive: true });
+    stage.addEventListener('touchend', endPress, { passive: true });
+    stage.addEventListener('mousedown', (e) => { if (e.button === 0) startPress(e.target, e.clientX, e.clientY); });
+    stage.addEventListener('mousemove', (e) => movePress(e.clientX, e.clientY));
+    stage.addEventListener('mouseup', endPress);
+    stage.addEventListener('contextmenu', (e) => { if (frontOfCurrent(e.target)) e.preventDefault(); });
     // Want to play is a toggle. The card turns green the moment you tap
     // it and the backlog entry is written behind it; tap again and the
     // entry this made is removed. Nothing reloads, and a failure puts the
