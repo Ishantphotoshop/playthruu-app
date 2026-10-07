@@ -911,7 +911,15 @@ async function paintDiscovery(slot) {
         setTimeout(() => { swallowClick = false; }, 1200);
         if (!state.user) { buzz([20]); promptSignIn('Sign in to log games.'); return; }
         buzz([20]);
-        openLogComposer({ game: pick, onSaved: () => {} });
+        // `pick` is only ever a catalogue/IGDB object here, never a saved
+        // row — the shelf is built straight from the collection and from
+        // IGDB, nothing on it has been inserted yet. The sheet opens at
+        // once with it as a stand-in (title/cover/year, enough to render),
+        // the same way a hold on any other poster does; `resolveGame` is
+        // what actually inserts it and hands back a real id for commit()
+        // to write logs against. Saving without this sent game_id: null
+        // straight at the database.
+        openLogComposer({ game: pick, resolveGame: api.addGame(pick, state.user.id), onSaved: () => {} });
       }, HOLD_MS);
     }
     function movePress(x, y) { if (pressStart && Math.hypot(x - pressStart.x, y - pressStart.y) > 12) cancelPress(); }
