@@ -4711,12 +4711,10 @@ a.gd-credit__name { text-decoration: none; }
    jumps when the result appears. */
 .draw-overlay {
   position: fixed; inset: 0; z-index: 100;
-  /* The page behind stays, blurred and dimmed, so the pick sits in front
-     of the app rather than on a flat colour. No texture, nothing drawn
-     on it: just the app, out of focus. */
-  background: rgba(10, 14, 20, 0.5);
-  -webkit-backdrop-filter: blur(22px) saturate(1.1);
-  backdrop-filter: blur(22px) saturate(1.1);
+  /* The page behind stays up, just dulled — a dark scrim over it, same
+     idea as every other modal's backdrop in the app, no blur. The app is
+     still readable through it (if dimly), not turned to mush. */
+  background: rgba(8, 10, 14, 0.86);
   display: flex; align-items: center; justify-content: center;
   padding: calc(var(--safe-top) + 56px) 16px calc(var(--safe-bottom) + 24px);
   overflow: hidden;
@@ -4731,14 +4729,13 @@ a.gd-credit__name { text-decoration: none; }
 .draw-back {
   position: absolute; z-index: 2;
   top: calc(var(--safe-top) + 12px);
-  /* As far left as the screen itself allows — env() backs off for a
-     notch/rounded corner, 4px otherwise, rather than the --space-3
-     gutter every other back button sits at (that gutter is there to
-     line a button up with the text below it; nothing below this one
-     to line up with). The icon is pinned to the start of its own box
-     too, not centred in it — centring left ~9px of dead space between
-     the glyph and the edge this is meant to hug. */
-  left: max(env(safe-area-inset-left, 0px), 4px);
+  /* As far left as the screen allows — a plain 4px, not the --space-3
+     gutter every other back button sits at (that gutter exists to line
+     a button up with the text below it; nothing below this one to line
+     up with). The icon is pinned to the start of its own box too, not
+     centred in it — centring left ~9px of dead space between the glyph
+     and the edge this is meant to hug. */
+  left: 4px;
   width: 44px; height: 44px;
   display: flex; align-items: center; justify-content: flex-start;
   background: none; border: none; color: #fff;
