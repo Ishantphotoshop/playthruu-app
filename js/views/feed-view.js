@@ -837,8 +837,8 @@ async function paintDiscovery(slot) {
       await done(run(qs('.draw-card__inner', top), [{ transform: 'rotateY(0)' }, { transform: 'rotateY(180deg)' }], { duration: reduce ? 1 : 460, easing: 'cubic-bezier(.3,.1,.2,1)', fill: 'forwards' }));
       if (my !== token) return;
       cards.slice(0, -1).forEach((c) => run(c, [{ opacity: 1 }, { opacity: 0 }], { duration: 250, fill: 'forwards' }));
-      // Dropped into place: from the lift to flat, a little crooked.
-      run(top, [{ transform: 'translateY(-22px) scale(1.04)' }, { transform: 'rotate(-3deg)' }], { duration: reduce ? 1 : 220, easing: 'cubic-bezier(.3,1.4,.5,1)', fill: 'forwards' });
+      // Dropped straight into place, square to the screen, like a poster.
+      run(top, [{ transform: 'translateY(-22px) scale(1.04)' }, { transform: 'none' }], { duration: reduce ? 1 : 220, easing: 'cubic-bezier(.3,1.4,.5,1)', fill: 'forwards' });
       crew = await Promise.race([friendsP, new Promise((r) => setTimeout(() => r([]), 800))]);
       if (my !== token) return;
       busy = false;
@@ -853,7 +853,7 @@ async function paintDiscovery(slot) {
       endTilt();
       buzz(6);
       const gone = current;
-      await done(run(gone, [{ transform: 'rotate(-3deg)', opacity: 1 }, { transform: 'translate(300px,-40px) rotate(18deg)', opacity: 0 }], { duration: reduce ? 1 : 280, easing: 'cubic-bezier(.4,0,.8,.4)', fill: 'forwards' }));
+      await done(run(gone, [{ transform: 'none', opacity: 1 }, { transform: 'translate(300px,-40px) rotate(18deg)', opacity: 0 }], { duration: reduce ? 1 : 280, easing: 'cubic-bezier(.4,0,.8,.4)', fill: 'forwards' }));
       gone.classList.add('is-gone');
       stack();
       liveCards().forEach((c) => run(c, [{ opacity: 0.2 }, { opacity: 1 }], { duration: 200, fill: 'forwards' }));
