@@ -4731,13 +4731,14 @@ a.gd-credit__name { text-decoration: none; }
 .draw-back {
   position: absolute; z-index: 2;
   top: calc(var(--safe-top) + 12px);
-  /* As far left as the screen allows — a plain 4px, not the --space-3
-     gutter every other back button sits at (that gutter exists to line
-     a button up with the text below it; nothing below this one to line
-     up with). The icon is pinned to the start of its own box too, not
+  /* Lined up with the LEFT EDGE of the action row below (.draw-actions,
+     width 100% capped at 330px, centred the same way this is) rather
+     than the physical screen edge — centring on the same axis with half
+     that same 330px reproduces exactly where that row starts, at any
+     width. The icon is pinned to the start of its own box too, not
      centred in it — centring left ~9px of dead space between the glyph
      and the edge this is meant to hug. */
-  left: 4px;
+  left: 50%; margin-left: -165px;
   width: 44px; height: 44px;
   display: flex; align-items: center; justify-content: flex-start;
   background: none; border: none; color: #fff;
