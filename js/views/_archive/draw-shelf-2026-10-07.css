@@ -1,0 +1,149 @@
+/* ---- random pick: the game shelf (Bored? Try these) -------------------
+   A shelf of game cases standing side by side. One is pulled out toward
+   you and turns to face the screen, and its title arrives last. Cases are
+   real 3D boxes (cover, two edges, back), but everything that moves is a
+   transform or an opacity - nothing animates layout, shadows or filters -
+   and only the case in play is ever promoted to its own layer. The app's
+   flat-UI rule clears every box-shadow, so depth here is gradients: the
+   shelf's lit top edge, the dark cubby behind, the sheen on the plastic. */
+.draw-overlay {
+  position: fixed; inset: 0; z-index: 100;
+  /* The page behind stays, blurred and dimmed: the app, out of focus. */
+  background: rgba(10, 14, 20, 0.5);
+  -webkit-backdrop-filter: blur(18px) saturate(1.1);
+  backdrop-filter: blur(18px) saturate(1.1);
+  display: flex; align-items: center; justify-content: center;
+  padding: calc(var(--safe-top) + 56px) 16px calc(var(--safe-bottom) + 24px);
+  overflow: hidden;
+  animation: fade-in 260ms ease;
+}
+.draw-close { position: absolute; top: calc(var(--safe-top) + 12px); right: 16px; z-index: 2; }
+.draw { display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 560px; }
+.draw-scene { width: 100%; perspective: 1100px; perspective-origin: 50% 42%; }
+.draw-stage { position: relative; width: 100%; height: var(--sh, 300px); transform-style: preserve-3d; }
+
+/* The shelf: a lit top surface, then its front lip, drawn as one strip so
+   there is no seam between them. It runs well past both edges of the
+   screen - no end in sight, so this reads as part of a longer shelf
+   rather than a tray sitting in the middle of the page. Nothing behind
+   the cases: the blurred app is the backdrop. */
+.draw-board {
+  position: absolute; left: 50%; display: block; pointer-events: none;
+  /* A lit top surface, a dark edge, then the front lip - the top band is
+     what you see once the shelf is pitched toward you, and it is what
+     makes this read as a shelf rather than a line under the cases. */
+  height: 40px;
+  background:
+    linear-gradient(180deg, #7f92a8 0 2px, #5d7089 2px 13px, #41505f 13px 15px,
+      #2b3643 15px 16px, #272f3c 16px 28px, #171d26 28px 40px);
+}
+
+/* A game case, as a box, standing edge on so its SPINE faces you. The
+   element is built at the size it has when pulled out and the shelf
+   scales it down (see applyLayout), so the artwork is sharp the moment
+   it turns around. It is a button: any spine can be tapped to take that
+   one. */
+.draw-case {
+  position: absolute; left: 50%; top: 0; padding: 0; border: 0; background: none;
+  width: var(--fw); height: var(--fh); margin-left: calc(var(--fw) / -2);
+  transform-style: preserve-3d; transform-origin: 50% 100%;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.draw-case__face { position: absolute; }
+/* The cover, as it sits in a real case: the art behind a sheet of clear
+   plastic, so it carries the case's own rounded corners, a highlight
+   down the folded edge and a faint sheen across the face. */
+.draw-case__front {
+  inset: 0; transform: translateZ(calc(var(--fd) / 2));
+  overflow: hidden; backface-visibility: hidden; background: #0d1117;
+  border: 1px solid rgba(255, 255, 255, 0.16); border-radius: 4px;
+}
+/* The spine: near-black plastic, lit a little down its middle, with the
+   PlayThruu mark and nothing else - a shelf of game titles in 11px type
+   would be a wall of noise, and the mark is what makes the row read as
+   one collection. rotateY(-90deg), not 90: the face has to look OUT of
+   the box, or the browser hides it as a backface and the shelf turns
+   into a row of blank slivers. */
+.draw-case__spine {
+  top: 0; height: 100%; width: var(--fd); left: calc(50% - var(--fd) / 2);
+  transform: translateX(calc(var(--fw) / -2)) rotateY(-90deg);
+  display: flex; align-items: center; justify-content: center; overflow: hidden;
+  background: linear-gradient(90deg, #0b0e12, #1d242d 42%, #0a0d11);
+  color: #7d8c9c;
+}
+.draw-case__spine svg { width: 62%; max-width: 15px; display: block; }
+.draw-case__front img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* The fold down the left of the cover, where it wraps round into the
+   spine: a dark crease with the light catching the ridge beside it. */
+.draw-case__hinge {
+  position: absolute; top: 0; bottom: 0; left: 0; width: 6.5%; pointer-events: none;
+  background: linear-gradient(90deg,
+    rgba(0, 0, 0, 0.55) 0, rgba(0, 0, 0, 0.3) 28%,
+    rgba(255, 255, 255, 0.16) 62%, rgba(255, 255, 255, 0.03) 78%, rgba(0, 0, 0, 0.22));
+}
+/* The plastic itself: a faint diagonal sheen across the sleeve, and the
+   light sitting along the top and right edges where the case is moulded.
+   Static - it is the shape of the object, not an animation. */
+.draw-case__sheen {
+  position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
+  background:
+    linear-gradient(115deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0) 32%,
+      rgba(255, 255, 255, 0) 68%, rgba(255, 255, 255, 0.07) 100%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0) 3%),
+    linear-gradient(270deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0) 2.5%),
+    linear-gradient(0deg, rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0) 4%);
+}
+.draw-case__edge {
+  top: 0; height: 100%; width: var(--fd); left: calc(50% - var(--fd) / 2);
+  transform: translateX(calc(var(--fw) / 2)) rotateY(90deg);
+  background: linear-gradient(90deg, #232d39, #141a22 60%, #1b232d);
+}
+.draw-case__back {
+  inset: 0; transform: translateZ(calc(var(--fd) / -2)) rotateY(180deg);
+  background: #161d26; backface-visibility: hidden;
+}
+/* The shelf in shadow while one case is out. A scrim standing just in
+   front of the row, rather than opacity on the cases themselves: any
+   opacity below 1 flattens a preserve-3d subtree, and a flattened case
+   has no spine - the whole shelf collapses into slivers of cover. */
+.draw-dim {
+  position: absolute; left: 50%; transform: translateZ(8px);
+  pointer-events: none; opacity: 0;
+  background: radial-gradient(ellipse at 50% 50%, rgba(8, 11, 16, 0.72), rgba(8, 11, 16, 0.6) 62%, rgba(8, 11, 16, 0) 100%);
+}
+/* Nothing on the shelf is interactive while a case is being pulled out,
+   so a second tap cannot start a second pull. */
+.draw-stage.is-picking .draw-case { pointer-events: none; }
+
+/* The title block: held in place (so nothing jumps when it arrives),
+   invisible until the case has landed. */
+.draw-info {
+  width: 100%; max-width: 360px; min-height: 104px; margin-top: 14px; text-align: center; opacity: 0;
+}
+.draw-title { margin: 0; font-weight: 800; font-size: 23px; line-height: 1.14; color: var(--ink); text-wrap: balance; }
+.draw-title span { display: inline-block; }
+.draw-rule { display: block; width: 38px; height: 2px; margin: 10px auto 0; background: var(--accent); transform: scaleX(0); }
+.draw-meta { margin: 9px 0 0; font-size: 12.5px; font-weight: 700; letter-spacing: 0.04em; color: var(--ink-dim); }
+.draw-crew { display: flex; justify-content: center; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.draw-friend {
+  display: flex; align-items: center; gap: 6px; padding: 3px 9px 3px 3px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-s);
+  color: var(--ink-dim); font-size: 11.5px; font-weight: 700;
+}
+.draw-friend__face { width: 20px; height: 20px; border-radius: 50%; overflow: hidden; background: var(--surface-raised); display: grid; place-items: center; font-size: 10px; font-weight: 800; color: var(--ink); }
+.draw-friend__face img { width: 100%; height: 100%; object-fit: cover; }
+
+/* Three equal tabs in one row, fixed in place - nothing on this screen
+   moves them. */
+.draw-actions { display: flex; gap: 6px; width: 100%; max-width: 330px; margin-top: 12px; visibility: hidden; }
+.draw.is-landed .draw-actions { visibility: visible; }
+.draw-act {
+  flex: 1; min-width: 0; padding: 11px 6px; display: grid; place-items: center; text-align: center;
+  background: var(--surface-raised); color: var(--ink); border: 1px solid var(--line-strong, var(--line));
+  font-weight: 800; font-size: 11px; line-height: 1.15; text-transform: uppercase;
+  transition: transform 0.12s ease, background-color 0.15s ease, color 0.15s ease;
+}
+.draw-act:active { transform: translateY(2px); }
+.draw-act--go { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+.draw-act--saved { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+.draw-act:disabled { pointer-events: none; }
