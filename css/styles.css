@@ -4769,20 +4769,28 @@ a.gd-credit__name { text-decoration: none; }
 .draw-pin__face img { width: 100%; height: 100%; object-fit: cover; }
 .draw-pin__name { font-size: 9px; font-weight: 800; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .draw-pin__what { font-size: 9px; font-weight: 800; line-height: 1.2; }
-/* Three equal tabs in one row, not a stack of strips: a third of the
-   height, and all three are the same shape whatever the words are. They
-   are fixed in place - nothing on this screen moves them. */
-.draw-actions { display: flex; gap: 6px; width: 100%; max-width: 330px; margin-top: 22px; visibility: hidden; }
+/* Same recipe as the Feed/News pill up top (.home-tabs__pill): one
+   full-width rounded bar in the surface colour, each item its own
+   equal flex:1 share with its own pill radius inside it, set in the
+   brand font (Unbounded) rather than the body one. Three equal tabs in
+   one row, not a stack of strips, and fixed in place - nothing on this
+   screen moves them. */
+.draw-actions {
+  display: flex; align-items: center; gap: var(--space-1); width: 100%; max-width: 330px; margin-top: 22px;
+  background: var(--surface-raised); border: 1px solid var(--line); border-radius: var(--radius-pill);
+  padding: var(--space-1); visibility: hidden;
+}
 .draw.is-landed .draw-actions { visibility: visible; }
 .draw-act {
-  flex: 1; min-width: 0; padding: 11px 6px; display: grid; place-items: center; text-align: center;
-  background: var(--surface-raised); color: var(--ink); border: 1px solid var(--line-strong, var(--line));
-  font-weight: 800; font-size: 11px; line-height: 1.15; text-transform: uppercase;
+  flex: 1; min-width: 0; padding: 10px 6px; display: grid; place-items: center; text-align: center;
+  background: none; border: none; color: var(--ink);
+  font-family: var(--font-brand); font-weight: 700; font-size: 10.5px; line-height: 1.15;
+  letter-spacing: -0.01em; text-transform: uppercase; border-radius: var(--radius-pill);
   transition: transform 0.12s ease, background-color 0.15s ease, color 0.15s ease;
 }
 .draw-act:active { transform: translateY(2px); }
-.draw-act--go { background: var(--accent); border-color: var(--accent); color: var(--bg); }
-.draw-act--saved { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+.draw-act--go { background: var(--accent); color: var(--bg); }
+.draw-act--saved { background: var(--accent-dim); color: var(--accent); }
 .draw-act:disabled { pointer-events: none; }
 .mood-row {
   position: relative; display: flex; align-items: center; gap: 14px;
