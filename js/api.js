@@ -92,6 +92,10 @@ function rankNews(rows) {
   const now = Date.now();
   const top = [];
   const latest = [];
+  // Admin-pinned stories (news_articles.pinned_at) come before everything
+  // else, most recently pinned first, however old they are.
+  const pinned = rows.filter((a) => a.pinned_at).sort((a, b) => b.pinned_at.localeCompare(a.pinned_at));
+  rows = rows.filter((a) => !a.pinned_at);
   rows.forEach((a) => {
     const windowH = TOP_WINDOW_HOURS[a.importance];
     const ageH = (now - Date.parse(a.updated_at)) / 36e5;
@@ -99,7 +103,7 @@ function rankNews(rows) {
   });
   const weight = (a) => (a.importance === 'breaking' ? 3 : a.verification_status === 'confirmed' ? 2 : 1);
   top.sort((a, b) => weight(b) - weight(a) || b.updated_at.localeCompare(a.updated_at));
-  return [...top, ...latest];
+  return [...pinned, ...top, ...latest];
 }
 
 // GTA 6 is big enough, and spelled enough different ways across outlets
@@ -115,12 +119,14 @@ function isAboutGTA6(a) {
 
 export async function getGameNews() {
   try {
-    const { data, error } = await supabase
-      .from('news_articles')
-      .select('slug, title, card_description, category, importance, verification_status, image_url, game, tags, updated_at')
-      .eq('status', 'published')
-      .order('updated_at', { ascending: false })
-      .limit(60);
+    const fields = 'slug, title, card_description, category, importance, verification_status, image_url, game, tags, updated_at';
+    const read = (cols) => supabase.from('news_articles').select(cols)
+      .eq('status', 'published').order('updated_at', { ascending: false }).limit(60);
+    let { data, error } = await read(`${fields}, pinned_at`);
+    // Until the pin migration (migrations/2026-10-08_news_pin.sql) has been
+    // run there is no pinned_at column and that select fails outright —
+    // fall back rather than blanking the whole News tab.
+    if (error) ({ data, error } = await read(fields));
     if (error) return [];
     return rankNews(data || []).map((a) => ({
       slug: a.slug,
@@ -132,6 +138,7 @@ export async function getGameNews() {
       category: a.category,
       isGTA6: isAboutGTA6(a),
       isBreaking: a.importance === 'breaking',
+      isPinned: !!a.pinned_at,
       status: NEWS_LABEL[a.verification_status] || '',
       // The title of the game the story is about, if it's about one
       // specific game — resolved against the catalogue by the news view,

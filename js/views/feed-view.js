@@ -180,6 +180,7 @@ function newsCard(article) {
     <${tag} class="news-card${article.isCustom ? ' news-card--own' : ''}"${linkAttrs}>
       <span class="news-card__cover" style="${article.image ? `background-image:url('${esc(article.image)}')` : ''}">
         ${article.isBreaking ? '<span class="news-card__breaking">Breaking</span>' : ''}
+        ${article.isPinned ? '<span class="news-card__pinned">Pinned</span>' : ''}
       </span>
       <span class="news-card__body">
         <span class="news-card__title">${esc(article.title)}</span>

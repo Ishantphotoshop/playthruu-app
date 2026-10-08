@@ -1065,6 +1065,8 @@ const NEWS_TABS = [
 ];
 const NEWS_VERIFY = { confirmed: 'Confirmed', reported: 'Reported', rumor: 'Rumor', leak: 'Leak' };
 let newsTab = 'review';
+// False until migrations/2026-10-08_news_pin.sql has been run.
+let newsPinSupported = true;
 
 SCREENS.news = function news() {
   paint(`
@@ -1087,16 +1089,20 @@ async function paintNews() {
   const host = qs('#list');
   if (!host) return;
   host.innerHTML = spinner();
-  let query = supabase
-    .from('news_articles')
-    .select('id, slug, title, summary, category, importance, status, lifecycle, verification_status, confidence_level, confidence_reason, editor_notes, flagged_incorrect, needs_update, brain_locked, sources, updated_at')
-    .order('updated_at', { ascending: false })
-    .limit(100);
-  query = newsTab === 'flagged'
-    ? query.or('flagged_incorrect.eq.true,needs_update.eq.true')
-    : query.eq('status', newsTab);
-  const { data, error } = await query;
+  const fields = 'id, slug, title, summary, category, importance, status, lifecycle, verification_status, confidence_level, confidence_reason, editor_notes, flagged_incorrect, needs_update, brain_locked, sources, updated_at';
+  const read = (cols) => {
+    let query = supabase.from('news_articles').select(cols).order('updated_at', { ascending: false }).limit(100);
+    return newsTab === 'flagged'
+      ? query.or('flagged_incorrect.eq.true,needs_update.eq.true')
+      : query.eq('status', newsTab);
+  };
+  let { data, error } = await read(`${fields}, pinned_at`);
+  newsPinSupported = !error;
+  // No pinned_at column yet (migration not run): show the list without it.
+  if (error) ({ data, error } = await read(fields));
   if (!stillOn(screen)) return;
+  // Pinned first, most recently pinned on top; the rest keep their order.
+  if (data) data = [...data.filter((a) => a.pinned_at).sort((x, y) => y.pinned_at.localeCompare(x.pinned_at)), ...data.filter((a) => !a.pinned_at)];
   if (error) { host.innerHTML = emptyState(error.message); return; }
   if (!data?.length) {
     host.innerHTML = emptyState(newsTab === 'review' ? 'Nothing waiting for review.' : 'Nothing here.', { icon: iconNewspaper() });
@@ -1105,6 +1111,7 @@ async function paintNews() {
 
   host.innerHTML = data.map((a) => {
     const flags = [
+      a.pinned_at ? 'PINNED' : '',
       a.importance === 'breaking' ? 'BREAKING' : '',
       a.flagged_incorrect ? 'INCORRECT' : '',
       a.needs_update ? 'UPDATE REQUESTED' : '',
@@ -1159,6 +1166,7 @@ function openNewsStory(a) {
     a.flagged_incorrect ? btn('clear-flag', 'Clear incorrect flag') : btn('incorrect', 'Mark incorrect'),
     btn('force-update', a.needs_update ? 'Update requested ✓' : 'Force update'),
     a.brain_locked ? btn('unlock', 'Unlock for Brain') : btn('lock', 'Lock from Brain'),
+    a.status === 'published' && newsPinSupported ? (a.pinned_at ? btn('unpin', 'Unpin from top') : btn('pin', 'Pin to top')) : '',
     btn('delete', 'Delete'),
   ].filter(Boolean);
 
@@ -1180,6 +1188,7 @@ function openNewsStory(a) {
       ${live ? `<a class="btn" href="${NEWS_SITE}/news/${esc(a.slug)}" target="_blank" rel="noopener">Read on site</a>` : ''}
       <a class="btn" href="${NEWS_SITE}/admin/news/${esc(a.id)}" target="_blank" rel="noopener">Full editor</a>
     </div>
+    ${a.status === 'published' && !newsPinSupported ? '<p class="adm-hint">Pinning needs a one-time database update: run migrations/2026-10-08_news_pin.sql in the Supabase SQL editor.</p>' : ''}
     <p class="adm-hint">Body text, sources and SEO are edited in the full editor on playthruu.com.</p>`, (sheet, close) => {
 
     const update = async (fields, action, toastMsg) => {
@@ -1212,14 +1221,16 @@ function openNewsStory(a) {
     const now = new Date().toISOString();
     const ops = {
       approve: () => update({ status: 'published', lifecycle: a.lifecycle === 'updated' || a.lifecycle === 'resolved' ? a.lifecycle : 'published', published_at: now, flagged_incorrect: false, updated_at: now }, 'approve', 'Published'),
-      unpublish: () => update({ status: 'review' }, 'unpublish', 'Moved back to review'),
-      archive: () => update({ status: 'archived', lifecycle: 'archived' }, 'archive', 'Archived'),
+      unpublish: () => update({ status: 'review', ...(newsPinSupported ? { pinned_at: null } : {}) }, 'unpublish', 'Moved back to review'),
+      archive: () => update({ status: 'archived', lifecycle: 'archived', ...(newsPinSupported ? { pinned_at: null } : {}) }, 'archive', 'Archived'),
       verify: () => {
         if (!hasOfficial) { toast('Add an official source in the full editor first', 'error'); return; }
         update({ verification_status: 'confirmed', flagged_incorrect: false, lifecycle: a.status === 'published' ? 'resolved' : 'verified', updated_at: now }, 'verify', 'Marked verified');
       },
       'clear-flag': () => update({ flagged_incorrect: false }, 'clear-flag', 'Flag cleared'),
       'force-update': () => update({ needs_update: true }, 'force-update', 'The Brain will revisit it next run'),
+      pin: () => update({ pinned_at: now }, 'pin', 'Pinned to the top of News'),
+      unpin: () => update({ pinned_at: null }, 'unpin', 'Unpinned'),
       lock: () => update({ brain_locked: true }, 'lock', 'Locked. The Brain won’t touch it'),
       unlock: () => update({ brain_locked: false }, 'unlock', 'Unlocked'),
       reject: async () => {
