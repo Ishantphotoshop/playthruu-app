@@ -26,11 +26,28 @@ export async function renderFeedView(root, { initialTab = 'feed' } = {}) {
   // MESSENGER_ARCHIVED, config.js) its old nav-bar slot is itself a
   // notification bell, so having a second one in the header was just a
   // duplicate of the same destination.
-  root.innerHTML = topBar('', { home: true }) + homeTabs(activeTab) + `<div class="view-body" id="feed-body"></div>` + navBar('/feed');
+  // Two panes live side by side inside the one scrolling body, and only one
+  // is shown. Switching tabs hides one and shows the other: neither is ever
+  // rebuilt, so a tab keeps what it loaded and, because the body's scroll
+  // position is saved per tab and put back, the place you were in it.
+  root.innerHTML = topBar('', { home: true }) + homeTabs(activeTab)
+    + `<div class="view-body" id="feed-body"><div class="feed-pane" id="feed-pane" data-pane="feed"></div><div class="feed-pane" id="news-pane" data-pane="news"></div></div>`
+    + navBar('/feed');
   const body = qs('#feed-body', root);
+  const panes = { feed: qs('#feed-pane', root), news: qs('#news-pane', root) };
+  const painted = { feed: false, news: false };
+  const scrollAt = { feed: 0, news: 0 };
   wirePullToRefresh(body);
 
   const pill = qs('.home-tabs__pill', root);
+  const showPane = (tab) => Object.entries(panes).forEach(([name, el]) => { el.hidden = name !== tab; });
+  // A pane is painted the first time it's shown, and only then.
+  function ensurePainted(tab) {
+    if (painted[tab]) return Promise.resolve();
+    painted[tab] = true;
+    return tab === 'news' ? paintNewsTab(panes.news) : paintFeedTab(panes.feed);
+  }
+  showPane(activeTab);
 
   // One way to change tab, whether it's tapped or swiped to: the sliding
   // highlight in the pill moves, and the page slides a short way out the
@@ -39,21 +56,28 @@ export async function renderFeedView(root, { initialTab = 'feed' } = {}) {
   async function switchTab(tab, { animate = true } = {}) {
     if (tab === activeTab || switching) return;
     const dir = tab === 'news' ? 1 : -1; // News sits to the right of Feed
+    const from = activeTab;
+    scrollAt[from] = body.scrollTop;
     activeTab = tab;
+    if (tab === 'news') markNewsSeen(new Date().toISOString()); // the unread dot goes at once
     pill.dataset.active = tab;
     qsa('.home-tabs__item', root).forEach((b) => b.classList.toggle('home-tabs__item--active', b.dataset.tab === tab));
+    const swap = () => {
+      showPane(tab);
+      ensurePainted(tab);
+      body.scrollTop = scrollAt[tab];
+    };
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (!animate || reduce || !body.animate) { paintActiveTab(); return; }
+    if (!animate || reduce || !body.animate) { swap(); return; }
     switching = true;
     try {
-      await body.animate([{ opacity: 1, transform: 'translateX(0)' }, { opacity: 0, transform: `translateX(${-dir * 28}px)` }],
+      await panes[from].animate([{ opacity: 1, transform: 'translateX(0)' }, { opacity: 0, transform: `translateX(${-dir * 28}px)` }],
         { duration: 110, easing: 'ease-in', fill: 'forwards' }).finished;
-      body.scrollTop = 0;
-      paintActiveTab();
-      await body.animate([{ opacity: 0, transform: `translateX(${dir * 28}px)` }, { opacity: 1, transform: 'translateX(0)' }],
+      swap();
+      await panes[tab].animate([{ opacity: 0, transform: `translateX(${dir * 28}px)` }, { opacity: 1, transform: 'translateX(0)' }],
         { duration: 170, easing: 'cubic-bezier(.2,.8,.2,1)' }).finished;
     } catch { /* an interrupted animation is fine */ } finally {
-      body.getAnimations().forEach((a) => a.cancel());
+      Object.values(panes).forEach((el) => el.getAnimations().forEach((a) => a.cancel()));
       switching = false;
     }
   }
@@ -61,24 +85,26 @@ export async function renderFeedView(root, { initialTab = 'feed' } = {}) {
     btn.addEventListener('click', () => switchTab(btn.dataset.tab));
   });
 
-  // Swipe sideways on the page itself to flip between Feed and News.
-  // Swiping left (finger moves left) goes forward to News, right goes back.
-  // Only counts when it starts on empty page, not on a poster strip, an
-  // input or anything else that scrolls sideways, and only when it's mostly
-  // horizontal, so scrolling the feed up and down never triggers it.
+  // Swipe sideways to flip between Feed and News — anywhere on the screen
+  // above the tab bar, including the Feed/News pill and the page header, not
+  // just the page body. Swiping left (finger moves left) goes forward to
+  // News, right goes back. Only counts when it starts on empty page, not on
+  // a poster strip, an input or anything else that scrolls sideways, and
+  // only when it's mostly horizontal, so scrolling up and down never
+  // triggers it.
   let sx = 0, sy = 0, swipeOk = false;
   const scrollsSideways = (el) => {
-    for (let n = el; n && n !== body; n = n.parentElement) {
-      if (n.matches?.('input, textarea, select, [data-no-swipe]')) return true;
+    for (let n = el; n && n !== root; n = n.parentElement) {
+      if (n.matches?.('input, textarea, select, [data-no-swipe], .tabbar')) return true;
       if (n.scrollWidth > n.clientWidth + 2 && /(auto|scroll)/.test(getComputedStyle(n).overflowX)) return true;
     }
     return false;
   };
-  body.addEventListener('touchstart', (e) => {
+  root.addEventListener('touchstart', (e) => {
     swipeOk = e.touches.length === 1 && !scrollsSideways(e.target);
     sx = e.touches[0].clientX; sy = e.touches[0].clientY;
   }, { passive: true });
-  body.addEventListener('touchend', (e) => {
+  root.addEventListener('touchend', (e) => {
     if (!swipeOk) return;
     swipeOk = false;
     const t = e.changedTouches[0];
@@ -86,13 +112,9 @@ export async function renderFeedView(root, { initialTab = 'feed' } = {}) {
     if (Math.abs(dx) < 70 || Math.abs(dy) > Math.abs(dx) * 0.6) return;
     switchTab(dx < 0 ? 'news' : 'feed');
   }, { passive: true });
-  body.addEventListener('touchcancel', () => { swipeOk = false; }, { passive: true });
+  root.addEventListener('touchcancel', () => { swipeOk = false; }, { passive: true });
 
-  function paintActiveTab() {
-    return activeTab === 'news' ? paintNewsTab(body) : paintFeedTab(body);
-  }
-
-  await paintActiveTab();
+  await ensurePainted(activeTab);
 
   // Whether the News tab has anything new since the last time it was
   // actually opened — checked in the background, after the real content

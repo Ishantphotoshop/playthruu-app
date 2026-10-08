@@ -701,6 +701,10 @@ ul { list-style: none; margin: 0; padding: 0; }
    same distance down the screen as Search's Games/Players and
    Notifications' Friends/You/Incoming. Measured, not guessed — all
    three sit at 71px on a 390x844 screen. */
+/* The header and the Feed/News pill take sideways swipes themselves (they
+   flip the tab), so the browser must not also claim them as its own
+   overscroll back-navigation — pan-y leaves it only vertical scrolling. */
+.topbar--home, .home-tabs { touch-action: pan-y; }
 .home-tabs { background: var(--bg); padding: 6px var(--gutter) 10px; display: flex; justify-content: center; }
 /* The pill itself: same recipe as .segmented (Search's Games/Players
    tabs) — full width of its container rather than sized to its own
@@ -718,6 +722,7 @@ ul { list-style: none; margin: 0; padding: 0; }
 /* The highlight is one shape that slides between the two halves (driven by
    data-active on the pill) instead of each tab fading its own background,
    so a tap or a swipe moves it across. */
+.feed-pane[hidden] { display: none; }
 .home-tabs__pill::before {
   content: ''; position: absolute; top: var(--space-1); bottom: var(--space-1); left: var(--space-1);
   width: calc((100% - 2 * var(--space-1) - var(--space-1)) / 2);
