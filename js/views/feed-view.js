@@ -3,7 +3,7 @@ import { state } from '../state.js';
 import {
   topBar, navBar, homeTabs, feedSectionHead, activityCard, emptyState, spinner, skeletonRow, iconStamp, iconUser, iconFilter,
   trendingStrip, wireTrendingStrip, friendsPlayingCard, posterFrame, openReportSheet, iconChevronRight,
-  iconDice, iconBookmark, iconBrandMark, iconCardStack, iconPlay, iconBack,
+  iconDice, iconBookmark, iconBrandMark, iconCardStack, iconPlay, iconBack, iconCheck,
 } from '../components.js';
 import { toast, qs, qsa, esc, timeAgo, enableSwipeToDismiss, promptSignIn, tapFeedback, pulseLogTab, igdbSized, placeholderCover } from '../utils.js';
 import { buzz } from '../haptics.js';
@@ -155,11 +155,11 @@ async function paintAnnouncement(slot) {
     : `<div class="announce">${body}</div>`;
 }
 
-// Opens the teaser reader in-app (news-article-view.js) rather than
-// sending the tap straight to playthruu.com — that handoff now happens
-// one step later, from the reader's own "Continue reading" button, once
-// someone has actually read the headline and the opening paragraph. A
-// card with no slug renders as a plain, non-clickable div.
+// Opens the in-app reader (news-article-view.js) rather than sending the
+// tap straight to playthruu.com — the whole story reads there, scrolling
+// the same as any other page in the app, with a link to the site kept
+// at the end for sources. A card with no slug renders as a plain,
+// non-clickable div.
 //
 // Art runs full-width across the card's top (16:9, not the small square
 // thumbnail this used to be), title and meta sit in a body below it — the
@@ -188,19 +188,54 @@ function newsCard(article) {
     </${tag}>`;
 }
 
-// One chip per category actually present in today's list (in the order
-// they first appear, so Breaking/important stuff stays up front), plus
-// "All" pinned at the start. Reuses the same .chip / .chip--active look
-// Discover's own filter row uses — no new visual language for this.
-function newsChipsHtml(articles, active) {
+// The filter list for a given day's articles: "All", "GTA 6" (only when
+// at least one live story is actually about it — see isAboutGTA6 in
+// api.js), then every real category in the order it first appears.
+function newsFilterOptions(articles) {
   const seen = new Set();
   const categories = [];
   articles.forEach((a) => { if (a.category && !seen.has(a.category)) { seen.add(a.category); categories.push(a.category); } });
+  const options = ['All'];
+  if (articles.some((a) => a.isGTA6)) options.push('GTA 6');
+  return options.concat(categories);
+}
+
+// The row of always-visible chips became one trigger that opens a
+// slide-up sheet listing every option — the chip row wrapped to three
+// lines once GTA 6 joined the real categories, which pushed the actual
+// headlines further down than a filter deserves.
+function newsFilterTriggerHtml(active) {
   return `
-    <div class="chip-row news-chips" id="news-chips">
-      <button type="button" class="chip${active === 'All' ? ' chip--active' : ''}" data-category="All">All</button>
-      ${categories.map((c) => `<button type="button" class="chip${active === c ? ' chip--active' : ''}" data-category="${esc(c)}">${esc(c)}</button>`).join('')}
+    <button type="button" class="news-filter-btn" id="news-filter-btn">
+      ${iconFilter()}<span>${active === 'All' ? 'Filter' : esc(active)}</span>
+    </button>`;
+}
+
+// A plain bottom sheet, same recipe as every other one in this app
+// (message-thread-view's action sheets, confirmSheet) — a grab handle,
+// a list of rows, a checkmark on whichever is active. Swipe-to-dismiss
+// and a tap outside both close it without picking anything.
+function openNewsFilterSheet(options, active, onPick) {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal modal--sheet">
+      <header class="msg-actions__grab" aria-hidden="true"></header>
+      <h2 class="news-filter-sheet__title">Filter News</h2>
+      <div class="msg-actions__list">
+        ${options.map((o) => `
+          <button type="button" class="msg-actions__item news-filter-sheet__item${o === active ? ' news-filter-sheet__item--active' : ''}" data-option="${esc(o)}">
+            <span>${esc(o)}</span>${o === active ? iconCheck() : ''}
+          </button>`).join('')}
+      </div>
     </div>`;
+  document.body.appendChild(overlay);
+  const close = () => overlay.remove();
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+  enableSwipeToDismiss(qs('.modal', overlay), close);
+  qsa('[data-option]', overlay).forEach((btn) => {
+    btn.addEventListener('click', () => { close(); onPick(btn.dataset.option); });
+  });
 }
 
 const NEWS_SEEN_KEY = 'news-last-seen';
@@ -216,7 +251,7 @@ async function paintNewsTab(body) {
   // Function already caches merged articles for 10 minutes server-side,
   // but that still costs a round trip and a spinner on every tab switch.
   const cachedList = getCached(NEWS_CACHE_KEY);
-  body.innerHTML = `<div id="news-chips-slot"></div><div id="news-list">${cachedList || spinner()}</div>`;
+  body.innerHTML = `<div id="news-filter-slot"></div><div id="news-list">${cachedList || spinner()}</div>`;
 
   const listEl = qs('#news-list', body);
   const articles = await api.getGameNews();
@@ -225,22 +260,30 @@ async function paintNewsTab(body) {
   if (articles.length) {
     markNewsSeen(articles[0].pubDate);
     let active = 'All';
-    const chipsSlot = qs('#news-chips-slot', body);
+    const filterSlot = qs('#news-filter-slot', body);
+    const matches = (a) => {
+      if (active === 'All') return true;
+      if (active === 'GTA 6') return a.isGTA6;
+      return a.category === active;
+    };
+    const paintFilterBtn = () => { filterSlot.innerHTML = newsFilterTriggerHtml(active); wireFilterBtn(); };
     const paintList = () => {
-      const shown = active === 'All' ? articles : articles.filter((a) => a.category === active);
-      const html = `<div class="news-list">${shown.map(newsCard).join('')}</div>`;
+      const shown = articles.filter(matches);
+      const html = `<div class="news-list">${shown.length ? shown.map(newsCard).join('') : emptyState(`No ${active} stories right now.`)}</div>`;
       listEl.innerHTML = html;
       if (active === 'All') setCached(NEWS_CACHE_KEY, html);
     };
-    chipsSlot.innerHTML = newsChipsHtml(articles, active);
-    qsa('.chip', chipsSlot).forEach((btn) => {
-      btn.addEventListener('click', () => {
-        if (btn.dataset.category === active) return;
-        active = btn.dataset.category;
-        qsa('.chip', chipsSlot).forEach((b) => b.classList.toggle('chip--active', b === btn));
-        paintList();
+    const wireFilterBtn = () => {
+      qs('#news-filter-btn', filterSlot).addEventListener('click', () => {
+        openNewsFilterSheet(newsFilterOptions(articles), active, (picked) => {
+          if (picked === active) return;
+          active = picked;
+          paintFilterBtn();
+          paintList();
+        });
       });
-    });
+    };
+    paintFilterBtn();
     paintList();
   } else if (!cachedList) {
     // Only replace the screen with an error when there's nothing already

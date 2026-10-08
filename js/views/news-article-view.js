@@ -1,23 +1,25 @@
 import * as api from '../api.js';
 import { topBar, spinner, posterFrame } from '../components.js';
-import { esc, timeAgo, qs } from '../utils.js';
+import { esc, timeAgo, formatDate, qs } from '../utils.js';
 
-// The teaser reader a News card now opens into, instead of leaving the
-// app straight away. Shows the headline, the "why it matters" line and
-// the article's opening paragraph — then hands off to the real article
-// on playthruu.com for the rest. Keeps people in the app for the part
-// that's quick to read, and still sends every full read to the site,
-// which is the whole point of doing it this way instead of reading the
-// entire article in here.
+// The in-app reader a News card opens into. Used to stop at the first
+// paragraph and hand off to playthruu.com for the rest; now the whole
+// article reads here — headings, paragraphs, the inline "Reported"/
+// dated-update asides — so someone can just keep scrolling and finish
+// it without leaving. A link to the site stays at the bottom for the
+// sourcing/citations the site version carries, which is also what sends
+// traffic there.
 const NEWS_SITE = 'https://playthruu.com/news/';
 const STATUS_LABEL = { confirmed: 'Confirmed', reported: 'Reported', rumor: 'Rumor', leak: 'Leak' };
 
-// Pulls the first real paragraph out of the article's block body — skips
-// headings and the inline "Reported"/dated-update asides, which read as
-// mid-story context rather than an opening line.
-function firstParagraph(body) {
-  const p = (body || []).find((b) => b.type === 'p' || !b.type);
-  return p ? p.text : '';
+// Each block in `body` is one of: a heading, a plain paragraph, an
+// inline "this part is Reported, not confirmed" aside, or a dated
+// addendum tacked on after the story first went up.
+function bodyBlockHtml(b) {
+  if (b.type === 'h2') return `<h2 class="na__h2">${esc(b.text)}</h2>`;
+  if (b.type === 'status') return `<div class="na__aside"><span class="na__aside-label">${esc(b.label || 'Unconfirmed')}</span><p>${esc(b.text)}</p></div>`;
+  if (b.type === 'update') return `<div class="na__aside na__aside--update"><span class="na__aside-label">Update${b.date ? ` — ${esc(formatDate(b.date))}` : ''}</span><p>${esc(b.text)}</p></div>`;
+  return `<p class="na__p">${esc(b.text)}</p>`;
 }
 
 export async function renderNewsArticleView(root, { slug }) {
@@ -36,7 +38,7 @@ export async function renderNewsArticleView(root, { slug }) {
   const siteLink = NEWS_SITE + a.slug;
   const status = STATUS_LABEL[a.verification_status] || '';
   const flagStatus = status && status !== 'Confirmed';
-  const teaser = firstParagraph(a.body);
+  const blocks = Array.isArray(a.body) ? a.body : [];
 
   body.innerHTML = `
     <article class="na">
@@ -51,8 +53,10 @@ export async function renderNewsArticleView(root, { slug }) {
         <h1 class="na__title">${esc(a.title)}</h1>
         <div id="na-game-slot"></div>
         ${a.why_it_matters ? `<p class="na__why"><strong>Why it matters:</strong> ${esc(a.why_it_matters)}</p>` : ''}
-        ${teaser ? `<p class="na__teaser">${esc(teaser)}</p>` : a.card_description ? `<p class="na__teaser">${esc(a.card_description)}</p>` : ''}
-        <a class="na__cta" href="${esc(siteLink)}" target="_blank" rel="noopener noreferrer">Continue reading on PlayThruu.com</a>
+        <div class="na__article">
+          ${blocks.length ? blocks.map(bodyBlockHtml).join('') : a.card_description ? `<p class="na__p">${esc(a.card_description)}</p>` : ''}
+        </div>
+        <a class="na__cta" href="${esc(siteLink)}" target="_blank" rel="noopener noreferrer">View sources on PlayThruu.com</a>
       </div>
     </article>`;
 

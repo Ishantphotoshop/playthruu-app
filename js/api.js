@@ -102,11 +102,22 @@ function rankNews(rows) {
   return [...top, ...latest];
 }
 
+// GTA 6 is big enough, and spelled enough different ways across outlets
+// ("GTA 6", "GTA VI", "Grand Theft Auto VI", "Grand Theft Auto 6"), that
+// it gets its own filter in the News tab instead of waiting to be sorted
+// under whatever category a given story happened to get tagged. Checked
+// against title, game and tags — whichever field actually names it.
+const GTA6_PATTERN = /grand\s*theft\s*auto\s*(vi|6)\b|\bgta\s*-?\s*(vi|6)\b/i;
+function isAboutGTA6(a) {
+  const haystack = [a.title, a.game, ...(a.tags || [])].filter(Boolean).join(' ');
+  return GTA6_PATTERN.test(haystack);
+}
+
 export async function getGameNews() {
   try {
     const { data, error } = await supabase
       .from('news_articles')
-      .select('slug, title, card_description, category, importance, verification_status, image_url, game, updated_at')
+      .select('slug, title, card_description, category, importance, verification_status, image_url, game, tags, updated_at')
       .eq('status', 'published')
       .order('updated_at', { ascending: false })
       .limit(60);
@@ -119,6 +130,7 @@ export async function getGameNews() {
       // own generated card — never a publication's photo.
       image: a.image_url || `${NEWS_SITE}${a.slug}/thumb`,
       category: a.category,
+      isGTA6: isAboutGTA6(a),
       isBreaking: a.importance === 'breaking',
       status: NEWS_LABEL[a.verification_status] || '',
       // The title of the game the story is about, if it's about one
@@ -126,8 +138,8 @@ export async function getGameNews() {
       // not here, since that's a search call per article and most of
       // this list is never opened.
       game: a.game || null,
-      // The site link still comes along — the in-app teaser reader's
-      // "Continue reading" button is what actually sends anyone there.
+      // The site link still comes along — the in-app reader's own link
+      // to playthruu.com is what actually sends anyone there.
       link: NEWS_SITE + a.slug,
       pubDate: a.updated_at,
     }));

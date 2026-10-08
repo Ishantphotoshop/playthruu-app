@@ -2151,10 +2151,20 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    the one picked. Full-width art on top of a raised card, same surface/
    line/ink tokens and the same Manrope the rest of the app uses — no new
    typeface, no new colour. */
-/* The category filter row — reuses Discover's own .chip/.chip--active
-   look (css above, "discover filters") rather than a new chip style. */
-.news-chips { padding: 2px 0 var(--space-3); }
-.news-chips:empty { padding: 0; }
+/* One trigger pill instead of a wrapping chip row — tapping it opens a
+   slide-up sheet (.news-filter-sheet__item below) listing every option,
+   same recipe as every other bottom sheet in the app. */
+.news-filter-btn {
+  display: inline-flex; align-items: center; gap: 7px; margin-bottom: var(--space-3);
+  padding: 9px 15px; background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius-pill); color: var(--ink); font-size: 13.5px; font-weight: 700;
+}
+.news-filter-btn:active { background: var(--surface-raised); }
+.news-filter-btn svg { width: 15px; height: 15px; color: var(--ink-faint); }
+.news-filter-sheet__title { margin: 0 0 var(--space-2); font-family: var(--font-brand); font-weight: 700; font-size: 16px; letter-spacing: -0.01em; }
+.news-filter-sheet__item { justify-content: space-between; }
+.news-filter-sheet__item svg { color: var(--accent-bright); width: 18px; height: 18px; }
+.news-filter-sheet__item--active { color: var(--accent-bright); }
 .news-list { display: flex; flex-direction: column; gap: var(--space-3); }
 .news-card {
   display: block; border-radius: var(--radius-m); overflow: hidden;
@@ -2192,8 +2202,8 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 div.news-card:active { transform: none; background: var(--surface); }
 
 /* ------------------------------------------------------------ news article
-   (the in-app teaser reader — headline, why it matters, opening
-   paragraph, then a handoff to the full story on playthruu.com) */
+   (the in-app reader — headline, why it matters, the full story, then a
+   link out to playthruu.com for sources/citations) */
 .na { max-width: 640px; margin: 0 auto; }
 .na__cover { position: relative; width: 100%; aspect-ratio: 16/9; background: var(--surface-raised) center/cover no-repeat; }
 .na__credit { padding: 6px var(--gutter) 0; font-size: 11px; color: var(--ink-faint); text-align: right; }
@@ -2206,7 +2216,23 @@ div.news-card:active { transform: none; background: var(--surface); }
   font-size: 14px; line-height: 1.5; color: var(--ink);
 }
 .na__why strong { color: var(--accent-bright); font-weight: var(--weight-black); }
-.na__teaser { margin: var(--space-4) 0 0; font-size: 15.5px; line-height: 1.6; color: var(--ink-dim); }
+/* The article itself — reads top to bottom like the rest of the app's
+   long-form text (review quotes, bios): plain paragraphs, a couple of
+   subheads, and the two kinds of aside PlayThruu's own stories carry
+   (an unverified claim inline, a dated update tacked on after the
+   story first ran). Neither aside borrows --accent-bright — that's
+   "why it matters"'s colour — these stay neutral on --surface-raised. */
+.na__article { margin-top: var(--space-4); }
+.na__p { margin: var(--space-4) 0 0; font-size: 15.5px; line-height: 1.65; color: var(--ink-dim); }
+.na__article > :first-child { margin-top: 0; }
+.na__h2 { margin: var(--space-5) 0 0; font-size: 18px; line-height: 1.3; font-weight: var(--weight-black); color: var(--ink); letter-spacing: -0.01em; }
+.na__aside {
+  margin: var(--space-4) 0 0; padding: 12px 14px; border-radius: var(--radius-s);
+  background: var(--surface-raised); border: 1px solid var(--line);
+}
+.na__aside-label { display: block; font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-faint); }
+.na__aside--update .na__aside-label { color: var(--orange); }
+.na__aside p { margin: 5px 0 0; font-size: 14px; line-height: 1.55; color: var(--ink); }
 .na__cta {
   display: block; margin-top: var(--space-5); padding: 15px; text-align: center;
   background: var(--accent); color: var(--bg); text-decoration: none;
