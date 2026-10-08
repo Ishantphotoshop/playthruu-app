@@ -138,26 +138,30 @@ async function paintAnnouncement(slot) {
 }
 
 // Every article is PlayThruu's own, published on playthruu.com, and the
-// card opens it there (new tab, so the app stays where it was). The meta
-// line carries the story's verification status — Confirmed / Reported /
-// Rumor / Leak — so a rumour never reads like settled news. A card with no
-// link renders as a plain, non-clickable div, since <a href=""> would
-// "navigate" to the current page on tap.
+// card opens it there (new tab, so the app stays where it was). A card
+// with no link renders as a plain, non-clickable div, since <a href="">
+// would "navigate" to the current page on tap.
 //
 // Art runs full-width across the card's top (16:9, not the small square
 // thumbnail this used to be), title and meta sit in a body below it — the
 // "Cards" variation the user picked from the five mockups.
+//
+// Confirmed is the normal state — most stories are — so saying it on
+// every single card just repeated "Industry · Confirmed" down the whole
+// list. Only the exceptions (Reported / Rumor / Leak) are worth a flag;
+// a confirmed story just shows its category and time like any other.
 function newsCard(article) {
   const tag = article.link ? 'a' : 'div';
   const linkAttrs = article.link
     ? ` href="${esc(article.link)}" target="_blank" rel="noopener noreferrer"`
     : '';
+  const flagStatus = article.status && article.status !== 'Confirmed';
   return `
     <${tag} class="news-card${article.isCustom ? ' news-card--own' : ''}"${linkAttrs}>
       <span class="news-card__cover" style="${article.image ? `background-image:url('${esc(article.image)}')` : ''}"></span>
       <span class="news-card__body">
         <span class="news-card__title">${esc(article.title)}</span>
-        <span class="news-card__meta">${esc(article.source)}${article.status ? ` · ${esc(article.status)}` : ''} · ${timeAgo(article.pubDate)}</span>
+        <span class="news-card__meta">${esc(article.source)}${flagStatus ? ` · ${esc(article.status)}` : ''} · ${timeAgo(article.pubDate)}</span>
       </span>
     </${tag}>`;
 }
