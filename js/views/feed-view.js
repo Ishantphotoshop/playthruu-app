@@ -3,7 +3,7 @@ import { state } from '../state.js';
 import {
   topBar, navBar, homeTabs, feedSectionHead, activityCard, emptyState, spinner, skeletonRow, iconStamp, iconUser, iconFilter,
   trendingStrip, wireTrendingStrip, friendsPlayingCard, posterFrame, openReportSheet, iconChevronRight,
-  iconDice, iconBookmark, iconBrandMark, iconCardStack, iconPlay, iconBack, iconCheck, iconClose,
+  iconDice, iconBookmark, iconBrandMark, iconCardStack, iconPlay, iconBack, iconCheck,
 } from '../components.js';
 import { toast, qs, qsa, esc, timeAgo, enableSwipeToDismiss, promptSignIn, tapFeedback, pulseLogTab, igdbSized, placeholderCover } from '../utils.js';
 import { buzz } from '../haptics.js';
@@ -297,19 +297,19 @@ async function paintNewsTab(body) {
 
 const DISCOVERY_CACHE_KEY = 'discovery';
 
-// One representative game per collection, for the slider picker's card
-// backdrops (see openPicker below) — fetched lazily the first time the
+// Four representative games per collection, for the picker's tile
+// collages (see openPicker below) — fetched lazily the first time the
 // picker opens and kept here, module-level, so reopening it (or coming
 // back to Discovery later this session) never refetches. Maps
-// collection id -> a game object, or null once a fetch has resolved
-// with nothing to show.
+// collection id -> up to 4 game objects, or [] once a fetch has
+// resolved with nothing to show.
 const discoveryPreviewCache = new Map();
 async function fetchCollectionPreview(c) {
   try {
     const games = c.id === 'goty' ? await api.resolveGotyWinners() : (await api.browseGames({ ...c.params, page: 1 })).games;
-    return games[0] || null;
+    return games.slice(0, 4);
   } catch {
-    return null;
+    return [];
   }
 }
 
@@ -695,32 +695,41 @@ async function paintDiscovery(slot) {
   // track, the active one centred with its neighbours peeking in on
   // both sides. One of five mockups shown to the user (see the
   // playthruu-discovery-variations artifact); this is the one picked.
+  // The picker as a mood grid — a bottom sheet of square tiles, each one
+  // a 2x2 collage of that collection's own real posters behind the
+  // name, so you see what you'd actually get before tapping it instead
+  // of guessing from a label. One of five mockups shown to the user
+  // (the playthruu-discovery-variations artifact); this is the one
+  // picked.
   function openPicker() {
     const overlay = document.createElement('div');
-    overlay.className = 'discovery-slider-overlay';
-    const cardBg = (c) => {
-      const g = discoveryPreviewCache.get(c.id);
-      return g?.cover_url ? ` style="background-image:url('${esc(igdbSized(g.cover_url, 'cover_big'))}')"` : '';
+    overlay.className = 'modal-overlay';
+    const collageHtml = (c) => {
+      const games = discoveryPreviewCache.get(c.id);
+      if (!games?.length) return '';
+      return games.map((g) => `<span class="discovery-grid-tile__cover" style="background-image:url('${esc(igdbSized(g.cover_url, 'cover_big'))}')"></span>`).join('');
     };
     overlay.innerHTML = `
-      <button type="button" class="discovery-slider__close" data-close aria-label="Close">${iconClose()}</button>
-      <h2 class="discovery-slider__title">What are you into?</h2>
-      <div class="discovery-slider__track" id="discovery-slider-track">
-        ${api.DISCOVERY_COLLECTIONS.map((c) => `
-          <button type="button" class="discovery-slider__card${c.id === activeId ? ' is-active' : ''}" data-id="${c.id}">
-            <span class="discovery-slider__bg"${cardBg(c)}></span>
-            <span class="discovery-slider__scrim"></span>
-            <span class="discovery-slider__label">${esc(c.label)}</span>
-          </button>`).join('')}
-      </div>
-      <div class="discovery-slider__dots">
-        ${api.DISCOVERY_COLLECTIONS.map((c) => `<span class="discovery-slider__dot${c.id === activeId ? ' is-active' : ''}" data-dot="${c.id}"></span>`).join('')}
+      <div class="modal modal--sheet">
+        <header class="msg-actions__grab" aria-hidden="true"></header>
+        <div class="msg-actions discovery-picker">
+          <h2 class="discovery-picker__title">What are you into?</h2>
+          <div class="discovery-picker__grid" id="discovery-picker-grid">
+            ${api.DISCOVERY_COLLECTIONS.map((c) => `
+              <button type="button" class="discovery-grid-tile${c.id === activeId ? ' is-active' : ''}" data-id="${c.id}">
+                <span class="discovery-grid-tile__collage">${collageHtml(c)}</span>
+                <span class="discovery-grid-tile__fade"></span>
+                <span class="discovery-grid-tile__label">${esc(c.label)}</span>
+              </button>`).join('')}
+          </div>
+        </div>
       </div>`;
     document.body.appendChild(overlay);
     document.body.style.overflow = 'hidden';
-    const close = () => { overlay.remove(); document.body.style.overflow = ''; dotObserver.disconnect(); };
-    qs('[data-close]', overlay).addEventListener('click', close);
-    qsa('.discovery-slider__card', overlay).forEach((btn) => {
+    const close = () => { overlay.remove(); document.body.style.overflow = ''; };
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+    enableSwipeToDismiss(qs('.modal', overlay), close);
+    qsa('.discovery-grid-tile', overlay).forEach((btn) => {
       btn.addEventListener('click', () => {
         activeId = btn.dataset.id;
         close();
@@ -728,35 +737,16 @@ async function paintDiscovery(slot) {
       });
     });
 
-    // Start centred on whatever's active, no scroll animation on open —
-    // the swipe itself is native touch scrolling the rest of the way.
-    const track = qs('#discovery-slider-track', overlay);
-    (qs('.discovery-slider__card.is-active', overlay) || track.firstElementChild)
-      ?.scrollIntoView({ inline: 'center', block: 'nearest' });
-
-    // Dots track whichever card is most centred — the same
-    // IntersectionObserver pattern observeSentinel uses below for the
-    // infinite-scroll grid, just watching every card instead of one
-    // sentinel.
-    const dotObserver = new IntersectionObserver((entries) => {
-      entries.forEach((e) => {
-        if (e.intersectionRatio < 0.6) return;
-        const id = e.target.dataset.id;
-        qsa('.discovery-slider__dot', overlay).forEach((d) => d.classList.toggle('is-active', d.dataset.dot === id));
-      });
-    }, { root: track, threshold: 0.6 });
-    qsa('.discovery-slider__card', overlay).forEach((c) => dotObserver.observe(c));
-
-    // Backdrops for whatever hasn't been looked at yet this session —
+    // Collages for whatever hasn't been looked at yet this session —
     // one light page-1 query per collection, not re-fetched once it's
     // in discoveryPreviewCache (including on a later re-open).
     api.DISCOVERY_COLLECTIONS.forEach((c) => {
       if (discoveryPreviewCache.has(c.id)) return;
-      fetchCollectionPreview(c).then((g) => {
-        discoveryPreviewCache.set(c.id, g);
-        if (!g?.cover_url || !overlay.isConnected) return;
-        const bg = qs(`.discovery-slider__card[data-id="${c.id}"] .discovery-slider__bg`, overlay);
-        if (bg) bg.style.backgroundImage = `url('${igdbSized(g.cover_url, 'cover_big')}')`;
+      fetchCollectionPreview(c).then((games) => {
+        discoveryPreviewCache.set(c.id, games);
+        if (!games.length || !overlay.isConnected) return;
+        const slot = qs(`.discovery-grid-tile[data-id="${c.id}"] .discovery-grid-tile__collage`, overlay);
+        if (slot) slot.innerHTML = collageHtml(c);
       });
     });
   }

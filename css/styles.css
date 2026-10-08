@@ -4778,51 +4778,37 @@ a.gd-credit__name { text-decoration: none; }
 .modal--glass .modal__body { position: relative; z-index: 1; }
 .modal--glass .modal__close { background: var(--surface-high); }
 
-/* ---- mood picker: a real slider, not a list -------------------------
-   A full-screen takeover (shown live, one of five mockups presented to
-   the user — see playthruu-discovery-variations artifact) with every
-   collection as a poster-backed card in a horizontally snapping track,
-   the current one centred with its neighbours peeking in on both sides.
-   Scroll-snap does the centring and the momentum; no JS drag handling. */
-.discovery-slider-overlay {
-  position: fixed; inset: 0; z-index: 100; background: var(--bg-deep);
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  padding: calc(var(--safe-top) + 14px) 0 calc(var(--safe-bottom) + 24px);
+/* ---- mood picker: a grid of what you'd actually get -----------------
+   A bottom sheet (shown live, one of five mockups presented to the user
+   — see playthruu-discovery-variations artifact), but every row becomes
+   a square tile with a 2x2 collage of that collection's own real
+   posters behind the label — what you'd get, not just a word promising
+   it. Same .msg-actions padded wrapper every other sheet's list uses
+   (see the News filter sheet, which shipped once without it — the
+   title and grid sat flush against the screen edge). */
+.discovery-picker__title {
+  margin: 0 0 var(--space-3); font-family: var(--font-brand); font-weight: 700; font-size: 16px; letter-spacing: -0.01em;
 }
-.discovery-slider__close {
-  position: absolute; top: calc(var(--safe-top) + 10px); left: 12px; z-index: 1;
-  width: 40px; height: 40px; display: grid; place-items: center;
-  background: none; border: none; color: var(--ink);
+/* No scroll region of its own — .msg-actions (the wrapper) already
+   scrolls the whole sheet, title included, same as every other sheet's
+   list; a second overflow here would just nest two scrollbars. */
+.discovery-picker__grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding-bottom: var(--space-2); }
+.discovery-grid-tile {
+  position: relative; aspect-ratio: 1/0.82; border-radius: 14px; overflow: hidden;
+  background: var(--bg-deep); border: 1.5px solid transparent;
 }
-.discovery-slider__close:active { transform: scale(0.9); }
-.discovery-slider__close svg { width: 22px; height: 22px; }
-.discovery-slider__title {
-  margin: 0 0 24px; font-family: var(--font-brand); font-weight: 700; font-size: 20px;
-  letter-spacing: -0.01em; color: var(--ink);
+.discovery-grid-tile.is-active { border-color: var(--accent-bright); }
+.discovery-grid-tile:active { transform: scale(0.97); }
+.discovery-grid-tile__collage {
+  position: absolute; inset: 0; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 1px;
+  filter: brightness(0.55);
 }
-.discovery-slider__track {
-  display: flex; width: 100%; gap: 14px; overflow-x: auto; scroll-snap-type: x mandatory;
-  -webkit-overflow-scrolling: touch; scrollbar-width: none;
-  /* Half a card's width of padding on each side is what lets the FIRST
-     and LAST cards still snap to centre, not just the ones in between. */
-  padding-inline: calc(50% - 124px);
+.discovery-grid-tile__cover { background: var(--surface) center/cover no-repeat; }
+.discovery-grid-tile__fade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0) 30%, rgba(10,12,16,.92) 100%); }
+.discovery-grid-tile__label {
+  position: absolute; left: 10px; right: 10px; bottom: 9px; color: #fff;
+  font-weight: 800; font-size: 13.5px; line-height: 1.22; text-align: left; text-wrap: balance;
 }
-.discovery-slider__track::-webkit-scrollbar { display: none; }
-.discovery-slider__card {
-  position: relative; flex: 0 0 248px; width: 248px; height: 330px;
-  border-radius: 20px; overflow: hidden; background: var(--surface);
-  border: 1px solid var(--line); scroll-snap-align: center;
-}
-.discovery-slider__card.is-active { border-color: var(--accent-bright); }
-.discovery-slider__bg { position: absolute; inset: 0; background: var(--surface-raised) center/cover no-repeat; filter: brightness(0.55); }
-.discovery-slider__scrim { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0) 45%, rgba(8,10,14,.92) 100%); }
-.discovery-slider__label {
-  position: absolute; left: 16px; right: 16px; bottom: 16px; color: #fff;
-  font-weight: 800; font-size: 17px; line-height: 1.22; text-wrap: balance;
-}
-.discovery-slider__dots { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; max-width: 260px; margin-top: 22px; }
-.discovery-slider__dot { width: 5px; height: 5px; border-radius: 50%; background: var(--line-strong); }
-.discovery-slider__dot.is-active { background: var(--accent-bright); width: 16px; border-radius: 99px; }
 
 /* ---- random pick: card draw (Bored? Try these) ----------------------- */
 /* The collection as a deck of cards: it shuffles, the top card flips to
