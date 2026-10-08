@@ -726,6 +726,14 @@ ul { list-style: none; margin: 0; padding: 0; }
    .segmented__item--active (Search's Games/Players tabs) — rather than
    just a colour/glow change on plain text. */
 .home-tabs__item--active { background: var(--surface-high); color: var(--ink); }
+/* Unseen-news dot — small and quiet, cleared the moment News is actually
+   opened (see markNewsSeen in feed-view.js), not a number or a pulse.
+   Inline next to the label rather than absolutely placed, so it never
+   has to guess where the word "News" ends. */
+.home-tabs__dot {
+  display: inline-block; vertical-align: top;
+  width: 6px; height: 6px; margin: 2px 0 0 5px; border-radius: 50%; background: var(--accent-bright);
+}
 /* Tight tracking, not the wide letter-spacing this used to carry —
    a bold wordmark sitting close to its mark reads as one confident
    lockup; spread out, it read as two unrelated pieces. */
@@ -2143,6 +2151,10 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    the one picked. Full-width art on top of a raised card, same surface/
    line/ink tokens and the same Manrope the rest of the app uses — no new
    typeface, no new colour. */
+/* The category filter row — reuses Discover's own .chip/.chip--active
+   look (css above, "discover filters") rather than a new chip style. */
+.news-chips { padding: 2px 0 var(--space-3); }
+.news-chips:empty { padding: 0; }
 .news-list { display: flex; flex-direction: column; gap: var(--space-3); }
 .news-card {
   display: block; border-radius: var(--radius-m); overflow: hidden;
@@ -2152,8 +2164,21 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 }
 .news-card:active { transform: scale(0.99); background: var(--surface-raised); }
 .news-card__cover {
+  position: relative;
   display: block; width: 100%; aspect-ratio: 16/9;
   background: var(--surface-raised) center/cover no-repeat;
+}
+/* Breaking is a freshness flag, not a category — it used to just replace
+   the category word in the meta line, which made it read as one more
+   tag instead of something urgent. A badge over the art, in --danger
+   rather than the brand green/orange, is the one spot in this app that
+   borrows a "this just happened" visual language. */
+.news-card__breaking, .na__breaking {
+  position: absolute; top: 10px; left: 10px;
+  padding: 4px 9px; border-radius: var(--radius-pill);
+  background: var(--danger); color: #fff;
+  font-family: var(--font-brand); font-weight: 700; font-size: 10.5px;
+  letter-spacing: 0.04em; text-transform: uppercase;
 }
 .news-card__body { display: block; padding: 13px 14px 15px; }
 .news-card__title { display: block; font-weight: var(--weight-black); font-size: 17px; line-height: 1.3; letter-spacing: -0.01em; }
@@ -2165,6 +2190,40 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    base rule gives every card. */
 .news-card--own { border-left: 2.5px solid var(--accent-bright); }
 div.news-card:active { transform: none; background: var(--surface); }
+
+/* ------------------------------------------------------------ news article
+   (the in-app teaser reader — headline, why it matters, opening
+   paragraph, then a handoff to the full story on playthruu.com) */
+.na { max-width: 640px; margin: 0 auto; }
+.na__cover { position: relative; width: 100%; aspect-ratio: 16/9; background: var(--surface-raised) center/cover no-repeat; }
+.na__credit { padding: 6px var(--gutter) 0; font-size: 11px; color: var(--ink-faint); text-align: right; }
+.na__content { padding: var(--space-4) var(--gutter) var(--space-6); }
+.na__meta { font-weight: var(--weight-strong); font-size: 12.5px; color: var(--ink-faint); }
+.na__title { margin: 8px 0 0; font-size: 23px; line-height: 1.28; font-weight: var(--weight-black); letter-spacing: -0.015em; text-wrap: balance; }
+.na__why {
+  margin: var(--space-4) 0 0; padding: 12px 14px; border-radius: var(--radius-s);
+  background: var(--surface-raised); border-left: 2.5px solid var(--accent-bright);
+  font-size: 14px; line-height: 1.5; color: var(--ink);
+}
+.na__why strong { color: var(--accent-bright); font-weight: var(--weight-black); }
+.na__teaser { margin: var(--space-4) 0 0; font-size: 15.5px; line-height: 1.6; color: var(--ink-dim); }
+.na__cta {
+  display: block; margin-top: var(--space-5); padding: 15px; text-align: center;
+  background: var(--accent); color: var(--bg); text-decoration: none;
+  border-radius: var(--radius-pill); font-family: var(--font-brand); font-weight: 700; font-size: 14px;
+}
+.na__cta:active { transform: scale(0.98); }
+.na__game {
+  display: flex; align-items: center; gap: 10px; margin-top: var(--space-4); padding: 10px;
+  background: var(--surface-raised); border: 1px solid var(--line); border-radius: var(--radius-s);
+  text-decoration: none; color: inherit;
+}
+.na__game:active { background: var(--surface-high); }
+.na__game-cover { width: 40px; aspect-ratio: 3/4; border-radius: 5px; flex-shrink: 0; overflow: hidden; }
+.na__game-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.na__game-text { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.na__game-label { font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-faint); }
+.na__game-title { font-size: 14.5px; font-weight: var(--weight-strong); color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ------------------------------------------------------------ announcement
    Pushed from the admin build, and almost always absent — the feed only

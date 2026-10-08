@@ -106,25 +106,69 @@ export async function getGameNews() {
   try {
     const { data, error } = await supabase
       .from('news_articles')
-      .select('slug, title, card_description, category, importance, verification_status, image_url, updated_at')
+      .select('slug, title, card_description, category, importance, verification_status, image_url, game, updated_at')
       .eq('status', 'published')
       .order('updated_at', { ascending: false })
       .limit(60);
     if (error) return [];
     return rankNews(data || []).map((a) => ({
+      slug: a.slug,
       title: a.title,
       summary: a.card_description || '',
       // Official press art when the story has it, otherwise PlayThruu's
       // own generated card — never a publication's photo.
       image: a.image_url || `${NEWS_SITE}${a.slug}/thumb`,
-      source: a.importance === 'breaking' ? 'Breaking' : a.category,
+      category: a.category,
+      isBreaking: a.importance === 'breaking',
       status: NEWS_LABEL[a.verification_status] || '',
+      // The title of the game the story is about, if it's about one
+      // specific game — resolved against the catalogue by the news view,
+      // not here, since that's a search call per article and most of
+      // this list is never opened.
+      game: a.game || null,
+      // The site link still comes along — the in-app teaser reader's
+      // "Continue reading" button is what actually sends anyone there.
       link: NEWS_SITE + a.slug,
       pubDate: a.updated_at,
     }));
   } catch {
     return [];
   }
+}
+
+// One article, for the in-app teaser reader (see news-article-view.js).
+// Pulls the fields getGameNews() already uses plus why_it_matters and
+// body — the full article text stays on playthruu.com; this only needs
+// enough of `body` to render the first paragraph before the "Continue
+// reading" handoff.
+// Just the freshest publish time, for the News tab's unread dot — one
+// skinny row instead of the full 60-article list, since this runs on
+// every Feed open (see feed-view.js) and most of those never touch News.
+export async function getLatestNewsTime() {
+  try {
+    const { data, error } = await supabase
+      .from('news_articles')
+      .select('updated_at')
+      .eq('status', 'published')
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error || !data) return null;
+    return data.updated_at;
+  } catch {
+    return null;
+  }
+}
+
+export async function getNewsArticleBySlug(slug) {
+  const { data, error } = await supabase
+    .from('news_articles')
+    .select('slug, title, card_description, why_it_matters, body, category, importance, verification_status, image_url, image_credit, game, updated_at')
+    .eq('slug', slug)
+    .eq('status', 'published')
+    .single();
+  if (error) throw error;
+  return data;
 }
 
 // ------------------------------------------------------------

@@ -45,6 +45,24 @@ export async function renderFeedView(root, { initialTab = 'feed' } = {}) {
   }
 
   await paintActiveTab();
+
+  // Whether the News tab has anything new since the last time it was
+  // actually opened — checked in the background, after the real content
+  // is already on screen, so this never delays the feed's first paint.
+  // Landing straight on News (the /news route) skips it: paintNewsTab
+  // already marks everything seen the moment it loads.
+  if (activeTab !== 'news') {
+    api.getLatestNewsTime().then((latest) => {
+      if (!latest || !qs('[data-tab="news"]', root)) return;
+      let lastSeen = null;
+      try { lastSeen = localStorage.getItem(NEWS_SEEN_KEY); } catch { /* private mode */ }
+      if (lastSeen && Date.parse(latest) <= Date.parse(lastSeen)) return;
+      const newsBtn = qs('[data-tab="news"]', root);
+      if (newsBtn && !qs('.home-tabs__dot', newsBtn)) {
+        newsBtn.insertAdjacentHTML('beforeend', '<span class="home-tabs__dot" aria-label="New stories"></span>');
+      }
+    });
+  }
 }
 
 async function paintFeedTab(body) {
@@ -137,10 +155,11 @@ async function paintAnnouncement(slot) {
     : `<div class="announce">${body}</div>`;
 }
 
-// Every article is PlayThruu's own, published on playthruu.com, and the
-// card opens it there (new tab, so the app stays where it was). A card
-// with no link renders as a plain, non-clickable div, since <a href="">
-// would "navigate" to the current page on tap.
+// Opens the teaser reader in-app (news-article-view.js) rather than
+// sending the tap straight to playthruu.com — that handoff now happens
+// one step later, from the reader's own "Continue reading" button, once
+// someone has actually read the headline and the opening paragraph. A
+// card with no slug renders as a plain, non-clickable div.
 //
 // Art runs full-width across the card's top (16:9, not the small square
 // thumbnail this used to be), title and meta sit in a body below it — the
@@ -150,20 +169,46 @@ async function paintAnnouncement(slot) {
 // every single card just repeated "Industry · Confirmed" down the whole
 // list. Only the exceptions (Reported / Rumor / Leak) are worth a flag;
 // a confirmed story just shows its category and time like any other.
+// Breaking gets its own badge over the art instead — it's a different
+// kind of flag (how fresh, not how sure) and was reading as just another
+// category word in the meta line before.
 function newsCard(article) {
-  const tag = article.link ? 'a' : 'div';
-  const linkAttrs = article.link
-    ? ` href="${esc(article.link)}" target="_blank" rel="noopener noreferrer"`
-    : '';
+  const tag = article.slug ? 'a' : 'div';
+  const linkAttrs = article.slug ? ` href="#/news/${esc(article.slug)}"` : '';
   const flagStatus = article.status && article.status !== 'Confirmed';
   return `
     <${tag} class="news-card${article.isCustom ? ' news-card--own' : ''}"${linkAttrs}>
-      <span class="news-card__cover" style="${article.image ? `background-image:url('${esc(article.image)}')` : ''}"></span>
+      <span class="news-card__cover" style="${article.image ? `background-image:url('${esc(article.image)}')` : ''}">
+        ${article.isBreaking ? '<span class="news-card__breaking">Breaking</span>' : ''}
+      </span>
       <span class="news-card__body">
         <span class="news-card__title">${esc(article.title)}</span>
-        <span class="news-card__meta">${esc(article.source)}${flagStatus ? ` · ${esc(article.status)}` : ''} · ${timeAgo(article.pubDate)}</span>
+        <span class="news-card__meta">${esc(article.category)}${flagStatus ? ` · ${esc(article.status)}` : ''} · ${timeAgo(article.pubDate)}</span>
       </span>
     </${tag}>`;
+}
+
+// One chip per category actually present in today's list (in the order
+// they first appear, so Breaking/important stuff stays up front), plus
+// "All" pinned at the start. Reuses the same .chip / .chip--active look
+// Discover's own filter row uses — no new visual language for this.
+function newsChipsHtml(articles, active) {
+  const seen = new Set();
+  const categories = [];
+  articles.forEach((a) => { if (a.category && !seen.has(a.category)) { seen.add(a.category); categories.push(a.category); } });
+  return `
+    <div class="chip-row news-chips" id="news-chips">
+      <button type="button" class="chip${active === 'All' ? ' chip--active' : ''}" data-category="All">All</button>
+      ${categories.map((c) => `<button type="button" class="chip${active === c ? ' chip--active' : ''}" data-category="${esc(c)}">${esc(c)}</button>`).join('')}
+    </div>`;
+}
+
+const NEWS_SEEN_KEY = 'news-last-seen';
+
+function markNewsSeen(latestTime) {
+  if (!latestTime) return;
+  try { localStorage.setItem(NEWS_SEEN_KEY, latestTime); } catch { /* private mode */ }
+  qs('.home-tabs__dot')?.remove();
 }
 
 async function paintNewsTab(body) {
@@ -171,16 +216,32 @@ async function paintNewsTab(body) {
   // Function already caches merged articles for 10 minutes server-side,
   // but that still costs a round trip and a spinner on every tab switch.
   const cachedList = getCached(NEWS_CACHE_KEY);
-  body.innerHTML = `<div id="news-list">${cachedList || spinner()}</div>`;
+  body.innerHTML = `<div id="news-chips-slot"></div><div id="news-list">${cachedList || spinner()}</div>`;
 
   const listEl = qs('#news-list', body);
   const articles = await api.getGameNews();
   if (!listEl.isConnected) return; // switched tabs again before this landed
 
   if (articles.length) {
-    const html = `<div class="news-list">${articles.map(newsCard).join('')}</div>`;
-    listEl.innerHTML = html;
-    setCached(NEWS_CACHE_KEY, html);
+    markNewsSeen(articles[0].pubDate);
+    let active = 'All';
+    const chipsSlot = qs('#news-chips-slot', body);
+    const paintList = () => {
+      const shown = active === 'All' ? articles : articles.filter((a) => a.category === active);
+      const html = `<div class="news-list">${shown.map(newsCard).join('')}</div>`;
+      listEl.innerHTML = html;
+      if (active === 'All') setCached(NEWS_CACHE_KEY, html);
+    };
+    chipsSlot.innerHTML = newsChipsHtml(articles, active);
+    qsa('.chip', chipsSlot).forEach((btn) => {
+      btn.addEventListener('click', () => {
+        if (btn.dataset.category === active) return;
+        active = btn.dataset.category;
+        qsa('.chip', chipsSlot).forEach((b) => b.classList.toggle('chip--active', b === btn));
+        paintList();
+      });
+    });
+    paintList();
   } else if (!cachedList) {
     // Only replace the screen with an error when there's nothing already
     // showing — a background refetch hiccup shouldn't yank away

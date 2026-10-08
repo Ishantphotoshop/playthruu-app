@@ -6,6 +6,7 @@ import { route, setNotFound, startRouter, navigate, refreshCurrentView, pageEl, 
 import { renderLandingView, seedPinnedGames } from './views/landing-view.js';
 import { renderAuthView } from './views/auth-view.js';
 import { renderFeedView } from './views/feed-view.js';
+import { renderNewsArticleView } from './views/news-article-view.js';
 import { renderSearchView } from './views/search-view.js';
 import { renderDiscoverView, warmDiscover } from './views/discover-view.js';
 import { renderListDetailView } from './views/lists-view.js';
@@ -216,6 +217,7 @@ function registerRoutes() {
   registerPublicRoutes();
   route('/feed', () => renderFeedView(pageEl()));
   route('/news', () => renderFeedView(pageEl(), { initialTab: 'news' }));
+  route('/news/:slug', (p) => renderNewsArticleView(pageEl(), p));
   route('/trending', () => renderTrendingView(pageEl()));
   route('/friends-playing', () => renderFriendsPlayingView(pageEl()));
   route('/currently-playing', () => renderCurrentlyPlayingView(pageEl()));

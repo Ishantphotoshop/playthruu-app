@@ -148,12 +148,12 @@ export function navBar(activeBase = '/feed') {
 // (wired in feed-view.js), no navigation and no route change. News no
 // longer has its own icon in the bottom tab bar — this is its only
 // entry point now, besides the /news deep link itself.
-export function homeTabs(active = 'feed') {
+export function homeTabs(active = 'feed', { newsUnread = false } = {}) {
   return `
     <div class="home-tabs">
       <nav class="home-tabs__pill">
         <button type="button" class="home-tabs__item${active === 'feed' ? ' home-tabs__item--active' : ''}" data-tab="feed">Feed</button>
-        <button type="button" class="home-tabs__item${active === 'news' ? ' home-tabs__item--active' : ''}" data-tab="news">News</button>
+        <button type="button" class="home-tabs__item${active === 'news' ? ' home-tabs__item--active' : ''}" data-tab="news">News${newsUnread ? '<span class="home-tabs__dot" aria-label="New stories"></span>' : ''}</button>
       </nav>
     </div>`;
 }
