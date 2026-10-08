@@ -120,8 +120,21 @@ function isAboutGTA6(a) {
 export async function getGameNews() {
   try {
     const fields = 'slug, title, card_description, category, importance, verification_status, image_url, game, tags, updated_at';
-    const read = (cols) => supabase.from('news_articles').select(cols)
-      .eq('status', 'published').order('updated_at', { ascending: false }).limit(60);
+    // Every published story, not a recent slice: the list pages through
+    // the table 1000 rows at a time (PostgREST's per-request cap), and the
+    // card columns are small enough that the whole archive is one cheap
+    // read. The view shows it a screenful at a time.
+    const read = async (cols) => {
+      const rows = [];
+      for (let from = 0; from < 10000; from += 1000) {
+        const { data: part, error: err } = await supabase.from('news_articles').select(cols)
+          .eq('status', 'published').order('updated_at', { ascending: false }).range(from, from + 999);
+        if (err) return { data: null, error: err };
+        rows.push(...part);
+        if (part.length < 1000) break;
+      }
+      return { data: rows, error: null };
+    };
     let { data, error } = await read(`${fields}, pinned_at`);
     // Until the pin migration (migrations/2026-10-08_news_pin.sql) has been
     // run there is no pinned_at column and that select fails outright —

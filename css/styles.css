@@ -2162,16 +2162,11 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    the one picked. Full-width art on top of a raised card, same surface/
    line/ink tokens and the same Manrope the rest of the app uses — no new
    typeface, no new colour. */
-/* One trigger pill instead of a wrapping chip row — tapping it opens a
-   slide-up sheet (.news-filter-sheet__item below) listing every option,
-   same recipe as every other bottom sheet in the app. */
-.news-filter-btn {
-  display: inline-flex; align-items: center; gap: 7px; margin-bottom: var(--space-3);
-  padding: 9px 15px; background: var(--surface); border: 1px solid var(--line);
-  border-radius: var(--radius-pill); color: var(--ink); font-size: 13.5px; font-weight: 700;
-}
-.news-filter-btn:active { background: var(--surface-raised); }
-.news-filter-btn svg { width: 15px; height: 15px; color: var(--ink-faint); }
+/* The search row reuses Search's own classes; the filter button just lights
+   up while a category is applied. The pill that used to sit here is gone. */
+.news-search-row { margin-bottom: var(--space-3); }
+.filter-btn--on { border-color: var(--accent-bright); color: var(--accent-bright); }
+#news-sentinel { height: 1px; }
 .news-filter-sheet__title { margin: 0 0 var(--space-2); font-family: var(--font-brand); font-weight: 700; font-size: 16px; letter-spacing: -0.01em; }
 .news-filter-sheet__item { justify-content: space-between; }
 .news-filter-sheet__item svg { color: var(--accent-bright); width: 18px; height: 18px; }
