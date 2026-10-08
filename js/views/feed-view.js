@@ -3,7 +3,7 @@ import { state } from '../state.js';
 import {
   topBar, navBar, homeTabs, feedSectionHead, activityCard, emptyState, spinner, skeletonRow, iconStamp, iconUser, iconFilter,
   trendingStrip, wireTrendingStrip, friendsPlayingCard, posterFrame, openReportSheet, iconChevronRight,
-  iconDice, iconBookmark, iconBrandMark, iconCardStack, iconPlay, iconBack, iconCheck,
+  iconDice, iconBookmark, iconBrandMark, iconCardStack, iconPlay, iconBack, iconCheck, iconClose,
 } from '../components.js';
 import { toast, qs, qsa, esc, timeAgo, enableSwipeToDismiss, promptSignIn, tapFeedback, pulseLogTab, igdbSized, placeholderCover } from '../utils.js';
 import { buzz } from '../haptics.js';
@@ -297,6 +297,22 @@ async function paintNewsTab(body) {
 
 const DISCOVERY_CACHE_KEY = 'discovery';
 
+// One representative game per collection, for the slider picker's card
+// backdrops (see openPicker below) — fetched lazily the first time the
+// picker opens and kept here, module-level, so reopening it (or coming
+// back to Discovery later this session) never refetches. Maps
+// collection id -> a game object, or null once a fetch has resolved
+// with nothing to show.
+const discoveryPreviewCache = new Map();
+async function fetchCollectionPreview(c) {
+  try {
+    const games = c.id === 'goty' ? await api.resolveGotyWinners() : (await api.browseGames({ ...c.params, page: 1 })).games;
+    return games[0] || null;
+  } catch {
+    return null;
+  }
+}
+
 // "Bored? Try these" — an endless vertical list that changes with the
 // picked collection. Sits last on the feed on purpose: social content
 // first, then something to fall into when there's nothing new from
@@ -453,7 +469,11 @@ async function paintForYou(slot) {
 // with no refetch at all, not just a faster-looking one.
 async function paintDiscovery(slot) {
   const cached = getCached(DISCOVERY_CACHE_KEY);
-  let activeId = cached?.activeId || api.DISCOVERY_COLLECTIONS[0].id;
+  // A cached id from a collection that's since been renamed/merged (see
+  // DISCOVERY_COLLECTIONS) falls back to the default rather than
+  // crashing activeCollection() below with "no such collection".
+  let activeId = cached?.activeId && api.DISCOVERY_COLLECTIONS.some((c) => c.id === cached.activeId)
+    ? cached.activeId : api.DISCOVERY_COLLECTIONS[0].id;
   let page = cached?.page || 1;
   let hasMore = cached?.hasMore ?? true;
   let loading = false;
@@ -670,34 +690,73 @@ async function paintDiscovery(slot) {
     if (more()) recheckSentinel();
   }
 
+  // The picker as a real slider — a full-screen takeover with every
+  // collection as a poster-backed card in a horizontally snapping
+  // track, the active one centred with its neighbours peeking in on
+  // both sides. One of five mockups shown to the user (see the
+  // playthruu-discovery-variations artifact); this is the one picked.
   function openPicker() {
     const overlay = document.createElement('div');
-    overlay.className = 'modal-overlay';
+    overlay.className = 'discovery-slider-overlay';
+    const cardBg = (c) => {
+      const g = discoveryPreviewCache.get(c.id);
+      return g?.cover_url ? ` style="background-image:url('${esc(igdbSized(g.cover_url, 'cover_big'))}')"` : '';
+    };
     overlay.innerHTML = `
-      <div class="modal mood-sheet">
-        <header class="modal__header"><h2>What are you into?</h2><button class="modal__close" data-close aria-label="Close">&times;</button></header>
-        <div class="modal__body">
-          <div class="mood-list">
-            ${api.DISCOVERY_COLLECTIONS.map((c, i) => `
-              <button type="button" class="mood-row${c.id === activeId ? ' mood-row--active' : ''}" data-id="${c.id}">
-                <span class="mood-row__index">${String(i + 1).padStart(2, '0')}</span>
-                <span class="mood-row__label">${esc(c.label)}</span>
-                <span class="mood-row__arrow" aria-hidden="true">→</span>
-              </button>`).join('')}
-          </div>
-        </div>
+      <button type="button" class="discovery-slider__close" data-close aria-label="Close">${iconClose()}</button>
+      <h2 class="discovery-slider__title">What are you into?</h2>
+      <div class="discovery-slider__track" id="discovery-slider-track">
+        ${api.DISCOVERY_COLLECTIONS.map((c) => `
+          <button type="button" class="discovery-slider__card${c.id === activeId ? ' is-active' : ''}" data-id="${c.id}">
+            <span class="discovery-slider__bg"${cardBg(c)}></span>
+            <span class="discovery-slider__scrim"></span>
+            <span class="discovery-slider__label">${esc(c.label)}</span>
+          </button>`).join('')}
+      </div>
+      <div class="discovery-slider__dots">
+        ${api.DISCOVERY_COLLECTIONS.map((c) => `<span class="discovery-slider__dot${c.id === activeId ? ' is-active' : ''}" data-dot="${c.id}"></span>`).join('')}
       </div>`;
     document.body.appendChild(overlay);
     document.body.style.overflow = 'hidden';
-    const close = () => { overlay.remove(); document.body.style.overflow = ''; };
-    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+    const close = () => { overlay.remove(); document.body.style.overflow = ''; dotObserver.disconnect(); };
     qs('[data-close]', overlay).addEventListener('click', close);
-    enableSwipeToDismiss(qs('.modal', overlay), close);
-    qsa('.mood-row', overlay).forEach((btn) => {
+    qsa('.discovery-slider__card', overlay).forEach((btn) => {
       btn.addEventListener('click', () => {
         activeId = btn.dataset.id;
         close();
         reset();
+      });
+    });
+
+    // Start centred on whatever's active, no scroll animation on open —
+    // the swipe itself is native touch scrolling the rest of the way.
+    const track = qs('#discovery-slider-track', overlay);
+    (qs('.discovery-slider__card.is-active', overlay) || track.firstElementChild)
+      ?.scrollIntoView({ inline: 'center', block: 'nearest' });
+
+    // Dots track whichever card is most centred — the same
+    // IntersectionObserver pattern observeSentinel uses below for the
+    // infinite-scroll grid, just watching every card instead of one
+    // sentinel.
+    const dotObserver = new IntersectionObserver((entries) => {
+      entries.forEach((e) => {
+        if (e.intersectionRatio < 0.6) return;
+        const id = e.target.dataset.id;
+        qsa('.discovery-slider__dot', overlay).forEach((d) => d.classList.toggle('is-active', d.dataset.dot === id));
+      });
+    }, { root: track, threshold: 0.6 });
+    qsa('.discovery-slider__card', overlay).forEach((c) => dotObserver.observe(c));
+
+    // Backdrops for whatever hasn't been looked at yet this session —
+    // one light page-1 query per collection, not re-fetched once it's
+    // in discoveryPreviewCache (including on a later re-open).
+    api.DISCOVERY_COLLECTIONS.forEach((c) => {
+      if (discoveryPreviewCache.has(c.id)) return;
+      fetchCollectionPreview(c).then((g) => {
+        discoveryPreviewCache.set(c.id, g);
+        if (!g?.cover_url || !overlay.isConnected) return;
+        const bg = qs(`.discovery-slider__card[data-id="${c.id}"] .discovery-slider__bg`, overlay);
+        if (bg) bg.style.backgroundImage = `url('${igdbSized(g.cover_url, 'cover_big')}')`;
       });
     });
   }

@@ -1257,13 +1257,27 @@ export const DISCOVERY_COLLECTIONS = [
   { id: 'indie', label: 'Indie darlings', rotates: true, params: { genre: 'genre:32', multiplayer: 'singleplayer', minRating: 75, minVotes: CREDIBLE_VOTES, maxVotes: FAMOUS_VOTES, sort: 'top_rated' } },
   { id: 'popular', label: 'Hot right now', params: { sort: 'popular' } },
   { id: 'all_time', label: 'All-time greats', params: { sort: 'all_time', minVotes: CREDIBLE_VOTES } },
-  { id: 'story', label: 'For the story', rotates: true, params: { genre: 'genre:31', minRating: 78, minVotes: CREDIBLE_VOTES, sort: 'top_rated' } },
+  // Replaces the old 'story' collection, which was genre:31 + top_rated
+  // at a slightly looser threshold than 'masterpieces' directly above —
+  // same genre, same sort, barely different numbers, so the two pulled
+  // from almost the same pool (confirmed: they shared their #1 pick,
+  // Animal Company, in the same fetch). This is a genuinely different
+  // shelf instead of a second copy of one. theme:19 is IGDB's Horror
+  // theme, verified live against the catalogue (Resident Evil 4,
+  // Silent Hill 2, Bloodborne, Castlevania: SOTN all came back under it).
+  { id: 'horror', label: 'Horror nights', rotates: true, params: { genre: 'theme:19', minRating: 75, minVotes: CREDIBLE_VOTES, sort: 'top_rated' } },
   { id: 'underrated', label: 'Hidden gems', rotates: true, params: { minRating: 80, minVotes: CREDIBLE_VOTES, maxVotes: 300, sort: 'top_rated' } },
   { id: 'rpg', label: 'Deep RPGs', rotates: true, params: { genre: 'genre:12', minRating: 78, minVotes: CREDIBLE_VOTES, sort: 'top_rated' } },
   { id: 'short', label: 'Short & sweet', rotates: true, params: { genre: 'genre:9', minRating: 75, minVotes: CREDIBLE_VOTES, sort: 'top_rated' } },
   { id: 'chaos', label: 'Pure chaos', params: { genre: 'genre:5', sort: 'popular' } },
-  { id: 'couch', label: 'Grab a friend', params: { multiplayer: 'multiplayer', sort: 'popular' } },
-  { id: 'online', label: 'Online multiplayer', params: { multiplayer: 'multiplayer', sort: 'all_time', minVotes: CREDIBLE_VOTES } },
+  // Replaces 'couch' ('Grab a friend') and 'online' ('Online
+  // multiplayer'), which both just filtered IGDB's generic multiplayer
+  // flag with a different sort — it has no local-vs-online signal to
+  // actually split on, so 'Grab a friend' was surfacing solo-campaign
+  // games (Half-Life, GTA V, Red Dead Redemption) under a couch-co-op
+  // name. One honest collection instead of two that promised a
+  // distinction the data couldn't back up.
+  { id: 'multiplayer', label: 'Multiplayer', params: { multiplayer: 'multiplayer', sort: 'popular' } },
   { id: 'classics', label: 'Retro classics', rotates: true, params: { sort: 'all_time', dateTo: '2012-12-31', minVotes: CREDIBLE_VOTES } },
   // No `params` — this one isn't a browseGames() filter at all, it's a
   // fixed curated list (see GOTY_WINNERS/resolveGotyWinners below).

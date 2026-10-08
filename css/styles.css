@@ -4778,11 +4778,51 @@ a.gd-credit__name { text-decoration: none; }
 .modal--glass .modal__body { position: relative; z-index: 1; }
 .modal--glass .modal__close { background: var(--surface-high); }
 
-/* ---- mood picker: a lean, badass numbered list ---------------------
-   Full-width rows, a monospace track-number on the left, an all-caps
-   label, and a chevron that slides in. The active row lights an accent
-   bar and glows. No emojis, no cards — just a tight, confident list. */
-.mood-list { display: flex; flex-direction: column; gap: 6px; padding-bottom: var(--space-2); }
+/* ---- mood picker: a real slider, not a list -------------------------
+   A full-screen takeover (shown live, one of five mockups presented to
+   the user — see playthruu-discovery-variations artifact) with every
+   collection as a poster-backed card in a horizontally snapping track,
+   the current one centred with its neighbours peeking in on both sides.
+   Scroll-snap does the centring and the momentum; no JS drag handling. */
+.discovery-slider-overlay {
+  position: fixed; inset: 0; z-index: 100; background: var(--bg-deep);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: calc(var(--safe-top) + 14px) 0 calc(var(--safe-bottom) + 24px);
+}
+.discovery-slider__close {
+  position: absolute; top: calc(var(--safe-top) + 10px); left: 12px; z-index: 1;
+  width: 40px; height: 40px; display: grid; place-items: center;
+  background: none; border: none; color: var(--ink);
+}
+.discovery-slider__close:active { transform: scale(0.9); }
+.discovery-slider__close svg { width: 22px; height: 22px; }
+.discovery-slider__title {
+  margin: 0 0 24px; font-family: var(--font-brand); font-weight: 700; font-size: 20px;
+  letter-spacing: -0.01em; color: var(--ink);
+}
+.discovery-slider__track {
+  display: flex; width: 100%; gap: 14px; overflow-x: auto; scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch; scrollbar-width: none;
+  /* Half a card's width of padding on each side is what lets the FIRST
+     and LAST cards still snap to centre, not just the ones in between. */
+  padding-inline: calc(50% - 124px);
+}
+.discovery-slider__track::-webkit-scrollbar { display: none; }
+.discovery-slider__card {
+  position: relative; flex: 0 0 248px; width: 248px; height: 330px;
+  border-radius: 20px; overflow: hidden; background: var(--surface);
+  border: 1px solid var(--line); scroll-snap-align: center;
+}
+.discovery-slider__card.is-active { border-color: var(--accent-bright); }
+.discovery-slider__bg { position: absolute; inset: 0; background: var(--surface-raised) center/cover no-repeat; filter: brightness(0.55); }
+.discovery-slider__scrim { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0) 45%, rgba(8,10,14,.92) 100%); }
+.discovery-slider__label {
+  position: absolute; left: 16px; right: 16px; bottom: 16px; color: #fff;
+  font-weight: 800; font-size: 17px; line-height: 1.22; text-wrap: balance;
+}
+.discovery-slider__dots { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; max-width: 260px; margin-top: 22px; }
+.discovery-slider__dot { width: 5px; height: 5px; border-radius: 50%; background: var(--line-strong); }
+.discovery-slider__dot.is-active { background: var(--accent-bright); width: 16px; border-radius: 99px; }
 
 /* ---- random pick: card draw (Bored? Try these) ----------------------- */
 /* The collection as a deck of cards: it shuffles, the top card flips to
@@ -4903,49 +4943,6 @@ a.gd-credit__name { text-decoration: none; }
    a light tint and green text, not a loud fill. */
 .draw-act--saved { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
 .draw-act:disabled { pointer-events: none; }
-.mood-row {
-  position: relative; display: flex; align-items: center; gap: 14px;
-  width: 100%; padding: 15px 16px 15px 18px;
-  border-radius: 12px; border: 1px solid transparent;
-  background: var(--surface-raised);
-  color: var(--ink); cursor: pointer; text-align: left; overflow: hidden;
-  transition: background var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
-}
-/* Left accent bar — hidden until the row is active/hovered. */
-.mood-row::before {
-  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
-  background: var(--accent-bright); transform: scaleY(0); transform-origin: center;
-  transition: transform var(--dur-fast) var(--ease);
-}
-.mood-row:hover { background: var(--surface-high); }
-.mood-row:hover::before { transform: scaleY(0.55); }
-.mood-row:active { transform: scale(0.985); }
-.mood-row__index {
-  font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 12.5px; font-weight: 700; color: var(--ink-faint);
-  letter-spacing: 0.04em; flex-shrink: 0; width: 20px;
-}
-.mood-row__label {
-  flex: 1; min-width: 0; font-weight: 700; font-size: 15px;
-  text-transform: uppercase; letter-spacing: 0.05em;
-}
-.mood-row__arrow {
-  flex-shrink: 0; color: var(--ink-faint); font-size: 16px;
-  opacity: 0; transform: translateX(-6px);
-  transition: opacity var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
-}
-.mood-row:hover .mood-row__arrow { opacity: 1; transform: translateX(0); }
-/* Active: accent everything and hold the bar full-height. */
-.mood-row--active {
-  background: color-mix(in srgb, var(--accent-bright) 14%, var(--surface-raised));
-  border-color: color-mix(in srgb, var(--accent-bright) 45%, transparent);
-  box-shadow: 0 0 20px -6px color-mix(in srgb, var(--accent-bright) 55%, transparent);
-}
-.mood-row--active::before { transform: scaleY(1); }
-.mood-row--active .mood-row__index { color: var(--accent-bright); }
-.mood-row--active .mood-row__label { color: #fff; }
-.mood-row--active .mood-row__arrow { opacity: 1; transform: translateX(0); color: var(--accent-bright); }
-
 .claim-status { font-size: var(--text-meta); min-height: 18px; margin-top: -4px; }
 .claim-status--ok { color: var(--success); }
 .claim-status--bad { color: var(--danger); }
