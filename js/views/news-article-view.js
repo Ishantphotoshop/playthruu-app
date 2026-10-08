@@ -10,7 +10,6 @@ import { esc, timeAgo, formatDate, qs } from '../utils.js';
 // sourcing/citations the site version carries, which is also what sends
 // traffic there.
 const NEWS_SITE = 'https://playthruu.com/news/';
-const STATUS_LABEL = { confirmed: 'Confirmed', reported: 'Reported', rumor: 'Rumor', leak: 'Leak' };
 
 // Each block in `body` is one of: a heading, a plain paragraph, an
 // inline "this part is Reported, not confirmed" aside, or a dated
@@ -36,8 +35,6 @@ export async function renderNewsArticleView(root, { slug }) {
   }
 
   const siteLink = NEWS_SITE + a.slug;
-  const status = STATUS_LABEL[a.verification_status] || '';
-  const flagStatus = status && status !== 'Confirmed';
   const blocks = Array.isArray(a.body) ? a.body : [];
 
   body.innerHTML = `
@@ -49,7 +46,7 @@ export async function renderNewsArticleView(root, { slug }) {
         ${a.image_credit ? `<div class="na__credit">${esc(a.image_credit)}</div>` : ''}
       ` : ''}
       <div class="na__content">
-        <div class="na__meta">${esc(a.category)}${flagStatus ? ` · ${esc(status)}` : ''} · ${timeAgo(a.updated_at)}</div>
+        <div class="na__meta">${esc(a.category)} · ${timeAgo(a.updated_at)}</div>
         <h1 class="na__title">${esc(a.title)}</h1>
         <div id="na-game-slot"></div>
         ${a.why_it_matters ? `<p class="na__why"><strong>Why it matters:</strong> ${esc(a.why_it_matters)}</p>` : ''}

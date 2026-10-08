@@ -175,7 +175,6 @@ async function paintAnnouncement(slot) {
 function newsCard(article) {
   const tag = article.slug ? 'a' : 'div';
   const linkAttrs = article.slug ? ` href="#/news/${esc(article.slug)}"` : '';
-  const flagStatus = article.status && article.status !== 'Confirmed';
   return `
     <${tag} class="news-card${article.isCustom ? ' news-card--own' : ''}"${linkAttrs}>
       <span class="news-card__cover" style="${article.image ? `background-image:url('${esc(article.image)}')` : ''}">
@@ -184,7 +183,7 @@ function newsCard(article) {
       </span>
       <span class="news-card__body">
         <span class="news-card__title">${esc(article.title)}</span>
-        <span class="news-card__meta">${esc(article.category)}${flagStatus ? ` · ${esc(article.status)}` : ''} · ${timeAgo(article.pubDate)}</span>
+        <span class="news-card__meta">${esc(article.category)} · ${timeAgo(article.pubDate)}</span>
       </span>
     </${tag}>`;
 }
