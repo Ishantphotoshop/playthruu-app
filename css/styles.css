@@ -2165,15 +2165,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    the one picked. Full-width art on top of a raised card, same surface/
    line/ink tokens and the same Manrope the rest of the app uses — no new
    typeface, no new colour. */
-/* The search row reuses Search's own classes; the filter button just lights
-   up while a category is applied. The pill that used to sit here is gone. */
-.news-search-row { margin-bottom: var(--space-3); }
-.filter-btn--on { border-color: var(--accent-bright); color: var(--accent-bright); }
 #news-sentinel { height: 1px; }
-.news-filter-sheet__title { margin: 0 0 var(--space-2); font-family: var(--font-brand); font-weight: 700; font-size: 16px; letter-spacing: -0.01em; }
-.news-filter-sheet__item { justify-content: space-between; }
-.news-filter-sheet__item svg { color: var(--accent-bright); width: 18px; height: 18px; }
-.news-filter-sheet__item--active { color: var(--accent-bright); }
 .news-list { display: flex; flex-direction: column; gap: var(--space-3); }
 .news-card {
   display: block; border-radius: var(--radius-m); overflow: hidden;

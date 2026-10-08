@@ -1,0 +1,10 @@
+/* ARCHIVED 2026-10-09 — styles for the News tab's search bar and filter (see news-search-filter-2026-10-09.js). */
+
+/* The search row reuses Search's own classes; the filter button just lights
+   up while a category is applied. The pill that used to sit here is gone. */
+.news-search-row { margin-bottom: var(--space-3); }
+.filter-btn--on { border-color: var(--accent-bright); color: var(--accent-bright); }
+.news-filter-sheet__title { margin: 0 0 var(--space-2); font-family: var(--font-brand); font-weight: 700; font-size: 16px; letter-spacing: -0.01em; }
+.news-filter-sheet__item { justify-content: space-between; }
+.news-filter-sheet__item svg { color: var(--accent-bright); width: 18px; height: 18px; }
+.news-filter-sheet__item--active { color: var(--accent-bright); }
