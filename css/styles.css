@@ -936,6 +936,16 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 /* Active tab is marked by the icon/label lighting up to full white (from
    the 60%-opacity resting state) — no dot beneath it. */
 .tabbar__item--active { color: var(--accent); }
+/* Outline while inactive, filled while active — see navPair() in
+   components.js. Both glyphs are always in the DOM; the active class the
+   router toggles on navigation just swaps which one is shown. */
+.tab-off, .tab-on { display: contents; }
+.tabbar__item--active .tab-off { display: none; }
+.tabbar__item:not(.tabbar__item--active) .tab-on { display: none; }
+/* The profile tab is the person's own photo. */
+.tabbar__avatar { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; border: 2px solid transparent; }
+.tabbar__avatar .avatar { display: block; width: 24px !important; height: 24px !important; font-size: 10px !important; }
+.tabbar__item--active .tabbar__avatar { border-color: var(--accent); }
 /* A plain drop shadow to lift the glyph off the bar, and no coloured
    bloom behind it. The accent already names the active tab; a glow on
    top of that is decoration the rest of the app does not use. */
@@ -1245,7 +1255,13 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   display: grid;
   grid-template-columns: repeat(3, var(--poster-w));
   gap: var(--poster-gap);
-  justify-content: center;
+  /* Start, not center: centred, the posters sat 2px in from the heading
+     (--poster-w leaves 4px of slack across the row), so the first column
+     didn't line up under the "B" the way every other strip does. The
+     -1px top margin is the same one the strips carry, which is what makes
+     the gap under this heading match theirs. */
+  justify-content: start;
+  margin-top: -1px;
 }
 /* The Browse screen on the signed-out landing funnel only — 4 across
    instead of 3, scoped here rather than changing .discovery-grid
@@ -4769,24 +4785,24 @@ a.gd-credit__name { text-decoration: none; }
    shown to the user; this is the one picked). It grows from the
    button's top-right corner like an iOS context menu: scale + fade with
    a slight overshoot on the way in, a quicker fold on the way out. The
-   heading row is the positioning parent; the 2px right inset lines the
-   menu's edge up with the right edge of the poster columns, which sit
-   2px inside the gutter. */
+   heading row is the positioning parent; top 7px and right 4px put the
+   menu's edges on the first poster row's top and the right column's
+   right edge (the columns end 4px short of the gutter). */
 .feed-section-head { position: relative; }
 .discovery-menu {
-  position: absolute; top: calc(100% + 8px); right: 2px; z-index: 30; width: 214px; padding: 6px;
+  position: absolute; top: calc(100% + 7px); right: 4px; z-index: 30; width: 214px; padding: 6px;
   background: var(--surface-raised); border: 1px solid var(--line-strong);
-  /* The poster's own radius on every corner: the top-right sits exactly
-     over the right poster's corner (a rounder one left a sliver of it
-     showing), and the other three match it so the menu isn't lopsided. */
-  border-radius: var(--poster-radius);
+  /* Top-right uses the poster's own radius so it sits exactly over the
+     right poster's corner (a rounder one left a sliver of it showing);
+     the other three stay the normal, softer curve. */
+  border-radius: 12px var(--poster-radius) 12px 12px;
   transform-origin: top right;
   animation: menu-pop 280ms cubic-bezier(0.2, 0.9, 0.3, 1.15) both;
 }
 .discovery-menu.is-closing { animation: menu-fold 160ms cubic-bezier(0.4, 0, 1, 1) both; pointer-events: none; }
 .discovery-menu__item {
   display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%;
-  padding: 10px 12px; border: none; border-radius: 3px; background: none; text-align: left;
+  padding: 10px 12px; border: none; border-radius: 7px; background: none; text-align: left;
   color: var(--ink); font-size: 14.5px; font-weight: 600;
 }
 .discovery-menu__item:active { background: var(--surface-high); }

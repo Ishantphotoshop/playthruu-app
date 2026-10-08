@@ -79,6 +79,30 @@ export function posterFrame(coverUrl, title, extraClass = '', { tag = 'span', hr
 // it's a screen inside landing-view.js's own local state), so those two
 // are data-action buttons that drop back into the landing shell on the
 // right screen; Discover and Search are real links either way.
+// Instagram-style tab icons: every tab carries BOTH a thin outline and a
+// filled glyph, and .tabbar__item--active (toggled by the router on each
+// navigation, no re-render) decides which one shows. Outline while you're
+// elsewhere, filled in the theme colour while you're on it.
+function navPair(off, on) {
+  return `<span class="tab-off">${off}</span><span class="tab-on">${on}</span>`;
+}
+function navHomeOff() {
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 11 12 3.5 20.5 11"/><path d="M5.5 9.5V20a.5.5 0 0 0 .5.5h4v-6h4v6h4a.5.5 0 0 0 .5-.5V9.5"/></svg>`;
+}
+function navSearchOff() {
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20.5 20.5-4.6-4.6"/></svg>`;
+}
+// The lens itself becomes a solid disc; the handle thickens to match.
+function navSearchOn() {
+  return `<svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7.6" fill="currentColor"/><path d="m20.4 20.4-4.5-4.5" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/></svg>`;
+}
+function navBellOn() {
+  return `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M18 9a6 6 0 1 0-12 0c0 5.2-1.6 6.6-2 7 .6.4 1.4.5 2 .5h12c.6 0 1.4-.1 2-.5-.4-.4-2-1.8-2-7z" fill="currentColor" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10.3 20a2 2 0 0 0 3.4 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`;
+}
+function navUserOff() {
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="8" r="3.6"/><path d="M4.5 20.2c1.4-3.9 4.2-5.7 7.5-5.7s6.1 1.8 7.5 5.7"/></svg>`;
+}
+
 export function navBar(activeBase = '/feed') {
   // ONE bar, signed in or out.
   //
@@ -106,9 +130,9 @@ export function navBar(activeBase = '/feed') {
     // Home for a signed-out visitor is the landing shell's browse
     // screen: a real wall of games and real public reviews, which is
     // the closest honest equivalent of a feed.
-    out ? { action: 'browse', route: '/feed', icon: iconHomeFilled(), label: 'Home' }
-        : { route: '/feed', icon: iconHomeFilled(), label: 'Feed' },
-    { route: '/search', icon: iconSearchFilled(), label: 'Search' },
+    out ? { action: 'browse', route: '/feed', icon: navPair(navHomeOff(), iconHomeFilled()), label: 'Home' }
+        : { route: '/feed', icon: navPair(navHomeOff(), iconHomeFilled()), label: 'Feed' },
+    { route: '/search', icon: navPair(navSearchOff(), navSearchOn()), label: 'Search' },
     // A plus, not the brand mark. The mark is the app's identity and
     // reads as a logo sitting in the middle of the bar rather than as
     // something to press; a plus says "add" the way it does in every
@@ -121,12 +145,14 @@ export function navBar(activeBase = '/feed') {
     // and for the sheet's own "saved" refresh.)
     out ? { action: 'signup', route: '/log', icon: iconPlus(), label: 'Log a game', primary: true }
         : { action: 'log', route: '/log', icon: iconPlus(), label: 'Log', primary: true },
-    out ? { action: 'signup', route: '/notifications', icon: iconBell(), label: 'Notifications' }
+    out ? { action: 'signup', route: '/notifications', icon: navPair(iconBell(), navBellOn()), label: 'Notifications' }
         : (MESSENGER_ARCHIVED
-            ? { route: '/notifications', icon: iconBell(), label: 'Notifications' }
+            ? { route: '/notifications', icon: navPair(iconBell(), navBellOn()), label: 'Notifications' }
             : { route: '/messages', icon: iconMessageFilled(), label: 'Messages' }),
-    out ? { action: 'account', route: '/me', icon: iconUserFilled(), label: 'Account' }
-        : { route: '/me', icon: iconUserFilled(), label: 'Profile' },
+    out ? { action: 'account', route: '/me', icon: navPair(navUserOff(), iconUserFilled()), label: 'Account' }
+        // Signed in, the profile tab is the person's own photo, ringed in
+        // the theme colour while it's the active tab.
+        : { route: '/me', icon: `<span class="tabbar__avatar">${avatarImg(state.profile || { username: 'me' }, 26)}</span>`, label: 'Profile' },
   ];
 
   // Icon-only, no label underneath — aria-label carries the name so it
