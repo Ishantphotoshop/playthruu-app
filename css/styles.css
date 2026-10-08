@@ -1253,14 +1253,13 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    not one attached block. */
 .discovery-grid {
   display: grid;
-  /* Three equal columns that fill the row exactly, so the left gap (under
-     the heading's "B") and the right gap (to the screen) are the same 16px.
-     A fixed --poster-w left 4px of slack, which landed on one side or the
-     other whichever way the grid was justified. The -1px top margin is the
-     one the strips carry, which keeps the gap under this heading equal to
-     theirs. */
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  /* Exactly the strips' own poster size and gap, starting at the same left
+     edge and sitting the same 7px under the heading (the -1px top margin is
+     the one the strips carry), so this grid reads as the next row of the
+     same set as Picked for you and Currently playing. */
+  grid-template-columns: repeat(3, var(--poster-w));
   gap: var(--poster-gap);
+  justify-content: start;
   margin-top: -1px;
 }
 /* The Browse screen on the signed-out landing funnel only — 4 across
@@ -4742,12 +4741,12 @@ a.gd-credit__name { text-decoration: none; }
    shown to the user; this is the one picked). It grows from the
    button's top-right corner like an iOS context menu: scale + fade with
    a slight overshoot on the way in, a quicker fold on the way out. The
-   heading row is the positioning parent; top 7px and right 0 put the
+   heading row is the positioning parent; top 7px and right 4px put the
    menu's edges on the first poster row's top and the right column's
-   right edge. */
+   right edge (the columns end 4px short of the gutter). */
 .feed-section-head { position: relative; }
 .discovery-menu {
-  position: absolute; top: calc(100% + 7px); right: 0; z-index: 30; width: 214px; padding: 6px;
+  position: absolute; top: calc(100% + 7px); right: 4px; z-index: 30; width: 214px; padding: 6px;
   background: var(--surface-raised); border: 1px solid var(--line-strong);
   /* Top-right uses the poster's own radius so it sits exactly over the
      right poster's corner (a rounder one left a sliver of it showing);
