@@ -119,7 +119,7 @@ function isAboutGTA6(a) {
 
 export async function getGameNews() {
   try {
-    const fields = 'slug, title, card_description, category, importance, verification_status, image_url, game, tags, updated_at';
+    const fields = 'slug, title, summary, card_description, category, importance, verification_status, image_url, game, tags, updated_at';
     // Every published story, not a recent slice: the list pages through
     // the table 1000 rows at a time (PostgREST's per-request cap), and the
     // card columns are small enough that the whole archive is one cheap
@@ -144,7 +144,7 @@ export async function getGameNews() {
     return rankNews(data || []).map((a) => ({
       slug: a.slug,
       title: a.title,
-      summary: a.card_description || '',
+      summary: a.summary || a.card_description || '',
       // Official press art when the story has it, otherwise PlayThruu's
       // own generated card — never a publication's photo.
       image: a.image_url || `${NEWS_SITE}${a.slug}/thumb`,
@@ -158,8 +158,7 @@ export async function getGameNews() {
       // not here, since that's a search call per article and most of
       // this list is never opened.
       game: a.game || null,
-      // The site link still comes along — the in-app reader's own link
-      // to playthruu.com is what actually sends anyone there.
+      // Where a card's tap goes: the story on playthruu.com.
       link: NEWS_SITE + a.slug,
       pubDate: a.updated_at,
     }));
@@ -168,14 +167,9 @@ export async function getGameNews() {
   }
 }
 
-// One article, for the in-app teaser reader (see news-article-view.js).
-// Pulls the fields getGameNews() already uses plus why_it_matters and
-// body — the full article text stays on playthruu.com; this only needs
-// enough of `body` to render the first paragraph before the "Continue
-// reading" handoff.
 // Just the freshest publish time, for the News tab's unread dot — one
-// skinny row instead of the full 60-article list, since this runs on
-// every Feed open (see feed-view.js) and most of those never touch News.
+// skinny row instead of the whole archive, since this runs on every Feed
+// open (see feed-view.js) and most of those never touch News.
 export async function getLatestNewsTime() {
   try {
     const { data, error } = await supabase
@@ -190,17 +184,6 @@ export async function getLatestNewsTime() {
   } catch {
     return null;
   }
-}
-
-export async function getNewsArticleBySlug(slug) {
-  const { data, error } = await supabase
-    .from('news_articles')
-    .select('slug, title, card_description, why_it_matters, body, category, importance, verification_status, image_url, image_credit, game, updated_at')
-    .eq('slug', slug)
-    .eq('status', 'published')
-    .single();
-  if (error) throw error;
-  return data;
 }
 
 // ------------------------------------------------------------

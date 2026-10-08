@@ -155,26 +155,20 @@ async function paintAnnouncement(slot) {
     : `<div class="announce">${body}</div>`;
 }
 
-// Opens the in-app reader (news-article-view.js) rather than sending the
-// tap straight to playthruu.com — the whole story reads there, scrolling
-// the same as any other page in the app, with a link to the site kept
-// at the end for sources. A card with no slug renders as a plain,
-// non-clickable div.
+// Every card goes straight out to the story on playthruu.com (a new tab, so
+// the app stays where it was) — there is no reader page inside the app, the
+// whole point of the News tab is to send people to the site. So the card
+// carries what a reader needs to decide: art, a bold headline, a short
+// summary clamped to three lines, and a "Read more on playthruu.com" line
+// that says where the tap goes. A card with no link renders as a plain,
+// non-clickable div, since <a href=""> would "navigate" to the current page.
 //
-// Art runs full-width across the card's top (16:9, not the small square
-// thumbnail this used to be), title and meta sit in a body below it — the
-// "Cards" variation the user picked from the five mockups.
-//
-// Confirmed is the normal state — most stories are — so saying it on
-// every single card just repeated "Industry · Confirmed" down the whole
-// list. Only the exceptions (Reported / Rumor / Leak) are worth a flag;
-// a confirmed story just shows its category and time like any other.
-// Breaking gets its own badge over the art instead — it's a different
-// kind of flag (how fresh, not how sure) and was reading as just another
-// category word in the meta line before.
+// Art runs full-width across the card's top (16:9) — the "Cards" variation
+// the user picked from the five mockups. The meta line is just category and
+// time; the story's Reported/Leak/Confirmed label stays on the site.
 function newsCard(article) {
-  const tag = article.slug ? 'a' : 'div';
-  const linkAttrs = article.slug ? ` href="#/news/${esc(article.slug)}"` : '';
+  const tag = article.link ? 'a' : 'div';
+  const linkAttrs = article.link ? ` href="${esc(article.link)}" target="_blank" rel="noopener noreferrer"` : '';
   return `
     <${tag} class="news-card${article.isCustom ? ' news-card--own' : ''}"${linkAttrs}>
       <span class="news-card__cover" style="${article.image ? `background-image:url('${esc(article.image)}')` : ''}">
@@ -183,7 +177,9 @@ function newsCard(article) {
       </span>
       <span class="news-card__body">
         <span class="news-card__title">${esc(article.title)}</span>
+        ${article.summary ? `<span class="news-card__summary">${esc(article.summary)}</span>` : ''}
         <span class="news-card__meta">${esc(article.category)} · ${timeAgo(article.pubDate)}</span>
+        ${article.link ? '<span class="news-card__more">Read more on playthruu.com</span>' : ''}
       </span>
     </${tag}>`;
 }
