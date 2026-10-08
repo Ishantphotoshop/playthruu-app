@@ -727,43 +727,13 @@ ul { list-style: none; margin: 0; padding: 0; }
   content: ''; position: absolute; top: var(--space-1); bottom: var(--space-1); left: var(--space-1);
   width: calc((100% - 2 * var(--space-1) - var(--space-1)) / 2);
   border-radius: var(--radius-pill); background: var(--surface-high);
-  border: 1px solid transparent;
-  /* translate and scale are separate properties so each gets its own
-     timing: the slide settles with a small spring overshoot, the
-     press-grow is quick. */
-  translate: 0 0; scale: 1 1;
-  transition: translate 420ms cubic-bezier(.34,1.45,.5,1), scale 220ms cubic-bezier(.2,.8,.2,1),
-              background 220ms ease, border-color 220ms ease, backdrop-filter 220ms ease;
+  translate: 0 0;
+  transition: translate 260ms cubic-bezier(.2,.8,.2,1);
 }
 .home-tabs__pill[data-active="news"]::before { translate: calc(100% + var(--space-1)) 0; }
-
-/* Liquid glass, iOS-style. Touch the pill and the highlight lifts into a
-   clear glass lozenge: it grows a little, the solid fill thins to a faint
-   sheen over a bright top edge, and it blurs, brightens and saturates
-   whatever is behind it, which is what makes the labels under it look
-   magnified by thick glass. While it's dragged, the lozenge also stretches
-   along the direction it's moving (--sx/--sy, set from the finger's speed)
-   and squashes back to round as it slows. */
-.home-tabs__pill.is-pressed::before {
-  scale: 1.12 1.14;
-  background: linear-gradient(180deg, rgba(255,255,255,0.30) 0%, rgba(255,255,255,0.10) 46%, rgba(255,255,255,0.16) 100%);
-  border-color: rgba(255,255,255,0.42);
-  -webkit-backdrop-filter: blur(2px) saturate(190%) brightness(1.28) contrast(1.05);
-  backdrop-filter: blur(2px) saturate(190%) brightness(1.28) contrast(1.05);
-}
-/* Tracks the finger directly, no slide transition on the position. */
-.home-tabs__pill.is-dragging::before {
-  translate: var(--thumb-x, 0px) 0;
-  scale: var(--sx, 1.12) var(--sy, 1.14);
-  transition: scale 90ms linear, background 220ms ease, border-color 220ms ease, backdrop-filter 220ms ease;
-  will-change: translate, scale;
-}
-/* The tab names stay put but brighten as the glass passes over them. */
-/* While dragging, the name under the glass is the bright one. */
-.home-tabs__pill.is-dragging .home-tabs__item { color: var(--ink-dim); }
-.home-tabs__pill.is-dragging[data-over="feed"] .home-tabs__item[data-tab="feed"],
-.home-tabs__pill.is-dragging[data-over="news"] .home-tabs__item[data-tab="news"] { color: #fff; }
-.home-tabs__pill.is-pressed:not(.is-dragging) .home-tabs__item--active { color: #fff; }
+/* While a finger is dragging the pill the highlight tracks it directly:
+   no transition, position straight from --thumb-x. */
+.home-tabs__pill.is-dragging::before { transition: none; translate: var(--thumb-x, 0px) 0; will-change: translate; }
 .home-tabs__pill { user-select: none; -webkit-user-select: none; }
 .home-tabs__item {
   position: relative; z-index: 1;

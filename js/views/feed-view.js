@@ -96,18 +96,7 @@ export async function renderFeedView(root, { initialTab = 'feed' } = {}) {
   // never moves, still goes through the normal click.
   (function wirePillDrag() {
     let startX = 0, base = 0, travel = 0, dragging = false, down = false, raf = 0, x = 0;
-    let lastX = 0, lastT = 0, v = 0; // finger speed in px/ms, smoothed
-    const apply = () => {
-      raf = 0;
-      // Stretch along the motion, squash a little across it, relax to the
-      // pressed size as the finger slows.
-      const k = Math.min(0.16, Math.abs(v) * 0.14);
-      pill.dataset.over = x > travel / 2 ? 'news' : 'feed'; // which name the glass is over
-      pill.style.setProperty('--thumb-x', `${x}px`);
-      pill.style.setProperty('--sx', (1.12 + k).toFixed(3));
-      pill.style.setProperty('--sy', (1.14 - k * 0.5).toFixed(3));
-    };
-    const clearVars = () => ['--thumb-x', '--sx', '--sy'].forEach((n) => pill.style.removeProperty(n));
+    const apply = () => { raf = 0; pill.style.setProperty('--thumb-x', `${x}px`); };
     pill.addEventListener('pointerdown', (e) => {
       if (e.pointerType === 'mouse' && e.button !== 0) return;
       const r = pill.getBoundingClientRect();
@@ -116,10 +105,7 @@ export async function renderFeedView(root, { initialTab = 'feed' } = {}) {
       // plus the 4px gap to the right of Feed.
       travel = (r.width - 2 - 12) / 2 + 4;
       base = activeTab === 'news' ? travel : 0;
-      startX = e.clientX; lastX = e.clientX; lastT = performance.now(); v = 0;
-      down = true; dragging = false; x = base;
-      pill.style.setProperty('--thumb-x', `${base}px`);
-      pill.classList.add('is-pressed'); // the glass lifts the moment it's touched
+      startX = e.clientX; down = true; dragging = false; x = base;
     });
     pill.addEventListener('pointermove', (e) => {
       if (!down) return;
@@ -130,27 +116,20 @@ export async function renderFeedView(root, { initialTab = 'feed' } = {}) {
         try { pill.setPointerCapture(e.pointerId); } catch { /* fine */ }
         pill.classList.add('is-dragging');
       }
-      const now = performance.now();
-      const dt = Math.max(1, now - lastT);
-      v = v * 0.6 + ((e.clientX - lastX) / dt) * 0.4;
-      lastX = e.clientX; lastT = now;
       x = Math.max(0, Math.min(travel, base + dx));
       if (!raf) raf = requestAnimationFrame(apply);
     });
     const end = () => {
       if (!down) return;
       down = false;
-      pill.classList.remove('is-pressed');
-      if (!dragging) { clearVars(); return; }
+      if (!dragging) return;
       dragging = false;
       cancelAnimationFrame(raf); raf = 0;
       const target = x > travel / 2 ? 'news' : 'feed';
-      // Hand the highlight back to its normal spot: with the drag class gone
-      // its transition glides it from where the finger left it to its home,
-      // overshooting a touch.
+      // Hand the highlight back to its normal spot; its transition glides it
+      // from where the finger left it to its home.
       pill.classList.remove('is-dragging');
-      delete pill.dataset.over;
-      clearVars();
+      pill.style.removeProperty('--thumb-x');
       if (target === activeTab) { pill.dataset.active = activeTab; return; }
       switchTab(target);
       setTimeout(() => { dragMoved = false; }, 0);
