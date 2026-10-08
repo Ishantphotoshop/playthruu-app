@@ -221,12 +221,14 @@ function openNewsFilterSheet(options, active, onPick) {
   overlay.innerHTML = `
     <div class="modal modal--sheet">
       <header class="msg-actions__grab" aria-hidden="true"></header>
-      <h2 class="news-filter-sheet__title">Filter News</h2>
-      <div class="msg-actions__list">
-        ${options.map((o) => `
-          <button type="button" class="msg-actions__item news-filter-sheet__item${o === active ? ' news-filter-sheet__item--active' : ''}" data-option="${esc(o)}">
-            <span>${esc(o)}</span>${o === active ? iconCheck() : ''}
-          </button>`).join('')}
+      <div class="msg-actions">
+        <h2 class="news-filter-sheet__title">Filter News</h2>
+        <div class="msg-actions__list">
+          ${options.map((o) => `
+            <button type="button" class="msg-actions__item news-filter-sheet__item${o === active ? ' news-filter-sheet__item--active' : ''}" data-option="${esc(o)}">
+              <span>${esc(o)}</span>${o === active ? iconCheck() : ''}
+            </button>`).join('')}
+        </div>
       </div>
     </div>`;
   document.body.appendChild(overlay);
