@@ -363,6 +363,7 @@ async function paintForYou(slot) {
   // of a double would already be navigating away.
   function wireCard(btn, pick) {
     let timer = null;
+    btn.addEventListener('pointerdown', () => api.warmGameByIgdb(Number(btn.dataset.igdbId)), { passive: true });
     btn.addEventListener('click', () => {
       if (timer) {
         clearTimeout(timer);
@@ -370,7 +371,7 @@ async function paintForYou(slot) {
         quickSave(btn, pick);
         return;
       }
-      timer = setTimeout(() => { timer = null; open(btn, pick); }, 260);
+      timer = setTimeout(() => { timer = null; open(btn, pick); }, 220);
     });
   }
 
@@ -527,6 +528,9 @@ async function paintDiscovery(slot) {
     qsa('.discovery-tile', container).forEach((btn) => {
       if (btn.dataset.wired) return;
       btn.dataset.wired = '1';
+      // Start the catalogue lookup the instant a finger lands, so the tap
+      // that follows doesn't spend its first beat on a round trip.
+      btn.addEventListener('pointerdown', () => api.warmGameByIgdb(Number(btn.dataset.igdbId)), { passive: true });
       let lastTap = 0;
       btn.addEventListener('click', async () => {
         const g = games[Number(btn.dataset.idx)];

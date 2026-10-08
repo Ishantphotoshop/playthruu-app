@@ -1257,7 +1257,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   border-radius: var(--poster-radius);
   transition: transform var(--dur) var(--ease);
 }
-.discovery-tile:active { transform: scale(0.94); }
+/* Posters are solid: no press, hover or lift effect on any of them. */
 .discovery-tile:disabled { opacity: 0.5; }
 /* The GOTY collection's award-year tag — small and out of the way, just
    enough to say "this specific year," not a competing headline over the
@@ -1315,14 +1315,8 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   border-radius: var(--poster-radius); background: var(--surface);
   box-shadow: var(--shadow-card); transition: box-shadow var(--dur) var(--ease);
 }
-/* Mouse only. On a phone :hover sticks to whatever was last touched, so a
-   poster that was tapped or held stayed lifted until you tapped elsewhere. */
-@media (hover: hover) and (pointer: fine) {
-  .discovery-tile:hover { transform: translateY(-4px) scale(1.03); }
-  .discovery-tile:hover .discovery-tile__cover { box-shadow: 0 14px 40px rgba(0,0,0,0.5), 0 0 22px rgba(245, 197, 66, 0.22); }
-  .discovery-tile:focus-visible { outline: none; transform: translateY(-4px) scale(1.03); }
-  .discovery-tile:focus-visible .discovery-tile__cover { box-shadow: var(--glow-focus); }
-}
+/* No hover lift or glow either — a poster sits still whatever touches it. */
+.discovery-tile:focus-visible { outline: none; }
 .skeleton--tile {
   width: 100%; aspect-ratio: var(--ratio-card); border-radius: var(--poster-radius);
   border: 1px solid rgba(255,255,255,0.10);
@@ -1455,7 +1449,6 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   text-align: left; transition: transform 0.12s ease;
   padding: 0; background: none; border: none;
 }
-.trending-card:active, .friend-card:active, .activity-card:active { transform: scale(0.96); }
 /* No resting box-shadow — --shadow-card is a plain downward-offset
    shadow (6px down, 20px blur) that's invisible on the dark theme's
    near-black background but shows up as a visible hard-edged smudge
@@ -1991,7 +1984,6 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   .comment-sheet { animation: none; }
 }
 .game-card { display: block; transition: transform 0.12s ease, opacity 0.12s ease; }
-.game-card:active { transform: scale(0.96); opacity: 0.9; }
 .game-card--import { width: 100%; text-align: left; padding: 0; position: relative; }
 /* Blur-fill poster frame: put this class (or one that composes it) on
    a wrapping <span>/<a>/<button>, with two <img> children inside —
@@ -2300,7 +2292,6 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
   gap: 8px; padding: 2px 2px 6px; margin-top: -3px;
 }
 .showcase-slot { display: block; position: relative; min-width: 0; transition: transform 0.12s ease; }
-.showcase-slot:active { transform: scale(0.95); }
 .showcase-slot__cover { width: 100%; aspect-ratio: var(--ratio-card); border-radius: var(--poster-radius); background: var(--surface); box-shadow: var(--shadow-card); }
 .showcase-slot__meta { display: flex; align-items: center; justify-content: center; gap: 4px; margin-top: 4px; }
 .showcase-slot__note { width: 12px; height: 12px; color: var(--accent-bright); }
@@ -3517,14 +3508,6 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
      game-card/showcase-slot, but asked to have no hover motion at all
      (it doubled up with a second lift on the cover itself and read as
      janky), so they were pulled out of this list entirely. */
-  .game-card:hover .game-card__cover,
-  .showcase-slot:hover .showcase-slot__cover,
-  .result-row:hover .result-row__cover {
-    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-  }
-  .game-card:hover, .showcase-slot:hover {
-    transform: translateY(-3px);
-  }
   .log-card:hover { box-shadow: 0 8px 28px rgba(0,0,0,0.45); }
   .result-row:hover, .diary-row:hover, .list-index__item:hover { background: var(--surface); }
   .btn:hover { filter: brightness(1.08); }
@@ -4786,10 +4769,12 @@ a.gd-credit__name { text-decoration: none; }
    shown to the user; this is the one picked). It grows from the
    button's top-right corner like an iOS context menu: scale + fade with
    a slight overshoot on the way in, a quicker fold on the way out. The
-   heading row is the positioning parent. */
+   heading row is the positioning parent; the 2px right inset lines the
+   menu's edge up with the right edge of the poster columns, which sit
+   2px inside the gutter. */
 .feed-section-head { position: relative; }
 .discovery-menu {
-  position: absolute; top: calc(100% + 8px); right: 0; z-index: 30; width: 214px; padding: 6px;
+  position: absolute; top: calc(100% + 8px); right: 2px; z-index: 30; width: 214px; padding: 6px;
   background: var(--surface-raised); border: 1px solid var(--line-strong); border-radius: 12px;
   transform-origin: top right;
   animation: menu-pop 280ms cubic-bezier(0.2, 0.9, 0.3, 1.15) both;
@@ -6615,7 +6600,6 @@ a.gd-credit__name { text-decoration: none; }
   flex-shrink: 0; width: var(--feed-card-w, 140px); display: block; padding: 0;
   background: none; border: none; color: var(--ink); cursor: pointer;
 }
-.foryou-card:active { transform: scale(0.97); }
 .foryou-card { position: relative; transition: opacity 0.35s ease; }
 .foryou-card.is-leaving, .foryou-card.is-entering { opacity: 0; }
 .foryou-card__cover { width: 100%; border-radius: var(--poster-radius); overflow: hidden; aspect-ratio: var(--ratio-card); }

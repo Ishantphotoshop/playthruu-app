@@ -2676,11 +2676,26 @@ export async function getGame(gameId) {
   return data;
 }
 
+// Catalogue rows already looked up this session, by igdb_id. A poster tap
+// used to wait on a fresh round trip every time just to learn an id it had
+// already been told; warmGameByIgdb below fills this the moment a finger
+// lands, so by the time the tap completes the answer is usually in hand.
+const gameByIgdb = new Map();
+export function warmGameByIgdb(igdbId) {
+  if (!igdbId || gameByIgdb.has(igdbId)) return;
+  gameByIgdb.set(igdbId, null);
+  supabase.from('games').select('*').eq('igdb_id', igdbId).maybeSingle()
+    .then(({ data }) => { if (data) gameByIgdb.set(igdbId, data); else gameByIgdb.delete(igdbId); })
+    .catch(() => gameByIgdb.delete(igdbId));
+}
+
 export async function addGame({ title, cover_url, background_url, platform, release_year, release_date, genre, developer, publisher, igdb_id, rawg_id }, addedBy) {
   if (igdb_id) {
+    const warm = gameByIgdb.get(igdb_id);
+    if (warm) return warm;
     const { data: existing, error: findErr } = await supabase.from('games').select('*').eq('igdb_id', igdb_id).maybeSingle();
     if (findErr) throw findErr;
-    if (existing) return existing;
+    if (existing) { gameByIgdb.set(igdb_id, existing); return existing; }
   } else if (rawg_id) {
     // Legacy path — a game added back when the app ran on RAWG.
     const { data: existing, error: findErr } = await supabase.from('games').select('*').eq('rawg_id', rawg_id).maybeSingle();
@@ -2698,6 +2713,7 @@ export async function addGame({ title, cover_url, background_url, platform, rele
     .select()
     .single();
   if (error) throw error;
+  if (igdb_id) gameByIgdb.set(igdb_id, data);
   return data;
 }
 
