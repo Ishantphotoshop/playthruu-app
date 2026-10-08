@@ -258,6 +258,11 @@ function paint(html) {
 // no DOM is removed, so whatever's mid-type or mid-scroll on a hidden
 // screen is exactly as it was next time it's shown.
 function showPage(screen) {
+  // boot() puts a loading mark in #app, and pages are appended beside it
+  // rather than replacing it. Left in place it kept its full flex:1 share
+  // of the screen, so every page started a few hundred px down with
+  // only the bottom of the screen usable.
+  qs('.boot-loader', root)?.remove();
   Object.keys(pageEls).forEach((name) => { pageEls[name].hidden = name !== screen; });
 }
 
