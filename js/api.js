@@ -5101,7 +5101,7 @@ function seedWeight(log, now) {
 export async function getRecommendations(userId, { pool = 40 } = {}) {
   const { data: myLogs } = await supabase
     .from('logs')
-    .select('game_id, rating, status, created_at, games!logs_game_id_fkey(id, igdb_id)')
+    .select('game_id, rating, status, created_at, games!logs_game_id_fkey(id, igdb_id, title)')
     .eq('user_id', userId)
     .order('created_at', { ascending: false });
   const mine = myLogs || [];
@@ -5110,6 +5110,7 @@ export async function getRecommendations(userId, { pool = 40 } = {}) {
   // Excluded whatever its status: anything in the diary at all.
   const playedLocal = new Set(mine.map((l) => l.game_id).filter(Boolean));
   const playedIgdb = new Set(mine.map((l) => l.games?.igdb_id).filter(Boolean));
+  const playedTitles = new Set(mine.map((l) => l.games?.title).filter(Boolean).map(diaryTitleKey));
 
   // Seeds and anti-seeds, one entry per game (its strongest log).
   const seeds = new Map(); // igdb_id -> weight
@@ -5182,6 +5183,9 @@ export async function getRecommendations(userId, { pool = 40 } = {}) {
     // 1 DLC, 3 bundle, 5 mod, 6 episode, 7 season, 13 pack, 14 update
     if ([1, 3, 5, 6, 7, 13, 14].includes(g.category)) continue;
     if (!g.first_release_date || g.first_release_date > nowSec) continue;
+    // A remaster or re-release of something already in the diary has a new
+    // id but is the same game.
+    if (playedTitles.has(diaryTitleKey(g.name))) continue;
     const c = cands.get(g.id);
     const genres = (g.genres || []).map((x) => x.name);
     // How well its tags match the taste profile, averaged so a game
@@ -5247,15 +5251,39 @@ export async function getRecommendations(userId, { pool = 40 } = {}) {
 export async function getDiaryGameKeys(userId) {
   const { data } = await supabase
     .from('logs')
-    .select('game_id, games!logs_game_id_fkey(igdb_id)')
+    .select('game_id, games!logs_game_id_fkey(igdb_id, title)')
     .eq('user_id', userId);
   const igdb = new Set();
   const local = new Set();
+  const titles = new Set();
   for (const l of data || []) {
     if (l.game_id) local.add(l.game_id);
     if (l.games?.igdb_id) igdb.add(l.games.igdb_id);
+    if (l.games?.title) titles.add(diaryTitleKey(l.games.title));
   }
-  return { igdb, local };
+  return { igdb, local, titles };
+}
+
+// A game's title boiled down to what identifies it: lowercase, no accents or
+// punctuation, edition words dropped. IGDB gives a remaster, a "Definitive
+// Edition" or an HD re-release its own id, so matching ids alone let a game
+// you've already played come back as a "new" pick under a different id.
+export function diaryTitleKey(title) {
+  return String(title || '')
+    .normalize('NFKD').replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/\b(remastered|remaster|remake|hd|definitive edition|complete edition|deluxe edition|goty|game of the year( edition)?|director'?s cut|anniversary edition|enhanced edition|collection)\b/g, ' ')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+// True when the game is anywhere in the diary (any status): same id, same
+// catalogue row, or the same title once edition words are ignored.
+export function isInDiary(diary, g) {
+  if (!diary || !g) return false;
+  return (g.igdb_id != null && diary.igdb.has(Number(g.igdb_id)))
+    || (g.id != null && diary.local.has(g.id))
+    || (!!g.title && diary.titles.has(diaryTitleKey(g.title)));
 }
 
 // ------------------------------------------------------------

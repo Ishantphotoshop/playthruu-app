@@ -366,7 +366,7 @@ async function paintForYou(slot) {
       if (!pool.length && nextPick.refilling) await nextPick.refilling;
       const p = pool.shift();
       if (!p) return null;
-      if (!diary.igdb.has(p.game.igdb_id)) return p;
+      if (!api.isInDiary(diary, p.game)) return p;
     }
   }
 
@@ -374,7 +374,7 @@ async function paintForYou(slot) {
     if (!strip.isConnected) { window.removeEventListener('logs:changed', onLogs); return; }
     let diary;
     try { diary = await api.getDiaryGameKeys(userId); } catch { return; }
-    const gone = qsa('.foryou-card', strip).filter((btn) => diary.igdb.has(Number(btn.dataset.igdbId)));
+    const gone = qsa('.foryou-card', strip).filter((btn) => api.isInDiary(diary, { igdb_id: btn.dataset.igdbId, title: btn.getAttribute('aria-label') }));
     for (const btn of gone) {
       const next = await nextPick(diary);
       btn.classList.add('is-leaving');
