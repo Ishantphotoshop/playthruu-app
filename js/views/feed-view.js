@@ -53,7 +53,7 @@ export async function renderFeedView(root, { initialTab = 'feed' } = {}) {
   // already marks everything seen the moment it loads.
   if (activeTab !== 'news') {
     api.getLatestNewsTime().then((latest) => {
-      if (!latest || !qs('[data-tab="news"]', root)) return;
+      if (!latest || activeTab === 'news' || !qs('[data-tab="news"]', root)) return;
       let lastSeen = null;
       try { lastSeen = localStorage.getItem(NEWS_SEEN_KEY); } catch { /* private mode */ }
       if (lastSeen && Date.parse(latest) <= Date.parse(lastSeen)) return;
@@ -186,13 +186,22 @@ const NEWS_SEEN_KEY = 'news-last-seen';
 
 function markNewsSeen(latestTime) {
   if (!latestTime) return;
-  try { localStorage.setItem(NEWS_SEEN_KEY, latestTime); } catch { /* private mode */ }
+  // Only ever moves forward. The list is ranked (pinned and breaking first),
+  // so its first story isn't necessarily the newest; writing that one back
+  // used to push "seen" behind a newer story and bring the dot back.
+  try {
+    const stored = localStorage.getItem(NEWS_SEEN_KEY);
+    if (!stored || Date.parse(latestTime) > Date.parse(stored)) localStorage.setItem(NEWS_SEEN_KEY, latestTime);
+  } catch { /* private mode */ }
   qs('.home-tabs__dot')?.remove();
 }
 
 const NEWS_BATCH = 20;
 
 async function paintNewsTab(body) {
+  // The unread dot goes the instant News is opened, not after the stories
+  // have loaded: anything published up to now counts as seen.
+  markNewsSeen(new Date().toISOString());
   // Same reasoning as paintFeedTab's cache above: show whatever was on
   // screen last time at once and let the real read catch up behind it.
   // (The tab's search bar and category filter are archived — see
