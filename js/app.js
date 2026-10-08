@@ -731,6 +731,9 @@ function wirePosterLongPress() {
         release_year: Number(tile?.dataset.year) || null,
       };
       buzz([20]);
+      // Drop the pressed/focused state off the poster: once the sheet covers
+      // it, no touchend/mouseup reaches it, so it stayed lifted after close.
+      document.activeElement?.blur?.();
       openLogComposer({ game: standIn, resolveGame: lookup.then((g) => { if (!g) throw new Error('not found'); return g; }), onSaved: refreshCurrentView });
     }, HOLD_MS);
   }
@@ -774,7 +777,7 @@ async function boot() {
   window.addEventListener('hashchange', closeStrayOverlays);
   // A page put back from the back stack still has the tab bar it was
   // built with; bring its badges up to date like a fresh one's.
-  window.addEventListener('page:shown', () => { applyMessageBadge(); applyNotifBadge(); });
+  window.addEventListener('page:shown', () => { applyMessageBadge(); applyNotifBadge(); document.activeElement?.blur?.(); });
   // The hub clears the inbox server-side when it opens; this is how the
   // bell hears about it without polling.
   window.addEventListener('notifications:read', () => {

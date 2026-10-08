@@ -374,14 +374,19 @@ async function paintForYou(slot) {
     });
   }
 
+  // A guard flag, not btn.disabled: navigating away leaves this card
+  // sitting in the kept page, and a disabled one came back faded and
+  // dead to taps when you returned to it.
   async function open(btn, pick) {
-    btn.disabled = true;
+    if (btn.dataset.opening) return;
+    btn.dataset.opening = '1';
+    setTimeout(() => { delete btn.dataset.opening; }, 1500);
     try {
       const saved = await api.addGame(pick.game, userId);
       navigate(`/game/${saved.id}`);
     } catch (err) {
       toast(err.message || 'Could not open that game.', 'error');
-      btn.disabled = false;
+      delete btn.dataset.opening;
     }
   }
 
@@ -551,13 +556,16 @@ async function paintDiscovery(slot) {
           return;
         }
 
-        btn.disabled = true;
+        // Guard flag, not btn.disabled — see open() in paintForYou.
+        if (btn.dataset.opening) return;
+        btn.dataset.opening = '1';
+        setTimeout(() => { delete btn.dataset.opening; }, 1500);
         try {
           const saved = await api.addGame(g, state.user.id);
           navigate(`/game/${saved.id}`);
         } catch (err) {
           toast(err.message || 'Could not open that game.', 'error');
-          btn.disabled = false;
+          delete btn.dataset.opening;
         }
       });
     });
