@@ -1,0 +1,19 @@
+/* ARCHIVED 2026-10-08 — styles for the "Picked for you" strip (see picked-for-you-2026-10-08.js).
+   Also removed: `.foryou-strip` from these shared selectors in styles.css —
+   `.trending-strip, .foryou-strip` (flex row, gap, hidden scrollbar),
+   `#feed-body .trending-strip, #feed-body .foryou-strip { padding-bottom: 0 }`, and
+   `.view-body .trending-strip, .view-body .foryou-strip, .view-body .recent-played-row` (edge bleed). */
+
+/* The same width as every other poster strip on the feed, from the
+   same token. It was a hardcoded 124px, which was fine while these
+   cards carried a title and a reason and read as a different kind of
+   object — now that they are bare posters like the rest, a strip of
+   wider ones in the middle of the page is just misalignment. */
+.foryou-card {
+  flex-shrink: 0; width: var(--feed-card-w, 140px); display: block; padding: 0;
+  background: none; border: none; color: var(--ink); cursor: pointer;
+}
+.foryou-card { position: relative; transition: opacity 0.35s ease; }
+.foryou-card.is-leaving, .foryou-card.is-entering { opacity: 0; }
+.foryou-card__cover { width: 100%; border-radius: var(--poster-radius); overflow: hidden; aspect-ratio: var(--ratio-card); }
+.foryou-card__cover img { width: 100%; display: block; }
