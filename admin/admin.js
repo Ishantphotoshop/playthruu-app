@@ -1106,6 +1106,7 @@ async function paintNews() {
   if (error) { host.innerHTML = emptyState(error.message); return; }
   if (!data?.length) {
     host.innerHTML = emptyState(newsTab === 'review' ? 'Nothing waiting for review.' : 'Nothing here.', { icon: iconNewspaper() });
+    host.__bulk?.attach();
     return;
   }
 
@@ -1118,7 +1119,8 @@ async function paintNews() {
       a.brain_locked ? 'LOCKED' : '',
     ].filter(Boolean);
     return `
-    <button class="list-card adm-row" data-id="${a.id}">
+    <div class="list-card adm-row" data-id="${a.id}" data-bulk-row role="button" tabindex="0">
+      ${checkbox()}
       <span class="adm-row__body">
         <span class="adm-row__title">${esc(a.title)}</span>
         <span class="adm-row__meta"${timeTitle(a.updated_at)}>
@@ -1126,12 +1128,73 @@ async function paintNews() {
         </span>
       </span>
       <span class="adm-row__actions">${iconChevronRight()}</span>
-    </button>`;
+    </div>`;
   }).join('');
 
-  qsa('.adm-row', host).forEach((row) => row.addEventListener('click', () => {
-    openNewsStory(data.find((a) => a.id === row.dataset.id));
-  }));
+  qsa('.adm-row', host).forEach((row) => {
+    const open = () => openNewsStory(data.find((a) => a.id === row.dataset.id));
+    row.addEventListener('click', open);
+    row.addEventListener('keydown', (e) => { if (e.key === 'Enter') open(); });
+  });
+  wireNewsBulk(host, data);
+}
+
+// Mass actions on the News list: tick rows (or Select all) and apply one
+// action to every ticked story. Which actions make sense depends on the
+// tab, so a Published tab offers Unpublish/Archive/Pin and the review
+// queue offers Approve/Reject.
+function wireNewsBulk(host, data) {
+  const byId = (id) => data.find((a) => a.id === id);
+  // One update for the whole selection, one audit-log row and one site
+  // refresh per story (the refresh is best-effort, same as single edits).
+  const run = async (ids, fields, action, msg) => {
+    const { error } = await supabase.from('news_articles').update(fields).in('id', ids);
+    if (error) return fail(error);
+    const stories = ids.map(byId).filter(Boolean);
+    await Promise.allSettled(stories.map((a) => newsDone(a, action, 'bulk')));
+    toast(`${ids.length} ${msg}`, 'success');
+    paintNews();
+  };
+  const now = () => new Date().toISOString();
+  const unpin = newsPinSupported ? { pinned_at: null } : {};
+  const actions = [];
+  if (newsTab === 'review' || newsTab === 'archived' || newsTab === 'rejected') {
+    actions.push({ label: 'Approve', run: (ids) => run(ids, { status: 'published', lifecycle: 'published', published_at: now(), flagged_incorrect: false, updated_at: now() }, 'approve', 'published') });
+  }
+  if (newsTab === 'published' || newsTab === 'flagged') {
+    if (newsPinSupported) {
+      actions.push({ label: 'Pin', run: (ids) => run(ids.filter((id) => byId(id)?.status === 'published'), { pinned_at: now() }, 'pin', 'pinned') });
+      actions.push({ label: 'Unpin', run: (ids) => run(ids, { pinned_at: null }, 'unpin', 'unpinned') });
+    }
+    actions.push({ label: 'Unpublish', run: (ids) => run(ids, { status: 'review', ...unpin }, 'unpublish', 'moved back to review') });
+    actions.push({ label: 'Archive', run: (ids) => run(ids, { status: 'archived', lifecycle: 'archived', ...unpin }, 'archive', 'archived') });
+  }
+  if (newsTab !== 'rejected') {
+    actions.push({
+      label: 'Reject',
+      run: async (ids) => {
+        if (!await confirmSheet({ title: `Reject ${ids.length} ${ids.length === 1 ? 'story' : 'stories'}?`, sub: 'They come off the site and the Brain can’t bring them back.', confirmLabel: 'Reject', danger: true })) return;
+        await run(ids, { status: 'rejected', ...unpin }, 'reject', 'rejected');
+      },
+    });
+  }
+  actions.push({
+    label: 'Delete', danger: true,
+    run: async (ids) => {
+      if (!await typeToConfirm({
+        title: `Delete ${ids.length} ${ids.length === 1 ? 'story' : 'stories'}?`,
+        sub: 'Permanently removes them from the site and the app. There is no undo.',
+        word: 'delete', confirmLabel: `Delete ${ids.length}`,
+      })) return;
+      const stories = ids.map(byId).filter(Boolean);
+      await Promise.allSettled(stories.map((a) => newsDone(a, 'deleted', 'bulk')));
+      const { error } = await supabase.from('news_articles').delete().in('id', ids);
+      if (error) return fail(error);
+      toast(`${ids.length} deleted`, 'success');
+      paintNews();
+    },
+  });
+  bulkSelect(host, { idOf: (row) => row.dataset.id, label: 'stories', actions });
 }
 
 // Log the action, then have playthruu.com refresh its cached pages. The
@@ -1943,6 +2006,7 @@ async function paintGames({ append = false } = {}) {
 
   if (!append && !data?.length) {
     host.innerHTML = emptyState('No games matched.', { icon: iconGamepad() });
+    host.__bulk?.attach();
     qs('#g-more').innerHTML = '';
     return;
   }

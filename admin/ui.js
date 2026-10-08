@@ -230,56 +230,86 @@ export function openPalette(commands) {
 // The caller owns what the actions do; this owns the selection, the
 // checkboxes, and keeping the bar in sync with what's ticked.
 export function bulkSelect(host, { idOf, actions, label = 'selected' }) {
+  // Lists repaint and append pages, and each repaint calls this again on
+  // the same host. A second instance used to stack a second bar and a
+  // second click handler on every row already on screen (so one tap
+  // toggled twice), so the host remembers its instance and a repeat call
+  // just wires whatever rows are new and drops selections that are gone.
+  if (host.__bulk) { host.__bulk.actions = actions; host.__bulk.attach(); return host.__bulk; }
+
   const selected = new Set();
+  const inst = { actions };
+  host.__bulk = inst;
 
   const bar = document.createElement('div');
   bar.className = 'adm-bulk';
   host.parentElement.insertBefore(bar, host);
 
   const rows = () => qsa('[data-bulk-row]', host);
+  const pickable = () => rows().filter((r) => qs('[data-bulk-box]', r));
+
+  function setRow(row, on) {
+    const id = idOf(row);
+    if (on) selected.add(id); else selected.delete(id);
+    qs('[data-bulk-box]', row)?.setAttribute('aria-checked', String(on));
+    row.classList.toggle('adm-row--picked', on);
+  }
 
   function drawBar() {
-    if (!selected.size) { bar.classList.remove('adm-bulk--in'); bar.innerHTML = ''; return; }
-    bar.innerHTML = `
-      <span class="adm-bulk__count">${selected.size} ${esc(label)}</span>
-      <span class="adm-bulk__actions">
-        ${actions.map((a, i) => `<button class="btn btn--pill${a.danger ? ' btn--danger' : ''}" data-bulk-act="${i}">${esc(a.label)}</button>`).join('')}
-        <button class="btn btn--pill" data-bulk-clear>Clear</button>
-      </span>`;
+    const total = pickable().length;
+    if (!total) { bar.classList.remove('adm-bulk--in'); bar.innerHTML = ''; return; }
+    const all = selected.size >= total;
     bar.classList.add('adm-bulk--in');
+    bar.classList.toggle('adm-bulk--idle', !selected.size);
+    // Nothing ticked yet: just the way in. Something ticked: count, the
+    // caller's actions, and select-all / clear.
+    if (!selected.size) {
+      bar.innerHTML = `
+        <span class="adm-bulk__count">${total} ${esc(label)}</span>
+        <span class="adm-bulk__actions"><button class="btn btn--pill" data-bulk-all>Select all</button></span>`;
+    } else {
+      bar.innerHTML = `
+        <span class="adm-bulk__count">${selected.size} of ${total} ${esc(label)}</span>
+        <span class="adm-bulk__actions">
+          ${inst.actions.map((a, i) => `<button class="btn btn--pill${a.danger ? ' btn--danger' : ''}" data-bulk-act="${i}">${esc(a.label)}</button>`).join('')}
+          ${all ? '' : '<button class="btn btn--pill" data-bulk-all>Select all</button>'}
+          <button class="btn btn--pill" data-bulk-clear>Clear</button>
+        </span>`;
+    }
     qsa('[data-bulk-act]', bar).forEach((btn) => btn.addEventListener('click', async () => {
-      const action = actions[Number(btn.dataset.bulkAct)];
+      const action = inst.actions[Number(btn.dataset.bulkAct)];
       const ids = [...selected];
       await action.run(ids);
       selected.clear();
+      rows().forEach((r) => setRow(r, false));
       drawBar();
     }));
-    qs('[data-bulk-clear]', bar).addEventListener('click', () => {
-      selected.clear();
-      rows().forEach((r) => r.classList.remove('adm-row--picked'));
-      qsa('[data-bulk-box]', host).forEach((b) => b.setAttribute('aria-checked', 'false'));
-      drawBar();
-    });
+    qs('[data-bulk-all]', bar)?.addEventListener('click', () => { pickable().forEach((r) => setRow(r, true)); drawBar(); });
+    qs('[data-bulk-clear]', bar)?.addEventListener('click', () => { rows().forEach((r) => setRow(r, false)); selected.clear(); drawBar(); });
   }
 
-  function attach() {
+  inst.attach = () => {
+    const present = new Set(rows().map(idOf));
+    [...selected].forEach((id) => { if (!present.has(id)) selected.delete(id); });
     rows().forEach((row) => {
-      const id = idOf(row);
       const box = qs('[data-bulk-box]', row);
       if (!box) return;
+      if (selected.has(idOf(row))) setRow(row, true);
+      if (box.dataset.wired) return;
+      box.dataset.wired = '1';
       box.addEventListener('click', (e) => {
         e.stopPropagation();
-        const on = !selected.has(id);
-        if (on) selected.add(id); else selected.delete(id);
-        box.setAttribute('aria-checked', String(on));
-        row.classList.toggle('adm-row--picked', on);
+        setRow(row, !selected.has(idOf(row)));
         drawBar();
       });
     });
-  }
+    drawBar();
+  };
+  inst.clear = () => { selected.clear(); rows().forEach((r) => setRow(r, false)); drawBar(); };
+  Object.defineProperty(inst, 'size', { get: () => selected.size });
 
-  attach();
-  return { attach, clear: () => { selected.clear(); drawBar(); }, get size() { return selected.size; } };
+  inst.attach();
+  return inst;
 }
 
 export function checkbox() {
