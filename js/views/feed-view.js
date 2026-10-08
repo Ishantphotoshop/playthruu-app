@@ -177,9 +177,8 @@ function newsCard(article) {
       </span>
       <span class="news-card__body">
         <span class="news-card__title">${esc(article.title)}</span>
-        ${article.summary ? `<span class="news-card__summary">${esc(article.summary)}</span>` : ''}
+        ${article.summary ? `<span class="news-card__summary">${esc(article.summary)}<span class="news-card__readmore">read more…</span></span>` : ''}
         <span class="news-card__meta">${esc(article.category)} · ${timeAgo(article.pubDate)}</span>
-        ${article.link ? '<span class="news-card__more">Read more on playthruu.com</span>' : ''}
       </span>
     </${tag}>`;
 }
@@ -248,6 +247,18 @@ function markNewsSeen(latestTime) {
 
 const NEWS_BATCH = 20;
 
+// A summary longer than its two lines gets "read more…" laid over the end
+// of the second line. Whether it overflows depends on the real rendered
+// width and font, so it's measured after the cards are in the page (and
+// again once webfonts land, which change line breaks).
+function markNewsOverflow(root) {
+  const run = () => qsa('.news-card__summary', root).forEach((el) => {
+    el.classList.toggle('is-cut', el.scrollHeight > el.clientHeight + 1);
+  });
+  run();
+  document.fonts?.ready.then(run);
+}
+
 async function paintNewsTab(body) {
   // Same reasoning as paintFeedTab's cache above: show whatever was on
   // screen last time at once and let the real read catch up behind it.
@@ -296,6 +307,7 @@ async function paintNewsTab(body) {
     const html = `<div class="news-list">${matched.length ? cardsHtml(matched.slice(0, shown)) : emptyState(query ? `Nothing found for “${query}”.` : `No ${active} stories right now.`)}</div>`;
     listEl.innerHTML = html;
     if (active === 'All' && !query) setCached(NEWS_CACHE_KEY, html);
+    markNewsOverflow(listEl);
     filterBtn.classList.toggle('filter-btn--on', active !== 'All');
     sentinel.hidden = shown >= matched.length;
   };
@@ -307,6 +319,7 @@ async function paintNewsTab(body) {
     if (shown >= matched.length) return;
     const next = matched.slice(shown, shown + NEWS_BATCH);
     qs('.news-list', listEl)?.insertAdjacentHTML('beforeend', cardsHtml(next));
+    markNewsOverflow(listEl);
     shown += next.length;
     sentinel.hidden = shown >= matched.length;
   };
