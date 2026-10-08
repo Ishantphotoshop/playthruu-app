@@ -20,8 +20,15 @@ const NEWS_CACHE_KEY = 'news';
 // the same body, not two destinations you navigate between. /news is
 // still a real route (still deep-linkable/bookmarkable), it just lands
 // here with News pre-selected instead of rendering its own separate page.
+// The tab showing on Home, remembered so a pull-to-refresh (which rebuilds
+// the whole screen) comes back on the same tab instead of snapping to Feed.
+let currentFeedTab = 'feed';
+let keepFeedTab = false;
+
 export async function renderFeedView(root, { initialTab = 'feed' } = {}) {
+  if (keepFeedTab) { initialTab = currentFeedTab; keepFeedTab = false; }
   let activeTab = initialTab;
+  currentFeedTab = activeTab;
   // No bell up here any more — while the messenger is archived (see
   // MESSENGER_ARCHIVED, config.js) its old nav-bar slot is itself a
   // notification bell, so having a second one in the header was just a
@@ -59,6 +66,7 @@ export async function renderFeedView(root, { initialTab = 'feed' } = {}) {
     const from = activeTab;
     scrollAt[from] = body.scrollTop;
     activeTab = tab;
+    currentFeedTab = tab;
     if (tab === 'news') markNewsSeen(new Date().toISOString()); // the unread dot goes at once
     pill.dataset.active = tab;
     qsa('.home-tabs__item', root).forEach((b) => b.classList.toggle('home-tabs__item--active', b.dataset.tab === tab));
@@ -95,7 +103,7 @@ export async function renderFeedView(root, { initialTab = 'feed' } = {}) {
   // transform), so nothing re-lays-out while dragging, and a plain tap, which
   // never moves, still goes through the normal click.
   (function wirePillDrag() {
-    let startX = 0, base = 0, travel = 0, dragging = false, down = false, raf = 0, x = 0;
+    let startX = 0, base = 0, travel = 0, dragging = false, down = false, raf = 0, x = 0, lastDx = 0;
     const apply = () => { raf = 0; pill.style.setProperty('--thumb-x', `${x}px`); };
     pill.addEventListener('pointerdown', (e) => {
       if (e.pointerType === 'mouse' && e.button !== 0) return;
@@ -105,7 +113,7 @@ export async function renderFeedView(root, { initialTab = 'feed' } = {}) {
       // plus the 4px gap to the right of Feed.
       travel = (r.width - 2 - 12) / 2 + 4;
       base = activeTab === 'news' ? travel : 0;
-      startX = e.clientX; down = true; dragging = false; x = base;
+      startX = e.clientX; down = true; dragging = false; x = base; lastDx = 0;
     });
     pill.addEventListener('pointermove', (e) => {
       if (!down) return;
@@ -116,6 +124,7 @@ export async function renderFeedView(root, { initialTab = 'feed' } = {}) {
         try { pill.setPointerCapture(e.pointerId); } catch { /* fine */ }
         pill.classList.add('is-dragging');
       }
+      lastDx = dx;
       x = Math.max(0, Math.min(travel, base + dx));
       if (!raf) raf = requestAnimationFrame(apply);
     });
@@ -125,7 +134,11 @@ export async function renderFeedView(root, { initialTab = 'feed' } = {}) {
       if (!dragging) return;
       dragging = false;
       cancelAnimationFrame(raf); raf = 0;
-      const target = x > travel / 2 ? 'news' : 'feed';
+      let target = x > travel / 2 ? 'news' : 'feed';
+      // A clear sideways swipe on the pill, from either half, goes to the
+      // other tab whichever way it was swiped (the highlight can only follow
+      // one of those directions, but both mean "the other tab").
+      if (target === activeTab && Math.abs(lastDx) >= 70) target = activeTab === 'news' ? 'feed' : 'news';
       // Hand the highlight back to its normal spot; its transition glides it
       // from where the finger left it to its home.
       pill.classList.remove('is-dragging');
@@ -145,17 +158,23 @@ export async function renderFeedView(root, { initialTab = 'feed' } = {}) {
   // a poster strip, an input or anything else that scrolls sideways, and
   // only when it's mostly horizontal, so scrolling up and down never
   // triggers it.
-  let sx = 0, sy = 0, swipeOk = false;
-  const scrollsSideways = (el) => {
+  let sx = 0, sy = 0, swipeOk = false, strip = null, stripLeft = 0;
+  // The first thing under the finger that scrolls sideways (or takes typing).
+  // Inputs and opt-outs block the swipe outright; a poster row only blocks it
+  // while the row can still move that way, see the touchend below.
+  const sidewaysParent = (el) => {
     for (let n = el; n && n !== root; n = n.parentElement) {
-      if (n.matches?.('input, textarea, select, [data-no-swipe], .tabbar')) return true;
-      if (n.scrollWidth > n.clientWidth + 2 && /(auto|scroll)/.test(getComputedStyle(n).overflowX)) return true;
+      if (n.matches?.('input, textarea, select, [data-no-swipe], .tabbar')) return 'block';
+      if (n.scrollWidth > n.clientWidth + 2 && /(auto|scroll)/.test(getComputedStyle(n).overflowX)) return n;
     }
-    return false;
+    return null;
   };
   root.addEventListener('touchstart', (e) => {
     // The pill has its own drag (wirePillDrag), so the page swipe leaves it alone.
-    swipeOk = e.touches.length === 1 && !scrollsSideways(e.target) && !e.target.closest('.home-tabs__pill');
+    const found = e.touches.length === 1 && !e.target.closest('.home-tabs__pill') ? sidewaysParent(e.target) : 'block';
+    swipeOk = found !== 'block';
+    strip = found && found !== 'block' ? found : null;
+    stripLeft = strip ? strip.scrollLeft : 0;
     sx = e.touches[0].clientX; sy = e.touches[0].clientY;
   }, { passive: true });
   root.addEventListener('touchend', (e) => {
@@ -164,6 +183,14 @@ export async function renderFeedView(root, { initialTab = 'feed' } = {}) {
     const t = e.changedTouches[0];
     const dx = t.clientX - sx, dy = t.clientY - sy;
     if (Math.abs(dx) < 70 || Math.abs(dy) > Math.abs(dx) * 0.6) return;
+    // On a poster row, a swipe that moved the row was a scroll, not a tab
+    // change; one that started with the row already at its end in that
+    // direction (so nothing moved) is a tab swipe.
+    if (strip && Math.abs(strip.scrollLeft - stripLeft) > 1) return;
+    if (strip) {
+      const atStart = stripLeft <= 1, atEnd = stripLeft >= strip.scrollWidth - strip.clientWidth - 1;
+      if (dx < 0 ? !atEnd : !atStart) return;
+    }
     switchTab(dx < 0 ? 'news' : 'feed');
   }, { passive: true });
   root.addEventListener('touchcancel', () => { swipeOk = false; }, { passive: true });
@@ -339,6 +366,22 @@ function markNewsSeen(latestTime) {
 
 const NEWS_BATCH = 20;
 
+// A story whose picture is missing or broken would show an empty grey block
+// above its headline. Each cover's image is checked as the cards go in, and
+// one that fails to load has its cover taken out so the card is just the
+// headline and time.
+function dropBrokenNewsArt(root) {
+  qsa('.news-card__cover[style*="url("]:not([data-art])', root).forEach((cover) => {
+    cover.dataset.art = '1';
+    const url = /url\(['"]?(.*?)['"]?\)/.exec(cover.style.backgroundImage)?.[1];
+    if (!url) return;
+    const im = new Image();
+    im.onerror = () => cover.remove();
+    im.onload = () => { if (!im.naturalWidth) cover.remove(); };
+    im.src = url;
+  });
+}
+
 async function paintNewsTab(body) {
   // The unread dot goes the instant News is opened, not after the stories
   // have loaded: anything published up to now counts as seen.
@@ -369,6 +412,7 @@ async function paintNewsTab(body) {
   const html = `<div class="news-list">${cardsHtml(articles.slice(0, shown))}</div>`;
   listEl.innerHTML = html;
   setCached(NEWS_CACHE_KEY, html);
+  dropBrokenNewsArt(listEl);
   sentinel.hidden = shown >= articles.length;
 
   // The rest of the archive arrives a screenful at a time as you near the
@@ -379,6 +423,7 @@ async function paintNewsTab(body) {
     const next = articles.slice(shown, shown + NEWS_BATCH);
     qs('.news-list', listEl)?.insertAdjacentHTML('beforeend', cardsHtml(next));
     shown += next.length;
+    dropBrokenNewsArt(listEl);
     sentinel.hidden = shown >= articles.length;
   };
   if ('IntersectionObserver' in window) {
@@ -1527,6 +1572,7 @@ export function wirePullToRefresh(body) {
       indicator.classList.add('pull-refresh--spinning');
       indicator.style.transform = `translateY(${THRESHOLD}px)`;
       indicator.style.opacity = '1';
+      keepFeedTab = true; // only the Home screen reads this, and clears it
       try { await refreshCurrentView({ dataChanged: false }); } catch { /* the view's own error state handles this */ }
     } else {
       indicator.style.transform = ''; indicator.style.opacity = '0';
