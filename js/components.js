@@ -177,7 +177,7 @@ export function navBar(activeBase = '/feed') {
 export function homeTabs(active = 'feed', { newsUnread = false } = {}) {
   return `
     <div class="home-tabs">
-      <nav class="home-tabs__pill">
+      <nav class="home-tabs__pill" data-active="${active}">
         <button type="button" class="home-tabs__item${active === 'feed' ? ' home-tabs__item--active' : ''}" data-tab="feed">Feed</button>
         <button type="button" class="home-tabs__item${active === 'news' ? ' home-tabs__item--active' : ''}" data-tab="news">News${newsUnread ? '<span class="home-tabs__dot" aria-label="New stories"></span>' : ''}</button>
       </nav>

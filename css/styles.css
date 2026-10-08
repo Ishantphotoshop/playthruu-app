@@ -713,8 +713,20 @@ ul { list-style: none; margin: 0; padding: 0; }
   border: 1px solid var(--line);
   border-radius: var(--radius-pill);
   padding: var(--space-1);
+  position: relative;
 }
+/* The highlight is one shape that slides between the two halves (driven by
+   data-active on the pill) instead of each tab fading its own background,
+   so a tap or a swipe moves it across. */
+.home-tabs__pill::before {
+  content: ''; position: absolute; top: var(--space-1); bottom: var(--space-1); left: var(--space-1);
+  width: calc((100% - 2 * var(--space-1) - var(--space-1)) / 2);
+  border-radius: var(--radius-pill); background: var(--surface-high);
+  transition: transform 260ms cubic-bezier(.2,.8,.2,1);
+}
+.home-tabs__pill[data-active="news"]::before { transform: translateX(calc(100% + var(--space-1))); }
 .home-tabs__item {
+  position: relative; z-index: 1;
   flex: 1; text-align: center;
   font-family: var(--font-brand); font-weight: 700; font-size: 15px;
   letter-spacing: -0.01em; color: var(--ink-dim);
@@ -725,7 +737,7 @@ ul { list-style: none; margin: 0; padding: 0; }
 /* The active tab gets its own inset highlight — same treatment as
    .segmented__item--active (Search's Games/Players tabs) — rather than
    just a colour/glow change on plain text. */
-.home-tabs__item--active { background: var(--surface-high); color: var(--ink); }
+.home-tabs__item--active { color: var(--ink); }
 /* Unseen-news dot — small and quiet, cleared the moment News is actually
    opened (see markNewsSeen in feed-view.js), not a number or a pulse.
    Inline next to the label rather than absolutely placed, so it never
@@ -2188,13 +2200,6 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   position: absolute; top: 10px; left: 10px;
   padding: 4px 9px; border-radius: var(--radius-pill);
   background: var(--danger); color: #fff;
-  font-family: var(--font-brand); font-weight: 700; font-size: 10.5px;
-  letter-spacing: 0.04em; text-transform: uppercase;
-}
-.news-card__pinned {
-  position: absolute; top: 10px; right: 10px;
-  padding: 4px 9px; border-radius: var(--radius-pill);
-  background: rgba(8, 10, 14, 0.72); color: #fff;
   font-family: var(--font-brand); font-weight: 700; font-size: 10.5px;
   letter-spacing: 0.04em; text-transform: uppercase;
 }

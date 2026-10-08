@@ -30,15 +30,63 @@ export async function renderFeedView(root, { initialTab = 'feed' } = {}) {
   const body = qs('#feed-body', root);
   wirePullToRefresh(body);
 
-  qsa('.home-tabs__item', root).forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const tab = btn.dataset.tab;
-      if (tab === activeTab) return;
-      activeTab = tab;
-      qsa('.home-tabs__item', root).forEach((b) => b.classList.toggle('home-tabs__item--active', b === btn));
+  const pill = qs('.home-tabs__pill', root);
+
+  // One way to change tab, whether it's tapped or swiped to: the sliding
+  // highlight in the pill moves, and the page slides a short way out the
+  // side the old tab leaves from while the new one slides in behind it.
+  let switching = false;
+  async function switchTab(tab, { animate = true } = {}) {
+    if (tab === activeTab || switching) return;
+    const dir = tab === 'news' ? 1 : -1; // News sits to the right of Feed
+    activeTab = tab;
+    pill.dataset.active = tab;
+    qsa('.home-tabs__item', root).forEach((b) => b.classList.toggle('home-tabs__item--active', b.dataset.tab === tab));
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!animate || reduce || !body.animate) { paintActiveTab(); return; }
+    switching = true;
+    try {
+      await body.animate([{ opacity: 1, transform: 'translateX(0)' }, { opacity: 0, transform: `translateX(${-dir * 28}px)` }],
+        { duration: 110, easing: 'ease-in', fill: 'forwards' }).finished;
+      body.scrollTop = 0;
       paintActiveTab();
-    });
+      await body.animate([{ opacity: 0, transform: `translateX(${dir * 28}px)` }, { opacity: 1, transform: 'translateX(0)' }],
+        { duration: 170, easing: 'cubic-bezier(.2,.8,.2,1)' }).finished;
+    } catch { /* an interrupted animation is fine */ } finally {
+      body.getAnimations().forEach((a) => a.cancel());
+      switching = false;
+    }
+  }
+  qsa('.home-tabs__item', root).forEach((btn) => {
+    btn.addEventListener('click', () => switchTab(btn.dataset.tab));
   });
+
+  // Swipe sideways on the page itself to flip between Feed and News.
+  // Swiping left (finger moves left) goes forward to News, right goes back.
+  // Only counts when it starts on empty page, not on a poster strip, an
+  // input or anything else that scrolls sideways, and only when it's mostly
+  // horizontal, so scrolling the feed up and down never triggers it.
+  let sx = 0, sy = 0, swipeOk = false;
+  const scrollsSideways = (el) => {
+    for (let n = el; n && n !== body; n = n.parentElement) {
+      if (n.matches?.('input, textarea, select, [data-no-swipe]')) return true;
+      if (n.scrollWidth > n.clientWidth + 2 && /(auto|scroll)/.test(getComputedStyle(n).overflowX)) return true;
+    }
+    return false;
+  };
+  body.addEventListener('touchstart', (e) => {
+    swipeOk = e.touches.length === 1 && !scrollsSideways(e.target);
+    sx = e.touches[0].clientX; sy = e.touches[0].clientY;
+  }, { passive: true });
+  body.addEventListener('touchend', (e) => {
+    if (!swipeOk) return;
+    swipeOk = false;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - sx, dy = t.clientY - sy;
+    if (Math.abs(dx) < 70 || Math.abs(dy) > Math.abs(dx) * 0.6) return;
+    switchTab(dx < 0 ? 'news' : 'feed');
+  }, { passive: true });
+  body.addEventListener('touchcancel', () => { swipeOk = false; }, { passive: true });
 
   function paintActiveTab() {
     return activeTab === 'news' ? paintNewsTab(body) : paintFeedTab(body);
@@ -173,7 +221,6 @@ function newsCard(article) {
     <${tag} class="news-card${article.isCustom ? ' news-card--own' : ''}"${linkAttrs}>
       <span class="news-card__cover" style="${article.image ? `background-image:url('${esc(article.image)}')` : ''}">
         ${article.isBreaking ? '<span class="news-card__breaking">Breaking</span>' : ''}
-        ${article.isPinned ? '<span class="news-card__pinned">Pinned</span>' : ''}
       </span>
       <span class="news-card__body">
         <span class="news-card__title">${esc(article.title)}</span>
