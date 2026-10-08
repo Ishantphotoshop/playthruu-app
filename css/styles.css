@@ -730,6 +730,10 @@ ul { list-style: none; margin: 0; padding: 0; }
   transition: transform 260ms cubic-bezier(.2,.8,.2,1);
 }
 .home-tabs__pill[data-active="news"]::before { transform: translateX(calc(100% + var(--space-1))); }
+/* While a finger is dragging the pill the highlight tracks it directly:
+   no transition, position straight from --thumb-x. */
+.home-tabs__pill.is-dragging::before { transition: none; transform: translateX(var(--thumb-x, 0px)); will-change: transform; }
+.home-tabs__pill { user-select: none; -webkit-user-select: none; }
 .home-tabs__item {
   position: relative; z-index: 1;
   flex: 1; text-align: center;

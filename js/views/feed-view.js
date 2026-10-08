@@ -81,9 +81,61 @@ export async function renderFeedView(root, { initialTab = 'feed' } = {}) {
       switching = false;
     }
   }
+  let dragMoved = false;
   qsa('.home-tabs__item', root).forEach((btn) => {
-    btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+    btn.addEventListener('click', () => {
+      if (dragMoved) { dragMoved = false; return; } // the click that ends a drag isn't a tap
+      switchTab(btn.dataset.tab);
+    });
   });
+
+  // Hold the pill and drag: the highlight follows the finger across, and on
+  // letting go it settles on whichever half it's nearer to, switching to that
+  // tab. It only ever writes one CSS variable per frame (the highlight's
+  // transform), so nothing re-lays-out while dragging, and a plain tap, which
+  // never moves, still goes through the normal click.
+  (function wirePillDrag() {
+    let startX = 0, base = 0, travel = 0, dragging = false, down = false, raf = 0, x = 0;
+    const apply = () => { raf = 0; pill.style.setProperty('--thumb-x', `${x}px`); };
+    pill.addEventListener('pointerdown', (e) => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      const r = pill.getBoundingClientRect();
+      // Matches the highlight's own CSS: it is (padding-box width - 12px) / 2
+      // wide (4px padding each side + the 4px gap), and News is that width
+      // plus the 4px gap to the right of Feed.
+      travel = (r.width - 2 - 12) / 2 + 4;
+      base = activeTab === 'news' ? travel : 0;
+      startX = e.clientX; down = true; dragging = false; x = base;
+    });
+    pill.addEventListener('pointermove', (e) => {
+      if (!down) return;
+      const dx = e.clientX - startX;
+      if (!dragging) {
+        if (Math.abs(dx) < 6) return;
+        dragging = true; dragMoved = true;
+        try { pill.setPointerCapture(e.pointerId); } catch { /* fine */ }
+        pill.classList.add('is-dragging');
+      }
+      x = Math.max(0, Math.min(travel, base + dx));
+      if (!raf) raf = requestAnimationFrame(apply);
+    });
+    const end = () => {
+      if (!down) return;
+      down = false;
+      if (!dragging) return;
+      dragging = false;
+      cancelAnimationFrame(raf); raf = 0;
+      const target = x > travel / 2 ? 'news' : 'feed';
+      // Let the highlight glide from where the finger left it to its home.
+      pill.classList.remove('is-dragging');
+      pill.style.removeProperty('--thumb-x');
+      if (target === activeTab) { pill.dataset.active = activeTab; return; }
+      switchTab(target);
+      setTimeout(() => { dragMoved = false; }, 0);
+    };
+    pill.addEventListener('pointerup', end);
+    pill.addEventListener('pointercancel', end);
+  })();
 
   // Swipe sideways to flip between Feed and News — anywhere on the screen
   // above the tab bar, including the Feed/News pill and the page header, not
@@ -101,7 +153,8 @@ export async function renderFeedView(root, { initialTab = 'feed' } = {}) {
     return false;
   };
   root.addEventListener('touchstart', (e) => {
-    swipeOk = e.touches.length === 1 && !scrollsSideways(e.target);
+    // The pill has its own drag (wirePillDrag), so the page swipe leaves it alone.
+    swipeOk = e.touches.length === 1 && !scrollsSideways(e.target) && !e.target.closest('.home-tabs__pill');
     sx = e.touches[0].clientX; sy = e.touches[0].clientY;
   }, { passive: true });
   root.addEventListener('touchend', (e) => {
