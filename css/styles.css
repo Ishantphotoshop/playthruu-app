@@ -1230,6 +1230,10 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 /* Dice + filter share the Bored header's right side. The die is drawn
    centred, so it drops the funnel's optical nudge. */
 .feed-section-head__actions { display: flex; align-items: center; gap: var(--space-2); }
+/* The Bored poster columns end 4px short of the gutter (--poster-w leaves
+   that slack), so the shuffle and filter buttons step in by the same 4px to
+   sit over the last column's right edge. */
+#discovery-section .feed-section-head__actions { margin-right: 4px; }
 .filter-btn--sm.random-btn svg { transform: none; }
 
 /* --- discovery shelf --- */
