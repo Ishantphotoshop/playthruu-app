@@ -1253,10 +1253,10 @@ export const DISCOVERY_COLLECTIONS = [
   // Default: acclaimed single-player story games that are NOT the same
   // handful everyone has finished. Highly rated, rated by enough people
   // to trust the score, but short of household-name recognition.
-  { id: 'masterpieces', label: 'Story masterpieces', rotates: true, params: { genre: 'genre:31', multiplayer: 'singleplayer', minRating: 80, minVotes: CREDIBLE_VOTES, maxVotes: FAMOUS_VOTES, sort: 'top_rated' } },
-  { id: 'indie', label: 'Indie darlings', rotates: true, params: { genre: 'genre:32', multiplayer: 'singleplayer', minRating: 75, minVotes: CREDIBLE_VOTES, maxVotes: FAMOUS_VOTES, sort: 'top_rated' } },
-  { id: 'popular', label: 'Hot right now', params: { sort: 'popular' } },
-  { id: 'all_time', label: 'All-time greats', params: { sort: 'all_time', minVotes: CREDIBLE_VOTES } },
+  { id: 'masterpieces', label: 'Story', rotates: true, params: { genre: 'genre:31', multiplayer: 'singleplayer', minRating: 80, minVotes: CREDIBLE_VOTES, maxVotes: FAMOUS_VOTES, sort: 'top_rated' } },
+  { id: 'indie', label: 'Indie', rotates: true, params: { genre: 'genre:32', multiplayer: 'singleplayer', minRating: 75, minVotes: CREDIBLE_VOTES, maxVotes: FAMOUS_VOTES, sort: 'top_rated' } },
+  { id: 'popular', label: 'Trending', params: { sort: 'popular' } },
+  { id: 'all_time', label: 'All-time best', params: { sort: 'all_time', minVotes: CREDIBLE_VOTES } },
   // Replaces the old 'story' collection, which was genre:31 + top_rated
   // at a slightly looser threshold than 'masterpieces' directly above —
   // same genre, same sort, barely different numbers, so the two pulled
@@ -1265,11 +1265,11 @@ export const DISCOVERY_COLLECTIONS = [
   // shelf instead of a second copy of one. theme:19 is IGDB's Horror
   // theme, verified live against the catalogue (Resident Evil 4,
   // Silent Hill 2, Bloodborne, Castlevania: SOTN all came back under it).
-  { id: 'horror', label: 'Horror nights', rotates: true, params: { genre: 'theme:19', minRating: 75, minVotes: CREDIBLE_VOTES, sort: 'top_rated' } },
+  { id: 'horror', label: 'Horror', rotates: true, params: { genre: 'theme:19', minRating: 75, minVotes: CREDIBLE_VOTES, sort: 'top_rated' } },
   { id: 'underrated', label: 'Hidden gems', rotates: true, params: { minRating: 80, minVotes: CREDIBLE_VOTES, maxVotes: 300, sort: 'top_rated' } },
-  { id: 'rpg', label: 'Deep RPGs', rotates: true, params: { genre: 'genre:12', minRating: 78, minVotes: CREDIBLE_VOTES, sort: 'top_rated' } },
-  { id: 'short', label: 'Short & sweet', rotates: true, params: { genre: 'genre:9', minRating: 75, minVotes: CREDIBLE_VOTES, sort: 'top_rated' } },
-  { id: 'chaos', label: 'Pure chaos', params: { genre: 'genre:5', sort: 'popular' } },
+  { id: 'rpg', label: 'RPG', rotates: true, params: { genre: 'genre:12', minRating: 78, minVotes: CREDIBLE_VOTES, sort: 'top_rated' } },
+  { id: 'short', label: 'Short games', rotates: true, params: { genre: 'genre:9', minRating: 75, minVotes: CREDIBLE_VOTES, sort: 'top_rated' } },
+  { id: 'chaos', label: 'Shooters', params: { genre: 'genre:5', sort: 'popular' } },
   // Replaces 'couch' ('Grab a friend') and 'online' ('Online
   // multiplayer'), which both just filtered IGDB's generic multiplayer
   // flag with a different sort — it has no local-vs-online signal to
@@ -1278,12 +1278,12 @@ export const DISCOVERY_COLLECTIONS = [
   // name. One honest collection instead of two that promised a
   // distinction the data couldn't back up.
   { id: 'multiplayer', label: 'Multiplayer', params: { multiplayer: 'multiplayer', sort: 'popular' } },
-  { id: 'classics', label: 'Retro classics', rotates: true, params: { sort: 'all_time', dateTo: '2012-12-31', minVotes: CREDIBLE_VOTES } },
+  { id: 'classics', label: 'Retro', rotates: true, params: { sort: 'all_time', dateTo: '2012-12-31', minVotes: CREDIBLE_VOTES } },
   // No `params` — this one isn't a browseGames() filter at all, it's a
   // fixed curated list (see GOTY_WINNERS/resolveGotyWinners below).
   // feed-view.js's paintDiscovery special-cases id === 'goty' to use
   // that instead of calling browseGames.
-  { id: 'goty', label: 'Game of the Year winners', params: null },
+  { id: 'goty', label: 'GOTY winners', params: null },
 ];
 // Deliberately no "Coming soon" collection: browseGames() now excludes
 // unreleased games app-wide (so people can't log games that aren't out

@@ -297,22 +297,6 @@ async function paintNewsTab(body) {
 
 const DISCOVERY_CACHE_KEY = 'discovery';
 
-// Four representative games per collection, for the picker's tile
-// collages (see openPicker below) — fetched lazily the first time the
-// picker opens and kept here, module-level, so reopening it (or coming
-// back to Discovery later this session) never refetches. Maps
-// collection id -> up to 4 game objects, or [] once a fetch has
-// resolved with nothing to show.
-const discoveryPreviewCache = new Map();
-async function fetchCollectionPreview(c) {
-  try {
-    const games = c.id === 'goty' ? await api.resolveGotyWinners() : (await api.browseGames({ ...c.params, page: 1 })).games;
-    return games.slice(0, 4);
-  } catch {
-    return [];
-  }
-}
-
 // "Bored? Try these" — an endless vertical list that changes with the
 // picked collection. Sits last on the feed on purpose: social content
 // first, then something to fall into when there's nothing new from
@@ -695,58 +679,48 @@ async function paintDiscovery(slot) {
   // track, the active one centred with its neighbours peeking in on
   // both sides. One of five mockups shown to the user (see the
   // playthruu-discovery-variations artifact); this is the one picked.
-  // The picker as a mood grid — a bottom sheet of square tiles, each one
-  // a 2x2 collage of that collection's own real posters behind the
-  // name, so you see what you'd actually get before tapping it instead
-  // of guessing from a label. One of five mockups shown to the user
-  // (the playthruu-discovery-variations artifact); this is the one
-  // picked.
+  // The picker as a dropdown — a small menu that pops out of the filter
+  // button, over the posters, no sheet and no backdrop. One of twelve
+  // takes shown to the user (the bored-picker-redesigns artifact); this
+  // is the one picked. It grows out of the button's corner the way an
+  // iOS context menu does (scale + fade from the top-right, with a
+  // slight overshoot), and folds back the same way.
+  let pickerClosedAt = 0;
   function openPicker() {
-    const overlay = document.createElement('div');
-    overlay.className = 'modal-overlay';
-    const collageHtml = (c) => {
-      const games = discoveryPreviewCache.get(c.id);
-      if (!games?.length) return '';
-      return games.map((g) => `<span class="discovery-grid-tile__cover" style="background-image:url('${esc(igdbSized(g.cover_url, 'cover_big'))}')"></span>`).join('');
-    };
-    overlay.innerHTML = `
-      <div class="modal modal--sheet">
-        <header class="msg-actions__grab" aria-hidden="true"></header>
-        <div class="msg-actions discovery-picker">
-          <h2 class="discovery-picker__title">What are you into?</h2>
-          <div class="discovery-picker__grid" id="discovery-picker-grid">
-            ${api.DISCOVERY_COLLECTIONS.map((c) => `
-              <button type="button" class="discovery-grid-tile${c.id === activeId ? ' is-active' : ''}" data-id="${c.id}">
-                <span class="discovery-grid-tile__collage">${collageHtml(c)}</span>
-                <span class="discovery-grid-tile__fade"></span>
-                <span class="discovery-grid-tile__label">${esc(c.label)}</span>
-              </button>`).join('')}
-          </div>
-        </div>
-      </div>`;
-    document.body.appendChild(overlay);
-    document.body.style.overflow = 'hidden';
-    const close = () => { overlay.remove(); document.body.style.overflow = ''; };
-    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
-    enableSwipeToDismiss(qs('.modal', overlay), close);
-    qsa('.discovery-grid-tile', overlay).forEach((btn) => {
-      btn.addEventListener('click', () => {
-        activeId = btn.dataset.id;
-        close();
-        reset();
-      });
-    });
+    const head = qs('.feed-section-head', slot);
+    // The tap that dismissed an open menu was on this very button: its
+    // click lands right after, and must not reopen what it just closed.
+    if (!head || qs('.discovery-menu', head) || Date.now() - pickerClosedAt < 350) return;
+    const menu = document.createElement('div');
+    menu.className = 'discovery-menu';
+    menu.setAttribute('role', 'menu');
+    menu.innerHTML = api.DISCOVERY_COLLECTIONS.map((c) => `
+      <button type="button" role="menuitem" class="discovery-menu__item${c.id === activeId ? ' is-active' : ''}" data-id="${c.id}">
+        <span>${esc(c.label)}</span>${c.id === activeId ? iconCheck() : ''}
+      </button>`).join('');
+    head.appendChild(menu);
 
-    // Collages for whatever hasn't been looked at yet this session —
-    // one light page-1 query per collection, not re-fetched once it's
-    // in discoveryPreviewCache (including on a later re-open).
-    api.DISCOVERY_COLLECTIONS.forEach((c) => {
-      if (discoveryPreviewCache.has(c.id)) return;
-      fetchCollectionPreview(c).then((games) => {
-        discoveryPreviewCache.set(c.id, games);
-        if (!games.length || !overlay.isConnected) return;
-        const slot = qs(`.discovery-grid-tile[data-id="${c.id}"] .discovery-grid-tile__collage`, overlay);
-        if (slot) slot.innerHTML = collageHtml(c);
+    let closing = false;
+    const close = () => {
+      if (closing) return;
+      closing = true;
+      pickerClosedAt = Date.now();
+      document.removeEventListener('pointerdown', onOutside, true);
+      menu.classList.add('is-closing');
+      setTimeout(() => menu.remove(), 160);
+    };
+    // Any tap outside the menu (including on the filter button itself,
+    // which then simply closes it) dismisses it.
+    function onOutside(e) { if (!menu.contains(e.target)) { e.stopPropagation(); close(); } }
+    setTimeout(() => document.addEventListener('pointerdown', onOutside, true), 0);
+
+    qsa('.discovery-menu__item', menu).forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const picked = btn.dataset.id;
+        close();
+        if (picked === activeId) return;
+        activeId = picked;
+        reset();
       });
     });
   }
