@@ -96,13 +96,10 @@ export function renderSearchView(root, { initialTab = 'games' } = {}) {
   // thing it is. Separate from getRecentlyViewed's list of games actually
   // opened.
   function recentThumb(e) {
-    const img = e.thumb
-      ? `<img src="${esc(e.thumb)}" alt="" loading="lazy" decoding="async" onerror="this.remove()">`
-      : '';
+    const img = '';
     // Games (and anything showing a game cover) get a rounded square, not
     // the circle that people, studios and artists use.
-    const isGame = e.tab === 'games' || (e.thumb && e.thumb.includes('images.igdb.com') && !/\/t_logo/.test(e.thumb) && e.tab !== 'studios');
-    return `<span class="recent-thumb recent-thumb--${e.tab}${isGame ? ' recent-thumb--game' : ''}"><span class="recent-thumb__icon">${TAB[e.tab].icon}</span>${img}</span>`;
+    return `<span class="recent-thumb recent-thumb--${e.tab}"><span class="recent-thumb__icon">${iconSearch()}</span>${img}</span>`;
   }
   function recentSearchesBlock() {
     const entries = getRecentSearches().filter((e) => TABS.some((t) => t.id === e.tab));
@@ -559,31 +556,31 @@ export function renderSearchView(root, { initialTab = 'games' } = {}) {
         };
         const gShown = games.slice(0, 3);
         section('Games', 'games', games.length, gShown.length, gShown.map((x) => entityRow({
-          href: gameHref(x), shape: 'round', img: smallCover(x.cover_url), fallbackIcon: TAB.games.icon, thumb: smallCover(x.cover_url),
+          href: gameHref(x), shape: 'round', img: null, fallbackIcon: iconSearch(), thumb: '',
           title: x.title, meta: x.release_year || x.year || '',
         })));
         section('People', 'people', people.length, 2, people.slice(0, 2).map((x) => entityRow({
-          href: `#/profile/${x.username}`, shape: 'round', img: x.avatar_url, fallbackIcon: TAB.people.icon, thumb: x.avatar_url,
+          href: `#/profile/${x.username}`, shape: 'round', img: null, fallbackIcon: iconSearch(), thumb: '',
           title: x.display_name || x.username, meta: `@${x.username}`,
         })));
         section('Lists', 'lists', lists.length, 2, lists.slice(0, 2).map((l) => entityRow({
-          href: `#/list/${l.id}`, shape: 'round', img: smallCover(l.cover_url), fallbackIcon: TAB.lists.icon, thumb: smallCover(l.cover_url),
+          href: `#/list/${l.id}`, shape: 'round', img: null, fallbackIcon: iconSearch(), thumb: '',
           title: l.name, meta: [l.owner ? `by ${l.owner.display_name || l.owner.username}` : '', `${l.count} game${l.count === 1 ? '' : 's'}`].filter(Boolean).join(' · '),
         })));
         section('Studios', 'studios', studios.length, 2, studios.slice(0, 2).map((x) => entityRow({
-          href: `#/studio/${x.id}`, shape: 'logo', img: x.logo, fallbackIcon: TAB.studios.icon, thumb: x.logo,
+          href: `#/studio/${x.id}`, shape: 'round', img: null, fallbackIcon: iconSearch(), thumb: '',
           title: x.name, meta: [x.year ? `Founded ${x.year}` : '', x.games ? `${x.games} game${x.games === 1 ? '' : 's'}` : ''].filter(Boolean).join(' · '),
         })));
         section('Artists', 'artists', artists.length, 2, artists.slice(0, 2).map((x) => entityRow({
-          href: `#/person/${x.qid}`, shape: 'round', img: x.photo, fallbackIcon: TAB.artists.icon, thumb: x.photo,
+          href: `#/person/${x.qid}`, shape: 'round', img: null, fallbackIcon: iconSearch(), thumb: '',
           title: x.name, meta: x.description,
         })));
         if (!sections.length) { results.innerHTML = emptyState(`Nothing found for "${q}".`, { icon: iconSearch() }); return; }
         results.innerHTML = sections.join('');
-        const thumb = gShown[0] ? smallCover(gShown[0].cover_url) : (people[0]?.avatar_url || studios[0]?.logo || artists[0]?.photo || null);
-        recordRecentSearch(q, tab, thumb, { guess: true });
+        // Recent searches show no pictures any more, so nothing to keep.
+        recordRecentSearch(q, tab);
         qsa('.entity-row', results).forEach((a) =>
-          a.addEventListener('click', () => recordRecentSearch(input.value.trim(), tab, a.dataset.recordThumb || thumb)));
+          a.addEventListener('click', () => recordRecentSearch(input.value.trim(), tab)));
         // "See all" jumps to that kind's own tab and runs the same search.
         qsa('[data-see-all]', results).forEach((b) => b.addEventListener('click', () => { switchTab(b.dataset.seeAll); doSearch(); }));
       } else if (tab === 'lists') {

@@ -261,7 +261,7 @@ export function renderBrowseGames(root) {
   }
   const logged = (g) => !!diary && api.isInDiary(diary, g);
   async function myRated() {
-    if (page > 1) return { games: [], hasMore: false };
+    if (fetchedPage > 1) return { games: [], hasMore: false };
     const y = YEARS.find((x) => x.id === filters.year);
     const fromY = y?.from ? Number(y.from.slice(0, 4)) : null;
     const toY = y?.to ? Number(y.to.slice(0, 4)) : null;
@@ -272,71 +272,79 @@ export function renderBrowseGames(root) {
     return { games: rows, hasMore: false };
   }
 
-  // Scrolling to the end loads the next page, and the page after it is
-  // fetched while you look at this one, so a fast fling finds posters
-  // waiting instead of hitting the bottom. Placeholders hold the space
-  // while a page is on its way.
-  let nextPage = null; // { page, filtersKey, promise }
-  let hasMoreNow = false;
+  // Loads the way "Bored? Try these" does: posters come in twelve at a
+  // time (four rows of three). Twelve placeholder frames hold the space at
+  // the end of the grid and are swapped for the twelve posters in place, each
+  // cover fading up inside its own frame. What the server returns (a page of
+  // twenty) is kept in `buffer` and drawn twelve at a time, and the next page
+  // is fetched while you look at the current block, so a fast scroll finds
+  // posters waiting.
+  const BATCH = 12;
+  let buffer = [];      // fetched, not drawn yet
+  let fetchedPage = 0;  // last page asked of the server
+  let serverMore = true; // the server has more pages
+  let prefetching = null;
+  const canLoadMore = () => buffer.length > 0 || serverMore;
   const guard = keepLoading({
     sentinel: () => qs('#browse-sentinel', more),
     scroller: () => grid.closest('.view-body'),
-    trigger: () => { if (!loading && hasMoreNow) { page += 1; load(false); } },
+    trigger: () => { if (!loading && canLoadMore()) load(false); },
   });
-  const filtersKey = () => JSON.stringify(filters);
-  const fetchPageNow = (pg) => api.browseGames(toQuery(filters, pg));
   const skel = (n) => Array.from({ length: n }, () => '<div class="skeleton skeleton--tile" data-ph></div>').join('');
+
+  // One more page from the server into the buffer (the list's own first
+  // page when it was already fetched for Browse's thumbnails).
+  async function fetchPage(my, { warm = null } = {}) {
+    const mine = MY_SORTS.has(filters.sort) && state.user;
+    fetchedPage += 1;
+    const res = mine ? await myRated() : await (warm || api.browseGames(toQuery(filters, fetchedPage)));
+    if (my !== ticket) return;
+    serverMore = !!res.hasMore && !mine;
+    buffer.push(...(filters.hideLogged ? res.games.filter((g) => !logged(g)) : res.games));
+  }
 
   async function load(reset) {
     const my = ++ticket;
     loading = true;
     if (reset) {
-      page = 1; shown.length = 0; nextPage = null; hasMoreNow = false;
+      shown.length = 0; buffer = []; fetchedPage = 0; serverMore = true; prefetching = null;
       grid.classList.add('discovery-grid');
-      grid.innerHTML = skel(12);
+      grid.innerHTML = skel(BATCH);
       more.innerHTML = '';
     } else {
-      grid.insertAdjacentHTML('beforeend', skel(12));
+      grid.insertAdjacentHTML('beforeend', skel(BATCH));
     }
     try {
       await needDiary();
-      // The ready-made list's first page was usually fetched already (for
-      // Browse's thumbnails); untouched filters can paint from it.
       const warm = reset && listId && LIST[listId] && !changed(filters) ? firstPage(listId) : null;
-      // Your rating: the games you've rated, from your own diary, in your
-      // order (one page, it's your list). Release date and stars still narrow it.
-      const mine = MY_SORTS.has(filters.sort) && state.user;
-      const ahead = nextPage && nextPage.page === page && nextPage.key === filtersKey() ? nextPage.promise : null;
-      nextPage = null;
-      const { games, hasMore } = mine ? await myRated() : await (warm || ahead || fetchPageNow(page));
+      if (prefetching) await prefetching;
+      let first = true;
+      while (buffer.length < BATCH && serverMore) {
+        await fetchPage(my, { warm: first ? warm : null });
+        first = false;
+        if (my !== ticket) return;
+      }
       if (my !== ticket || !grid.isConnected) return;
-      if (reset) grid.innerHTML = '';
-      else qsa('[data-ph]', grid).forEach((el) => el.remove());
-      const list = filters.hideLogged ? games.filter((g) => !logged(g)) : games;
-      if (!shown.length && !list.length && !hasMore) {
+      qsa('[data-ph]', grid).forEach((el) => el.remove());
+      const batch = buffer.splice(0, BATCH);
+      if (!shown.length && !batch.length) {
         grid.classList.remove('discovery-grid');
         grid.innerHTML = `<div class="browse-empty"><p class="browse-empty__title">No Games found</p>
           <p class="browse-empty__line">I would do it all over again</p></div>`;
       } else {
         const start = shown.length;
-        shown.push(...list);
-        grid.insertAdjacentHTML('beforeend', list.map((g, i) => `
+        shown.push(...batch);
+        grid.insertAdjacentHTML('beforeend', batch.map((g, i) => `
           <button type="button" class="discovery-tile${filters.fadeLogged && logged(g) ? ' discovery-tile--logged' : ''}" data-idx="${start + i}" aria-label="${esc(g.title)}">
             ${posterFrame(g.cover_url, g.title, 'discovery-tile__cover')}
           </button>`).join(''));
-        const added = [...grid.children].slice(start);
-        added.forEach(wireTile);
-        revealTogether(added);
+        [...grid.children].slice(start).forEach(wireTile);
       }
       // The end-of-list marker the scroll guard watches.
-      hasMoreNow = !!hasMore && !mine;
-      more.innerHTML = hasMoreNow ? '<div id="browse-sentinel" aria-hidden="true" style="height:1px"></div>' : '';
-      // Start on the following page now, while this one is being looked at.
-      if (hasMoreNow) {
-        const key = filtersKey();
-        const p = fetchPageNow(page + 1);
-        p.catch(() => {});
-        nextPage = { page: page + 1, key, promise: p };
+      more.innerHTML = canLoadMore() ? '<div id="browse-sentinel" aria-hidden="true" style="height:1px"></div>' : '';
+      // Fetch the following page now, while this block is being looked at.
+      if (buffer.length < BATCH && serverMore && !prefetching) {
+        prefetching = fetchPage(my).catch(() => { serverMore = false; }).finally(() => { prefetching = null; });
       }
     } catch (err) {
       if (my === ticket && grid.isConnected) {
@@ -346,7 +354,7 @@ export function renderBrowseGames(root) {
     } finally {
       if (my === ticket) {
         loading = false;
-        // Still near the end after this page (a fast fling): carry straight on.
+        // Still near the end after this block (a fast fling): carry straight on.
         guard.check();
       }
     }
