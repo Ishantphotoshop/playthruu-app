@@ -60,7 +60,7 @@ export function renderSearchView(root, { initialTab = 'games' } = {}) {
   // Header and tab pill are Home's own (same elements, same CSS), so the two
   // screens line up to the pixel and the header stays put while you scroll.
   root.innerHTML = `
-    <header class="topbar topbar--home"><span class="topbar__logo">Search</span></header>
+    <header class="topbar topbar--home"><span class="topbar__logo search-title">Search</span></header>
     <div class="home-tabs">
       <nav class="home-tabs__pill search-tabs" id="search-tabs" data-active="${tab}">
         ${TABS.map((t) => `<button type="button" class="home-tabs__item${t.id === tab ? ' home-tabs__item--active' : ''}" data-tab="${t.id}">${t.label}</button>`).join('')}

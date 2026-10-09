@@ -6710,4 +6710,5 @@ a.gd-credit__name { text-decoration: none; }
 
 /* The poster-browse heading ("Jump back in", "Trending now") is styled like
    Home's section headings: same face, size and colour. */
-.search-idle-heading { font-family: var(--font-brand); font-size: 13px; line-height: 1.2; letter-spacing: -0.01em; color: var(--ink); margin: -2px 0 15px; }
+.search-idle-heading { font-family: var(--font-brand); font-size: 13px; line-height: 1.2; letter-spacing: -0.01em; color: var(--ink); margin: 6px 0 9px; }
+.topbar--home .topbar__logo.search-title { font-size: 22px; line-height: 24px; }
