@@ -13,7 +13,7 @@ const IDLE_TRENDING_CACHE_KEY = CACHE_KEYS.searchTrending;
 // recent list.
 const STUDIO_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V6l8-3v17M12 9l8 3v8M2.5 20h19M8 8h.01M8 12h.01M8 16h.01M16 15h.01M16 18h.01"/></svg>';
 const ARTIST_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>';
-const TABS = [
+const ALL_TABS = [
   { id: 'games', label: 'Games', tag: 'Game', placeholder: 'Search games…', hint: 'Search for a game to log, rate, or review.', icon: iconGamepad() },
   { id: 'people', label: 'Players', tag: 'Player', placeholder: 'Search players…', hint: 'Search for players to follow.', icon: iconUser() },
   { id: 'all', label: 'All', tag: 'All', placeholder: 'Search everything…', hint: 'Search games, players, lists, studios and artists at once.', icon: iconSearch() },
@@ -21,7 +21,10 @@ const TABS = [
   { id: 'studios', label: 'Studios', tag: 'Studio', placeholder: 'Search studios…', hint: 'Look up a developer or publisher.', icon: STUDIO_ICON },
   { id: 'artists', label: 'Artists', tag: 'Artist', placeholder: 'Search artists…', hint: 'Find voice actors, directors and writers.', icon: ARTIST_ICON },
 ];
-const TAB = Object.fromEntries(TABS.map((t) => [t.id, t]));
+// Only these three show in the tab bar; the rest stay defined so the All
+// tab can reuse their icons and old recent searches still resolve.
+const TABS = ALL_TABS.filter((t) => ['games', 'people', 'all'].includes(t.id));
+const TAB = Object.fromEntries(ALL_TABS.map((t) => [t.id, t]));
 
 async function importAndOpen(g) {
   // Not-yet-catalogued: viewing is free (opens live from IGDB, see
@@ -46,7 +49,7 @@ async function importAndOpen(g) {
 const smallCover = (url) => (url ? igdbSized(url, 'cover_small') : null);
 
 export function renderSearchView(root, { initialTab = 'games' } = {}) {
-  let tab = TAB[initialTab] ? initialTab : 'games';
+  let tab = TABS.some((t) => t.id === initialTab) ? initialTab : 'games';
   // Bumped by every state change (idle browse / search history / a real
   // search). renderIdleBrowse's trending fetch is the one async render in
   // this file that can resolve AFTER the user has already moved on (tapped
@@ -59,7 +62,7 @@ export function renderSearchView(root, { initialTab = 'games' } = {}) {
       <div class="msg-inbox-head">
         <h1 class="msg-inbox-title">Search</h1>
       </div>
-      <div class="segmented segmented--wide segmented--five" id="search-tabs">
+      <div class="segmented segmented--wide" id="search-tabs">
         ${TABS.map((t) => `<button class="segmented__item${t.id === tab ? ' segmented__item--active' : ''}" data-tab="${t.id}">${t.label}</button>`).join('')}
       </div>
       <form class="search-bar-row" id="search-form">
@@ -90,7 +93,7 @@ export function renderSearchView(root, { initialTab = 'games' } = {}) {
     return `<span class="recent-thumb recent-thumb--${e.tab}"><span class="recent-thumb__icon">${TAB[e.tab].icon}</span>${img}</span>`;
   }
   function recentSearchesBlock() {
-    const entries = getRecentSearches();
+    const entries = getRecentSearches().filter((e) => TABS.some((t) => t.id === e.tab));
     if (!entries.length) return '';
     return `
       <div class="search-recent__row">
@@ -258,7 +261,7 @@ export function renderSearchView(root, { initialTab = 'games' } = {}) {
   // button. Used both by the tab buttons and by tapping a recent search
   // that belongs to another tab.
   function switchTab(newTab) {
-    if (!TAB[newTab]) return;
+    if (!TABS.some((t) => t.id === newTab)) return;
     tab = newTab;
     qsa('.segmented__item', root).forEach(b => b.classList.toggle('segmented__item--active', b.dataset.tab === tab));
     input.placeholder = TAB[tab].placeholder;
@@ -499,7 +502,7 @@ export function renderSearchView(root, { initialTab = 'games' } = {}) {
         const sections = [];
         const section = (label, tabId, total, shown, rows) => {
           if (!rows.length) return;
-          sections.push(`<div class="all-head"><span class="all-head__label">${label}</span>${total > shown ? `<button type="button" class="all-head__more" data-see-all="${tabId}">See all</button>` : ''}</div><div class="entity-list">${rows.join('')}</div>`);
+          sections.push(`<div class="all-head"><span class="all-head__label">${label}</span>${total > shown && (tabId === 'games' || tabId === 'people') ? `<button type="button" class="all-head__more" data-see-all="${tabId}">See all</button>` : ''}</div><div class="entity-list">${rows.join('')}</div>`);
         };
         const gShown = games.slice(0, 3);
         section('Games', 'games', games.length, gShown.length, gShown.map((x) => entityRow({
