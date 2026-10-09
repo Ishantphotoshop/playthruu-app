@@ -96,10 +96,15 @@ export function renderSearchView(root, { initialTab = 'games' } = {}) {
   // thing it is. Separate from getRecentlyViewed's list of games actually
   // opened.
   function recentThumb(e) {
-    const img = '';
+    // A search made in the All tab is a search across everything, so it has no
+    // one picture: it shows the search icon. Every other tab keeps its picture.
+    const img = e.thumb && e.tab !== 'all'
+      ? `<img src="${esc(e.thumb)}" alt="" loading="lazy" decoding="async" onerror="this.remove()">`
+      : '';
     // Games (and anything showing a game cover) get a rounded square, not
     // the circle that people, studios and artists use.
-    return `<span class="recent-thumb recent-thumb--${e.tab}"><span class="recent-thumb__icon">${iconSearch()}</span>${img}</span>`;
+    const isGame = e.tab === 'games' || (e.thumb && e.thumb.includes('images.igdb.com') && !/\/t_logo/.test(e.thumb) && e.tab !== 'studios');
+    return `<span class="recent-thumb recent-thumb--${e.tab}${isGame && e.tab !== 'all' ? ' recent-thumb--game' : ''}"><span class="recent-thumb__icon">${e.tab === 'all' ? iconSearch() : TAB[e.tab].icon}</span>${img}</span>`;
   }
   function recentSearchesBlock() {
     const entries = getRecentSearches().filter((e) => TABS.some((t) => t.id === e.tab));
@@ -556,28 +561,29 @@ export function renderSearchView(root, { initialTab = 'games' } = {}) {
         };
         const gShown = games.slice(0, 3);
         section('Games', 'games', games.length, gShown.length, gShown.map((x) => entityRow({
-          href: gameHref(x), shape: 'round', img: null, fallbackIcon: iconSearch(), thumb: '',
+          href: gameHref(x), shape: 'round', img: smallCover(x.cover_url), fallbackIcon: TAB.games.icon, thumb: smallCover(x.cover_url),
           title: x.title, meta: x.release_year || x.year || '',
         })));
         section('People', 'people', people.length, 2, people.slice(0, 2).map((x) => entityRow({
-          href: `#/profile/${x.username}`, shape: 'round', img: null, fallbackIcon: iconSearch(), thumb: '',
+          href: `#/profile/${x.username}`, shape: 'round', img: x.avatar_url, fallbackIcon: TAB.people.icon, thumb: x.avatar_url,
           title: x.display_name || x.username, meta: `@${x.username}`,
         })));
         section('Lists', 'lists', lists.length, 2, lists.slice(0, 2).map((l) => entityRow({
-          href: `#/list/${l.id}`, shape: 'round', img: null, fallbackIcon: iconSearch(), thumb: '',
+          href: `#/list/${l.id}`, shape: 'round', img: smallCover(l.cover_url), fallbackIcon: TAB.lists.icon, thumb: smallCover(l.cover_url),
           title: l.name, meta: [l.owner ? `by ${l.owner.display_name || l.owner.username}` : '', `${l.count} game${l.count === 1 ? '' : 's'}`].filter(Boolean).join(' · '),
         })));
         section('Studios', 'studios', studios.length, 2, studios.slice(0, 2).map((x) => entityRow({
-          href: `#/studio/${x.id}`, shape: 'round', img: null, fallbackIcon: iconSearch(), thumb: '',
+          href: `#/studio/${x.id}`, shape: 'logo', img: x.logo, fallbackIcon: TAB.studios.icon, thumb: x.logo,
           title: x.name, meta: [x.year ? `Founded ${x.year}` : '', x.games ? `${x.games} game${x.games === 1 ? '' : 's'}` : ''].filter(Boolean).join(' · '),
         })));
         section('Artists', 'artists', artists.length, 2, artists.slice(0, 2).map((x) => entityRow({
-          href: `#/person/${x.qid}`, shape: 'round', img: null, fallbackIcon: iconSearch(), thumb: '',
+          href: `#/person/${x.qid}`, shape: 'round', img: x.photo, fallbackIcon: TAB.artists.icon, thumb: x.photo,
           title: x.name, meta: x.description,
         })));
         if (!sections.length) { results.innerHTML = emptyState(`Nothing found for "${q}".`, { icon: iconSearch() }); return; }
         results.innerHTML = sections.join('');
-        // Recent searches show no pictures any more, so nothing to keep.
+        const thumb = gShown[0] ? smallCover(gShown[0].cover_url) : (people[0]?.avatar_url || studios[0]?.logo || artists[0]?.photo || null);
+        // No picture is kept for an All search: its recent row shows the search icon.
         recordRecentSearch(q, tab);
         qsa('.entity-row', results).forEach((a) =>
           a.addEventListener('click', () => recordRecentSearch(input.value.trim(), tab)));
