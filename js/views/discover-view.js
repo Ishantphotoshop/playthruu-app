@@ -401,6 +401,21 @@ export function renderBrowseGames(root) {
     // close it: Back then closes Filters instead of leaving the page.
     document.body.appendChild(sheet);
     const close = () => sheet.remove();
+    // The phone's Back button: on one of a filter's own pages (Genre, Rating...)
+    // it goes up to the Filters list, keeping what was picked; only from the
+    // list itself does it close Filters. The app's Back handling has already
+    // used up the sheet's history entry by the time this runs, so going up a
+    // level puts one back for the next Back.
+    let level = 'list';
+    sheet.__dismiss = () => {
+      if (level !== 'list') {
+        sheet.__closing = false;
+        paintList();
+        history.pushState({ ...history.state, ov: (history.state?.ov || 0) + 1 }, '', location.href);
+        return;
+      }
+      sheet.remove();
+    };
 
     const valueOf = (row) => {
       if (row.toggle) return '';
@@ -414,6 +429,7 @@ export function renderBrowseGames(root) {
       : String(draft[row.key] ?? '') !== String(base[row.key] ?? ''));
 
     function paintList() {
+      level = 'list';
       const rows = ROWS.filter((r) => !r.signedIn || state.user);
       sheet.innerHTML = `
         <div class="browse-filters__top">
@@ -456,6 +472,7 @@ export function renderBrowseGames(root) {
 
     // Rating: two ways to sort by it, and stars to browse by.
     function paintRating() {
+      level = 'page';
       const opt = (v, label) => `<button type="button" class="browse-opt${draft.sort === v ? ' is-on' : ''}" data-sort="${v}"><span>${label}</span>${draft.sort === v ? iconCheck() : ''}</button>`;
       sheet.innerHTML = `
         <div class="browse-filters__top">
@@ -490,6 +507,7 @@ export function renderBrowseGames(root) {
 
     // One filter's choices (or its text box), then straight back to the list.
     function paintRow(row) {
+      level = 'page';
       sheet.innerHTML = `
         <div class="browse-filters__top">
           <button type="button" class="browse-filters__icon" data-act="back" aria-label="Back">${iconBackArrow()}</button>
