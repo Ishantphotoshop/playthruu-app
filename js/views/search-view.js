@@ -81,6 +81,7 @@ export function renderSearchView(root, { initialTab = 'games' } = {}) {
   const panes = Object.fromEntries(qsa('.search-pane', root).map((el) => [el.dataset.pane, el]));
   let results = panes[tab];
   const scrollAt = {};
+  let prevPane = null; // the pane a tab switch just left
   let gamesSnap = null;
   const filterBtn = qs('#filter-btn', root);
   const form = qs('#search-form', root);
@@ -154,7 +155,7 @@ export function renderSearchView(root, { initialTab = 'games' } = {}) {
     filterBtn.style.display = tab === 'games' ? '' : 'none';
     if (tab !== 'games') { renderSearchHistory(); return; }
     const viewed = getRecentlyViewed();
-    if (viewed.length) { paintIdleGames(viewed, 'Jump back in'); return; }
+    if (viewed.length) { paintIdleGames(viewed, 'Recently viewed'); return; }
 
     // Nothing looked at yet (new user/device) — browse what's trending
     // instead of landing on an empty screen. The live trending fetch is
@@ -279,7 +280,7 @@ export function renderSearchView(root, { initialTab = 'games' } = {}) {
     // is simply searched again next time it's opened.
     searchTicket++; promptTicket++; searchLoading = false;
     if (searchObserver) searchObserver.disconnect();
-    const from = results;
+    prevPane = results;
     tab = newTab;
     results = panes[tab];
     Object.entries(panes).forEach(([id, el]) => { el.hidden = id !== tab; });
@@ -287,9 +288,6 @@ export function renderSearchView(root, { initialTab = 'games' } = {}) {
     if (tab === 'games' && gamesSnap && results.dataset.q) {
       ({ allResults, renderedCount, searchPage, searchHasMore } = gamesSnap);
       observeSearchSentinel();
-    }
-    if (from !== results && results.animate && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      results.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 150, easing: 'ease-out' });
     }
     tabsEl.dataset.active = tab;
     qsa('.home-tabs__item', root).forEach(b => b.classList.toggle('home-tabs__item--active', b.dataset.tab === tab));
@@ -320,7 +318,18 @@ export function renderSearchView(root, { initialTab = 'games' } = {}) {
       // Box was open: the recent searches stay open, in the same place
       // (it's the same list on every tab). Box wasn't: each tab's own
       // resting screen, and no keyboard popping up just for changing tab.
-      else if (keepFocus) { if (results.dataset.mode !== 'history') showPrompt(); showingHistory = true; input.focus(); }
+      else if (keepFocus) {
+        if (results.dataset.mode !== 'history') {
+          if (prevPane?.dataset.mode === 'history') {
+            // Same history on every tab: hand over the very same rows instead
+            // of drawing them again, so nothing redraws or flickers.
+            results.replaceChildren(...prevPane.childNodes);
+            results.dataset.mode = 'history'; delete results.dataset.q;
+            prevPane.dataset.mode = '';
+          } else showPrompt();
+        }
+        showingHistory = true; input.focus();
+      }
       else { if (results.dataset.mode !== 'idle') showIdle(); showingHistory = false; }
     });
   });
