@@ -60,7 +60,7 @@ const KINDS = {
 };
 
 const BLANK = {
-  sort: 'popular', genre: '', platform: '', year: '', players: '', stars: '',
+  query: '', sort: 'popular', genre: '', platform: '', year: '', players: '', stars: '',
   minVotes: '', maxVotes: '', minHypes: '', hideLogged: false, fadeLogged: false,
 };
 
@@ -84,7 +84,7 @@ function toQuery(f, page) {
   const y = YEARS.find((x) => x.id === f.year);
   // Always full games: DLC, packs and updates never belong in these lists.
   return {
-    sort: f.sort, genre: f.genre, platform: f.platform, players: f.players, stars: f.stars,
+    query: f.query, sort: f.sort, genre: f.genre, platform: f.platform, players: f.players, stars: f.stars,
     minVotes: f.minVotes, maxVotes: f.maxVotes, minHypes: f.minHypes, gameType: 'games',
     dateFrom: y?.from || '', dateTo: y?.to || '', page,
   };
@@ -93,6 +93,8 @@ function toQuery(f, page) {
 // Where a set of games starts: a ready-made list, or one choice from a way in.
 function startFrom(params) {
   const base = { ...BLANK };
+  const text = (params.get('q') || '').trim();
+  if (text) return { title: `\u201c${text}\u201d`, base: { ...base, query: text } };
   const list = LIST[params.get('list')];
   if (list) return { title: list.label, base: { ...base, ...list.f } };
   for (const kind of Object.values(KINDS)) {
@@ -260,13 +262,20 @@ export function renderBrowseGames(root) {
     try { diary = await api.getDiaryGameKeys(state.user.id); } catch { diary = null; }
   }
   const logged = (g) => !!diary && api.isInDiary(diary, g);
+  // Your rating: the games you've rated, in your order. Release date and
+  // Genre / Platform / Players narrow it too: those are asked of IGDB about
+  // just your rated games, so the answer is the same as everywhere else.
   async function myRated() {
     if (fetchedPage > 1) return { games: [], hasMore: false };
-    const y = YEARS.find((x) => x.id === filters.year);
-    const fromY = y?.from ? Number(y.from.slice(0, 4)) : null;
-    const toY = y?.to ? Number(y.to.slice(0, 4)) : null;
     let rows = await api.getMyRatedGames(state.user.id);
-    if (fromY) rows = rows.filter((g) => g.release_year >= fromY && g.release_year <= toY);
+    const needsIgdb = filters.genre || filters.platform || filters.players || filters.year;
+    if (needsIgdb) {
+      const ids = rows.map((g) => g.igdb_id).filter(Boolean);
+      const q = toQuery(filters, 1);
+      const res = await api.browseGames({ ...q, stars: '', sort: 'popular', gameType: '', idList: ids, limit: 500 });
+      const keep = new Set(res.games.map((g) => g.igdb_id));
+      rows = rows.filter((g) => g.igdb_id && keep.has(g.igdb_id));
+    }
     if (filters.stars) rows = rows.filter((g) => g.my_rating === Number(filters.stars));
     rows.sort((a, b) => (filters.sort === 'mine_low' ? a.my_rating - b.my_rating : b.my_rating - a.my_rating));
     return { games: rows, hasMore: false };

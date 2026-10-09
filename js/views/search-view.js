@@ -219,7 +219,7 @@ export function renderSearchView(root, { initialTab = 'games' } = {}) {
         // run it (switchTab is a no-op if already on that tab). Re-running
         // also bumps it back to the top (recordRecentSearch de-dupes).
         switchTab(btn.dataset.tab);
-        input.value = btn.dataset.term;
+        input.value = btn.dataset.term; syncFilterLink();
         recordRecentSearch(btn.dataset.term, btn.dataset.tab);
         doSearch();
       });
@@ -284,6 +284,7 @@ export function renderSearchView(root, { initialTab = 'games' } = {}) {
   // button. Used both by the tab buttons and by tapping a recent search
   // that belongs to another tab.
   function switchTab(newTab) {
+    queueMicrotask(() => syncFilterLink());
     if (!TABS.some((t) => t.id === newTab) || newTab === tab) return;
     const body = qs('.view-body', root);
     scrollAt[tab] = body.scrollTop;
@@ -652,7 +653,14 @@ export function renderSearchView(root, { initialTab = 'games' } = {}) {
   // result do), so partial words never pile up in the recent list.
   // Clearing the box drops straight back to the prompt.
   let typeTimer = null;
+  // The filter button carries what you typed: Browse then opens on the games
+  // matching it, with every filter available on top.
+  const syncFilterLink = () => {
+    const text = input.value.trim();
+    filterBtn.setAttribute('href', text ? `#/discover/games?q=${encodeURIComponent(text)}` : '#/discover');
+  };
   input.addEventListener('input', () => {
+    syncFilterLink();
     clearTimeout(typeTimer);
     const q = input.value.trim();
     // Anything shorter than a real query drops the results, it does not

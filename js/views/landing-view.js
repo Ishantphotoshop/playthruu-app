@@ -4,7 +4,7 @@ import {
   iconUserFilled, iconBrowseNavFilled, iconCompassNavFilled, iconSearchFilled,
 } from '../components.js';
 import { backdropHtml, tourArtHtml, artCreditHtml, drawTourArt, preloadTourArt, resolveShowcase } from './landing-art.js';
-import { esc, starRow, qs, qsa, toast } from '../utils.js';
+import { esc, starRow, qs, qsa, toast, keepLoading } from '../utils.js';
 import { renderAuthView } from './auth-view.js';
 import { navigate } from '../router.js';
 import { navBar } from '../components.js';
@@ -364,6 +364,7 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
   // far survives leaving this screen and coming back, not just a
   // reload-from-page-1 every time.
   let gamesObserver = null;
+  let gamesGuard = null;
   async function loadGamesWall(stage) {
     const slot = qs('#landing-browse-content', stage);
     slot.innerHTML = `<div class="discovery-grid" id="landing-games-list"></div><div id="landing-games-more"></div>`;
@@ -420,8 +421,12 @@ export function renderLandingView(root, { startScreen = 'entry' } = {}) {
     if (sentinel && 'IntersectionObserver' in window) {
       gamesObserver = new IntersectionObserver((entries) => {
         if (entries.some((e) => e.isIntersecting)) loadMoreGames(stage);
-      }, { root: scrollRoot, rootMargin: '400px' });
+      }, { root: scrollRoot, rootMargin: '1200px' });
       gamesObserver.observe(sentinel);
+      // Also watch the scroll itself, so a fast fling can't strand the list.
+      if (gamesGuard) gamesGuard.stop();
+      gamesGuard = keepLoading({ sentinel: () => qs('#landing-games-sentinel', moreEl), scroller: () => moreEl.closest('.landing-stage'), trigger: () => loadMoreGames(stage), margin: 1200 });
+      gamesGuard.check();
     }
   }
 

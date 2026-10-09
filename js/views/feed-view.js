@@ -429,8 +429,10 @@ async function paintNewsTab(body) {
   };
   if ('IntersectionObserver' in window) {
     new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) more(); }, {
-      root: body.closest('.view-body') || null, rootMargin: '0px 0px 900px 0px',
+      root: body.closest('.view-body') || null, rootMargin: '0px 0px 1800px 0px',
     }).observe(sentinel);
+    // Also watch the scroll itself, so a fast fling through the archive can't strand it.
+    keepLoading({ sentinel: () => (sentinel.hidden ? null : sentinel), scroller: () => body.closest('.view-body'), trigger: () => more(), margin: 1800 });
   } else {
     sentinel.outerHTML = '<button type="button" class="btn btn--block" id="news-more">Show more</button>';
     qs('#news-more', body).addEventListener('click', more);

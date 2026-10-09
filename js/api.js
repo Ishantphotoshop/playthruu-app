@@ -1864,6 +1864,11 @@ export async function browseGames({
   // Average rating in stars (0.5 to 5): games whose IGDB score rounds to
   // that many stars, 5 stars = 100.
   stars,
+  // Browse from a typed search: games whose name contains the text.
+  query,
+  // Only these IGDB ids (used for "your rated games" plus other filters),
+  // and how many to return at once.
+  idList, limit: pageSize,
   // How many people rated it, as a floor and a ceiling.
   //
   // The floor is what stops "top rated" meaning "one person gave this a
@@ -1876,10 +1881,16 @@ export async function browseGames({
   minVotes, maxVotes,
 } = {}) {
   try {
-    const limit = 20;
+    const limit = pageSize || 20;
     const offset = (page - 1) * limit;
     const now = Math.floor(Date.now() / 1000);
     const clauses = ['version_parent = null'];
+    const text = String(query || '').trim().replace(/["\\]/g, ' ').replace(/\s+/g, ' ');
+    if (text) clauses.push(`name ~ *"${text}"*`);
+    if (idList) {
+      if (!idList.length) return { games: [], hasMore: false };
+      clauses.push(`id = (${idList.join(',')})`);
+    }
     // "Anticipated" is the one sort that is ABOUT unreleased games, so
     // the released-only floor every other sort wants directly
     // contradicts it: together they asked for a release date that is
