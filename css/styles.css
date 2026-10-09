@@ -348,7 +348,7 @@ html { background: var(--bg); }
 html.vp-gap { height: calc(100% + var(--vp-gap)); }
 html.vp-gap body { background: var(--bg); }
 html.vp-gap #app { height: calc(100dvh + var(--vp-gap)); }
-html.vp-gap :is(.tabbar, .rv-composer, .thread-composer, .modal-overlay, .draw-overlay, .poster-viewer,
+html.vp-gap :is(.tabbar, .filters-bar, .rv-composer, .thread-composer, .modal-overlay, .draw-overlay, .poster-viewer,
   .avatar-viewer, .avatar-crop, .image-viewer, .story-viewer, .celebrate-layer) {
   bottom: calc(-1 * var(--vp-gap));
 }
@@ -1187,6 +1187,9 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   border: 1px solid var(--line);
 }
 .segmented--wide { margin-bottom: var(--space-4); }
+/* Five tabs (Games, Players, Lists, Studios, Artists) share the one pill, so
+   the labels run a size down and lose their side padding. */
+.segmented--five .segmented__item { font-size: 10.5px; padding: 10px 2px; letter-spacing: -0.02em; }
 /* Unbounded (the wordmark/home-tabs font), not the body font — every
    segmented control in the app (Search's Games/Players, Messages'
    Messages/Requests, Profile's Journal/Want to Play/Lists) shares this
@@ -1327,30 +1330,68 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 }
 
 .search-recent__heading {
-  font-size: var(--text-label); font-weight: 700; text-transform: uppercase;
-  letter-spacing: 0.08em; color: var(--ink-faint); margin: var(--space-2) 0 var(--space-3);
+  /* Sentence case, in the same brand face as the Home section headings
+     ("Trending now"), instead of the old small grey all-caps. */
+  font-family: var(--font-brand); font-weight: 700; font-size: 15px; letter-spacing: -0.01em;
+  text-transform: none; color: var(--ink); margin: var(--space-2) 0 var(--space-3);
 }
 .search-recent__row { display: flex; align-items: center; justify-content: space-between; margin: var(--space-2) 0 var(--space-3); }
 .search-recent__row .search-recent__heading { margin: 0; }
-/* Left-swipe-to-delete, iOS-call-log style — see wireSwipeToReveal in
-   search-view.js. .recent-search-row__content sits opaque on top of
-   .recent-search-row__delete and slides left on drag to reveal exactly
-   as much of it as the drag covers. */
-.recent-search-list { display: flex; flex-direction: column; gap: 2px; margin-bottom: var(--space-5); }
-.recent-search-row { position: relative; overflow: hidden; border-radius: var(--radius-s); }
-.recent-search-row__delete {
-  position: absolute; inset: 0; left: auto; width: 84px;
-  background: var(--danger); color: var(--bg); font-size: 13.5px; font-weight: 700;
+/* Recent searches: a picture of what was found, the word, a small tag for
+   what kind of thing it is, and an X. */
+.recent-list { display: flex; flex-direction: column; margin-bottom: var(--space-5); }
+.recent-row { display: flex; align-items: center; gap: 4px; border-bottom: 1px solid var(--line); }
+.recent-row:last-child { border-bottom: none; }
+.recent-row__main {
+  flex: 1; min-width: 0; display: flex; align-items: center; gap: 13px;
+  padding: 9px 0; background: none; border: none; text-align: left; color: var(--ink);
 }
-.recent-search-row__content {
-  position: relative; z-index: 1; width: 100%;
-  display: flex; align-items: center; gap: 10px;
-  background: var(--surface); padding: 12px 14px;
-  font-size: 15px; color: var(--ink); text-align: left;
-  touch-action: pan-y;
+.recent-row__text { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.recent-row__term { font-size: 15.5px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.recent-row__tag { font-size: 12.5px; font-weight: 500; color: var(--ink-faint); }
+.recent-row__x { width: 38px; height: 38px; flex-shrink: 0; display: grid; place-items: center; background: none; border: none; color: var(--ink-faint); }
+.recent-row__x:active { color: var(--ink); }
+.recent-row__x svg { width: 15px; height: 15px; }
+/* The picture sits over an icon, so a row with no picture (older searches,
+   or one whose image won't load) still has something there. */
+.recent-thumb {
+  position: relative; flex-shrink: 0; overflow: hidden; display: grid; place-items: center;
+  background: var(--surface-raised); color: var(--ink-dim);
+  width: 40px; height: 40px; border-radius: 10px;
 }
-.recent-search-row__content svg { width: 16px; height: 16px; color: var(--ink-faint); flex-shrink: 0; }
-.recent-search-row__content span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.recent-thumb--games, .recent-thumb--lists { width: 36px; height: 48px; margin: 0 2px; border-radius: var(--poster-radius); } /* margin keeps every thumbnail slot 40px wide, so the words line up */
+.recent-thumb--people, .recent-thumb--artists { border-radius: 50%; }
+.recent-thumb__icon { display: grid; place-items: center; width: 20px; height: 20px; }
+.recent-thumb__icon svg { width: 100%; height: 100%; display: block; }
+.recent-thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: var(--surface-raised); }
+.recent-thumb--studios img { object-fit: contain; padding: 4px; background: #fff; }
+
+/* Results on the Lists / Studios / Artists tabs. */
+.entity-list { display: flex; flex-direction: column; }
+.entity-row {
+  display: flex; align-items: center; gap: 13px; padding: 10px 0;
+  border-bottom: 1px solid var(--line); color: var(--ink); text-decoration: none;
+}
+.entity-row:last-child { border-bottom: none; }
+.entity-row__pic {
+  position: relative; flex-shrink: 0; overflow: hidden; display: grid; place-items: center;
+  background: var(--surface-raised); color: var(--ink-dim); width: 54px; height: 54px; border-radius: 12px;
+}
+.entity-row__pic--poster { width: 46px; height: 61px; border-radius: var(--poster-radius); }
+.entity-row__pic--round { border-radius: 50%; }
+.entity-row__icon { display: grid; place-items: center; width: 24px; height: 24px; }
+.entity-row__icon svg { width: 100%; height: 100%; display: block; }
+.entity-row__pic img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.entity-row__pic--logo img { object-fit: contain; padding: 7px; background: #fff; }
+.entity-row__info { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 3px; }
+.entity-row__title { font-size: 15.5px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.entity-row__meta { font-size: 12.5px; font-weight: 500; color: var(--ink-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.entity-row__chev { width: 18px; height: 18px; flex-shrink: 0; color: var(--ink-faint); }
+.entity-row__chev svg { width: 100%; height: 100%; display: block; }
+
+/* Held until the batch it belongs to has loaded, then released together —
+   see revealTogether in utils.js. */
+[data-hold] .poster-frame__img { opacity: 0 !important; }
 .discovery-tile__cover {
   width: 100%; aspect-ratio: var(--ratio-card); display: block;
   border-radius: var(--poster-radius); background: var(--surface);
@@ -2101,38 +2142,10 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   padding: 11px 13px; font-size: 15px; color: var(--ink); font-family: var(--font-body);
   color-scheme: dark;
 }
-.discover-card { width: 100%; text-align: left; }
-.discover-card:disabled { opacity: 0.6; }
 
-/* Redesigned Discover: nothing but the Filters button is ever visible up
-   top (Sort now lives inside Filters as its own chip row, same as every
-   other option) — the old version showed a Sort dropdown plus a Filters
-   button before a single result did, which is what this replaces. */
-.discover-toolbar { display: flex; gap: 10px; margin-bottom: 16px; }
-.discover-select, .discover-filters-btn {
+.discover-select {
   background: var(--surface);
   border: 1px solid var(--line);
-}
-.discover-filters-btn {
-  position: relative; flex-shrink: 0; display: flex; align-items: center; gap: 6px;
-  border-radius: var(--radius-s);
-  padding: 0 14px; font-size: 15px; font-weight: 600; color: var(--ink); font-family: var(--font-body);
-  transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
-}
-.discover-filters-btn--solo { flex: 1; justify-content: center; min-height: 46px; }
-.discover-filters-btn svg { width: 17px; height: 17px; }
-/* Glows once a filter is actually applied — the count badge alone was
-   easy to miss, this makes "you're seeing a filtered view" readable at
-   a glance instead of only on close inspection. */
-.discover-filters-btn--active {
-  color: var(--accent-bright); border-color: var(--accent-bright);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-bright) 30%, transparent),
-              0 0 14px 1px color-mix(in srgb, var(--accent-bright) 22%, transparent);
-}
-.discover-filters-count {
-  display: inline-flex; align-items: center; justify-content: center;
-  min-width: 17px; height: 17px; padding: 0 4px; border-radius: 999px;
-  background: var(--accent); color: var(--bg); font-size: 10.5px; font-weight: 700;
 }
 /* Every filter field on this page (Sort, Genre, Platform, Rating,
    Players, Released) is a row of chips, not a native <select> — a real
@@ -2155,7 +2168,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .discover-select-wrap { flex-shrink: 0; }
 .discover-select-wrap .discover-select { width: auto; padding-right: 30px; }
 
-.result-list, .discover-list { display: flex; flex-direction: column; gap: 2px; }
+.result-list { display: flex; flex-direction: column; gap: 2px; }
 .result-row {
   display: flex; align-items: center; gap: 12px; padding: 10px 4px;
   border-bottom: 1px solid var(--line); text-align: left; width: 100%; background: none;
@@ -2163,16 +2176,6 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 }
 .result-row:disabled { opacity: 0.6; }
 .result-row__cover { width: 78px; aspect-ratio: var(--ratio-card); object-fit: cover; border-radius: 6px; flex-shrink: 0; background: var(--surface); transition: box-shadow 0.15s ease; }
-/* Discover specifically (not search's combined results, which keeps the
-   plain hairline-divided list): same rounded card treatment as Browse's
-   review rows, so the two browsing screens read as one design. */
-.discover-list { gap: 10px; }
-.discover-list .result-row {
-  border-bottom: none; padding: var(--space-3);
-  border-radius: var(--radius-s); background: var(--surface-raised); border: 1px solid var(--line);
-  transition: background var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
-}
-.discover-list .result-row:active { transform: scale(0.99); background: var(--surface-high); }
 .result-row__info { min-width: 0; flex: 1; }
 .result-row__title { font-weight: var(--weight-strong); font-size: 15px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .result-row__meta {
@@ -5435,6 +5438,10 @@ a.gd-credit__name { text-decoration: none; }
   min-height: 38px; padding: 0; margin-bottom: 17px;
 }
 .msg-inbox-title { font-family: var(--font-brand); font-weight: 800; font-size: 25px; letter-spacing: -0.02em; }
+/* Search's own title: the same size as the PlayThruu wordmark on Home (19px),
+   and a tighter gap under it than the other inbox-style screens keep. */
+.view-body--search .msg-inbox-title { font-size: 19px; letter-spacing: -0.01em; }
+.view-body--search .msg-inbox-head { min-height: 26px; margin-bottom: 8px; }
 /* The app's main accent (not orange) with the dark icon, like every other
    primary action button in the app. */
 .msg-inbox-new { width: 34px; height: 34px; border-radius: 50%; background: var(--accent); color: var(--bg); display: grid; place-items: center; flex-shrink: 0; transition: transform var(--dur-fast) var(--ease); }
@@ -6641,3 +6648,34 @@ a.gd-credit__name { text-decoration: none; }
 .cast-sources__list { margin: 2px 0 0; padding-left: 14px; display: flex; flex-direction: column; gap: 4px; }
 .cast-sources__list a { font-size: 12.5px; color: var(--accent-bright); word-break: break-all; }
 .cast-foot { margin: 10px 0 0; font-size: 11.5px; color: var(--ink-faint); }
+
+/* Search's poster grid: three equal columns that fill the row (left edge on
+   the gutter like Home, right edge on the gutter too) with a slimmer gap, so
+   the posters come out a little bigger than the Home strips'. */
+.view-body--search .discovery-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+
+/* ---- Filters page ---------------------------------------------------------
+   One section per filter: a Unbounded title, what's picked there on the right
+   (only when it isn't the default), then the chips. Clear all and Apply
+   filters live in a bar fixed to the bottom, same column as the tab bar. */
+.view-body--filters { padding-bottom: calc(104px + var(--safe-bottom)); }
+.fsec { display: flex; flex-direction: column; gap: 12px; min-width: 0; margin-bottom: 26px; }
+.fsec__head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; min-height: 18px; }
+.fsec__title { margin: 0; font-family: var(--font-brand); font-weight: 700; font-size: 15px; letter-spacing: -0.01em; color: var(--ink); }
+.fsec__value { font-size: 12.5px; font-weight: 700; color: var(--accent-bright); text-align: right; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.view-body--filters .disc-field-grid { margin-bottom: 0; }
+.filters-bar {
+  position: fixed; left: 50%; bottom: 0; transform: translateX(-50%); z-index: 30;
+  width: 100%; max-width: 560px; display: flex; gap: 10px;
+  padding: 10px var(--gutter) calc(10px + var(--safe-bottom));
+  background: var(--surface-raised); border-top: 1px solid var(--line);
+}
+.filters-bar .btn { min-height: 48px; font-family: var(--font-brand); font-weight: 700; font-size: 13px; border-radius: var(--radius-pill); }
+.filters-bar__clear { flex: 0 0 auto; padding: 0 20px; }
+.filters-bar__clear:disabled { opacity: 0.4; }
+.filters-bar__apply { flex: 1; display: flex; align-items: center; justify-content: center; gap: 10px; }
+.filters-bar__count {
+  display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px;
+  background: var(--bg); color: var(--accent-bright); font-family: var(--font-body); font-size: 12.5px; font-weight: 800;
+}
+.filters-bar__count[hidden] { display: none; }

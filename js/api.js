@@ -224,6 +224,94 @@ export async function searchUsers(query, limit = 15) {
   return data;
 }
 
+// Public lists by name, for the Lists tab of Search. RLS already hides
+// other people's private lists, so there's nothing to filter here. Each row
+// carries its owner and enough of its first items to show a poster and a
+// real game count without a second query.
+export async function searchLists(query, limit = 20) {
+  const q = query?.trim();
+  if (!q) return [];
+  const { data, error } = await supabase
+    .from('lists')
+    .select('id, name, description, user_id, is_public, profiles!lists_user_id_fkey(username, display_name, avatar_url), list_items(position, games!list_items_game_id_fkey(cover_url, title))')
+    .ilike('name', `%${q}%`)
+    .eq('is_public', true)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data || []).map((l) => {
+    const items = (l.list_items || []).slice().sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+    return {
+      id: l.id, name: l.name, description: l.description, owner: l.profiles || null,
+      count: items.length, cover_url: items.find((i) => i.games?.cover_url)?.games.cover_url || null,
+    };
+  });
+}
+
+// Studios (developers and publishers) by name, from IGDB's company index.
+// IGDB's `search` operator returns nothing on the companies endpoint, so
+// this is a case-insensitive "name contains" instead, ranked here: exact
+// name first, then names that start with the query, then the rest, and
+// within each the company with the biggest catalogue. Only companies that
+// have developed or published something, so a search never lands on an
+// empty profile.
+export async function searchStudios(query, limit = 15) {
+  const q = query?.trim().replace(/["\\*]/g, '');
+  if (!q) return [];
+  const rows = await igdb('companies', `fields name,logo.image_id,start_date,developed,published; where name ~ *"${q}"* & (developed != null | published != null); limit 60;`);
+  const lq = q.toLowerCase();
+  const rank = (c) => {
+    const n = c.name.toLowerCase();
+    return (n === lq ? 3000 : n.startsWith(lq) ? 2000 : 1000) + Math.min(999, (c.developed?.length || 0) + (c.published?.length || 0));
+  };
+  return (rows || []).sort((a, b) => rank(b) - rank(a)).slice(0, limit).map((c) => ({
+    id: c.id, name: c.name,
+    logo: igdbImageUrl(c.logo?.image_id, 'logo_med'),
+    year: c.start_date ? new Date(c.start_date * 1000).getFullYear() : null,
+    games: (c.developed?.length || 0) + (c.published?.length || 0),
+  }));
+}
+
+// People who work on games (voice actors, directors, writers, composers),
+// by name, from Wikidata. Two searches run side by side because neither is
+// enough alone: the entity search matches the START of a label ("Hideo"
+// finds Hideo Kojima, "Kojima" does not), the full-text search matches
+// anywhere but returns bare ids. Their ids are merged, labelled in one
+// call, and two small SPARQL checks run in parallel: real humans with a
+// photo, and which of them have voice or director credits on a game (the
+// credits a person page can show), so those come first.
+export async function searchArtists(query, limit = 15) {
+  const q = query?.trim();
+  if (!q) return [];
+  const get = async (url) => { const res = await fetchWithTimeout(url); if (!res.ok) throw new Error('Artist search failed'); return res.json(); };
+  const [prefix, full] = await Promise.all([
+    get(`${WIKIDATA_API}?action=wbsearchentities&search=${encodeURIComponent(q)}&language=en&uselang=en&format=json&origin=*&type=item&limit=10`).catch(() => ({})),
+    get(`${WIKIDATA_API}?action=query&list=search&srsearch=${encodeURIComponent(`${q} haswbstatement:P31=Q5`)}&srlimit=12&format=json&origin=*`).catch(() => ({})),
+  ]);
+  const ids = [];
+  for (const id of [...(full.query?.search || []).map((x) => x.title), ...(prefix.search || []).map((x) => x.id)]) {
+    if (/^Q\d+$/.test(id) && !ids.includes(id)) ids.push(id);
+  }
+  if (!ids.length) return [];
+  const values = ids.map((id) => `wd:${id}`).join(' ');
+  const [entities, imgs, gameHits] = await Promise.all([
+    get(`${WIKIDATA_API}?action=wbgetentities&ids=${ids.join('|')}&props=labels|descriptions&languages=en&format=json&origin=*`).catch(() => ({})),
+    wikidataQuery(`SELECT ?item (SAMPLE(?img) AS ?image) WHERE { VALUES ?item { ${values} } ?item wdt:P31 wd:Q5. OPTIONAL { ?item wdt:P18 ?img. } } GROUP BY ?item`).catch(() => null),
+    wikidataQuery(`SELECT DISTINCT ?item WHERE { VALUES ?item { ${values} } { ?g wdt:P725 ?item } UNION { ?g wdt:P57 ?item } }`).catch(() => null),
+  ]);
+  const humans = imgs ? new Map(imgs.results.bindings.map((b) => [b.item.value.split('/').pop(), commonsThumb(b.image?.value, 120)])) : null;
+  const withGames = new Set((gameHits?.results.bindings || []).map((b) => b.item.value.split('/').pop()));
+  const rows = [];
+  for (const id of ids) {
+    if (humans && !humans.has(id)) continue; // not a person
+    const e = entities.entities?.[id];
+    const name = e?.labels?.en?.value;
+    if (!name) continue;
+    rows.push({ qid: id, name, description: e.descriptions?.en?.value || '', photo: humans?.get(id) || null, hasGames: withGames.has(id) });
+  }
+  return rows.sort((a, b) => Number(b.hasGames) - Number(a.hasGames)).slice(0, limit);
+}
+
 /**
  * People worth following: the most-followed accounts on the app that
  * you are not already following, shuffled.

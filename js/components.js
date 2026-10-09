@@ -350,14 +350,23 @@ export function combinedGameResults(results, { capped = true } = {}) {
 // up in the single merged `results` array by index.
 export function wireCombinedGameResults(container, results, { onLocal, onRemote }) {
   qsa('.result-row, .game-card', container).forEach((el) => {
+    // Called again after each page of results is appended; rows that were
+    // wired the first time must not get a second handler.
+    if (el.dataset.wired) return;
     const idx = Number(el.dataset.idx);
     if (!Number.isInteger(idx)) return;
     const item = results[idx];
     if (!item) return;
+    el.dataset.wired = '1';
     if (el.dataset.kind === 'remote') {
       el.addEventListener('click', async () => {
-        el.disabled = true;
-        try { await onRemote(item); } catch { el.disabled = false; }
+        // A guard flag, not el.disabled: the tap navigates away and this
+        // page is kept in the back stack, so a row left disabled came
+        // back faded and dead to taps when you returned to it.
+        if (el.dataset.opening) return;
+        el.dataset.opening = '1';
+        try { await onRemote(item); } catch { /* the opener already told the user */ }
+        setTimeout(() => { delete el.dataset.opening; }, 1200);
       });
     } else {
       el.addEventListener('click', async (e) => {
@@ -380,9 +389,9 @@ export function wireCombinedGameResults(container, results, { onLocal, onRemote 
 // known immediately; the director is not (see wireResultDirectors) so
 // the row paints with the year and the director appears alongside it a
 // moment later, rather than the whole list waiting on a lookup.
-export function combinedGameResultsList(results) {
+export function combinedGameResultsList(results, { offset = 0, rowsOnly = false } = {}) {
   if (!results.length) {
-    return emptyState('No games found. Try a different spelling, or add it manually below.');
+    return rowsOnly ? '' : emptyState('No games found. Try a different spelling, or add it manually below.');
   }
   const row = (g, i) => {
     const kind = g._source === 'remote' ? 'remote' : 'local';
@@ -397,7 +406,11 @@ export function combinedGameResultsList(results) {
         </div>
       </${El}>`;
   };
-  return `<div class="result-list">${results.map((g, i) => row(g, i)).join('')}</div>`;
+  // `offset` keeps data-idx pointing at the right entry of the FULL list when
+  // only a later page of it is being drawn (see rowsOnly: the next page is
+  // appended under the rows already on screen instead of redrawing them all).
+  const rows = results.map((g, i) => row(g, offset + i)).join('');
+  return rowsOnly ? rows : `<div class="result-list">${rows}</div>`;
 }
 
 // Directors, resolved after the list is already on screen and only for

@@ -304,7 +304,7 @@ export function openLogComposer({ game = null, resolveGame = null, existingLog =
     // tabs, so the raw list has player searches in it — and a username
     // is no use when the question on screen is which game you played.
     function paintRecent() {
-      const entries = getRecentSearches().filter((e) => e.tab !== 'people');
+      const entries = getRecentSearches().filter((e) => e.tab === 'games'); // game searches only, not players, lists, studios or artists
       if (!entries.length) { results.innerHTML = ''; return; }
       results.innerHTML = `
         <p class="search-recent__heading">Recent searches</p>

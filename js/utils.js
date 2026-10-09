@@ -132,6 +132,29 @@ export function igdbSized(url, size) {
   return url.replace(/\/t_[a-z0-9_]+\//i, `/t_${size}/`);
 }
 
+// Posters in a freshly drawn batch (a grid, a page of results) fade in
+// TOGETHER instead of one by one as the network hands them over. The batch's
+// elements are held at opacity 0 (see [data-hold] in styles.css); once every
+// poster that's on, or near, the screen has finished loading (or a few
+// seconds pass, so one slow image can't hold the rest hostage) they are all
+// released in the same frame and fade up as a set. Posters well below the
+// fold aren't waited for: they load, and fade, when scrolled to.
+export function revealTogether(els, { timeout = 3000, margin = 320 } = {}) {
+  const list = [...els].filter(Boolean);
+  if (!list.length) return Promise.resolve();
+  list.forEach((el) => el.setAttribute('data-hold', ''));
+  const near = list.flatMap((el) => [...el.querySelectorAll('.poster-frame__img')]).filter((img) => {
+    const r = img.getBoundingClientRect();
+    return r.top < window.innerHeight + margin && r.bottom > -margin;
+  });
+  const waits = near.filter((img) => !(img.complete && img.naturalWidth)).map((img) => new Promise((res) => {
+    img.addEventListener('load', res, { once: true });
+    img.addEventListener('error', res, { once: true });
+  }));
+  const release = () => requestAnimationFrame(() => list.forEach((el) => el.removeAttribute('data-hold')));
+  return Promise.race([Promise.all(waits), new Promise((r) => setTimeout(r, timeout))]).then(release);
+}
+
 // Lets a bottom-sheet modal be dragged down and flung away with a
 // finger, instead of only closing via the X. Pass the `.modal` element
 // and its existing close function.
@@ -295,27 +318,35 @@ const RECENT_SEARCHES_KEY = 'playthruu_recent_searches_v2';
 // sane rather than growing without any bound at all.
 const RECENT_SEARCHES_MAX = 1000;
 
-export function recordRecentSearch(term, tab) {
+// Every tab on the Search screen: games, players, lists, studios, artists.
+const RECENT_SEARCH_TABS = ['games', 'people', 'lists', 'studios', 'artists'];
+
+// `thumb` is a small picture of what the search found (the game's poster,
+// the player's photo, a studio's logo), shown beside the word in the
+// recent list. Re-running a search without one keeps the picture it had.
+export function recordRecentSearch(term, tab, thumb) {
   const q = term?.trim();
-  if (!q || (tab !== 'games' && tab !== 'people')) return;
+  if (!q || !RECENT_SEARCH_TABS.includes(tab)) return;
   try {
     // De-dupe on the term+tab pair, so the same word searched in both
     // tabs keeps one entry each, and re-searching bumps it to the top.
-    const list = getRecentSearches().filter(
-      (e) => !(e.term.toLowerCase() === q.toLowerCase() && e.tab === tab));
-    list.unshift({ term: q, tab });
+    const all = getRecentSearches();
+    const same = (e) => e.term.toLowerCase() === q.toLowerCase() && e.tab === tab;
+    const kept = thumb || all.find(same)?.thumb || null;
+    const list = all.filter((e) => !same(e));
+    list.unshift(kept ? { term: q, tab, thumb: kept } : { term: q, tab });
     localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(list.slice(0, RECENT_SEARCHES_MAX)));
   } catch { /* storage unavailable — nothing to persist to */ }
 }
 
-// Returns the whole combined history, newest first, as { term, tab }
+// Returns the whole combined history, newest first, as { term, tab, thumb? }
 // objects. Tolerant of any malformed entries left in storage.
 export function getRecentSearches() {
   try {
     const raw = localStorage.getItem(RECENT_SEARCHES_KEY);
     const list = raw ? JSON.parse(raw) : [];
     if (!Array.isArray(list)) return [];
-    return list.filter((e) => e && typeof e.term === 'string' && (e.tab === 'games' || e.tab === 'people'));
+    return list.filter((e) => e && typeof e.term === 'string' && RECENT_SEARCH_TABS.includes(e.tab));
   } catch {
     return [];
   }
