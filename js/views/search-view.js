@@ -15,7 +15,7 @@ const STUDIO_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" 
 const ARTIST_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>';
 const ALL_TABS = [
   { id: 'games', label: 'Games', tag: 'Game', placeholder: 'Search games…', hint: 'Search for a game to log, rate, or review.', icon: iconGamepad() },
-  { id: 'people', label: 'Players', tag: 'Player', placeholder: 'Search players…', hint: 'Search for players to follow.', icon: iconUser() },
+  { id: 'people', label: 'People', tag: 'Person', placeholder: 'Search people…', hint: 'Search for players to follow.', icon: iconUser() },
   { id: 'all', label: 'All', tag: 'All', placeholder: 'Search everything…', hint: 'Search games, players, lists, studios and artists at once.', icon: iconSearch() },
   { id: 'lists', label: 'Lists', tag: 'List', placeholder: 'Search lists…', hint: 'Search for lists other players have made.', icon: iconList() },
   { id: 'studios', label: 'Studios', tag: 'Studio', placeholder: 'Search studios…', hint: 'Look up a developer or publisher.', icon: STUDIO_ICON },
@@ -509,7 +509,7 @@ export function renderSearchView(root, { initialTab = 'games' } = {}) {
           href: gameHref(x), shape: 'round', img: smallCover(x.cover_url), fallbackIcon: TAB.games.icon, thumb: smallCover(x.cover_url),
           title: x.title, meta: x.release_year || x.year || '',
         })));
-        section('Players', 'people', people.length, 2, people.slice(0, 2).map((x) => entityRow({
+        section('People', 'people', people.length, 2, people.slice(0, 2).map((x) => entityRow({
           href: `#/profile/${x.username}`, shape: 'round', img: x.avatar_url, fallbackIcon: TAB.people.icon, thumb: x.avatar_url,
           title: x.display_name || x.username, meta: `@${x.username}`,
         })));
