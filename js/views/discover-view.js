@@ -133,8 +133,18 @@ const starsLabel = (v) => {
   const whole = Math.floor(n);
   return `${whole || ''}${n % 1 ? '\u00bd' : ''} star${n === 1 ? '' : 's'}`;
 };
-// Five stars, filled to `v` (0 to 5, halves allowed).
-const starsHtml = (v) => `<span class="star-meter" aria-hidden="true"><span class="star-meter__base">\u2605\u2605\u2605\u2605\u2605</span><span class="star-meter__fill" style="width:${(Number(v) || 0) * 20}%">\u2605\u2605\u2605\u2605\u2605</span></span>`;
+// Five stars filled to `v` (0 to 5, halves allowed). Each star is its own
+// SVG: the filled copy is clipped at exactly half the star's width, so a
+// half star is cut straight down the middle.
+const STAR_PATH = 'M12 1.8l3.1 6.6 7.2.9-5.3 5 1.3 7.1L12 17.9l-6.3 3.5 1.3-7.1-5.3-5 7.2-.9z';
+const starsHtml = (v) => {
+  const n = Number(v) || 0;
+  return `<span class="star-row" aria-hidden="true">${[1, 2, 3, 4, 5].map((i) => {
+    const fill = n >= i ? 24 : n >= i - 0.5 ? 12 : 0;
+    return `<svg class="star-row__star" viewBox="0 0 24 24"><defs><clipPath id="sc${i}"><rect x="0" y="0" width="${fill}" height="24"/></clipPath></defs>
+      <path class="star-row__base" d="${STAR_PATH}"/><path class="star-row__fill" d="${STAR_PATH}" clip-path="url(#sc${i})"/></svg>`;
+  }).join('')}</span>`;
+};
 
 const chev = () => `<span class="browse-row__chev">${iconChevronRight()}</span>`;
 
@@ -392,25 +402,39 @@ export function renderBrowseGames(root) {
           <p class="browse-label">Average rating</p>
           ${opt('top_rated', 'Highest first')}${opt('lowest', 'Lowest first')}
           ${state.user ? `<p class="browse-label">Your rating</p>${opt('mine_high', 'Highest first')}${opt('mine_low', 'Lowest first')}` : ''}
-          <p class="browse-label">Browse by stars</p>
-          <div class="star-pick">
-            <div class="star-pick__stars">${starsHtml(draft.stars)}
-              <input type="range" class="star-pick__range" min="0" max="5" step="0.5" value="${Number(draft.stars) || 0}" aria-label="Star rating">
-            </div>
-            <div class="star-pick__foot">
-              <span class="star-pick__label">${draft.stars ? `Games rated ${starsLabel(draft.stars)}` : 'Any rating'}</span>
+          <button type="button" class="browse-frow star-toggle${draft.stars ? ' is-open' : ''}" data-act="stars" aria-expanded="${draft.stars ? 'true' : 'false'}">
+            <span class="browse-frow__name">Browse by stars</span>
+            <span class="browse-frow__value${draft.stars ? ' is-set' : ''}" id="stars-value">${draft.stars ? starsLabel(draft.stars) : 'Any'}</span>
+            ${chev()}
+          </button>
+          <div class="star-pick${draft.stars ? ' is-open' : ''}">
+            <div class="star-pick__inner">
+              <div class="star-pick__stars">${starsHtml(draft.stars)}
+                <input type="range" class="star-pick__range" min="0" max="5" step="0.5" value="${Number(draft.stars) || 0}" aria-label="Star rating">
+              </div>
               <button type="button" class="star-pick__clear" data-act="clear-stars"${draft.stars ? '' : ' hidden'}>Clear</button>
             </div>
           </div>
         </div>`;
       qs('[data-act="back"]', sheet).addEventListener('click', paintList);
       qsa('[data-sort]', sheet).forEach((b) => b.addEventListener('click', () => { draft.sort = b.dataset.sort; paintList(); }));
+      // The row opens the stars underneath it (and closes them again).
+      const toggle = qs('[data-act="stars"]', sheet);
+      const pick = qs('.star-pick', sheet);
+      toggle.addEventListener('click', () => {
+        const open = !pick.classList.contains('is-open');
+        pick.classList.toggle('is-open', open);
+        toggle.classList.toggle('is-open', open);
+        toggle.setAttribute('aria-expanded', String(open));
+      });
       const range = qs('.star-pick__range', sheet);
       const sync = () => {
         const v = Number(range.value);
         draft.stars = v ? String(v) : '';
-        qs('.star-meter__fill', sheet).style.width = `${v * 20}%`;
-        qs('.star-pick__label', sheet).textContent = v ? `Games rated ${starsLabel(v)}` : 'Any rating';
+        qs('.star-row', sheet).outerHTML = starsHtml(v);
+        const val = qs('#stars-value', sheet);
+        val.textContent = v ? starsLabel(v) : 'Any';
+        val.classList.toggle('is-set', !!v);
         qs('[data-act="clear-stars"]', sheet).hidden = !v;
       };
       range.addEventListener('input', sync);

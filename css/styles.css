@@ -6789,13 +6789,19 @@ a.gd-credit__name { text-decoration: none; }
 .browse-empty__title { margin: 0; font-family: var(--font-brand); font-weight: 800; font-size: 18px; color: var(--ink); }
 .browse-empty__line { margin: 8px 0 0; font-family: var(--font-body); font-size: 14px; color: var(--ink-dim); }
 
-/* Browse > Filters > Rating: drag across the stars, half a star at a time. */
-.star-pick { padding: 14px 2px 6px; }
+/* Browse > Filters > Rating > Browse by stars: a row that opens big stars
+   under it. Drag or tap across them, half a star at a time. */
+.star-toggle .browse-row__chev { transition: transform 200ms ease; }
+.star-toggle.is-open .browse-row__chev { transform: rotate(90deg); }
+.star-pick { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 220ms ease; }
+.star-pick.is-open { grid-template-rows: 1fr; }
+.star-pick__inner { overflow: hidden; display: flex; flex-direction: column; align-items: center; }
+.star-pick.is-open .star-pick__inner { padding: 26px 0 8px; }
 .star-pick__stars { position: relative; display: inline-block; }
-.star-meter { position: relative; display: inline-block; font-size: 44px; line-height: 1; letter-spacing: 6px; }
-.star-meter__base { color: var(--surface-high); }
-.star-meter__fill { position: absolute; left: 0; top: 0; overflow: hidden; white-space: nowrap; color: var(--accent-bright); }
+.star-row { display: flex; gap: 10px; }
+.star-row__star { width: 54px; height: 54px; display: block; }
+.star-row__base { fill: var(--surface-high); }
+.star-row__fill { fill: var(--accent-bright); }
 .star-pick__range { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
-.star-pick__foot { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; }
-.star-pick__label { font-family: var(--font-body); font-weight: 600; font-size: 15px; color: var(--ink-dim); }
-.star-pick__clear { background: none; border: 0; padding: 4px 0; font-family: var(--font-body); font-weight: 700; font-size: 14px; color: var(--accent-bright); }
+.star-pick__clear { margin-top: 14px; background: none; border: 0; padding: 6px 10px; font-family: var(--font-body); font-weight: 700; font-size: 14px; color: var(--accent-bright); }
+@media (prefers-reduced-motion: reduce) { .star-pick, .star-toggle .browse-row__chev { transition: none; } }
