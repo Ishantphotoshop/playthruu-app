@@ -1297,6 +1297,45 @@ export const BROWSE_PLATFORMS = [
   { label: 'Xbox One', value: '49' }, { label: 'Switch', value: '130' },
   { label: 'iOS', value: '39' }, { label: 'Android', value: '34' },
 ];
+// The longer list the Browse screen offers (Browse > Platform, and the
+// Platform row in its Filters). Ids checked against IGDB's platforms table.
+export const BROWSE_PLATFORMS_ALL = [
+  { label: 'PC', value: '6' }, { label: 'PlayStation 5', value: '167' }, { label: 'PlayStation 4', value: '48' },
+  { label: 'Xbox Series X|S', value: '169' }, { label: 'Xbox One', value: '49' },
+  { label: 'Nintendo Switch 2', value: '508' }, { label: 'Nintendo Switch', value: '130' },
+  { label: 'iOS', value: '39' }, { label: 'Android', value: '34' }, { label: 'Mac', value: '14' }, { label: 'Linux', value: '3' },
+  { label: 'PlayStation VR2', value: '390' }, { label: 'Meta Quest 3', value: '471' }, { label: 'Meta Quest 2', value: '386' },
+  { label: 'PlayStation 3', value: '9' }, { label: 'Xbox 360', value: '12' }, { label: 'Wii U', value: '41' }, { label: 'Wii', value: '5' },
+  { label: 'Nintendo 3DS', value: '37' }, { label: 'PlayStation Vita', value: '46' }, { label: 'Nintendo DS', value: '20' },
+  { label: 'PlayStation 2', value: '8' }, { label: 'Xbox', value: '11' }, { label: 'GameCube', value: '21' },
+  { label: 'Game Boy Advance', value: '24' }, { label: 'PlayStation', value: '7' }, { label: 'Nintendo 64', value: '4' },
+  { label: 'Super Nintendo', value: '19' }, { label: 'NES', value: '18' }, { label: 'Game Boy', value: '33' },
+];
+// IGDB's themes, game modes and player perspectives (ids from its own
+// reference tables). Erotic is left out on purpose.
+export const BROWSE_THEMES = [
+  { label: 'Action', value: '1' }, { label: 'Fantasy', value: '17' }, { label: 'Science fiction', value: '18' },
+  { label: 'Horror', value: '19' }, { label: 'Thriller', value: '20' }, { label: 'Survival', value: '21' },
+  { label: 'Historical', value: '22' }, { label: 'Stealth', value: '23' }, { label: 'Comedy', value: '27' },
+  { label: 'Business', value: '28' }, { label: 'Drama', value: '31' }, { label: 'Non-fiction', value: '32' },
+  { label: 'Sandbox', value: '33' }, { label: 'Educational', value: '34' }, { label: 'Kids', value: '35' },
+  { label: 'Open world', value: '38' }, { label: 'Warfare', value: '39' }, { label: 'Party', value: '40' },
+  { label: '4X', value: '41' }, { label: 'Mystery', value: '43' }, { label: 'Romance', value: '44' },
+];
+export const BROWSE_MODES = [
+  { label: 'Single player', value: '1' }, { label: 'Multiplayer', value: '2' }, { label: 'Co-op', value: '3' },
+  { label: 'Split screen', value: '4' }, { label: 'MMO', value: '5' }, { label: 'Battle royale', value: '6' },
+];
+export const BROWSE_PERSPECTIVES = [
+  { label: 'First person', value: '1' }, { label: 'Third person', value: '2' }, { label: 'Top-down / isometric', value: '3' },
+  { label: 'Side view', value: '4' }, { label: 'Text', value: '5' }, { label: 'Virtual reality', value: '7' },
+];
+// IGDB's game_type: what kind of release it is.
+export const BROWSE_GAME_TYPES = [
+  { label: 'Everything', value: '' }, { label: 'Full games (no DLC)', value: 'games' }, { label: 'Main games only', value: 'main' },
+  { label: 'Remakes and remasters', value: 'remakes' }, { label: 'DLC and expansions', value: 'dlc' },
+];
+const GAME_TYPE_IDS = { games: '0,4,8,9,10', main: '0', remakes: '8,9', dlc: '1,2,4' };
 // Curated "Bored? Try these" collections for the feed. Each one is
 // just a preset bundle of browseGames() params, so this adds no new
 // API surface — it's the Discover screen's own filtering, packaged as
@@ -1314,8 +1353,8 @@ export const BROWSE_PLATFORMS = [
 // everyone has already played cannot be a hidden gem, so the rows that
 // are about discovery cut off above this — it is what keeps Red Dead 2,
 // The Witcher 3 and GTA V out of them.
-const CREDIBLE_VOTES = 60;
-const FAMOUS_VOTES = 900;
+export const CREDIBLE_VOTES = 60;
+export const FAMOUS_VOTES = 900;
 
 /**
  * Which slice of a rotating collection to show right now.
@@ -1454,6 +1493,12 @@ export const BROWSE_SORTS = [
   { label: 'Most Popular', value: 'popular' }, { label: 'Highest Rated', value: 'top_rated' },
   { label: 'Most Anticipated', value: 'anticipated' }, { label: 'All-Time Top Rated', value: 'all_time' },
   { label: 'Newest Releases', value: 'newest' }, { label: 'A–Z', value: 'az' },
+];
+// The Browse screen's Sort by options (same sorts, plus oldest first).
+export const BROWSE_SORTS_FULL = [
+  { label: 'Most popular', value: 'popular' }, { label: 'Highest rated by players', value: 'top_rated' },
+  { label: 'Highest rated by critics', value: 'all_time' }, { label: 'Most anticipated', value: 'anticipated' },
+  { label: 'New and hyped', value: 'recent' }, { label: 'Newest first', value: 'newest' }, { label: 'Oldest first', value: 'oldest' }, { label: 'A to Z', value: 'az' },
 ];
 
 // ------------------------------------------------------------
@@ -1778,6 +1823,10 @@ async function gameIdsForCompany(companyId, role) {
 export async function browseGames({
   genre, platform, dateFrom, dateTo, sort = 'popular', minRating, multiplayer,
   developer, publisher, page = 1,
+  // Browse screen extras: IGDB theme / game mode / perspective ids, the
+  // kind of release, and a floor on hype (follows) to keep "New releases"
+  // to games people were actually waiting for.
+  theme, mode, perspective, gameType, minHypes,
   // How many people rated it, as a floor and a ceiling.
   //
   // The floor is what stops "top rated" meaning "one person gave this a
@@ -1808,6 +1857,14 @@ export async function browseGames({
       clauses.push(kind === 'theme' ? `themes = (${id})` : `genres = (${id})`);
     }
     if (platform) clauses.push(`platforms = (${platform})`);
+    if (theme) clauses.push(`themes = (${Number(theme)})`);
+    if (mode) clauses.push(`game_modes = (${Number(mode)})`);
+    if (perspective) clauses.push(`player_perspectives = (${Number(perspective)})`);
+    if (GAME_TYPE_IDS[gameType]) clauses.push(`game_type = (${GAME_TYPE_IDS[gameType]})`);
+    if (minHypes) clauses.push(`hypes >= ${Number(minHypes)}`);
+    if (sort === 'oldest') clauses.push('first_release_date != null');
+    // Out in the last four months, the ones people were waiting for first.
+    if (sort === 'recent') clauses.push(`first_release_date >= ${now - 120 * 86400}`);
     // "newest" sort leads with games that often haven't accumulated
     // enough reviews for total_rating to exist yet — requiring a hard
     // minimum there excludes most brand-new releases outright, which
@@ -1862,6 +1919,8 @@ export async function browseGames({
     else if (sort === 'all_time') sortClause = 'aggregated_rating desc';
     else if (sort === 'anticipated') sortClause = 'hypes desc';
     else if (sort === 'newest') sortClause = 'first_release_date desc';
+    else if (sort === 'oldest') sortClause = 'first_release_date asc';
+    else if (sort === 'recent') sortClause = 'hypes desc';
     else if (sort === 'az') sortClause = 'name asc';
 
     const where = clauses.length ? `where ${clauses.join(' & ')}; ` : '';

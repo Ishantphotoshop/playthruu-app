@@ -7,7 +7,7 @@ import { renderLandingView, seedPinnedGames } from './views/landing-view.js';
 import { renderAuthView } from './views/auth-view.js';
 import { renderFeedView } from './views/feed-view.js';
 import { renderSearchView } from './views/search-view.js';
-import { renderDiscoverView, warmDiscover } from './views/discover-view.js';
+import { renderDiscoverView, renderBrowsePick, renderBrowseGames, warmDiscover } from './views/discover-view.js';
 import { renderListDetailView } from './views/lists-view.js';
 import { renderMessagesView } from './views/messages-view.js';
 import { MESSENGER_ARCHIVED } from './config.js';
@@ -204,10 +204,13 @@ function registerPublicRoutes() {
   // as its own route rather than reusing /game/:id.
   route('/game/igdb/:igdbId', (p) => renderGameView(pageEl(), { igdbId: Number(p.igdbId) }));
   route('/search', () => renderSearchView(pageEl()));
+  // Browse (the Search tab's filter button): Browse by -> a way in's
+  // choices -> the games, with their own Filters. /discover/filters is the
+  // old address of the same screen.
   route('/discover', () => renderDiscoverView(pageEl()));
-  // What the Search tab's funnel opens: the filters themselves, not a
-  // page of popular games with the filters hidden behind a second tap.
-  route('/discover/filters', () => renderDiscoverView(pageEl(), { openFilters: true }));
+  route('/discover/filters', () => renderDiscoverView(pageEl()));
+  route('/discover/pick/:kind', (p) => renderBrowsePick(pageEl(), p));
+  route('/discover/games', () => renderBrowseGames(pageEl()));
 }
 
 function registerRoutes() {

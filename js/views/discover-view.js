@@ -1,317 +1,391 @@
 import * as api from '../api.js';
 import { state } from '../state.js';
-import { topBar, navBar, emptyState, iconSearch, iconBack, posterFrame } from '../components.js';
-import { esc, qs, qsa, toast, revealTogether } from '../utils.js';
+import { topBar, navBar, emptyState, iconSearch, iconFilter, iconClose, iconChevronRight, posterFrame } from '../components.js';
+import { esc, qs, qsa, toast, revealTogether, igdbSized } from '../utils.js';
 import { navigate } from '../router.js';
 
-// Replaces the old "Released between" dd-mm-yyyy date-range inputs —
-// nobody actually wants to type exact dates to browse by era, and typed
-// date fields are what made this page feel like a form instead of a
-// browsing screen. A single-pick era chip covers the same real intent
-// ("something from the 2010s") in one tap.
-const ERA_OPTIONS = [
-  { id: 'any', label: 'Any time', dateFrom: '', dateTo: '' },
-  { id: '2020s', label: '2020s', dateFrom: '2020-01-01', dateTo: '2029-12-31' },
-  { id: '2010s', label: '2010s', dateFrom: '2010-01-01', dateTo: '2019-12-31' },
-  { id: '2000s', label: '2000s', dateFrom: '2000-01-01', dateTo: '2009-12-31' },
-  { id: 'retro', label: 'Before 2000', dateFrom: '', dateTo: '1999-12-31' },
-];
-function eraForFilters(f) {
-  return ERA_OPTIONS.find((e) => e.dateFrom === f.dateFrom && e.dateTo === f.dateTo) || ERA_OPTIONS[0];
-}
-function withAny(label, options) {
-  return [{ label, value: '' }, ...options];
-}
-// A row of plain buttons instead of a native <select> — a real <select>'s
-// dropdown is rendered by the OS/browser itself, not this page's CSS, so
-// it kept showing up as an unstyled white popup with barely-visible text
-// no matter what was tried here. Chips are just DOM elements, fully
-// themeable, and every option is visible at once instead of hidden behind
-// a tap.
-function chipRow(fieldId, options, activeValue) {
-  return `<div class="disc-chip-row" id="${fieldId}">
-    ${options.map((o) => `<button type="button" class="chip${activeValue === o.value ? ' chip--active' : ''}" data-value="${esc(o.value)}">${esc(o.label)}</button>`).join('')}
-  </div>`;
-}
+// Browse, the screen behind the Search tab's filter button. Three steps,
+// the way Letterboxd does it:
+//   /discover               Browse by: ready-made lists (Highest rated,
+//                           Hidden gems...) and ways in (Genre, Platform...)
+//   /discover/pick/:kind    the choices for one of those ways in
+//   /discover/games?...     the games, three to a row, with a filter
+//                           button top right that opens Filters: one row
+//                           per filter showing its current value.
+// Every filter maps straight onto a field IGDB itself has (genres, themes,
+// platforms, game_modes, player_perspectives, game_type, release date,
+// rating and rating count, hypes), see browseGames in api.js.
 
-// Discover always opens on these — the filters object below is rebuilt
-// fresh on every render, so the first request this page makes is the same
-// one every time. That makes it worth having in hand before the page is
-// even opened; see warmDiscover.
-const DISCOVER_DEFAULTS = {
-  genre: '', platform: '', dateFrom: '', dateTo: '', sort: 'popular',
-  minRating: '', multiplayer: '', developer: '', publisher: '',
+const THIS_YEAR = new Date().getFullYear();
+const YEARS = [
+  { id: '', label: 'Any time' },
+  { id: 'this', label: `This year (${THIS_YEAR})`, from: `${THIS_YEAR}-01-01`, to: `${THIS_YEAR}-12-31` },
+  { id: 'last', label: `Last year (${THIS_YEAR - 1})`, from: `${THIS_YEAR - 1}-01-01`, to: `${THIS_YEAR - 1}-12-31` },
+  { id: '2020s', label: '2020s', from: '2020-01-01', to: '2029-12-31' },
+  { id: '2010s', label: '2010s', from: '2010-01-01', to: '2019-12-31' },
+  { id: '2000s', label: '2000s', from: '2000-01-01', to: '2009-12-31' },
+  { id: '1990s', label: '1990s', from: '1990-01-01', to: '1999-12-31' },
+  { id: '1980s', label: '1980s', from: '1980-01-01', to: '1989-12-31' },
+  { id: 'older', label: 'Before 1980', from: '1950-01-01', to: '1979-12-31' },
+];
+const RATINGS = [
+  { label: 'Any rating', value: '' }, { label: '90 and up', value: '90' }, { label: '80 and up', value: '80' },
+  { label: '75 and up', value: '75' }, { label: '50 and up', value: '50' },
+];
+const any = (label, list) => [{ label, value: '' }, ...list];
+
+// Ready-made lists at the top of Browse. `f` is the filters each one
+// starts with; the Filters page can change any of them afterwards.
+const LISTS = [
+  { id: 'popular', label: 'Popular right now', f: { sort: 'popular' } },
+  { id: 'top', label: 'Highest rated', f: { sort: 'top_rated', minVotes: api.CREDIBLE_VOTES * 5 } },
+  { id: 'critics', label: 'Critics’ favourites', f: { sort: 'all_time', minVotes: api.CREDIBLE_VOTES * 5 } },
+  { id: 'anticipated', label: 'Most anticipated', f: { sort: 'anticipated' } },
+  { id: 'new', label: 'New releases', f: { sort: 'recent', gameType: 'games' } },
+  { id: 'gems', label: 'Hidden gems', f: { sort: 'top_rated', minRating: '80', minVotes: api.CREDIBLE_VOTES, maxVotes: api.FAMOUS_VOTES } },
+  { id: 'coop', label: 'Play with friends', f: { sort: 'popular', mode: '3' } },
+];
+const LIST = Object.fromEntries(LISTS.map((l) => [l.id, l]));
+
+// Ways in: each opens a list of its choices, and a choice opens the games.
+const KINDS = {
+  genre: { label: 'Genre', key: 'genre', options: api.BROWSE_GENRES },
+  platform: { label: 'Platform', key: 'platform', options: api.BROWSE_PLATFORMS_ALL },
+  year: { label: 'Release date', key: 'year', options: YEARS.slice(1).map((y) => ({ label: y.label, value: y.id })) },
+  theme: { label: 'Theme', key: 'theme', options: api.BROWSE_THEMES },
+  mode: { label: 'Game mode', key: 'mode', options: api.BROWSE_MODES },
+  perspective: { label: 'Perspective', key: 'perspective', options: api.BROWSE_PERSPECTIVES },
 };
 
-// One-shot, short-lived, and only ever consumed by the very first
-// (unfiltered, page 1) request — the moment anyone touches a filter or
-// pages further, it's irrelevant and ignored. Same reasoning as
-// profile-view's bundle warm.
-const DISCOVER_WARM_TTL = 60_000;
-let discoverWarm = null; // { at, promise }
+const BLANK = {
+  sort: 'popular', genre: '', theme: '', platform: '', year: '', mode: '', perspective: '',
+  minRating: '', gameType: '', developer: '', publisher: '', minVotes: '', maxVotes: '', minHypes: '',
+  hideLogged: false, fadeLogged: false,
+};
 
-export function warmDiscover() {
-  const promise = api.browseGames({ ...DISCOVER_DEFAULTS, page: 1 });
-  promise.catch(() => {});
-  discoverWarm = { at: Date.now(), promise };
+// The Filters rows, in order. `options` rows open a pick list; `text` rows
+// open a box to type in; `toggle` rows switch in place.
+const ROWS = [
+  { key: 'sort', label: 'Sort by', options: api.BROWSE_SORTS_FULL },
+  { section: 'Content' },
+  { key: 'year', label: 'Release date', options: YEARS.map((y) => ({ label: y.label, value: y.id })) },
+  { key: 'genre', label: 'Genre', options: any('Any genre', api.BROWSE_GENRES) },
+  { key: 'theme', label: 'Theme', options: any('Any theme', api.BROWSE_THEMES) },
+  { key: 'platform', label: 'Platform', options: any('Any platform', api.BROWSE_PLATFORMS_ALL) },
+  { key: 'mode', label: 'Game mode', options: any('Any mode', api.BROWSE_MODES) },
+  { key: 'perspective', label: 'Perspective', options: any('Any perspective', api.BROWSE_PERSPECTIVES) },
+  { key: 'minRating', label: 'Rating', options: RATINGS },
+  { key: 'gameType', label: 'Type', options: api.BROWSE_GAME_TYPES },
+  { key: 'developer', label: 'Developer', text: 'e.g. Naughty Dog' },
+  { key: 'publisher', label: 'Publisher', text: 'e.g. Nintendo' },
+  { section: 'Your games', signedIn: true },
+  { key: 'hideLogged', label: 'Hide games I’ve logged', toggle: true, signedIn: true },
+  { key: 'fadeLogged', label: 'Fade games I’ve logged', toggle: true, signedIn: true },
+];
+
+// What browseGames needs, from the screen's own filter object.
+function toQuery(f, page) {
+  const y = YEARS.find((x) => x.id === f.year);
+  return {
+    sort: f.sort, genre: f.genre, theme: f.theme, platform: f.platform, mode: f.mode, perspective: f.perspective,
+    minRating: f.minRating, gameType: f.gameType, developer: f.developer, publisher: f.publisher,
+    minVotes: f.minVotes, maxVotes: f.maxVotes, minHypes: f.minHypes,
+    dateFrom: y?.from || '', dateTo: y?.to || '', page,
+  };
 }
 
-function takeWarmedDiscover(filters, page) {
-  if (!discoverWarm || page !== 1) return null;
-  if (Date.now() - discoverWarm.at > DISCOVER_WARM_TTL) { discoverWarm = null; return null; }
-  const untouched = Object.keys(DISCOVER_DEFAULTS).every((k) => filters[k] === DISCOVER_DEFAULTS[k]);
-  if (!untouched) return null;
-  const { promise } = discoverWarm;
-  discoverWarm = null;
+// Where a set of games starts: a ready-made list, or one choice from a way in.
+function startFrom(params) {
+  const base = { ...BLANK };
+  const list = LIST[params.get('list')];
+  if (list) return { title: list.label, base: { ...base, ...list.f } };
+  for (const kind of Object.values(KINDS)) {
+    const v = params.get(kind.key);
+    if (v == null) continue;
+    const opt = kind.options.find((o) => o.value === v);
+    return { title: opt?.label || kind.label, base: { ...base, [kind.key]: v } };
+  }
+  return { title: 'All games', base };
+}
+
+// First page of each ready-made list, fetched once and shared: Browse uses
+// its covers for the little thumbnails, and opening that list paints from
+// it straight away instead of waiting on the same request again.
+const WARM_TTL = 5 * 60_000;
+const firstPages = new Map(); // list id -> { at, promise }
+function firstPage(id) {
+  const hit = firstPages.get(id);
+  if (hit && Date.now() - hit.at < WARM_TTL) return hit.promise;
+  const promise = api.browseGames(toQuery({ ...BLANK, ...LIST[id].f }, 1));
+  promise.catch(() => {});
+  firstPages.set(id, { at: Date.now(), promise });
   return promise;
 }
-
-// How many filters are switched on. Release dates count as ONE ("Released"),
-// not two, since a single era chip sets both ends; Sort counts once it's off
-// the default, so it's never a hidden reason the list looks different.
-function countFilters(f) {
-  const singles = ['genre', 'platform', 'minRating', 'multiplayer'].filter((k) => f[k]).length;
-  const text = ['developer', 'publisher'].filter((k) => (f[k] || '').trim()).length;
-  const era = (f.dateFrom || f.dateTo) ? 1 : 0;
-  return singles + text + era + (f.sort !== DISCOVER_DEFAULTS.sort ? 1 : 0);
+export function warmDiscover() {
+  LISTS.slice(0, 4).forEach((l) => firstPage(l.id));
 }
 
-// The Search tab's filter button lands here (/discover/filters, and /discover
-// too). Two screens, one flow:
-//   Filters  - every option on one page, a live count of what's switched on,
-//              Clear all (stays right here) and Apply filters.
-//   Results  - the matching games as a grid of three, like "Bored? Try
-//              these", with nothing on it but the games; the back arrow
-//              returns to the Filters, exactly as they were left.
-// The old results page, with its own Filters button and count, is gone: it
-// was also where Clear all used to dump you.
+const chev = () => `<span class="browse-row__chev">${iconChevronRight()}</span>`;
+
+// ---- Browse ----------------------------------------------------------------
 export function renderDiscoverView(root) {
-  const filters = { ...DISCOVER_DEFAULTS }; // what's applied
+  root.innerHTML = topBar('Browse', { back: true, brand: true }) + `
+    <div class="view-body view-body--browse">
+      <p class="browse-label">Browse by</p>
+      <div class="browse-list">
+        ${LISTS.map((l) => `
+          <a class="browse-row" href="#/discover/games?list=${l.id}">
+            <span class="browse-row__name">${esc(l.label)}</span>
+            <span class="browse-row__thumbs" data-thumbs="${l.id}"></span>
+            ${chev()}
+          </a>`).join('')}
+      </div>
+      <p class="browse-label">Find by</p>
+      <div class="browse-list">
+        ${Object.entries(KINDS).map(([id, k]) => `
+          <a class="browse-row" href="#/discover/pick/${id}">
+            <span class="browse-row__name">${esc(k.label)}</span>
+            ${chev()}
+          </a>`).join('')}
+      </div>
+    </div>` + navBar('/search');
+
+  // A few covers on each ready-made list, filled in as each one arrives.
+  LISTS.forEach((l) => {
+    firstPage(l.id).then(({ games }) => {
+      const slot = qs(`[data-thumbs="${l.id}"]`, root);
+      if (!slot) return;
+      slot.innerHTML = games.filter((g) => g.cover_url).slice(0, 3)
+        .map((g) => `<img src="${esc(igdbSized(g.cover_url, 'cover_small'))}" alt="" loading="lazy" decoding="async" onerror="this.remove()">`).join('');
+    }).catch(() => {});
+  });
+}
+
+// ---- one way in: its choices ------------------------------------------------
+export function renderBrowsePick(root, { kind }) {
+  const k = KINDS[kind];
+  if (!k) { navigate('/discover', { replace: true }); return; }
+  root.innerHTML = topBar(k.label, { back: true, brand: true }) + `
+    <div class="view-body view-body--browse">
+      <div class="browse-list">
+        ${k.options.map((o) => `
+          <a class="browse-row" href="#/discover/games?${k.key}=${encodeURIComponent(o.value)}">
+            <span class="browse-row__name">${esc(o.label)}</span>
+            ${chev()}
+          </a>`).join('')}
+      </div>
+    </div>` + navBar('/search');
+}
+
+// ---- the games, and their Filters -------------------------------------------
+export function renderBrowseGames(root) {
+  const params = new URLSearchParams(location.hash.split('?')[1] || '');
+  const listId = params.get('list');
+  const { title, base } = startFrom(params);
+  const filters = { ...base };
   let page = 1;
   let loading = false;
+  let ticket = 0;
+  let diary = null; // what this person has logged, loaded once when needed
+  const shown = []; // every game on screen, by its tile's data-idx
 
-  // ---- filters screen ---------------------------------------------------
-  // Edits happen on a draft copy, so nothing takes effect until Apply.
-  function paintFilters() {
-    const draft = { ...filters };
+  root.innerHTML = topBar(title, {
+    back: true, brand: true,
+    right: `<button type="button" class="browse-fbtn" id="browse-filter" aria-label="Filters">${iconFilter()}<em id="browse-fcount" hidden></em></button>`,
+  }) + `
+    <div class="view-body">
+      <div id="browse-grid" class="discovery-grid"></div>
+      <div id="browse-more"></div>
+    </div>` + navBar('/search');
 
-    const section = (key, title, body) => `
-      <section class="fsec">
-        <div class="fsec__head">
-          <h2 class="fsec__title">${title}</h2>
-          <span class="fsec__value" data-value-for="${key}"></span>
-        </div>
-        ${body}
-      </section>`;
+  const grid = qs('#browse-grid', root);
+  const more = qs('#browse-more', root);
+  qs('#browse-filter', root).addEventListener('click', openFilters);
 
-    root.innerHTML = topBar('Filters', { back: true, brand: true }) + `
-      <div class="view-body view-body--filters">
-        ${section('sort', 'Sort by', chipRow('f-sort', api.BROWSE_SORTS, draft.sort))}
-        ${section('genre', 'Genre', chipRow('f-genre', withAny('Any genre', api.BROWSE_GENRES), draft.genre))}
-        ${section('platform', 'Platform', chipRow('f-platform', withAny('Any platform', api.BROWSE_PLATFORMS), draft.platform))}
-        ${section('minRating', 'Rating', chipRow('f-rating', api.BROWSE_RATINGS, draft.minRating))}
-        ${section('multiplayer', 'Players', chipRow('f-players', api.BROWSE_PLAYER_MODES, draft.multiplayer))}
-        ${section('era', 'Released', `
-          <div class="disc-chip-row" id="f-era">
-            ${ERA_OPTIONS.map((e) => `<button type="button" class="chip${eraForFilters(draft).id === e.id ? ' chip--active' : ''}" data-era="${e.id}">${e.label}</button>`).join('')}
-          </div>`)}
-        <div class="disc-field-grid">
-          <label class="fsec">
-            <div class="fsec__head"><h2 class="fsec__title">Developer</h2></div>
-            <input type="text" id="f-developer" class="discover-select" placeholder="e.g. Naughty Dog" value="${esc(draft.developer)}">
-          </label>
-          <label class="fsec">
-            <div class="fsec__head"><h2 class="fsec__title">Publisher</h2></div>
-            <input type="text" id="f-publisher" class="discover-select" placeholder="e.g. Nintendo" value="${esc(draft.publisher)}">
-          </label>
-        </div>
-      </div>
-      <div class="filters-bar">
-        <button type="button" class="btn btn--ghost filters-bar__clear" id="filters-clear">Clear all</button>
-        <button type="button" class="btn btn--accent filters-bar__apply" id="filters-apply">
-          Apply filters<span class="filters-bar__count" id="filters-count" hidden></span>
-        </button>
-      </div>`;
+  // How many filters differ from where this set of games started.
+  const changed = (f) => Object.keys(BLANK).filter((key) => String(f[key] ?? '') !== String(base[key] ?? '')).length;
+  const syncCount = () => {
+    const n = changed(filters);
+    const el = qs('#browse-fcount', root);
+    el.hidden = !n; el.textContent = n;
+  };
 
-    // The word beside each section's name: what's picked there right now,
-    // lit up when it isn't the default.
-    const label = (opts, v) => opts.find((o) => o.value === v)?.label || '';
-    const sideNote = (key) => {
-      switch (key) {
-        case 'sort': return draft.sort === DISCOVER_DEFAULTS.sort ? '' : label(api.BROWSE_SORTS, draft.sort);
-        case 'genre': return draft.genre ? label(api.BROWSE_GENRES, draft.genre) : '';
-        case 'platform': return draft.platform ? label(api.BROWSE_PLATFORMS, draft.platform) : '';
-        case 'minRating': return draft.minRating ? label(api.BROWSE_RATINGS, draft.minRating).split(' ')[0] : '';
-        case 'multiplayer': return draft.multiplayer ? label(api.BROWSE_PLAYER_MODES, draft.multiplayer) : '';
-        case 'era': return eraForFilters(draft).id === 'any' ? '' : eraForFilters(draft).label;
-        default: return '';
-      }
-    };
-    const refresh = () => {
-      qsa('[data-value-for]', root).forEach((el) => { el.textContent = sideNote(el.dataset.valueFor); });
-      const n = countFilters(draft);
-      const badge = qs('#filters-count', root);
-      badge.hidden = !n;
-      badge.textContent = n;
-      qs('#filters-clear', root).disabled = !n;
-    };
-
-    const wireChipRow = (fieldId, key) => {
-      const rowEl = qs(`#${fieldId}`, root);
-      qsa('.chip', rowEl).forEach((chip) => {
-        chip.addEventListener('click', () => {
-          draft[key] = chip.dataset.value;
-          qsa('.chip', rowEl).forEach((c) => c.classList.toggle('chip--active', c === chip));
-          refresh();
-        });
-      });
-    };
-    wireChipRow('f-sort', 'sort');
-    wireChipRow('f-genre', 'genre');
-    wireChipRow('f-platform', 'platform');
-    wireChipRow('f-rating', 'minRating');
-    wireChipRow('f-players', 'multiplayer');
-    qs('#f-developer', root).addEventListener('input', (e) => { draft.developer = e.target.value; refresh(); });
-    qs('#f-publisher', root).addEventListener('input', (e) => { draft.publisher = e.target.value; refresh(); });
-    qsa('.chip', qs('#f-era', root)).forEach((chip) => {
-      chip.addEventListener('click', () => {
-        const era = ERA_OPTIONS.find((e) => e.id === chip.dataset.era);
-        draft.dateFrom = era.dateFrom; draft.dateTo = era.dateTo;
-        qsa('.chip', qs('#f-era', root)).forEach((c) => c.classList.toggle('chip--active', c === chip));
-        refresh();
-      });
-    });
-
-    // Clear all resets every option on THIS page and stays here: nothing is
-    // applied, nothing navigates.
-    qs('#filters-clear', root).addEventListener('click', () => {
-      Object.assign(draft, DISCOVER_DEFAULTS);
-      const setRow = (fieldId, value) => qsa('.chip', qs(`#${fieldId}`, root)).forEach((c) => c.classList.toggle('chip--active', c.dataset.value === value));
-      setRow('f-sort', draft.sort); setRow('f-genre', ''); setRow('f-platform', ''); setRow('f-rating', ''); setRow('f-players', '');
-      qsa('.chip', qs('#f-era', root)).forEach((c) => c.classList.toggle('chip--active', c.dataset.era === 'any'));
-      qs('#f-developer', root).value = ''; qs('#f-publisher', root).value = '';
-      refresh();
-    });
-    qs('#filters-apply', root).addEventListener('click', () => {
-      Object.assign(filters, draft);
-      paintResults();
-    });
-    refresh();
+  async function needDiary() {
+    if (diary || !state.user || !(filters.hideLogged || filters.fadeLogged)) return;
+    try { diary = await api.getDiaryGameKeys(state.user.id); } catch { diary = null; }
   }
+  const logged = (g) => !!diary && api.isInDiary(diary, g);
 
-  // ---- results screen --------------------------------------------------
-  function paintResults() {
-    root.innerHTML = `
-      <header class="topbar">
-        <button type="button" class="topbar__back" id="results-back" aria-label="Back to filters">${iconBack()}</button>
-        <h1 class="topbar__title topbar__title--brand">Games</h1>
-        <div class="topbar__right"></div>
-      </header>
-      <div class="view-body">
-        <div id="discover-results" class="discovery-grid"></div>
-        <div id="discover-more"></div>
-      </div>` + navBar('/search');
-    // Back is to the Filters, as they were left (not out of Discover).
-    qs('#results-back', root).addEventListener('click', paintFilters);
-    runSearch();
-  }
-
-  const resultsEl = () => qs('#discover-results', root);
-  const moreEl = () => qs('#discover-more', root);
-  const skeletonTiles = (n) => Array.from({ length: n }, () => `<div class="skeleton skeleton--tile"></div>`).join('');
-
-  // Bumped by every call, so a response that lands after a newer search
-  // has started is dropped instead of painting stale tiles.
-  let searchTicket = 0;
-
-  async function runSearch(reset = true) {
-    // NOT `if (loading) return`. A newer search supersedes an older one;
-    // bailing out here once left a freshly painted results screen empty
-    // for good whenever Apply was tapped while the previous request was
-    // still in flight.
-    const ticket = ++searchTicket;
+  async function load(reset) {
+    const my = ++ticket;
     loading = true;
-    if (reset) page = 1;
-    const warmed = takeWarmedDiscover(filters, page);
-    // Nothing to wait for when the warm already has it — drawing
-    // placeholders just to replace them a tick later is the flash this avoids.
-    if (reset && !warmed) { resultsEl().innerHTML = skeletonTiles(12); moreEl().innerHTML = ''; }
+    if (reset) {
+      page = 1; shown.length = 0;
+      grid.classList.add('discovery-grid');
+      grid.innerHTML = Array.from({ length: 12 }, () => '<div class="skeleton skeleton--tile"></div>').join('');
+      more.innerHTML = '';
+    }
     try {
-      const { games, hasMore } = await (warmed || api.browseGames({ ...filters, page }));
-      if (ticket !== searchTicket) return; // a newer search started mid-flight
-      if (!resultsEl()) return; // navigated away before this landed
-      if (reset) resultsEl().innerHTML = '';
-      if (reset && !games.length) {
-        resultsEl().classList.remove('discovery-grid');
-        resultsEl().innerHTML = `${emptyState('No games match those filters. Try loosening them up.', { icon: iconSearch() })}
-          <button type="button" class="btn btn--ghost btn--block" id="results-edit">Change filters</button>`;
-        qs('#results-edit', root).addEventListener('click', paintFilters);
+      await needDiary();
+      // The ready-made list's first page was usually fetched already (for
+      // Browse's thumbnails); untouched filters can paint from it.
+      const warm = reset && listId && LIST[listId] && !changed(filters) ? firstPage(listId) : null;
+      const { games, hasMore } = await (warm || api.browseGames(toQuery(filters, page)));
+      if (my !== ticket || !grid.isConnected) return;
+      if (reset) grid.innerHTML = '';
+      const list = filters.hideLogged ? games.filter((g) => !logged(g)) : games;
+      if (reset && !list.length && !hasMore) {
+        grid.classList.remove('discovery-grid');
+        grid.innerHTML = emptyState('No games match these filters.', { icon: iconSearch() })
+          + '<button type="button" class="btn btn--ghost btn--block" id="browse-edit">Change filters</button>';
+        qs('#browse-edit', root).addEventListener('click', openFilters);
       } else {
-        const start = resultsEl().children.length;
-        resultsEl().insertAdjacentHTML('beforeend', games.map((g, i) => `
-          <button type="button" class="discovery-tile" data-idx="${start + i}" data-igdb-id="${esc(String(g.igdb_id ?? ''))}" data-year="${esc(String(g.release_year ?? g.year ?? ''))}" aria-label="${esc(g.title)}">
+        const start = shown.length;
+        shown.push(...list);
+        grid.insertAdjacentHTML('beforeend', list.map((g, i) => `
+          <button type="button" class="discovery-tile${filters.fadeLogged && logged(g) ? ' discovery-tile--logged' : ''}" data-idx="${start + i}" aria-label="${esc(g.title)}">
             ${posterFrame(g.cover_url, g.title, 'discovery-tile__cover')}
           </button>`).join(''));
-        pageGames.splice(start, games.length, ...games);
-        const added = [...resultsEl().children].slice(start);
-        wireTiles();
+        const added = [...grid.children].slice(start);
+        added.forEach(wireTile);
         revealTogether(added);
       }
-      // Loads as you scroll; no button. The sentinel sits under the grid
-      // and the next page starts about a screen and a half early.
-      moreEl().innerHTML = hasMore ? `<div id="discover-sentinel" aria-hidden="true" style="height:1px"></div>` : '';
-      const sentinel = hasMore && qs('#discover-sentinel', moreEl());
+      // Next page loads as you scroll, about a screen and a half early.
+      more.innerHTML = hasMore ? '<div id="browse-sentinel" aria-hidden="true" style="height:1px"></div>' : '';
+      const sentinel = hasMore && qs('#browse-sentinel', more);
       if (sentinel && 'IntersectionObserver' in window) {
         const io = new IntersectionObserver((entries) => {
           if (!entries.some((e) => e.isIntersecting) || loading) return;
           io.disconnect();
           page += 1;
-          runSearch(false);
-        }, { root: sentinel.closest('.view-body') || null, rootMargin: '0px 0px 1200px 0px' });
+          load(false);
+        }, { root: sentinel.closest('.view-body'), rootMargin: '0px 0px 1200px 0px' });
         io.observe(sentinel);
       }
     } catch (err) {
-      if (ticket === searchTicket && resultsEl()) {
-        resultsEl().classList.remove('discovery-grid');
-        resultsEl().innerHTML = `<p class="muted">Couldn't load games right now: ${esc(err.message)}</p>`;
+      if (my === ticket && grid.isConnected) {
+        grid.classList.remove('discovery-grid');
+        grid.innerHTML = `<p class="muted">Couldn't load games right now: ${esc(err.message || '')}</p>`;
       }
     } finally {
-      if (ticket === searchTicket) loading = false;
+      if (my === ticket) loading = false;
     }
   }
 
-  // Every game shown so far, by its tile's data-idx, so a tap can import
-  // without a second fetch.
-  const pageGames = [];
-  function wireTiles() {
-    qsa('.discovery-tile', resultsEl()).forEach((btn) => {
-      if (btn.dataset.wired) return;
-      btn.dataset.wired = '1';
-      btn.addEventListener('click', async () => {
-        const g = pageGames[Number(btn.dataset.idx)];
-        if (!g || btn.dataset.opening) return;
-        // Discover is browsable while signed out — a not-yet-catalogued
-        // game opens live from IGDB instead of needing an account just to
-        // view it; signing in only comes up if it's actually logged.
-        if (!state.user) {
-          if (g.igdb_id) navigate(`/game/igdb/${g.igdb_id}`);
-          else toast("Couldn't open that game.", 'error');
-          return;
-        }
-        // A guard flag, not btn.disabled: this page is kept in the back
-        // stack, and a tile left disabled came back faded and dead to taps.
-        btn.dataset.opening = '1';
-        setTimeout(() => { delete btn.dataset.opening; }, 1500);
-        try {
-          const saved = await api.addGame(g, state.user.id);
-          navigate(`/game/${saved.id}`);
-        } catch (err) {
-          toast(err.message || 'Could not open that game.', 'error');
-          delete btn.dataset.opening;
-        }
-      });
+  function wireTile(btn) {
+    btn.addEventListener('click', async () => {
+      const g = shown[Number(btn.dataset.idx)];
+      if (!g || btn.dataset.opening) return;
+      if (!state.user) {
+        if (g.igdb_id) navigate(`/game/igdb/${g.igdb_id}`);
+        else toast("Couldn't open that game.", 'error');
+        return;
+      }
+      btn.dataset.opening = '1';
+      setTimeout(() => { delete btn.dataset.opening; }, 1500);
+      try {
+        const saved = await api.addGame(g, state.user.id);
+        navigate(`/game/${saved.id}`);
+      } catch (err) {
+        toast(err.message || 'Could not open that game.', 'error');
+        delete btn.dataset.opening;
+      }
     });
   }
 
-  paintFilters();
+  // ---- Filters: a full page over the games. X leaves without changing
+  // anything, the tick applies, Reset goes back to where this list started.
+  function openFilters() {
+    const draft = { ...filters };
+    const sheet = document.createElement('div');
+    sheet.className = 'browse-filters';
+    root.appendChild(sheet);
+    const close = () => sheet.remove();
+
+    const valueOf = (row) => {
+      if (row.toggle) return '';
+      if (row.text) return draft[row.key]?.trim() || 'Any';
+      return row.options.find((o) => o.value === String(draft[row.key] ?? ''))?.label || 'Any';
+    };
+    const isSet = (row) => String(draft[row.key] ?? '') !== String(base[row.key] ?? '');
+
+    function paintList() {
+      const rows = ROWS.filter((r) => !r.signedIn || state.user);
+      sheet.innerHTML = `
+        <div class="browse-filters__top">
+          <button type="button" class="browse-filters__icon" data-act="close" aria-label="Close">${iconClose()}</button>
+          <h2>Filters</h2>
+          <button type="button" class="browse-filters__icon browse-filters__icon--ok" data-act="apply" aria-label="Apply filters">${iconCheck()}</button>
+        </div>
+        <div class="browse-filters__body">
+          ${rows.map((r) => r.section
+            ? `<p class="browse-label">${esc(r.section)}</p>`
+            : r.toggle
+              ? `<button type="button" class="browse-frow" data-toggle="${r.key}">
+                   <span class="browse-frow__name">${esc(r.label)}</span>
+                   <span class="browse-switch${draft[r.key] ? ' is-on' : ''}" aria-hidden="true"></span>
+                 </button>`
+              : `<button type="button" class="browse-frow" data-row="${r.key}">
+                   <span class="browse-frow__name">${esc(r.label)}</span>
+                   <span class="browse-frow__value${isSet(r) ? ' is-set' : ''}">${esc(valueOf(r))}</span>
+                   ${chev()}
+                 </button>`).join('')}
+          <button type="button" class="browse-reset" data-act="reset">Reset filters</button>
+        </div>`;
+      qs('[data-act="close"]', sheet).addEventListener('click', close);
+      qs('[data-act="apply"]', sheet).addEventListener('click', () => {
+        Object.assign(filters, draft);
+        close();
+        syncCount();
+        load(true);
+      });
+      qs('[data-act="reset"]', sheet).addEventListener('click', () => { Object.assign(draft, base); paintList(); });
+      qsa('[data-toggle]', sheet).forEach((b) => b.addEventListener('click', () => {
+        draft[b.dataset.toggle] = !draft[b.dataset.toggle];
+        qs('.browse-switch', b).classList.toggle('is-on', draft[b.dataset.toggle]);
+      }));
+      qsa('[data-row]', sheet).forEach((b) => b.addEventListener('click', () => paintRow(ROWS.find((r) => r.key === b.dataset.row))));
+    }
+
+    // One filter's choices (or its text box), then straight back to the list.
+    function paintRow(row) {
+      sheet.innerHTML = `
+        <div class="browse-filters__top">
+          <button type="button" class="browse-filters__icon" data-act="back" aria-label="Back">${iconBackArrow()}</button>
+          <h2>${esc(row.label)}</h2>
+          <span class="browse-filters__icon"></span>
+        </div>
+        <div class="browse-filters__body">
+          ${row.text
+            ? `<div class="browse-text"><input type="text" class="search-input" id="browse-text" placeholder="${esc(row.text)}" value="${esc(draft[row.key] || '')}" autocomplete="off" enterkeyhint="done">
+                 <button type="button" class="btn btn--accent btn--block" data-act="done">Done</button></div>`
+            : row.options.map((o) => `
+              <button type="button" class="browse-opt${String(draft[row.key] ?? '') === o.value ? ' is-on' : ''}" data-v="${esc(o.value)}">
+                <span>${esc(o.label)}</span>${String(draft[row.key] ?? '') === o.value ? iconCheck() : ''}
+              </button>`).join('')}
+        </div>`;
+      qs('[data-act="back"]', sheet).addEventListener('click', paintList);
+      if (row.text) {
+        const input = qs('#browse-text', sheet);
+        const done = () => { draft[row.key] = input.value.trim(); paintList(); };
+        qs('[data-act="done"]', sheet).addEventListener('click', done);
+        input.addEventListener('keydown', (e) => { if (e.key === 'Enter') done(); });
+        input.focus();
+      } else {
+        qsa('.browse-opt', sheet).forEach((b) => b.addEventListener('click', () => { draft[row.key] = b.dataset.v; paintList(); }));
+      }
+    }
+
+    paintList();
+  }
+
+  syncCount();
+  load(true);
+}
+
+function iconCheck() {
+  return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+}
+function iconBackArrow() {
+  return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>';
 }

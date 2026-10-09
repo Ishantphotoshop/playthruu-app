@@ -69,7 +69,7 @@ export function renderSearchView(root, { initialTab = 'games' } = {}) {
     <div class="view-body view-body--search">
       <form class="search-bar-row" id="search-form">
         <input type="search" id="search-input" class="search-input" placeholder="${TAB[tab].placeholder}" autocomplete="off" enterkeyhint="search">
-        <a href="#/discover/filters" class="filter-btn" id="filter-btn" aria-label="Filter games">${iconFilter()}</a>
+        <a href="#/discover" class="filter-btn" id="filter-btn" aria-label="Browse and filter games">${iconFilter()}</a>
       </form>
       <div id="search-results" class="search-results">${TABS.map((t) => `<div class="search-pane" data-pane="${t.id}"${t.id === tab ? '' : ' hidden'}></div>`).join('')}</div>
     </div>` + navBar('/search');

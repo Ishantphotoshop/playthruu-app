@@ -418,7 +418,8 @@ function resolve(force = false) {
 
 function updateNav(path) {
   document.querySelectorAll('.tabbar [data-route]').forEach(el => {
-    const base = '/' + path.split('/')[1];
+    let base = '/' + path.split('/')[1];
+    if (base === '/discover') base = '/search'; // Browse lives under the Search tab
     el.classList.toggle('tabbar__item--active', el.dataset.route === base);
   });
 }
