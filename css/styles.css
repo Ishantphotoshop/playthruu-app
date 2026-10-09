@@ -347,7 +347,7 @@ html { background: var(--bg); }
    bottom by exactly the measured strip. */
 html.vp-gap { height: calc(100% + var(--vp-gap)); }
 html.vp-gap body { background: var(--bg); }
-html.vp-gap #app { height: calc(100dvh + var(--vp-gap)); }
+html.vp-gap #app { height: calc(var(--app-h, 100dvh) + var(--vp-gap)); }
 html.vp-gap :is(.tabbar, .filters-bar, .rv-composer, .thread-composer, .modal-overlay, .draw-overlay, .poster-viewer,
   .avatar-viewer, .avatar-crop, .image-viewer, .story-viewer, .celebrate-layer) {
   bottom: calc(-1 * var(--vp-gap));
@@ -409,6 +409,7 @@ ul { list-style: none; margin: 0; padding: 0; }
      100vh first as the fallback for browsers without dvh. */
   height: 100vh;
   height: 100dvh;
+  height: var(--app-h, 100dvh);
   display: flex;
   flex-direction: column;
   position: relative;
@@ -511,7 +512,7 @@ ul { list-style: none; margin: 0; padding: 0; }
      below is shorter and flush, so less reserved space is needed to
      clear it — kept a little more than the bar's own ~67px footprint
      for breathing room, not cut exactly to it. */
-  padding: var(--space-4) var(--gutter) calc(90px + var(--safe-bottom));
+  padding: var(--space-4) var(--gutter) max(calc(90px + var(--safe-bottom)), var(--bar-clear, 0px));
   overflow-y: auto;
   /* Same "scroll still works, the track just isn't drawn" treatment
      .trending-strip already used for its own horizontal scroll — a
@@ -1817,7 +1818,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 
    There is no tab bar on this screen (see renderReviewView) — the
    composer takes that place rather than stacking on top of it. */
-.view-body--review { padding-bottom: calc(134px + var(--safe-bottom)); }
+.view-body--review { padding-bottom: max(calc(134px + var(--safe-bottom)), calc(var(--bar-clear, 0px) + 44px)); }
 /* The one page whose title is set in the brand face. It names the thing
    you are looking at rather than a destination, so it reads as a
    masthead. */
@@ -6660,7 +6661,7 @@ a.gd-credit__name { text-decoration: none; }
    One section per filter: a Unbounded title, what's picked there on the right
    (only when it isn't the default), then the chips. Clear all and Apply
    filters live in a bar fixed to the bottom, same column as the tab bar. */
-.view-body--filters { padding-bottom: calc(104px + var(--safe-bottom)); }
+.view-body--filters { padding-bottom: max(calc(104px + var(--safe-bottom)), calc(var(--bar-clear, 0px) + 14px)); }
 .fsec { display: flex; flex-direction: column; gap: 12px; min-width: 0; margin-bottom: 26px; }
 .fsec__head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; min-height: 18px; }
 .fsec__title { margin: 0; font-family: var(--font-brand); font-weight: 700; font-size: 15px; letter-spacing: -0.01em; color: var(--ink); }

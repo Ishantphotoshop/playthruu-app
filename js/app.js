@@ -304,6 +304,24 @@ function wireGlobalChrome() {
   });
 }
 
+// The scroll area has to end ABOVE the tab bar, with room to spare. If the
+// app's box is taller than what is on screen (some Android WebViews count the
+// system bars in the viewport), the last rows scroll to a spot under the bar
+// and can never be reached. This measures how far the scroll area really runs
+// under the bar and hands CSS that distance (plus a margin) as --bar-clear.
+function keepContentClearOfBar() {
+  const run = () => {
+    const vb = document.querySelector('.view-body');
+    const bar = document.querySelector('.tabbar');
+    const root = document.documentElement;
+    if (!vb || !bar) return;
+    const under = vb.getBoundingClientRect().bottom - bar.getBoundingClientRect().top;
+    root.style.setProperty('--bar-clear', under > 0 ? `${Math.ceil(under) + 28}px` : '0px');
+  };
+  requestAnimationFrame(run);
+  setTimeout(run, 350);
+}
+
 // Every modal/sheet in the app (log entry, GIF picker, poster/avatar/
 // message-image viewers, auth sheet, QR code, etc.) appends itself
 // straight onto <body>, deliberately outside #app — that's what lets it
@@ -798,7 +816,9 @@ async function boot() {
   window.addEventListener('hashchange', closeStrayOverlays);
   // A page put back from the back stack still has the tab bar it was
   // built with; bring its badges up to date like a fresh one's.
-  window.addEventListener('page:shown', () => { applyMessageBadge(); applyNotifBadge(); document.activeElement?.blur?.(); });
+  window.addEventListener('page:shown', () => { applyMessageBadge(); applyNotifBadge(); document.activeElement?.blur?.(); keepContentClearOfBar(); });
+  window.addEventListener('resize', keepContentClearOfBar);
+  setTimeout(keepContentClearOfBar, 400);
   // The hub clears the inbox server-side when it opens; this is how the
   // bell hears about it without polling.
   window.addEventListener('notifications:read', () => {

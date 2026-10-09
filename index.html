@@ -29,6 +29,18 @@
 <meta name="apple-mobile-web-app-title" content="Playthruu">
 <link rel="stylesheet" href="css/styles.css">
 <script>
+  // The real visible height, as a CSS variable. 100vh / 100dvh are wrong in
+  // some Android WebViews (they include the system bars), which made the
+  // app taller than the screen: scrolling stopped with the last rows still
+  // under the tab bar. window.innerHeight is what is actually on screen.
+  (() => {
+    const set = () => document.documentElement.style.setProperty('--app-h', window.innerHeight + 'px');
+    set();
+    addEventListener('resize', set);
+    addEventListener('orientationchange', () => setTimeout(set, 300));
+  })();
+</script>
+<script>
   // iPhone home-screen app only (navigator.standalone is iOS-only). With the
   // black-translucent status bar, some iOS versions report a viewport
   // shorter than the screen by about the status bar's height, so #app and
