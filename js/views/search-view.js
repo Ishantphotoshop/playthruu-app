@@ -99,7 +99,10 @@ export function renderSearchView(root, { initialTab = 'games' } = {}) {
     const img = e.thumb
       ? `<img src="${esc(e.thumb)}" alt="" loading="lazy" decoding="async" onerror="this.remove()">`
       : '';
-    return `<span class="recent-thumb recent-thumb--${e.tab}"><span class="recent-thumb__icon">${TAB[e.tab].icon}</span>${img}</span>`;
+    // Games (and anything showing a game cover) get a rounded square, not
+    // the circle that people, studios and artists use.
+    const isGame = e.tab === 'games' || (e.thumb && e.thumb.includes('images.igdb.com') && !/\/t_logo/.test(e.thumb) && e.tab !== 'studios');
+    return `<span class="recent-thumb recent-thumb--${e.tab}${isGame ? ' recent-thumb--game' : ''}"><span class="recent-thumb__icon">${TAB[e.tab].icon}</span>${img}</span>`;
   }
   function recentSearchesBlock() {
     const entries = getRecentSearches().filter((e) => TABS.some((t) => t.id === e.tab));
@@ -505,7 +508,7 @@ export function renderSearchView(root, { initialTab = 'games' } = {}) {
         if (ticket !== searchTicket) return;
         searchPage = 1; searchHasMore = !!hasMore; searchLoading = false;
         paintGameResults(found);
-        if (found.length) recordRecentSearch(q, tab, smallCover(found[0].cover_url));
+        if (found.length) recordRecentSearch(q, tab, smallCover(found[0].cover_url), { guess: true });
       } else if (tab === 'people') {
         results.innerHTML = skeletonList(4);
         const people = await api.searchUsers(q);
@@ -513,7 +516,7 @@ export function renderSearchView(root, { initialTab = 'games' } = {}) {
         if (!people.length) {
           results.innerHTML = emptyState(`No one found for "${q}".`, { icon: iconSearch() });
         } else {
-          recordRecentSearch(q, tab, people[0].avatar_url);
+          recordRecentSearch(q, tab, people[0].avatar_url, { guess: true });
           const followingSet = await api.getFollowingIdSet(state.user?.id);
           if (ticket !== searchTicket) return;
           results.innerHTML = `<div class="profile-list">${people.map(p =>
@@ -523,7 +526,7 @@ export function renderSearchView(root, { initialTab = 'games' } = {}) {
           // player search mattered — record it into history at that point
           // (not on every keystroke).
           qsa('.profile-row__link', results).forEach((a) =>
-            a.addEventListener('click', () => recordRecentSearch(input.value.trim(), tab, people[0].avatar_url)));
+            a.addEventListener('click', () => recordRecentSearch(input.value.trim(), tab, a.querySelector('img')?.getAttribute('src') || people[0].avatar_url)));
           wireFollowButtons(results, {
             onToggle: async (userId, wasFollowing) => {
               recordRecentSearch(input.value.trim(), tab, people[0].avatar_url);
@@ -578,7 +581,7 @@ export function renderSearchView(root, { initialTab = 'games' } = {}) {
         if (!sections.length) { results.innerHTML = emptyState(`Nothing found for "${q}".`, { icon: iconSearch() }); return; }
         results.innerHTML = sections.join('');
         const thumb = gShown[0] ? smallCover(gShown[0].cover_url) : (people[0]?.avatar_url || studios[0]?.logo || artists[0]?.photo || null);
-        recordRecentSearch(q, tab, thumb);
+        recordRecentSearch(q, tab, thumb, { guess: true });
         qsa('.entity-row', results).forEach((a) =>
           a.addEventListener('click', () => recordRecentSearch(input.value.trim(), tab, a.dataset.recordThumb || thumb)));
         // "See all" jumps to that kind's own tab and runs the same search.
@@ -592,7 +595,7 @@ export function renderSearchView(root, { initialTab = 'games' } = {}) {
           title: l.name,
           meta: [l.owner ? `by ${l.owner.display_name || l.owner.username}` : '', `${l.count} game${l.count === 1 ? '' : 's'}`].filter(Boolean).join(' · '),
         })), `No lists found for "${q}".`);
-        if (lists.length) recordRecentSearch(q, tab, smallCover(lists[0].cover_url));
+        if (lists.length) recordRecentSearch(q, tab, smallCover(lists[0].cover_url), { guess: true });
       } else if (tab === 'studios') {
         results.innerHTML = skeletonList(4);
         const studios = await api.searchStudios(q);
@@ -601,7 +604,7 @@ export function renderSearchView(root, { initialTab = 'games' } = {}) {
           href: `#/studio/${s.id}`, shape: 'logo', img: s.logo, fallbackIcon: TAB.studios.icon, thumb: s.logo,
           title: s.name, meta: [s.year ? `Founded ${s.year}` : '', s.games ? `${s.games} game${s.games === 1 ? '' : 's'}` : ''].filter(Boolean).join(' · '),
         })), `No studios found for "${q}".`);
-        if (studios.length) recordRecentSearch(q, tab, studios[0].logo);
+        if (studios.length) recordRecentSearch(q, tab, studios[0].logo, { guess: true });
       } else {
         results.innerHTML = skeletonList(4);
         const artists = await api.searchArtists(q);
@@ -610,7 +613,7 @@ export function renderSearchView(root, { initialTab = 'games' } = {}) {
           href: `#/person/${a.qid}`, shape: 'round', img: a.photo, fallbackIcon: TAB.artists.icon, thumb: a.photo,
           title: a.name, meta: a.description,
         })), `No artists found for "${q}".`);
-        if (artists.length) recordRecentSearch(q, tab, artists[0].photo);
+        if (artists.length) recordRecentSearch(q, tab, artists[0].photo, { guess: true });
       }
       if (ticket === searchTicket && results === paneAtStart && results.children.length) results.dataset.q = q;
     } catch (err) {

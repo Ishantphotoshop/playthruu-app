@@ -355,7 +355,11 @@ const RECENT_SEARCH_TABS = ['games', 'people', 'all', 'lists', 'studios', 'artis
 // `thumb` is a small picture of what the search found (the game's poster,
 // the player's photo, a studio's logo), shown beside the word in the
 // recent list. Re-running a search without one keeps the picture it had.
-export function recordRecentSearch(term, tab, thumb) {
+// `guess: true` marks a picture that is only the first result (not something
+// the person chose): it never replaces a picture already saved, so opening
+// "The Last of Us Complete Edition" keeps that cover on the recent search
+// instead of it flipping back to the first result next time it is run.
+export function recordRecentSearch(term, tab, thumb, { guess = false } = {}) {
   const q = term?.trim();
   if (!q || !RECENT_SEARCH_TABS.includes(tab)) return;
   try {
@@ -363,7 +367,8 @@ export function recordRecentSearch(term, tab, thumb) {
     // tabs keeps one entry each, and re-searching bumps it to the top.
     const all = getRecentSearches();
     const same = (e) => e.term.toLowerCase() === q.toLowerCase() && e.tab === tab;
-    const kept = thumb || all.find(same)?.thumb || null;
+    const prev = all.find(same)?.thumb || null;
+    const kept = guess ? (prev || thumb || null) : (thumb || prev || null);
     const list = all.filter((e) => !same(e));
     list.unshift(kept ? { term: q, tab, thumb: kept } : { term: q, tab });
     localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(list.slice(0, RECENT_SEARCHES_MAX)));
