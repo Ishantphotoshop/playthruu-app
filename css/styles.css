@@ -6145,8 +6145,8 @@ a.gd-credit__name { text-decoration: none; }
    reads as one continuous thing to scan. Slightly more padding takes
    over the separating job the border used to do. */
 .act {
-  display: flex; align-items: flex-start; gap: 10px;
-  width: 100%; padding: 11px 2px; text-align: left;
+  display: flex; align-items: flex-start; gap: 12px;
+  width: 100%; padding: 14px 0; text-align: left;
   background: none; border: none;
   color: var(--ink); cursor: pointer;
   -webkit-tap-highlight-color: transparent;
@@ -6915,3 +6915,13 @@ a.gd-credit__name { text-decoration: none; }
 .confirm-dialog__msg { font-size: 12.5px; margin-top: 6px; }
 .confirm-dialog__actions { gap: 8px; margin-top: 16px; }
 .confirm-dialog__btn { min-height: 40px; border-radius: 12px; font-size: 14px; }
+
+/* Notifications: everything on the app's own edges. The avatars start at the
+   same left edge as the tabs above, the time ends at the same right edge, and
+   the rows breathe. */
+.view-body--search #act-slot { padding-top: 6px; }
+.act__text { font-size: 14px; line-height: 1.5; }
+.act__time { font-size: 11px; padding-top: 3px; margin-left: 4px; }
+.act__body { gap: 4px; }
+.act__quote { margin-top: 4px; }
+.act__dot { margin-left: 2px; }

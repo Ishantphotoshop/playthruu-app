@@ -123,7 +123,7 @@ function describe(row, viewerId) {
 function activityRow(row, viewerId) {
   const { text, quote, href } = describe(row, viewerId);
   const unread = !!row.unread;
-  const avatar = row.actor ? avatarImg(row.actor, 30) : '';
+  const avatar = row.actor ? avatarImg(row.actor, 36) : '';
   // A button rather than an anchor: plenty of rows have nowhere to go
   // (a deleted log, an account since removed) and a dead href is worse
   // than a row that simply does not respond to a tap.
@@ -289,7 +289,8 @@ export async function renderNotificationsView(root) {
       });
       if (my !== ticket) return; // another tab or refresh started meanwhile
       if (isDefaultView) setCached(CACHE_KEYS.notifications, res);
-      rows = reset ? res.rows : rows.concat(res.rows);
+      if (reset) rows = res.rows;
+      else { const seen = new Set(rows.map((r) => r.key)); rows = rows.concat(res.rows.filter((r) => !seen.has(r.key))); }
       cursor = res.cursor;
       hasMore = res.hasMore;
       paintList();
@@ -308,9 +309,11 @@ export async function renderNotificationsView(root) {
   // thing on screen the moment you arrive, so they are shown and then
   // cleared server-side rather than the list rendering already-read.
   function markVisibleRead() {
-    const ids = rows.filter((r) => r.unread && r.notification_id).map((r) => r.notification_id);
-    if (!ids.length) return;
-    api.markNotificationsRead(ids)
+    // Only the All tab is the inbox: opening it reads everything, the way
+    // opening Instagram's notifications does. The dots stay on screen for
+    // this visit, so you can still see what was new, and the bell clears.
+    if (activeTab !== 'all' || !viewerId) return;
+    api.markAllNotificationsRead(viewerId)
       .then(() => { window.dispatchEvent(new CustomEvent('notifications:read')); })
       .catch(() => { /* the badge simply stays until the next load */ });
   }

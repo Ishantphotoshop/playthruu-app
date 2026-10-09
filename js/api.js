@@ -4621,6 +4621,7 @@ export async function getUnreadNotificationCount(userId) {
     .from('notifications')
     .select('id', { count: 'exact', head: true })
     .eq('user_id', userId)
+    .neq('kind', 'message') // a message has its own count; this bell is only what the Notifications screen lists
     .is('read_at', null);
   if (error) throw error;
   return count || 0;
@@ -4634,6 +4635,7 @@ export async function markAllNotificationsRead(userId) {
     .from('notifications')
     .update({ read_at: new Date().toISOString() })
     .eq('user_id', userId)
+    .neq('kind', 'message')
     .is('read_at', null);
   if (error) throw error;
 }
@@ -4751,7 +4753,7 @@ async function actLogs(actorIds, limit, before) {
       games!logs_game_id_fkey(${ACT_GAME})`)
     .in('user_id', actorIds)
     .eq('is_public', true);
-  if (before) q = q.lt('created_at', before);
+  if (before) q = q.lte('created_at', before);
   const { data, error } = await q.order('created_at', { ascending: false }).limit(limit);
   if (error) throw error;
   return (data || []).filter((l) => l.games).map((l) => ({
@@ -4775,7 +4777,7 @@ async function actLikes(actorIds, limit, before) {
         games!logs_game_id_fkey(${ACT_GAME}),
         owner:profiles!logs_user_id_fkey(${ACT_ACTOR}))`)
     .in('user_id', actorIds);
-  if (before) q = q.lt('created_at', before);
+  if (before) q = q.lte('created_at', before);
   const { data, error } = await q.order('created_at', { ascending: false }).limit(limit);
   if (error) throw error;
   // A like on a log that has since been made private stays hidden: the
@@ -4800,7 +4802,7 @@ async function actFollows(actorIds, limit, before) {
       actor:profiles!follows_follower_id_fkey(${ACT_ACTOR}),
       target:profiles!follows_following_id_fkey(${ACT_ACTOR})`)
     .in('follower_id', actorIds);
-  if (before) q = q.lt('created_at', before);
+  if (before) q = q.lte('created_at', before);
   const { data, error } = await q.order('created_at', { ascending: false }).limit(limit);
   if (error) throw error;
   return (data || []).map((r) => ({
@@ -4823,7 +4825,7 @@ async function actComments(actorIds, limit, before) {
         games!logs_game_id_fkey(${ACT_GAME}),
         owner:profiles!logs_user_id_fkey(${ACT_ACTOR}))`)
     .in('user_id', actorIds);
-  if (before) q = q.lt('created_at', before);
+  if (before) q = q.lte('created_at', before);
   const { data, error } = await q.order('created_at', { ascending: false }).limit(limit);
   if (error) throw error;
   return (data || []).filter((r) => r.log?.is_public && r.log.games).map((r) => ({
@@ -4854,7 +4856,7 @@ async function actIncoming(userId, limit, before) {
       comment:comments!notifications_comment_id_fkey(id, body)`)
     .eq('user_id', userId)
     .neq('kind', 'message');
-  if (before) q = q.lt('created_at', before);
+  if (before) q = q.lte('created_at', before);
   const { data, error } = await q.order('created_at', { ascending: false }).limit(limit);
   if (error) throw error;
   return (data || []).map((n) => {
