@@ -641,30 +641,4 @@ export function renderSearchView(root, { initialTab = 'games' } = {}) {
     typeTimer = setTimeout(() => doSearch(), 300);
   });
 
-  // Swipe sideways on empty space to flip between Games, People and All,
-  // same as Feed/News on Home. Skips inputs, anything that scrolls sideways
-  // and the tab bar, and only counts clear, mostly-horizontal swipes.
-  let sx = 0, sy = 0, swipeOk = false;
-  const blocksSwipe = (el) => {
-    for (let n = el; n && n !== root; n = n.parentElement) {
-      if (n.matches?.('input, textarea, select, [data-no-swipe], .tabbar')) return true;
-      if (n.scrollWidth > n.clientWidth + 2 && /(auto|scroll)/.test(getComputedStyle(n).overflowX)) return true;
-    }
-    return false;
-  };
-  root.addEventListener('touchstart', (e) => {
-    swipeOk = e.touches.length === 1 && !blocksSwipe(e.target);
-    sx = e.touches[0].clientX; sy = e.touches[0].clientY;
-  }, { passive: true });
-  root.addEventListener('touchend', (e) => {
-    if (!swipeOk) return;
-    swipeOk = false;
-    const t = e.changedTouches[0];
-    const dx = t.clientX - sx, dy = t.clientY - sy;
-    if (Math.abs(dx) < 70 || Math.abs(dy) > Math.abs(dx) * 0.6) return;
-    const i = TABS.findIndex((x) => x.id === tab) + (dx < 0 ? 1 : -1);
-    if (i < 0 || i >= TABS.length) return;
-    qs(`.segmented__item[data-tab="${TABS[i].id}"]`, root).click();
-  }, { passive: true });
-  root.addEventListener('touchcancel', () => { swipeOk = false; }, { passive: true });
 }

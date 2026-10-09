@@ -189,7 +189,8 @@ function directionTo(path, st) {
 function paint(run, direction) {
   const animate = typeof document.startViewTransition === 'function'
     && !prefersReducedMotion.matches
-    && !skipNextTransition;
+    && !skipNextTransition
+    && direction !== 'tab'; // switching between the main tabs is instant
   skipNextTransition = false;
   // The CSS reads this to decide how the two screens move: a stack push
   // slides, a pop slides the other way, a tab switch does neither.
