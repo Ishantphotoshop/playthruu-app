@@ -133,15 +133,14 @@ const starsLabel = (v) => {
   const whole = Math.floor(n);
   return `${whole || ''}${n % 1 ? '\u00bd' : ''} star${n === 1 ? '' : 's'}`;
 };
-// Five stars filled to `v` (0 to 5, halves allowed). Each star is its own
-// SVG with its filled copy clipped at exactly half its width, so a half
-// star is cut straight down the middle.
-const STAR_PATH = 'M12 1.8l3.1 6.6 7.2.9-5.3 5 1.3 7.1L12 17.9l-6.3 3.5 1.3-7.1-5.3-5 7.2-.9z';
+// Five stars filled to `v` (0 to 5, halves allowed). The same star glyph as
+// before, but each one is its own box with the filled copy cut at exactly
+// half of THAT box, so a half star is split down its own middle.
 const starsHtml = (v) => {
   const n = Number(v) || 0;
   return `<span class="star-row" aria-hidden="true">${[1, 2, 3, 4, 5].map((i) => {
-    const fill = n >= i ? 24 : n >= i - 0.5 ? 12 : 0;
-    return `<svg class="star-row__star" viewBox="0 0 24 24"><defs><clipPath id="sc${i}"><rect x="0" y="0" width="${fill}" height="24"/></clipPath></defs><path class="star-row__base" d="${STAR_PATH}"/><path class="star-row__fill" d="${STAR_PATH}" clip-path="url(#sc${i})"/></svg>`;
+    const pct = n >= i ? 100 : n >= i - 0.5 ? 50 : 0;
+    return `<span class="star-g"><span class="star-g__base">\u2605</span><span class="star-g__fill" style="width:${pct}%">\u2605</span></span>`;
   }).join('')}</span>`;
 };
 
@@ -406,7 +405,7 @@ export function renderBrowseGames(root) {
             <div class="star-pick__stars">${starsHtml(draft.stars)}
               <input type="range" class="star-pick__range" min="0" max="5" step="0.5" value="${Number(draft.stars) || 0}" aria-label="Star rating">
             </div>
-            <button type="button" class="star-pick__clear" data-act="clear-stars"${draft.stars ? '' : ' hidden'}>Clear</button>
+            <button type="button" class="star-pick__clear" data-act="clear-stars"${draft.stars ? '' : ' hidden'}>Reset</button>
           </div>
         </div>`;
       qs('[data-act="back"]', sheet).addEventListener('click', paintList);
