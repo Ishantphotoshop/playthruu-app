@@ -145,27 +145,20 @@ let lastTab = 'all';
 
 export async function renderNotificationsView(root) {
   let activeTab = pullRefreshing ? lastTab : 'all';
-  let ticket = 0; // newest load wins; an older answer is dropped
-  let rows = [];
-  let cursor = null;
-  let hasMore = false;
-  let loading = false;
-  let actGuard = null;
-  let sentinelObserver = null;
   const viewerId = state.user?.id;
 
-  // ---- the shell -------------------------------------------------------
-  // Painted ONCE. The head is the same shape as Messages' and Search's —
-  // a large title in the scrolling body with the segmented control
-  // directly beneath — so the Friends/You/Incoming bar lands at the same
-  // height on screen as Chats/Requests, Games/Players and Feed/News. It
-  // used to be a topbar plus a separate sticky tab strip, which sat the
-  // pill at a different height from every other tabbed screen.
-  //
-  // No back chevron: this is one of the five destinations in the tab
-  // bar, and none of the others has one — there is nothing consistent
-  // for "back" to mean from a tab you reached by tapping its own icon.
-  // The filter sits where Messages puts its compose button.
+  // One pane per tab, all kept. Switching tabs shows the other pane instead of
+  // loading it again, so a tab stays loaded, exactly as you left it (rows, how
+  // far you had scrolled, and its own place in the list). Each tab has its own
+  // state and its own "newest load wins" ticket, so a slow answer for one tab
+  // can never land in another.
+  const STALE_MS = 45_000; // a tab you come back to after this long refreshes quietly
+  const T = Object.fromEntries(TABS.map((t) => [t.id, {
+    id: t.id, rows: [], cursor: null, hasMore: false, loading: false, ticket: 0,
+    loadedAt: 0, scroll: 0, observer: null, guard: null, pane: null,
+  }]));
+  const cur = () => T[activeTab];
+
   function paintShell() {
     const idx = TABS.findIndex((t) => t.id === activeTab);
     root.innerHTML = `
@@ -176,21 +169,14 @@ export async function renderNotificationsView(root) {
         </nav>
       </div>
       <div class="view-body view-body--search" id="act-body">
-        <div id="act-slot">${spinner()}</div>
+        <div id="act-slot">
+          ${TABS.map((t) => `<div class="act-pane" data-pane="${t.id}"${t.id === activeTab ? '' : ' hidden'}>${spinner()}</div>`).join('')}
+        </div>
       </div>` + navBar('');
+    TABS.forEach((t) => { T[t.id].pane = qs(`.act-pane[data-pane="${t.id}"]`, root); });
 
     qsa('#act-tabs .home-tabs__item', root).forEach((btn) => {
-      btn.addEventListener('click', () => {
-        if (btn.dataset.tab === activeTab) return;
-        activeTab = btn.dataset.tab;
-        lastTab = activeTab;
-        // The other tab's rows must not sit under this tab's name while it loads.
-        if (slot()) slot().innerHTML = spinner();
-        qs('#act-tabs', root).style.setProperty('--i', String(TABS.findIndex((t) => t.id === activeTab)));
-        qsa('#act-tabs .home-tabs__item', root).forEach((b) =>
-          b.classList.toggle('home-tabs__item--active', b.dataset.tab === activeTab));
-        load({ reset: true });
-      });
+      btn.addEventListener('click', () => switchTab(btn.dataset.tab));
     });
 
     qs('#act-slot', root).addEventListener('click', (e) => {
@@ -203,78 +189,96 @@ export async function renderNotificationsView(root) {
     wirePullToRefresh(qs('#act-body', root));
   }
 
-  const slot = () => qs('#act-slot', root);
+  const body = () => qs('#act-body', root);
 
-  function emptyMessage() {
-    if (activeTab === 'you') return "You haven't done anything yet — log a game and it shows up here.";
-    if (activeTab === 'friends') return 'Nothing from the people you follow yet. Follow a few people and their activity fills this in.';
+  function switchTab(id) {
+    if (id === activeTab || !T[id]) return;
+    const from = cur();
+    from.scroll = body().scrollTop;
+    activeTab = id;
+    lastTab = id;
+    const to = cur();
+    qs('#act-tabs', root).style.setProperty('--i', String(TABS.findIndex((t) => t.id === id)));
+    qsa('#act-tabs .home-tabs__item', root).forEach((b) =>
+      b.classList.toggle('home-tabs__item--active', b.dataset.tab === id));
+    TABS.forEach((t) => { T[t.id].pane.hidden = t.id !== id; });
+    if (to.loadedAt) {
+      // Already loaded: just show it where it was left. Quietly refresh it if
+      // it has been a while.
+      body().scrollTop = to.scroll;
+      watchEnd(to);
+      if (Date.now() - to.loadedAt > STALE_MS) load(to, { reset: true });
+    } else {
+      body().scrollTop = 0;
+      load(to, { reset: true });
+    }
+  }
+
+  function emptyMessage(id) {
+    if (id === 'you') return "You haven't done anything yet — log a game and it shows up here.";
+    if (id === 'friends') return 'Nothing from the people you follow yet. Follow a few people and their activity fills this in.';
     return 'Nothing yet. Follow a few people, and what they do (and what happens to you) shows up here.';
   }
 
-  function paintList() {
-    const body = slot();
-    if (!body) return;
-    if (!rows.length) {
-      body.innerHTML = emptyState(emptyMessage(), { icon: iconBell() });
+  function paintList(t) {
+    if (!t.pane) return;
+    if (!t.rows.length) {
+      t.pane.innerHTML = emptyState(emptyMessage(t.id), { icon: iconBell() });
       return;
     }
-    // Reaching the bottom loads the next page by itself. The button that
-    // used to be here is kept only for browsers with no
-    // IntersectionObserver, where nothing would otherwise trigger the
-    // load and the spinner would spin for ever.
-    body.innerHTML = `
-      <div class="act-list">${rows.map((r) => activityRow(r, viewerId)).join('')}</div>
-      ${hasMore ? `<div id="act-sentinel" aria-hidden="true"></div>
-         <div class="act-more" id="act-more">${spinner()}</div>` : ''}`;
-    observeSentinel();
+    t.pane.innerHTML = `
+      <div class="act-list">${t.rows.map((r) => activityRow(r, viewerId)).join('')}</div>
+      ${t.hasMore ? `<div class="act-sentinel" aria-hidden="true"></div>
+         <div class="act-more">${spinner()}</div>` : ''}`;
+    if (t.id === activeTab) watchEnd(t);
   }
 
-  function observeSentinel() {
-    if (sentinelObserver) { sentinelObserver.disconnect(); sentinelObserver = null; }
-    const sentinel = qs('#act-sentinel', root);
+  // Loads the next page as the end of THIS tab's list comes near.
+  function watchEnd(t) {
+    if (t.observer) { t.observer.disconnect(); t.observer = null; }
+    if (t.guard) { t.guard.stop(); t.guard = null; }
+    const sentinel = qs('.act-sentinel', t.pane);
     if (!sentinel) return;
     if (!('IntersectionObserver' in window)) {
-      const more = qs('#act-more', root);
+      const more = qs('.act-more', t.pane);
       if (more) {
-        more.innerHTML = `<button type="button" class="btn btn--ghost btn--block" id="act-more-btn">Load more</button>`;
-        qs('#act-more-btn', more).addEventListener('click', () => load({ reset: false }));
+        more.innerHTML = `<button type="button" class="btn btn--ghost btn--block">Load more</button>`;
+        qs('button', more).addEventListener('click', () => load(t, { reset: false }));
       }
       return;
     }
-    sentinelObserver = new IntersectionObserver((entries) => {
-      if (entries.some((e) => e.isIntersecting)) load({ reset: false });
-    }, { root: qs('#act-body', root), rootMargin: '1200px' });
-    sentinelObserver.observe(sentinel);
-    if (actGuard) actGuard.stop();
-    actGuard = keepLoading({ sentinel: () => qs('#act-sentinel', root), scroller: () => qs('#act-body', root), trigger: () => load({ reset: false }), margin: 1200 });
+    t.observer = new IntersectionObserver((entries) => {
+      if (t.id === activeTab && entries.some((e) => e.isIntersecting)) load(t, { reset: false });
+    }, { root: body(), rootMargin: '1200px' });
+    t.observer.observe(sentinel);
+    t.guard = keepLoading({
+      sentinel: () => qs('.act-sentinel', t.pane),
+      scroller: () => body(),
+      trigger: () => { if (t.id === activeTab) load(t, { reset: false }); },
+      margin: 1200,
+    });
   }
 
-  async function load({ reset }) {
-    if (!reset && (loading || !hasMore)) return;
-    const my = ++ticket;
-    loading = true;
+  async function load(t, { reset }) {
+    if (!reset && (t.loading || !t.hasMore)) return;
+    const my = ++t.ticket;
+    t.loading = true;
     if (reset) {
-      rows = [];
-      cursor = null;
-      hasMore = false;
-      if (sentinelObserver) { sentinelObserver.disconnect(); sentinelObserver = null; }
-      // A spinner ONLY when there is nothing to show yet. Warmed rows
-      // are already on screen by the time the refetch runs, and
-      // replacing them with a spinner to fetch the same thing again is
-      // the flash the warming exists to avoid.
-      if (slot() && !slot().querySelector('.act')) slot().innerHTML = spinner();
+      t.cursor = null;
+      // A spinner only while this tab has nothing to show; a refresh of a tab
+      // that is already on screen happens quietly behind its rows.
+      if (!t.loadedAt && !t.pane.querySelector('.act')) t.pane.innerHTML = spinner();
     }
 
-    // The default view — All, first page — is what
-    // warmOtherTabs() fetches in the background while you are still on
-    // the feed. Painting it before the network answers is the whole
-    // reason for warming it.
-    const isDefaultView = reset && activeTab === 'all';
+    // The default view (All, first page) is fetched in the background by
+    // warmOtherTabs() while you are still on the feed, so it can be on
+    // screen before the network answers.
+    const isDefaultView = reset && t.id === 'all' && !t.loadedAt;
     if (isDefaultView) {
       const warm = getCached(CACHE_KEYS.notifications);
       if (warm?.rows?.length) {
-        rows = warm.rows; cursor = warm.cursor; hasMore = warm.hasMore;
-        paintList();
+        t.rows = warm.rows; t.cursor = warm.cursor; t.hasMore = warm.hasMore;
+        paintList(t);
       }
     }
 
@@ -282,50 +286,54 @@ export async function renderNotificationsView(root) {
       // All = the people you follow plus what is aimed at you, never your
       // own doings; Friends = only the people you follow; You = yours.
       const res = await api.getActivityFeed(viewerId, {
-        scope: activeTab === 'you' ? 'you' : 'friends',
+        scope: t.id === 'you' ? 'you' : 'friends',
         includeYou: false,
-        includeIncoming: activeTab === 'all',
-        before: reset ? null : cursor,
+        includeIncoming: t.id === 'all',
+        before: reset ? null : t.cursor,
       });
-      if (my !== ticket) return; // another tab or refresh started meanwhile
+      if (my !== t.ticket) return; // a newer load of this same tab started meanwhile
       if (isDefaultView) setCached(CACHE_KEYS.notifications, res);
-      if (reset) rows = res.rows;
-      else { const seen = new Set(rows.map((r) => r.key)); rows = rows.concat(res.rows.filter((r) => !seen.has(r.key))); }
-      cursor = res.cursor;
-      hasMore = res.hasMore;
-      paintList();
-      markVisibleRead();
+      if (reset) t.rows = res.rows;
+      else { const seen = new Set(t.rows.map((r) => r.key)); t.rows = t.rows.concat(res.rows.filter((r) => !seen.has(r.key))); }
+      t.cursor = res.cursor;
+      t.hasMore = res.hasMore;
+      t.loadedAt = Date.now();
+      // Painting replaces the list, so a quiet refresh must not throw the
+      // reader back to the top: put the scroll back where it was.
+      const keep = t.id === activeTab ? body().scrollTop : null;
+      paintList(t);
+      if (keep != null) body().scrollTop = keep;
+      if (t.id === 'all') markVisibleRead();
     } catch (err) {
-      if (my !== ticket) return;
-      if (slot()) slot().innerHTML = `<p class="muted" style="padding:24px">Couldn't load activity: ${esc(err.message)}</p>`;
+      if (my !== t.ticket) return;
+      t.pane.innerHTML = `<p class="muted" style="padding:24px">Couldn't load activity: ${esc(err.message)}</p>`;
     } finally {
-      if (my === ticket) loading = false;
+      if (my === t.ticket) t.loading = false;
     }
   }
 
-  // Opening the screen is the act of reading it — but only the incoming
-  // rows have a read state at all, and only they clear the bell. Done
-  // AFTER the paint on purpose: the unread dots are the most useful
-  // thing on screen the moment you arrive, so they are shown and then
-  // cleared server-side rather than the list rendering already-read.
+  // Opening Notifications reads everything, the way Instagram's does: the
+  // dots stay on screen for this visit, so you can see what was new, and the
+  // bell clears.
   function markVisibleRead() {
-    // Only the All tab is the inbox: opening it reads everything, the way
-    // opening Instagram's notifications does. The dots stay on screen for
-    // this visit, so you can still see what was new, and the bell clears.
-    if (activeTab !== 'all' || !viewerId) return;
+    if (!viewerId) return;
     api.markAllNotificationsRead(viewerId)
       .then(() => { window.dispatchEvent(new CustomEvent('notifications:read')); })
       .catch(() => { /* the badge simply stays until the next load */ });
   }
 
-  // Something new lands while this screen is open: it appears in the list now,
-  // already read, instead of only bumping the bell. (The You tab is your own
-  // doings, which a notification is never about.)
+  // Something new lands while this screen is open: it appears now, already
+  // read, instead of only bumping the bell. All and Friends are stale; the one
+  // on screen reloads at once and the other quietly the next time it is opened.
+  // (The You tab is your own doings, which a notification is never about.)
   const onIncoming = () => {
-    if (!root.isConnected || activeTab === 'you' || loading) return;
-    load({ reset: true });
+    if (!root.isConnected) return;
+    if (T.all.loadedAt) T.all.loadedAt = 1; // 1 = loaded, but long ago: refreshes when next opened
+    if (T.friends.loadedAt) T.friends.loadedAt = 1;
+    if (activeTab !== 'you' && !cur().loading) load(cur(), { reset: true });
   };
   window.addEventListener('notifications:incoming', onIncoming);
+
   paintShell();
-  load({ reset: true });
+  load(cur(), { reset: true });
 }
