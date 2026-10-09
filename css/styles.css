@@ -6795,6 +6795,6 @@ a.gd-credit__name { text-decoration: none; }
 .star-row { display: flex; gap: 6px; }
 .star-g { position: relative; display: block; font-size: 44px; line-height: 1; }
 .star-g__base { display: block; color: var(--surface-high); }
-.star-g__fill { position: absolute; left: 0; top: 0; overflow: hidden; white-space: nowrap; color: var(--accent-bright); }
+.star-g__fill { position: absolute; left: 0; top: 0; white-space: nowrap; color: var(--accent-bright); }
 .star-pick__range { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
 .star-pick__clear { display: block; margin: 16px 0 0; background: none; border: 0; padding: 0; line-height: 1.2; font-family: var(--font-body); font-weight: 700; font-size: 14px; color: var(--accent-bright); }

@@ -133,14 +133,40 @@ const starsLabel = (v) => {
   const whole = Math.floor(n);
   return `${whole || ''}${n % 1 ? '\u00bd' : ''} star${n === 1 ? '' : 's'}`;
 };
-// Five stars filled to `v` (0 to 5, halves allowed). The same star glyph as
-// before, but each one is its own box with the filled copy cut at exactly
-// half of THAT box, so a half star is split down its own middle.
+// Five stars filled to `v` (0 to 5, halves allowed): the same star glyph as
+// everywhere else. A half star has to be cut through the star's own tip, but
+// a font's star is never centred in its box (and which font draws it
+// depends on the phone), so the middle is measured from the drawn star
+// itself: the middle of its ink, as a share of its box.
+let starMid = null;
+function starMiddle() {
+  if (starMid != null) return starMid;
+  starMid = 0.5;
+  try {
+    const ctx = document.createElement('canvas').getContext('2d');
+    // Measure with exactly the font the star is drawn in.
+    const probe = document.createElement('span');
+    probe.className = 'star-g__base';
+    probe.style.cssText = 'position:absolute;visibility:hidden';
+    probe.textContent = '★';
+    document.body.appendChild(probe);
+    const cs = getComputedStyle(probe);
+    ctx.font = `${cs.fontStyle} ${cs.fontWeight} 100px ${cs.fontFamily}`;
+    probe.remove();
+    const m = ctx.measureText('\u2605');
+    if (m.width > 0 && Number.isFinite(m.actualBoundingBoxRight)) {
+      const mid = (m.actualBoundingBoxRight - m.actualBoundingBoxLeft) / 2;
+      if (mid > 0 && mid < m.width) starMid = mid / m.width;
+    }
+  } catch { /* keep the plain middle */ }
+  return starMid;
+}
 const starsHtml = (v) => {
   const n = Number(v) || 0;
+  const mid = (starMiddle() * 100).toFixed(2);
   return `<span class="star-row" aria-hidden="true">${[1, 2, 3, 4, 5].map((i) => {
-    const pct = n >= i ? 100 : n >= i - 0.5 ? 50 : 0;
-    return `<span class="star-g"><span class="star-g__base">\u2605</span><span class="star-g__fill" style="width:${pct}%">\u2605</span></span>`;
+    const pct = n >= i ? 100 : n >= i - 0.5 ? Number(mid) : 0;
+    return `<span class="star-g"><span class="star-g__base">\u2605</span><span class="star-g__fill" style="clip-path:inset(0 ${(100 - pct).toFixed(2)}% 0 0)">\u2605</span></span>`;
   }).join('')}</span>`;
 };
 
