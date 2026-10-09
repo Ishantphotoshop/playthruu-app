@@ -206,6 +206,9 @@ export function renderSearchView(root, { initialTab = 'games' } = {}) {
   // visibly reset the whole screen behind the confirmation, as if the
   // Search tab had just been opened fresh.
   let overlayOpen = false;
+  // Set for a moment after a row is removed from the history, so the blur
+  // that the tap causes doesn't send the screen back to the poster browse.
+  let keepHistoryUntil = 0;
   const showPrompt = () => { showingHistory = true; promptTicket++; renderSearchHistory(); };
   const showIdle = () => { showingHistory = false; renderIdleBrowse(++promptTicket); };
 
@@ -222,7 +225,11 @@ export function renderSearchView(root, { initialTab = 'games' } = {}) {
       });
     });
     qsa('.recent-row__x', results).forEach((btn) => {
+      // Pressing the X must not pull focus out of the search box: that blur
+      // is what used to close the history list behind the removal.
+      btn.addEventListener('mousedown', (e) => e.preventDefault());
       btn.addEventListener('click', () => {
+        keepHistoryUntil = Date.now() + 600;
         removeRecentSearch(btn.dataset.deleteTerm, btn.dataset.deleteTab);
         // Same view, one row shorter, without losing the keyboard.
         if (showingHistory) showPrompt(); else showIdle();
@@ -267,7 +274,7 @@ export function renderSearchView(root, { initialTab = 'games' } = {}) {
   // switching tabs.
   input.addEventListener('blur', () => {
     setTimeout(() => {
-      if (overlayOpen || document.activeElement === input) return; // a sheet of ours took focus, or it came back
+      if (overlayOpen || document.activeElement === input || Date.now() < keepHistoryUntil) return; // a sheet of ours took focus, or it came back, or a row was just removed
       if (!input.value.trim() && showingHistory) showIdle();
     }, 200);
   });
