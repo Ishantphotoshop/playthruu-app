@@ -2,7 +2,7 @@ import * as api from '../api.js';
 import { state } from '../state.js';
 import { navBar, combinedGameResultsList, wireCombinedGameResults, wireResultDirectors, profileRow, wireFollowButtons, spinner, skeletonList, emptyState, iconSearch, iconFilter, iconUser, iconGamepad, iconList, iconClose, iconChevronRight, posterFrame, confirmSheet, gameHref,
 } from '../components.js';
-import { qs, qsa, esc, toast, promptSignIn, getRecentlyViewed, recordRecentSearch, getRecentSearches, removeRecentSearch, clearRecentSearches, revealTogether, igdbSized } from '../utils.js';
+import { qs, qsa, esc, toast, promptSignIn, getRecentlyViewed, recordRecentSearch, getRecentSearches, removeRecentSearch, clearRecentSearches, revealTogether, igdbSized, keepLoading } from '../utils.js';
 import { navigate } from '../router.js';
 import { getCached, setCached, CACHE_KEYS } from '../cache.js';
 
@@ -349,6 +349,7 @@ export function renderSearchView(root, { initialTab = 'games' } = {}) {
   let searchLoading = false;
   let searchObserver = null;
   let directorObserver = null;
+  let searchGuard = null;
 
   const gameCallbacks = () => ({
     // Opening a result is the clearest signal the search was real, so
@@ -406,8 +407,12 @@ export function renderSearchView(root, { initialTab = 'games' } = {}) {
     }
     searchObserver = new IntersectionObserver((entries) => {
       if (entries.some((e) => e.isIntersecting)) loadMoreResults();
-    }, { root: results.closest('.view-body') || null, rootMargin: '400px' });
+    }, { root: results.closest('.view-body') || null, rootMargin: '1200px' });
     searchObserver.observe(sentinel);
+    // The scroll itself is watched too, so a fast fling that arrives while
+    // a page is still loading is picked up as soon as that page lands.
+    if (searchGuard) searchGuard.stop();
+    searchGuard = keepLoading({ sentinel: () => qs('#search-sentinel', results), scroller: () => results.closest('.view-body'), trigger: () => loadMoreResults(), margin: 1200 });
   }
 
   async function loadMoreResults() {

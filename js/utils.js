@@ -155,6 +155,37 @@ export function revealTogether(els, { timeout = 3000, margin = 320 } = {}) {
   return Promise.race([Promise.all(waits), new Promise((r) => setTimeout(r, timeout))]).then(release);
 }
 
+// Keeps an endless list loading. The IntersectionObserver every list used
+// only speaks when the sentinel ENTERS range, so a trigger that arrived
+// while the previous page was still loading was simply lost, and a fast
+// fling past the end left the list sitting half-way down with nothing
+// coming. This also listens to the scroll itself (every frame, cheap) and
+// is asked to look again after every page lands, so whenever the end of the
+// list is within `margin` px of the screen and nothing is loading, the next
+// page is requested. `trigger` must ignore calls while it is busy.
+// Returns { check, stop }.
+export function keepLoading({ sentinel, scroller, trigger, margin = 2400 }) {
+  let raf = 0;
+  let dead = false;
+  const check = () => {
+    raf = 0;
+    if (dead) return;
+    const s = typeof sentinel === 'function' ? sentinel() : sentinel;
+    const sc = typeof scroller === 'function' ? scroller() : scroller;
+    if (!s || !s.isConnected) return;
+    const bottom = sc && sc !== document.documentElement ? sc.getBoundingClientRect().bottom : window.innerHeight;
+    if (s.getBoundingClientRect().top - bottom < margin) trigger();
+  };
+  const onScroll = () => { if (!raf) raf = requestAnimationFrame(check); };
+  const target = () => (typeof scroller === 'function' ? scroller() : scroller) || window;
+  const el = target();
+  el.addEventListener('scroll', onScroll, { passive: true });
+  return {
+    check: () => { if (!raf) raf = requestAnimationFrame(check); },
+    stop: () => { dead = true; el.removeEventListener('scroll', onScroll); },
+  };
+}
+
 // Lets a bottom-sheet modal be dragged down and flung away with a
 // finger, instead of only closing via the X. Pass the `.modal` element
 // and its existing close function.

@@ -5,7 +5,7 @@ import {
   trendingStrip, wireTrendingStrip, friendsPlayingCard, posterFrame, openReportSheet, iconChevronRight,
   iconDice, iconBookmark, iconBrandMark, iconCardStack, iconPlay, iconBack, iconCheck,
 } from '../components.js';
-import { toast, qs, qsa, esc, timeAgo, enableSwipeToDismiss, promptSignIn, tapFeedback, pulseLogTab, igdbSized, placeholderCover } from '../utils.js';
+import { toast, qs, qsa, esc, timeAgo, enableSwipeToDismiss, promptSignIn, tapFeedback, pulseLogTab, igdbSized, placeholderCover, keepLoading } from '../utils.js';
 import { buzz } from '../haptics.js';
 import { openLogComposer } from './log-composer.js';
 import { refreshCurrentView, navigate, markPagesStale } from '../router.js';
@@ -621,6 +621,7 @@ async function paintDiscovery(slot) {
   let shown = Math.min(games.length, cached?.shown ?? (Math.floor(games.length / BATCH) * BATCH || games.length));
   const more = () => games.length > shown || hasMore;
   let observer = null;
+  let guard = null;
 
   function activeCollection() {
     return api.DISCOVERY_COLLECTIONS.find((c) => c.id === activeId);
@@ -728,8 +729,12 @@ async function paintDiscovery(slot) {
     if (!sentinel || !('IntersectionObserver' in window)) return;
     observer = new IntersectionObserver((entries) => {
       if (entries.some((e) => e.isIntersecting)) loadMore();
-    }, { root: slot.closest('.view-body') || null, rootMargin: '0px 0px 1200px 0px' });
+    }, { root: slot.closest('.view-body') || null, rootMargin: '0px 0px 2400px 0px' });
     observer.observe(sentinel);
+    // Also watch the scroll itself, so a fling that lands while a block is
+    // still loading can never leave the list stranded half-way.
+    if (guard) guard.stop();
+    guard = keepLoading({ sentinel: () => qs('#discovery-sentinel', slot), scroller: () => slot.closest('.view-body'), trigger: () => { if (!loading && more()) loadMore(); }, margin: 2400 });
   }
   // Still in range after a block went in (a fast fling): observing again
   // reports the current state, which carries straight on to the next.
@@ -794,7 +799,7 @@ async function paintDiscovery(slot) {
     } catch {
       hasMore = false;
     }
-    if (startActive !== activeId) return; // the collection changed meanwhile
+    if (startActive !== activeId) { loading = false; return; } // the collection changed meanwhile
     const batch = games.slice(shown, shown + BATCH);
     // The frames go in straight away (their shimmer is the loading
     // state) and each cover fades up inside its own frame as it arrives;
@@ -825,7 +830,7 @@ async function paintDiscovery(slot) {
       return;
     }
     paintFooter();
-    if (more()) recheckSentinel();
+    if (more()) { recheckSentinel(); guard?.check(); }
   }
 
   // The picker as a real slider — a full-screen takeover with every

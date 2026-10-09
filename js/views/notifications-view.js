@@ -1,7 +1,7 @@
 import * as api from '../api.js';
 import { state } from '../state.js';
 import { navBar, avatarImg, emptyState, spinner, iconBell, iconFilter, iconBack, iconCheck } from '../components.js';
-import { esc, timeAgo, starRow, qs, qsa } from '../utils.js';
+import { esc, timeAgo, starRow, qs, qsa, keepLoading } from '../utils.js';
 import { navigate } from '../router.js';
 import { wirePullToRefresh } from './feed-view.js';
 import { getCached, setCached, CACHE_KEYS } from '../cache.js';
@@ -164,6 +164,7 @@ export async function renderNotificationsView(root) {
   let cursor = null;
   let hasMore = false;
   let loading = false;
+  let actGuard = null;
   let sentinelObserver = null;
   const viewerId = state.user?.id;
 
@@ -268,8 +269,10 @@ export async function renderNotificationsView(root) {
     }
     sentinelObserver = new IntersectionObserver((entries) => {
       if (entries.some((e) => e.isIntersecting)) load({ reset: false });
-    }, { root: qs('#act-body', root), rootMargin: '300px' });
+    }, { root: qs('#act-body', root), rootMargin: '1200px' });
     sentinelObserver.observe(sentinel);
+    if (actGuard) actGuard.stop();
+    actGuard = keepLoading({ sentinel: () => qs('#act-sentinel', root), scroller: () => qs('#act-body', root), trigger: () => load({ reset: false }), margin: 1200 });
   }
 
   async function load({ reset }) {

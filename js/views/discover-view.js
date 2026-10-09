@@ -1,7 +1,7 @@
 import * as api from '../api.js';
 import { state } from '../state.js';
 import { topBar, navBar, emptyState, iconSearch, iconFilter, iconClose, iconChevronRight, posterFrame } from '../components.js';
-import { esc, qs, qsa, toast, revealTogether, igdbSized } from '../utils.js';
+import { esc, qs, qsa, toast, revealTogether, igdbSized, keepLoading } from '../utils.js';
 import { navigate } from '../router.js';
 
 // Browse, the screen behind the Search tab's filter button. Three steps,
@@ -272,14 +272,31 @@ export function renderBrowseGames(root) {
     return { games: rows, hasMore: false };
   }
 
+  // Scrolling to the end loads the next page, and the page after it is
+  // fetched while you look at this one, so a fast fling finds posters
+  // waiting instead of hitting the bottom. Placeholders hold the space
+  // while a page is on its way.
+  let nextPage = null; // { page, filtersKey, promise }
+  let hasMoreNow = false;
+  const guard = keepLoading({
+    sentinel: () => qs('#browse-sentinel', more),
+    scroller: () => grid.closest('.view-body'),
+    trigger: () => { if (!loading && hasMoreNow) { page += 1; load(false); } },
+  });
+  const filtersKey = () => JSON.stringify(filters);
+  const fetchPageNow = (pg) => api.browseGames(toQuery(filters, pg));
+  const skel = (n) => Array.from({ length: n }, () => '<div class="skeleton skeleton--tile" data-ph></div>').join('');
+
   async function load(reset) {
     const my = ++ticket;
     loading = true;
     if (reset) {
-      page = 1; shown.length = 0;
+      page = 1; shown.length = 0; nextPage = null; hasMoreNow = false;
       grid.classList.add('discovery-grid');
-      grid.innerHTML = Array.from({ length: 12 }, () => '<div class="skeleton skeleton--tile"></div>').join('');
+      grid.innerHTML = skel(12);
       more.innerHTML = '';
+    } else {
+      grid.insertAdjacentHTML('beforeend', skel(12));
     }
     try {
       await needDiary();
@@ -289,9 +306,12 @@ export function renderBrowseGames(root) {
       // Your rating: the games you've rated, from your own diary, in your
       // order (one page, it's your list). Release date and stars still narrow it.
       const mine = MY_SORTS.has(filters.sort) && state.user;
-      const { games, hasMore } = mine ? await myRated() : await (warm || api.browseGames(toQuery(filters, page)));
+      const ahead = nextPage && nextPage.page === page && nextPage.key === filtersKey() ? nextPage.promise : null;
+      nextPage = null;
+      const { games, hasMore } = mine ? await myRated() : await (warm || ahead || fetchPageNow(page));
       if (my !== ticket || !grid.isConnected) return;
       if (reset) grid.innerHTML = '';
+      else qsa('[data-ph]', grid).forEach((el) => el.remove());
       const list = filters.hideLogged ? games.filter((g) => !logged(g)) : games;
       if (!shown.length && !list.length && !hasMore) {
         grid.classList.remove('discovery-grid');
@@ -308,17 +328,15 @@ export function renderBrowseGames(root) {
         added.forEach(wireTile);
         revealTogether(added);
       }
-      // Next page loads as you scroll, about a screen and a half early.
-      more.innerHTML = hasMore ? '<div id="browse-sentinel" aria-hidden="true" style="height:1px"></div>' : '';
-      const sentinel = hasMore && qs('#browse-sentinel', more);
-      if (sentinel && 'IntersectionObserver' in window) {
-        const io = new IntersectionObserver((entries) => {
-          if (!entries.some((e) => e.isIntersecting) || loading) return;
-          io.disconnect();
-          page += 1;
-          load(false);
-        }, { root: sentinel.closest('.view-body'), rootMargin: '0px 0px 1200px 0px' });
-        io.observe(sentinel);
+      // The end-of-list marker the scroll guard watches.
+      hasMoreNow = !!hasMore && !mine;
+      more.innerHTML = hasMoreNow ? '<div id="browse-sentinel" aria-hidden="true" style="height:1px"></div>' : '';
+      // Start on the following page now, while this one is being looked at.
+      if (hasMoreNow) {
+        const key = filtersKey();
+        const p = fetchPageNow(page + 1);
+        p.catch(() => {});
+        nextPage = { page: page + 1, key, promise: p };
       }
     } catch (err) {
       if (my === ticket && grid.isConnected) {
@@ -326,7 +344,11 @@ export function renderBrowseGames(root) {
         grid.innerHTML = `<p class="muted">Couldn't load games right now: ${esc(err.message || '')}</p>`;
       }
     } finally {
-      if (my === ticket) loading = false;
+      if (my === ticket) {
+        loading = false;
+        // Still near the end after this page (a fast fling): carry straight on.
+        guard.check();
+      }
     }
   }
 
