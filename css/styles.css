@@ -6681,3 +6681,9 @@ a.gd-credit__name { text-decoration: none; }
   background: var(--bg); color: var(--accent-bright); font-family: var(--font-body); font-size: 12.5px; font-weight: 800;
 }
 .filters-bar__count[hidden] { display: none; }
+
+/* Search > All: one block per kind of result. */
+.all-head { display: flex; align-items: baseline; justify-content: space-between; margin: 18px 0 2px; }
+.all-head:first-child { margin-top: 4px; }
+.all-head__label { font-family: var(--font-body); font-weight: 700; font-size: 14px; color: var(--ink-dim); }
+.all-head__more { background: none; border: 0; padding: 4px 0; font: inherit; font-weight: 700; font-size: 13px; color: var(--accent-bright); cursor: pointer; }

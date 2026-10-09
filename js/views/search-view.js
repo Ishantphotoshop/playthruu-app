@@ -16,6 +16,7 @@ const ARTIST_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" 
 const TABS = [
   { id: 'games', label: 'Games', tag: 'Game', placeholder: 'Search games…', hint: 'Search for a game to log, rate, or review.', icon: iconGamepad() },
   { id: 'people', label: 'Players', tag: 'Player', placeholder: 'Search players…', hint: 'Search for players to follow.', icon: iconUser() },
+  { id: 'all', label: 'All', tag: 'All', placeholder: 'Search everything…', hint: 'Search games, players, lists, studios and artists at once.', icon: iconSearch() },
   { id: 'lists', label: 'Lists', tag: 'List', placeholder: 'Search lists…', hint: 'Search for lists other players have made.', icon: iconList() },
   { id: 'studios', label: 'Studios', tag: 'Studio', placeholder: 'Search studios…', hint: 'Look up a developer or publisher.', icon: STUDIO_ICON },
   { id: 'artists', label: 'Artists', tag: 'Artist', placeholder: 'Search artists…', hint: 'Find voice actors, directors and writers.', icon: ARTIST_ICON },
@@ -484,6 +485,51 @@ export function renderSearchView(root, { initialTab = 'games' } = {}) {
             },
           });
         }
+      } else if (tab === 'all') {
+        results.innerHTML = skeletonList(6);
+        // Everything at once; a source that fails or drags (artists and
+        // studios hit outside services) just leaves its section out.
+        const soft = (p, ms = 5000) => Promise.race([p.catch(() => null), new Promise((r) => setTimeout(() => r(null), ms))]);
+        const [g, pe, li, st, ar] = await Promise.all([
+          soft(api.searchGamesEverywhere(q, 12, 1), 8000), soft(api.searchUsers(q)), soft(api.searchLists(q, 6)),
+          soft(api.searchStudios(q, 6)), soft(api.searchArtists(q, 6)),
+        ]);
+        if (ticket !== searchTicket) return;
+        const games = g?.results || [], people = pe || [], lists = li || [], studios = st || [], artists = ar || [];
+        const sections = [];
+        const section = (label, tabId, total, shown, rows) => {
+          if (!rows.length) return;
+          sections.push(`<div class="all-head"><span class="all-head__label">${label}</span>${total > shown ? `<button type="button" class="all-head__more" data-see-all="${tabId}">See all</button>` : ''}</div><div class="entity-list">${rows.join('')}</div>`);
+        };
+        const gShown = games.slice(0, 3);
+        section('Games', 'games', games.length, gShown.length, gShown.map((x) => entityRow({
+          href: gameHref(x), shape: 'round', img: smallCover(x.cover_url), fallbackIcon: TAB.games.icon, thumb: smallCover(x.cover_url),
+          title: x.title, meta: x.release_year || x.year || '',
+        })));
+        section('Players', 'people', people.length, 2, people.slice(0, 2).map((x) => entityRow({
+          href: `#/profile/${x.username}`, shape: 'round', img: x.avatar_url, fallbackIcon: TAB.people.icon, thumb: x.avatar_url,
+          title: x.display_name || x.username, meta: `@${x.username}`,
+        })));
+        section('Lists', 'lists', lists.length, 2, lists.slice(0, 2).map((l) => entityRow({
+          href: `#/list/${l.id}`, shape: 'round', img: smallCover(l.cover_url), fallbackIcon: TAB.lists.icon, thumb: smallCover(l.cover_url),
+          title: l.name, meta: [l.owner ? `by ${l.owner.display_name || l.owner.username}` : '', `${l.count} game${l.count === 1 ? '' : 's'}`].filter(Boolean).join(' · '),
+        })));
+        section('Studios', 'studios', studios.length, 2, studios.slice(0, 2).map((x) => entityRow({
+          href: `#/studio/${x.id}`, shape: 'logo', img: x.logo, fallbackIcon: TAB.studios.icon, thumb: x.logo,
+          title: x.name, meta: [x.year ? `Founded ${x.year}` : '', x.games ? `${x.games} game${x.games === 1 ? '' : 's'}` : ''].filter(Boolean).join(' · '),
+        })));
+        section('Artists', 'artists', artists.length, 2, artists.slice(0, 2).map((x) => entityRow({
+          href: `#/person/${x.qid}`, shape: 'round', img: x.photo, fallbackIcon: TAB.artists.icon, thumb: x.photo,
+          title: x.name, meta: x.description,
+        })));
+        if (!sections.length) { results.innerHTML = emptyState(`Nothing found for "${q}".`, { icon: iconSearch() }); return; }
+        results.innerHTML = sections.join('');
+        const thumb = gShown[0] ? smallCover(gShown[0].cover_url) : (people[0]?.avatar_url || studios[0]?.logo || artists[0]?.photo || null);
+        recordRecentSearch(q, tab, thumb);
+        qsa('.entity-row', results).forEach((a) =>
+          a.addEventListener('click', () => recordRecentSearch(input.value.trim(), tab, a.dataset.recordThumb || thumb)));
+        // "See all" jumps to that kind's own tab and runs the same search.
+        qsa('[data-see-all]', results).forEach((b) => b.addEventListener('click', () => { switchTab(b.dataset.seeAll); doSearch(); }));
       } else if (tab === 'lists') {
         results.innerHTML = skeletonList(4);
         const lists = await api.searchLists(q);

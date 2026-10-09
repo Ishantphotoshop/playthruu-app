@@ -319,7 +319,7 @@ const RECENT_SEARCHES_KEY = 'playthruu_recent_searches_v2';
 const RECENT_SEARCHES_MAX = 1000;
 
 // Every tab on the Search screen: games, players, lists, studios, artists.
-const RECENT_SEARCH_TABS = ['games', 'people', 'lists', 'studios', 'artists'];
+const RECENT_SEARCH_TABS = ['games', 'people', 'all', 'lists', 'studios', 'artists'];
 
 // `thumb` is a small picture of what the search found (the game's poster,
 // the player's photo, a studio's logo), shown beside the word in the
