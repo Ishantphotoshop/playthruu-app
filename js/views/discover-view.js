@@ -402,39 +402,21 @@ export function renderBrowseGames(root) {
           <p class="browse-label">Average rating</p>
           ${opt('top_rated', 'Highest first')}${opt('lowest', 'Lowest first')}
           ${state.user ? `<p class="browse-label">Your rating</p>${opt('mine_high', 'Highest first')}${opt('mine_low', 'Lowest first')}` : ''}
-          <button type="button" class="browse-frow star-toggle${draft.stars ? ' is-open' : ''}" data-act="stars" aria-expanded="${draft.stars ? 'true' : 'false'}">
-            <span class="browse-frow__name">Browse by stars</span>
-            <span class="browse-frow__value${draft.stars ? ' is-set' : ''}" id="stars-value">${draft.stars ? starsLabel(draft.stars) : 'Any'}</span>
-            ${chev()}
-          </button>
-          <div class="star-pick${draft.stars ? ' is-open' : ''}">
-            <div class="star-pick__inner">
-              <div class="star-pick__stars">${starsHtml(draft.stars)}
-                <input type="range" class="star-pick__range" min="0" max="5" step="0.5" value="${Number(draft.stars) || 0}" aria-label="Star rating">
-              </div>
-              <button type="button" class="star-pick__clear" data-act="clear-stars"${draft.stars ? '' : ' hidden'}>Clear</button>
+          <p class="browse-label">Browse by stars</p>
+          <div class="star-pick">
+            <div class="star-pick__stars">${starsHtml(draft.stars)}
+              <input type="range" class="star-pick__range" min="0" max="5" step="0.5" value="${Number(draft.stars) || 0}" aria-label="Star rating">
             </div>
+            <button type="button" class="star-pick__clear" data-act="clear-stars"${draft.stars ? '' : ' hidden'}>Clear</button>
           </div>
         </div>`;
       qs('[data-act="back"]', sheet).addEventListener('click', paintList);
       qsa('[data-sort]', sheet).forEach((b) => b.addEventListener('click', () => { draft.sort = b.dataset.sort; paintList(); }));
-      // The row opens the stars underneath it (and closes them again).
-      const toggle = qs('[data-act="stars"]', sheet);
-      const pick = qs('.star-pick', sheet);
-      toggle.addEventListener('click', () => {
-        const open = !pick.classList.contains('is-open');
-        pick.classList.toggle('is-open', open);
-        toggle.classList.toggle('is-open', open);
-        toggle.setAttribute('aria-expanded', String(open));
-      });
       const range = qs('.star-pick__range', sheet);
       const sync = () => {
         const v = Number(range.value);
         draft.stars = v ? String(v) : '';
         qs('.star-row', sheet).outerHTML = starsHtml(v);
-        const val = qs('#stars-value', sheet);
-        val.textContent = v ? starsLabel(v) : 'Any';
-        val.classList.toggle('is-set', !!v);
         qs('[data-act="clear-stars"]', sheet).hidden = !v;
       };
       range.addEventListener('input', sync);
