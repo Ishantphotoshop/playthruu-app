@@ -1187,9 +1187,18 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   border: 1px solid var(--line);
 }
 .segmented--wide { margin-bottom: var(--space-4); }
-/* Five tabs (Games, Players, Lists, Studios, Artists) share the one pill, so
-   the labels run a size down and lose their side padding. */
-.segmented--five .segmented__item { font-size: 10.5px; padding: 10px 2px; letter-spacing: -0.02em; }
+/* Five tabs (Games, Players, Lists, Studios, Artists): the pill keeps the size
+   it always had, starts on the gutter, and runs off the right edge of the
+   screen. Games and Players are in view; swipe it sideways for Lists,
+   Studios and Artists. */
+.segmented--five {
+  overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none;
+  margin-right: calc(-1 * var(--gutter));
+  border-right: none; border-radius: var(--radius-pill) 0 0 var(--radius-pill);
+  padding-right: var(--gutter); scroll-padding-inline: var(--space-1);
+}
+.segmented--five::-webkit-scrollbar { display: none; }
+.segmented--five .segmented__item { flex: 0 0 auto; min-width: 104px; padding: 10px 18px; }
 /* Unbounded (the wordmark/home-tabs font), not the body font — every
    segmented control in the app (Search's Games/Players, Messages'
    Messages/Requests, Profile's Journal/Want to Play/Lists) shares this
@@ -1330,10 +1339,9 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 }
 
 .search-recent__heading {
-  /* Sentence case, in the same brand face as the Home section headings
-     ("Trending now"), instead of the old small grey all-caps. */
-  font-family: var(--font-brand); font-weight: 700; font-size: 15px; letter-spacing: -0.01em;
-  text-transform: none; color: var(--ink); margin: var(--space-2) 0 var(--space-3);
+  /* Sentence case, in the body face (not the brand face). */
+  font-family: var(--font-body); font-weight: 700; font-size: 14px; letter-spacing: 0;
+  text-transform: none; color: var(--ink-dim); margin: var(--space-2) 0 var(--space-3);
 }
 .search-recent__row { display: flex; align-items: center; justify-content: space-between; margin: var(--space-2) 0 var(--space-3); }
 .search-recent__row .search-recent__heading { margin: 0; }
@@ -1343,11 +1351,11 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .recent-row { display: flex; align-items: center; gap: 4px; border-bottom: 1px solid var(--line); }
 .recent-row:last-child { border-bottom: none; }
 .recent-row__main {
-  flex: 1; min-width: 0; display: flex; align-items: center; gap: 13px;
-  padding: 9px 0; background: none; border: none; text-align: left; color: var(--ink);
+  flex: 1; min-width: 0; display: flex; align-items: center; gap: 14px;
+  padding: 11px 0; background: none; border: none; text-align: left; color: var(--ink);
 }
 .recent-row__text { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.recent-row__term { font-size: 15.5px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.recent-row__term { font-size: 15.5px; font-weight: 700; line-height: 1.25; overflow-wrap: anywhere; } /* wraps; a long name is never cut off */
 .recent-row__tag { font-size: 12.5px; font-weight: 500; color: var(--ink-faint); }
 .recent-row__x { width: 38px; height: 38px; flex-shrink: 0; display: grid; place-items: center; background: none; border: none; color: var(--ink-faint); }
 .recent-row__x:active { color: var(--ink); }
@@ -1357,10 +1365,8 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .recent-thumb {
   position: relative; flex-shrink: 0; overflow: hidden; display: grid; place-items: center;
   background: var(--surface-raised); color: var(--ink-dim);
-  width: 40px; height: 40px; border-radius: 10px;
+  width: 44px; height: 44px; border-radius: 50%;
 }
-.recent-thumb--games, .recent-thumb--lists { width: 36px; height: 48px; margin: 0 2px; border-radius: var(--poster-radius); } /* margin keeps every thumbnail slot 40px wide, so the words line up */
-.recent-thumb--people, .recent-thumb--artists { border-radius: 50%; }
 .recent-thumb__icon { display: grid; place-items: center; width: 20px; height: 20px; }
 .recent-thumb__icon svg { width: 100%; height: 100%; display: block; }
 .recent-thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: var(--surface-raised); }
@@ -1377,14 +1383,14 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
   position: relative; flex-shrink: 0; overflow: hidden; display: grid; place-items: center;
   background: var(--surface-raised); color: var(--ink-dim); width: 54px; height: 54px; border-radius: 12px;
 }
-.entity-row__pic--poster { width: 46px; height: 61px; border-radius: var(--poster-radius); }
+.entity-row__pic--poster { border-radius: 50%; }
 .entity-row__pic--round { border-radius: 50%; }
 .entity-row__icon { display: grid; place-items: center; width: 24px; height: 24px; }
 .entity-row__icon svg { width: 100%; height: 100%; display: block; }
 .entity-row__pic img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .entity-row__pic--logo img { object-fit: contain; padding: 7px; background: #fff; }
 .entity-row__info { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 3px; }
-.entity-row__title { font-size: 15.5px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.entity-row__title { font-size: 15.5px; font-weight: 700; line-height: 1.25; overflow-wrap: anywhere; }
 .entity-row__meta { font-size: 12.5px; font-weight: 500; color: var(--ink-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .entity-row__chev { width: 18px; height: 18px; flex-shrink: 0; color: var(--ink-faint); }
 .entity-row__chev svg { width: 100%; height: 100%; display: block; }
@@ -5438,10 +5444,6 @@ a.gd-credit__name { text-decoration: none; }
   min-height: 38px; padding: 0; margin-bottom: 17px;
 }
 .msg-inbox-title { font-family: var(--font-brand); font-weight: 800; font-size: 25px; letter-spacing: -0.02em; }
-/* Search's own title: the same size as the PlayThruu wordmark on Home (19px),
-   and a tighter gap under it than the other inbox-style screens keep. */
-.view-body--search .msg-inbox-title { font-size: 19px; letter-spacing: -0.01em; }
-.view-body--search .msg-inbox-head { min-height: 26px; margin-bottom: 8px; }
 /* The app's main accent (not orange) with the dark icon, like every other
    primary action button in the app. */
 .msg-inbox-new { width: 34px; height: 34px; border-radius: 50%; background: var(--accent); color: var(--bg); display: grid; place-items: center; flex-shrink: 0; transition: transform var(--dur-fast) var(--ease); }
