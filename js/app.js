@@ -554,7 +554,7 @@ function warmOtherTabs() {
     // filters off, so it warms cleanly — and it is the tab people check
     // most often after the feed.
     if (state.user && !getCached(CACHE_KEYS.notifications)) {
-      api.getActivityFeed(state.user.id, { scope: 'friends', includeYou: false, includeIncoming: false })
+      api.getActivityFeed(state.user.id, { scope: 'friends', includeYou: false, includeIncoming: true })
         .then((res) => setCached(CACHE_KEYS.notifications, res))
         .catch(() => {});
     }

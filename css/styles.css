@@ -6167,14 +6167,24 @@ a.gd-credit__name { text-decoration: none; }
    it carries the heaviest weight in the app's ladder against a medium
    sentence — a bigger jump than the single step it had. */
 .act__text b { font-weight: var(--weight-black); }
+/* The player's name: a little weight (a step up from the sentence, a step
+   below the game's name), so it reads as who without competing with what. */
+.act__who { font-weight: 700; }
 /* Inline stars sit on the text baseline rather than on their own line,
    which is what keeps "watched Hades ★★★★" reading as one sentence. */
 .act__text .stars { display: inline-flex; vertical-align: -1px; margin-left: 2px; }
 /* A quoted review or comment is dimmed so it reads as somebody's words
    inside the row rather than as more of the app talking. */
 .act__quote {
-  font-size: 12px; line-height: 1.45; color: var(--ink-dim);
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  display: block; margin-top: 6px; padding: 10px 12px; border-radius: 12px;
+  background: var(--surface); border: 1px solid var(--line);
+  font-family: var(--font-body); font-size: 13px; font-weight: 500; line-height: 1.5; color: var(--ink);
+}
+/* The words are cut INSIDE the box: three lines, then dots. (Cutting the box
+   itself let a sliver of a fourth line show through its bottom padding.) */
+.act__quote-text {
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+  overflow-wrap: anywhere;
 }
 /* Right-aligned and never wrapping: the time is a column the eye tracks
    straight down, so it has to stay put no matter how long the text is. */
@@ -6894,3 +6904,14 @@ a.gd-credit__name { text-decoration: none; }
 .confirm-dialog__btn--go { background: var(--accent); color: var(--bg-deep); }
 .confirm-dialog__btn--danger { background: var(--coral); color: #fff; }
 .confirm-dialog__btn:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--accent-bright); }
+
+/* Three tabs in the Home-style pill (Notifications): the highlight is a third
+   wide and slides by --i. */
+.home-tabs__pill--three::before { width: calc((100% - 4 * var(--space-1)) / 3); translate: calc(var(--i, 0) * (100% + var(--space-1))) 0; }
+
+/* The are-you-sure dialog, a lot smaller. */
+.confirm-dialog { max-width: 264px; padding: 18px 16px 16px; border-radius: 20px; }
+.confirm-dialog__title { font-size: 15px; }
+.confirm-dialog__msg { font-size: 12.5px; margin-top: 6px; }
+.confirm-dialog__actions { gap: 8px; margin-top: 16px; }
+.confirm-dialog__btn { min-height: 40px; border-radius: 12px; font-size: 14px; }
