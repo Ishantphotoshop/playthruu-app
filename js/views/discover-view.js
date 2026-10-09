@@ -37,13 +37,13 @@ const any = (label, list) => [{ label, value: '' }, ...list];
 // Ready-made lists at the top of Browse. `f` is the filters each one
 // starts with; the Filters page can change any of them afterwards.
 const LISTS = [
-  { id: 'popular', label: 'Popular right now', f: { sort: 'popular' } },
+  { id: 'popular', label: 'Popular right now', f: { sort: 'trending' } },
   { id: 'top', label: 'Highest rated', f: { sort: 'top_rated', minVotes: api.CREDIBLE_VOTES * 5 } },
   { id: 'critics', label: 'Critics’ favourites', f: { sort: 'all_time', minVotes: api.CREDIBLE_VOTES * 5 } },
   { id: 'anticipated', label: 'Most anticipated', f: { sort: 'anticipated' } },
   { id: 'new', label: 'New releases', f: { sort: 'recent', gameType: 'games' } },
   { id: 'gems', label: 'Hidden gems', f: { sort: 'top_rated', minRating: '80', minVotes: api.CREDIBLE_VOTES, maxVotes: api.FAMOUS_VOTES } },
-  { id: 'coop', label: 'Play with friends', f: { sort: 'popular', mode: '3' } },
+  { id: 'coop', label: 'Play with friends', f: { sort: 'trending', mode: '2,3' } },
 ];
 const LIST = Object.fromEntries(LISTS.map((l) => [l.id, l]));
 
@@ -234,11 +234,10 @@ export function renderBrowseGames(root) {
       if (my !== ticket || !grid.isConnected) return;
       if (reset) grid.innerHTML = '';
       const list = filters.hideLogged ? games.filter((g) => !logged(g)) : games;
-      if (reset && !list.length && !hasMore) {
+      if (!shown.length && !list.length && !hasMore) {
         grid.classList.remove('discovery-grid');
-        grid.innerHTML = emptyState('No games match these filters.', { icon: iconSearch() })
-          + '<button type="button" class="btn btn--ghost btn--block" id="browse-edit">Change filters</button>';
-        qs('#browse-edit', root).addEventListener('click', openFilters);
+        grid.innerHTML = `<div class="browse-empty"><p class="browse-empty__title">No Games found</p>
+          <p class="browse-empty__line">I would do it all over again</p></div>`;
       } else {
         const start = shown.length;
         shown.push(...list);

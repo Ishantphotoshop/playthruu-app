@@ -1323,7 +1323,8 @@ export const BROWSE_THEMES = [
   { label: '4X', value: '41' }, { label: 'Mystery', value: '43' }, { label: 'Romance', value: '44' },
 ];
 export const BROWSE_MODES = [
-  { label: 'Single player', value: '1' }, { label: 'Multiplayer', value: '2' }, { label: 'Co-op', value: '3' },
+  { label: 'Single player', value: '1' }, { label: 'Multiplayer or co-op', value: '2,3' },
+  { label: 'Multiplayer', value: '2' }, { label: 'Co-op', value: '3' },
   { label: 'Split screen', value: '4' }, { label: 'MMO', value: '5' }, { label: 'Battle royale', value: '6' },
 ];
 export const BROWSE_PERSPECTIVES = [
@@ -1496,7 +1497,8 @@ export const BROWSE_SORTS = [
 ];
 // The Browse screen's Sort by options (same sorts, plus oldest first).
 export const BROWSE_SORTS_FULL = [
-  { label: 'Most popular', value: 'popular' }, { label: 'Highest rated by players', value: 'top_rated' },
+  { label: 'Trending now', value: 'trending' }, { label: 'Most rated of all time', value: 'popular' },
+  { label: 'Highest rated (players and critics)', value: 'top_rated' },
   { label: 'Highest rated by critics', value: 'all_time' }, { label: 'Most anticipated', value: 'anticipated' },
   { label: 'New and hyped', value: 'recent' }, { label: 'Newest first', value: 'newest' }, { label: 'Oldest first', value: 'oldest' }, { label: 'A to Z', value: 'az' },
 ];
@@ -1858,13 +1860,19 @@ export async function browseGames({
     }
     if (platform) clauses.push(`platforms = (${platform})`);
     if (theme) clauses.push(`themes = (${Number(theme)})`);
-    if (mode) clauses.push(`game_modes = (${Number(mode)})`);
+    // A game matches if it has ANY of the listed modes ("2,3" = multiplayer or co-op).
+    const modeIds = String(mode || '').split(',').map(Number).filter(Number.isFinite).filter((n) => n > 0);
+    if (modeIds.length) clauses.push(`game_modes = (${modeIds.join(',')})`);
     if (perspective) clauses.push(`player_perspectives = (${Number(perspective)})`);
     if (GAME_TYPE_IDS[gameType]) clauses.push(`game_type = (${GAME_TYPE_IDS[gameType]})`);
     if (minHypes) clauses.push(`hypes >= ${Number(minHypes)}`);
     if (sort === 'oldest') clauses.push('first_release_date != null');
-    // Out in the last four months, the ones people were waiting for first.
-    if (sort === 'recent') clauses.push(`first_release_date >= ${now - 120 * 86400}`);
+    // Out in the last four months, the ones people were waiting for first
+    // (inside a chosen release date instead, when there is one).
+    if (sort === 'recent' && !dateFrom && !dateTo) clauses.push(`first_release_date >= ${now - 120 * 86400}`);
+    // Critics' scores only: games no critic has reviewed are left out
+    // rather than sorted in among them.
+    if (sort === 'all_time') clauses.push('aggregated_rating != null & aggregated_rating_count >= 3');
     // "newest" sort leads with games that often haven't accumulated
     // enough reviews for total_rating to exist yet — requiring a hard
     // minimum there excludes most brand-new releases outright, which
@@ -1906,12 +1914,32 @@ export async function browseGames({
     }
 
     const nowSec = Math.floor(Date.now() / 1000);
+    // Release dates are whole days in UTC (IGDB stores them as UTC
+    // timestamps): the range runs from the first second of dateFrom to the
+    // last second of dateTo, so a game out on the last day still counts.
+    const fromSec = dateFrom ? Math.floor(Date.parse(`${dateFrom}T00:00:00Z`) / 1000) : null;
+    const toSec = dateTo ? Math.floor(Date.parse(`${dateTo}T23:59:59Z`) / 1000) : null;
     if (sort === 'anticipated') {
-      clauses.push(`first_release_date >= ${nowSec} & first_release_date <= ${nowSec + 9 * 30 * 86400}`);
-    } else if (dateFrom || dateTo) {
-      const fromSec = dateFrom ? Math.floor(new Date(dateFrom).getTime() / 1000) : 0;
-      const toSec = dateTo ? Math.floor(new Date(dateTo).getTime() / 1000) : nowSec;
-      clauses.push(`first_release_date >= ${fromSec} & first_release_date <= ${toSec}`);
+      // Unreleased only; inside the chosen dates if any, otherwise the next nine months.
+      clauses.push(`first_release_date >= ${Math.max(nowSec, fromSec ?? 0)} & first_release_date <= ${toSec ?? nowSec + 9 * 30 * 86400}`);
+    } else if (fromSec != null || toSec != null) {
+      clauses.push(`first_release_date >= ${fromSec ?? 0} & first_release_date <= ${toSec ?? nowSec}`);
+    }
+
+    // Trending: IGDB's own "what people are looking at right now" ranking
+    // (popularity_primitives, type 1 = visits), the same signal as the Home
+    // screen's Trending row. The top 500 are the pool; every other filter
+    // still applies, and the order is IGDB's ranking.
+    if (sort === 'trending') {
+      const ranked = await trendingIds();
+      if (!ranked.length) return { games: [], hasMore: false };
+      clauses.push(`id = (${ranked.join(',')})`);
+      const where = `where ${clauses.join(' & ')}; `;
+      const pool = await igdb('games', `fields ${IGDB_LIST_FIELDS}; ${where}limit 500;`);
+      const rank = new Map(ranked.map((id, i) => [id, i]));
+      pool.sort((a, b) => (rank.get(a.id) ?? 1e9) - (rank.get(b.id) ?? 1e9));
+      const games = filterOutEditions(pool.slice(offset, offset + limit).map(mapIgdbGame));
+      return { games, hasMore: pool.length > offset + limit };
     }
 
     let sortClause = 'total_rating_count desc';
@@ -1931,6 +1959,16 @@ export async function browseGames({
   } catch {
     return { games: [], hasMore: false };
   }
+}
+
+// IGDB's top 500 by current visits, fetched once every ten minutes.
+let trendingCache = null; // { at, ids }
+async function trendingIds() {
+  if (trendingCache && Date.now() - trendingCache.at < 10 * 60_000) return trendingCache.ids;
+  const pop = await igdb('popularity_primitives', 'fields game_id,value; where popularity_type = 1; sort value desc; limit 500;');
+  const ids = [...new Set((pop || []).map((p) => p.game_id).filter(Boolean))];
+  if (ids.length) trendingCache = { at: Date.now(), ids };
+  return ids;
 }
 
 export const BROWSE_RATINGS = [

@@ -6784,3 +6784,7 @@ a.gd-credit__name { text-decoration: none; }
   font-family: var(--font-body); font-weight: 700; font-size: 15px; color: var(--accent-bright);
 }
 .browse-text { display: flex; flex-direction: column; gap: 14px; padding-top: 14px; }
+
+.browse-empty { text-align: center; padding: 64px 16px; }
+.browse-empty__title { margin: 0; font-family: var(--font-brand); font-weight: 800; font-size: 18px; color: var(--ink); }
+.browse-empty__line { margin: 8px 0 0; font-family: var(--font-body); font-size: 14px; color: var(--ink-dim); }
