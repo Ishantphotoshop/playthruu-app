@@ -18,6 +18,16 @@
 // nothing stale to accidentally show a different signed-in user later.
 const store = new Map();
 
+// The one exception to "in memory only": the Feed's last-drawn markup is
+// also saved on the device, tagged with whose it is, so opening the app
+// shows the home screen at once instead of waiting on its fetches. It is
+// only ever shown to the same signed-in user, and the sections refetch
+// and repaint right after, same as with the in-session cache.
+import { state } from './state.js';
+const SAVED_KEYS = new Set(['feed']);
+const savedName = (key) => `pt_cache_${key}`;
+
+
 // Shared so a view and the background warm-up in app.js can't drift onto
 // two different spellings of the same key — a warm that writes 'messages'
 // while the view reads 'messages-list' silently does nothing at all.
@@ -29,11 +39,24 @@ export const CACHE_KEYS = {
 };
 
 export function getCached(key) {
-  return store.get(key) ?? null;
+  if (store.has(key)) return store.get(key);
+  if (SAVED_KEYS.has(key) && state.user) {
+    try {
+      const saved = JSON.parse(localStorage.getItem(savedName(key)) || 'null');
+      if (saved && saved.u === state.user.id && saved.v) { store.set(key, saved.v); return saved.v; }
+    } catch { /* unreadable: treat as not cached */ }
+  }
+  return null;
 }
 
 export function setCached(key, value) {
   store.set(key, value);
+  if (SAVED_KEYS.has(key) && state.user) {
+    try {
+      if (value) localStorage.setItem(savedName(key), JSON.stringify({ u: state.user.id, v: value }));
+      else localStorage.removeItem(savedName(key));
+    } catch { /* storage full or unavailable: in-memory copy still works */ }
+  }
 }
 
 // Called on sign-out so the next account in on this device never has a
@@ -41,6 +64,7 @@ export function setCached(key, value) {
 // Messages/Profile flash on screen before their own data loads in.
 export function clearViewCache() {
   store.clear();
+  try { SAVED_KEYS.forEach((k) => localStorage.removeItem(savedName(k))); } catch { /* nothing to clear */ }
 }
 
 // Dropped whenever a diary entry is created, changed or deleted.

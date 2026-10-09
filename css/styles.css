@@ -6696,3 +6696,7 @@ a.gd-credit__name { text-decoration: none; }
 .search-tabs[data-active="all"]::before { translate: calc(200% + 2 * var(--space-1)) 0; }
 .view-body--search { padding-top: 6px; }
 .search-pane[hidden] { display: none; }
+
+/* No loading screen: until the app has drawn its first page the screen is
+   just the page background, not a logo with a glow. */
+.boot-loader::before, .boot-loader__mark { display: none; }

@@ -1,7 +1,7 @@
 import { supabase } from './supabase-client.js';
 import { onAuthChange, signOut, updatePasswordAfterReset } from './auth.js';
 import * as api from './api.js';
-import { state } from './state.js';
+import { state, cachedProfile } from './state.js';
 import { route, setNotFound, startRouter, navigate, refreshCurrentView, pageEl, historyDepth, resetPages, trackOverlays, onOverlayEntry } from './router.js';
 import { renderLandingView, seedPinnedGames } from './views/landing-view.js';
 import { renderAuthView } from './views/auth-view.js';
@@ -423,6 +423,19 @@ async function wireAuthDeepLink() {
 
 async function loadSession(user) {
   state.user = user;
+  // Opened before: go straight in with the saved profile and check it against
+  // the server in the background, instead of showing a blank screen while
+  // that request runs.
+  const saved = cachedProfile(user.id);
+  if (saved && !saved.is_suspended) {
+    state.profile = saved;
+    startApp(user);
+    api.getProfile(user.id).then((fresh) => {
+      state.profile = fresh;
+      if (fresh?.is_suspended) renderSuspended();
+    }).catch(() => {});
+    return;
+  }
   try {
     state.profile = await api.getProfile(user.id);
   } catch {
@@ -444,6 +457,10 @@ async function loadSession(user) {
     renderSuspended();
     return;
   }
+  startApp(user);
+}
+
+function startApp(user) {
   registerRoutes();
   startRouter();
   promptUsernameIfPlaceholder();
