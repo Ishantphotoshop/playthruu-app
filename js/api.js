@@ -1515,7 +1515,7 @@ export const BROWSE_SORTS = [
 // The Browse screen's Sort by page, grouped the way Letterboxd groups it.
 // `section` entries are headings; `short` is what the Filters row shows.
 export const BROWSE_SORTS_SIMPLE = [
-  { label: 'Game name', short: 'Game name', value: 'az' },
+  { label: 'A to Z', short: 'A to Z', value: 'az' },
   { section: 'Release date' },
   { label: 'Newest first', short: 'Newest first', value: 'newest' },
   { label: 'Just released and hyped', short: 'Just released', value: 'recent' },
