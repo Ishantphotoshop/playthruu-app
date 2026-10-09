@@ -1512,10 +1512,21 @@ export const BROWSE_SORTS = [
   { label: 'Newest Releases', value: 'newest' }, { label: 'A–Z', value: 'az' },
 ];
 // The Browse screen's Sort by options (same sorts, plus oldest first).
+// The Browse screen's Sort by page, grouped the way Letterboxd groups it.
+// `section` entries are headings; `short` is what the Filters row shows.
 export const BROWSE_SORTS_SIMPLE = [
-  { label: 'Trending now', value: 'trending' }, { label: 'Most popular of all time', value: 'popular' },
-  { label: 'Highest rated', value: 'top_rated' }, { label: 'Critics’ favourites', value: 'all_time' },
-  { label: 'New releases', value: 'recent' }, { label: 'Most anticipated', value: 'anticipated' },
+  { label: 'Game name', short: 'Game name', value: 'az' },
+  { section: 'Release date' },
+  { label: 'Newest first', short: 'Newest first', value: 'newest' },
+  { label: 'Just released and hyped', short: 'Just released', value: 'recent' },
+  { label: 'Earliest first', short: 'Earliest first', value: 'oldest' },
+  { section: 'Average rating' },
+  { label: 'Players’ highest first', short: 'Highest rated', value: 'top_rated' },
+  { label: 'Critics’ highest first', short: 'Critics’ favourites', value: 'all_time' },
+  { section: 'Popularity' },
+  { label: 'Trending now', short: 'Trending now', value: 'trending' },
+  { label: 'All time', short: 'Most popular', value: 'popular' },
+  { label: 'Most anticipated', short: 'Most anticipated', value: 'anticipated' },
 ];
 export const BROWSE_SORTS_FULL = [
   { label: 'Trending now', value: 'trending' }, { label: 'Most rated of all time', value: 'popular' },
@@ -1887,7 +1898,12 @@ export async function browseGames({
     if (perspective) clauses.push(`player_perspectives = (${Number(perspective)})`);
     if (PLAYER_CLAUSES[players]) clauses.push(PLAYER_CLAUSES[players]);
     // "Highest rated" means nothing without enough ratings behind it.
-    if (!minVotes && sort === 'top_rated') minVotes = CREDIBLE_VOTES * 5;
+    if (!minVotes && (sort === 'top_rated' || sort === 'all_time')) minVotes = CREDIBLE_VOTES * 5;
+    // A-Z and earliest-first are pure orderings, so without a floor they
+    // start with games nobody has heard of (1950s tech demos, "2048").
+    else if (!minVotes && (sort === 'az' || sort === 'oldest')) minVotes = 20;
+    // Newest first: games people actually noticed, not every upload.
+    if (sort === 'newest' && !minVotes) clauses.push('(total_rating_count >= 10 | hypes >= 25)');
     else if (!minVotes && minRating) minVotes = sort === 'recent' ? 10 : CREDIBLE_VOTES;
     if (GAME_TYPE_IDS[gameType]) clauses.push(`game_type = (${GAME_TYPE_IDS[gameType]})`);
     if (minHypes) clauses.push(`hypes >= ${Number(minHypes)}`);

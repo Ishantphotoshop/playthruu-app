@@ -300,7 +300,8 @@ export function renderBrowseGames(root) {
     const valueOf = (row) => {
       if (row.toggle) return '';
       if (row.text) return draft[row.key]?.trim() || 'Any';
-      return row.options.find((o) => o.value === String(draft[row.key] ?? ''))?.label || 'Any';
+      const o = row.options.find((x) => !x.section && x.value === String(draft[row.key] ?? ''));
+      return o?.short || o?.label || 'Any';
     };
     const isSet = (row) => String(draft[row.key] ?? '') !== String(base[row.key] ?? '');
 
@@ -354,7 +355,7 @@ export function renderBrowseGames(root) {
           ${row.text
             ? `<div class="browse-text"><input type="text" class="search-input" id="browse-text" placeholder="${esc(row.text)}" value="${esc(draft[row.key] || '')}" autocomplete="off" enterkeyhint="done">
                  <button type="button" class="btn btn--accent btn--block" data-act="done">Done</button></div>`
-            : row.options.map((o) => `
+            : row.options.map((o) => o.section ? `<p class="browse-label">${esc(o.section)}</p>` : `
               <button type="button" class="browse-opt${String(draft[row.key] ?? '') === o.value ? ' is-on' : ''}" data-v="${esc(o.value)}">
                 <span>${esc(o.label)}</span>${String(draft[row.key] ?? '') === o.value ? iconCheck() : ''}
               </button>`).join('')}
