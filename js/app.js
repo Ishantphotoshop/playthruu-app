@@ -2,7 +2,7 @@ import { supabase } from './supabase-client.js';
 import { onAuthChange, signOut, updatePasswordAfterReset } from './auth.js';
 import * as api from './api.js';
 import { state, cachedProfile } from './state.js';
-import { route, setNotFound, startRouter, navigate, refreshCurrentView, pageEl, historyDepth, resetPages, trackOverlays, onOverlayEntry } from './router.js';
+import { route, setNotFound, startRouter, navigate, refreshCurrentView, pageEl, historyDepth, resetPages, trackOverlays, onOverlayEntry, markTabStale } from './router.js';
 import { renderLandingView, seedPinnedGames } from './views/landing-view.js';
 import { renderAuthView } from './views/auth-view.js';
 import { renderFeedView } from './views/feed-view.js';
@@ -512,6 +512,7 @@ function startApp(user) {
     }
     unreadNotifCount += 1;
     applyNotifBadge();
+    markTabStale('/notifications'); // its kept page is rebuilt when you open it
     // A message notification also moves the Messages tab's own count,
     // which is driven by a different subscription that does not fire for
     // conversation_prefs changes - nudge it so both badges agree.

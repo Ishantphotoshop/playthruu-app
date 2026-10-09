@@ -350,6 +350,14 @@ export async function renderNotificationsView(root) {
     if (activeTab !== 'you' && !cur().loading) load(cur(), { reset: true });
   };
   window.addEventListener('notifications:incoming', onIncoming);
+  // The kept page is shown again (you came back to this tab): opening it
+  // reads everything, and a tab that has been away a while refreshes quietly.
+  window.addEventListener('page:shown', (e) => {
+    if (!e.detail?.restored || !root.isConnected) return;
+    markVisibleRead();
+    const t = cur();
+    if (t.loadedAt && Date.now() - t.loadedAt > STALE_MS) load(t, { reset: true });
+  });
 
   paintShell();
   load(cur(), { reset: true });

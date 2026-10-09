@@ -71,6 +71,18 @@ let skipNextTransition = true;
 const appEl = () => document.getElementById('app');
 const pages = new Map(); // key -> { el, path, idx, scroll }
 const MAX_PAGES = 20;
+// The four main tabs keep ONE page each for the whole visit. Tapping Home,
+// Search, Notifications or Profile in the bar shows that tab's page exactly as
+// it was left (same DOM, scroll, typed search, loaded lists), instead of
+// building it again. A tab is only rebuilt when something it shows may have
+// changed (see markPagesStale / markTabStale), or on a pull-to-refresh.
+const TAB_PERSIST = new Set(['/feed', '/search', '/notifications', '/me']);
+const tabPages = new Map(); // tab path -> the shared page record
+// Home and Profile show things that move on without you (friends' activity,
+// follower counts): after this long away they are built again instead of
+// shown old. Search keeps what you typed; Notifications refreshes itself.
+const TAB_TTL = { '/feed': 15 * 60_000, '/me': 15 * 60_000 };
+const tabFresh = (tp, path) => !tp.stale && Date.now() - tp.builtAt < (TAB_TTL[path] || Infinity);
 let current = null; // { key, idx, path }
 let activePage = null;
 let seq = 0;
@@ -129,6 +141,15 @@ function stashCurrent() {
 // under keep coming back exactly as they were left.
 export function markPagesStale() {
   for (const [k, pg] of pages) if (k !== current?.key) pg.stale = true;
+  const here = pages.get(current?.key);
+  for (const tp of tabPages.values()) if (tp !== here) tp.stale = true;
+}
+
+// One tab's page is out of date (a new notification arrived while it was
+// away): it is rebuilt the next time it is opened.
+export function markTabStale(path) {
+  const tp = tabPages.get(path);
+  if (tp && tp !== pages.get(current?.key)) tp.stale = true;
 }
 
 // A rebuilt page starts at the top; take it back to where it was left.
@@ -172,6 +193,7 @@ function prune(idx) {
 // the entries behind this one are still there in the browser's history.
 export function resetPages() {
   pages.clear();
+  tabPages.clear();
   activePage = null;
   if (current) current = { key: null, idx: current.idx, path: null };
 }
@@ -381,6 +403,18 @@ function resolve(force = false) {
   const params = {};
   r.paramNames.forEach((name, i) => (params[name] = decodeURIComponent(m[i + 1])));
   const kept = force ? null : pages.get(st.key);
+  // Opening a main tab again from the bar: its page is still alive, show it.
+  const shared = !force && TAB_PERSIST.has(cleanPath) ? tabPages.get(cleanPath) : null;
+  if (!(kept && kept.path === path && !kept.stale) && shared && tabFresh(shared, cleanPath)) {
+    pages.set(st.key, shared);
+    paint(() => {
+      showPage(shared.el);
+      restoreScroll(shared.scroll);
+      updateNav(cleanPath);
+      window.dispatchEvent(new CustomEvent('page:shown', { detail: { restored: true } }));
+    }, direction);
+    return;
+  }
   if (kept && kept.path === path && !kept.stale) {
     // Back (or forward) to a screen we still have: put it back exactly as
     // it was left. Nothing is re-run and nothing is refetched.
@@ -395,8 +429,17 @@ function resolve(force = false) {
   const resumeTop = kept && kept.path === path && kept.stale ? kept.mainTop : 0;
   const el = document.createElement('div');
   el.className = 'page';
-  if (r.keep) pages.set(st.key, { el, path, idx: st.idx, scroll: null });
-  else pages.delete(st.key);
+  if (r.keep) {
+    const rec = { el, path, idx: st.idx, scroll: null, builtAt: Date.now() };
+    pages.set(st.key, rec);
+    if (TAB_PERSIST.has(cleanPath)) {
+      // This tab's page is now the new one, for every history entry that
+      // pointed at the old one too.
+      const old = tabPages.get(cleanPath);
+      if (old) for (const [k, pg] of pages) if (pg === old) pages.set(k, rec);
+      tabPages.set(cleanPath, rec);
+    }
+  } else pages.delete(st.key);
   prune(st.idx + 1);
   paint(() => {
     showPage(el);
