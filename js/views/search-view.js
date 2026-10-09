@@ -57,14 +57,16 @@ export function renderSearchView(root, { initialTab = 'games' } = {}) {
   // whatever's on screen by then with stale trending results.
   let promptTicket = 0;
 
+  // Header and tab pill are Home's own (same elements, same CSS), so the two
+  // screens line up to the pixel and the header stays put while you scroll.
   root.innerHTML = `
-    <div class="view-body view-body--no-topbar view-body--search">
-      <div class="msg-inbox-head">
-        <h1 class="msg-inbox-title">Search</h1>
-      </div>
-      <div class="segmented segmented--wide" id="search-tabs">
-        ${TABS.map((t) => `<button class="segmented__item${t.id === tab ? ' segmented__item--active' : ''}" data-tab="${t.id}">${t.label}</button>`).join('')}
-      </div>
+    <header class="topbar topbar--home"><span class="topbar__logo">Search</span></header>
+    <div class="home-tabs">
+      <nav class="home-tabs__pill search-tabs" id="search-tabs" data-active="${tab}">
+        ${TABS.map((t) => `<button type="button" class="home-tabs__item${t.id === tab ? ' home-tabs__item--active' : ''}" data-tab="${t.id}">${t.label}</button>`).join('')}
+      </nav>
+    </div>
+    <div class="view-body view-body--search">
       <form class="search-bar-row" id="search-form">
         <input type="search" id="search-input" class="search-input" placeholder="${TAB[tab].placeholder}" autocomplete="off" enterkeyhint="search">
         <a href="#/discover/filters" class="filter-btn" id="filter-btn" aria-label="Filter games">${iconFilter()}</a>
@@ -289,11 +291,12 @@ export function renderSearchView(root, { initialTab = 'games' } = {}) {
     if (from !== results && results.animate && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       results.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 150, easing: 'ease-out' });
     }
-    qsa('.segmented__item', root).forEach(b => b.classList.toggle('segmented__item--active', b.dataset.tab === tab));
+    tabsEl.dataset.active = tab;
+    qsa('.home-tabs__item', root).forEach(b => b.classList.toggle('home-tabs__item--active', b.dataset.tab === tab));
     input.placeholder = TAB[tab].placeholder;
     filterBtn.style.display = tab === 'games' ? '' : 'none';
     // The active tab can be off to the side of a row that scrolls.
-    qs('.segmented__item--active', tabsEl)?.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+    
   }
 
   // Remember whether the box had focus at the moment a tab was touched:
@@ -301,7 +304,7 @@ export function renderSearchView(root, { initialTab = 'games' } = {}) {
   // from it.
   let hadFocus = false;
   tabsEl.addEventListener('pointerdown', () => { hadFocus = document.activeElement === input; });
-  qsa('.segmented__item', root).forEach(btn => {
+  qsa('.home-tabs__item', root).forEach(btn => {
     btn.addEventListener('click', () => {
       const keepFocus = hadFocus || document.activeElement === input;
       hadFocus = false;
