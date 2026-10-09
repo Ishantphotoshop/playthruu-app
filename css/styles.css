@@ -6819,3 +6819,24 @@ a.gd-credit__name { text-decoration: none; }
   font-family: var(--font-body); font-weight: 700; font-size: 13px;
 }
 .browse-chip svg { width: 14px; height: 14px; color: var(--ink-dim); flex-shrink: 0; }
+
+/* The search box in Log a game: one ring, on the box itself. The browser's
+   own outline on the input made a second green box inside the first. */
+.lg-search input:focus, .lg-search input:focus-visible { outline: none; box-shadow: none; }
+.lg-search:focus-within { border-color: var(--accent); }
+
+/* Log a game, search step: the same search bar and recent searches as the
+   Search screen. Everything shares one left edge: the bar, the heading and
+   the names under it. No scrollbar line beside the sheet's lists. */
+.lg-sheet--picker .lc-search-row { margin-bottom: 12px; }
+.lg-sheet--picker .search-recent__row { margin: 6px 0 4px; }
+.lc-recent-row { display: flex; align-items: center; gap: 4px; }
+.lc-recent {
+  flex: 1; min-width: 0; padding: 13px 0; background: none; border: 0; color: var(--ink); text-align: left;
+  font-family: var(--font-body); font-weight: 600; font-size: 16px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.lc-recent-x { width: 38px; height: 38px; flex-shrink: 0; display: grid; place-items: center; background: none; border: 0; color: var(--ink-faint); }
+.lc-recent-x svg { width: 16px; height: 16px; }
+.lg-body, .lg-sheet, .lg-sheet .modal__body { scrollbar-width: none; -ms-overflow-style: none; }
+.lg-body::-webkit-scrollbar, .lg-sheet::-webkit-scrollbar { display: none; }

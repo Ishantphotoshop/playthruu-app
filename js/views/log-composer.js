@@ -2,10 +2,10 @@ import * as api from '../api.js';
 import { state } from '../state.js';
 import {
   esc, starRow, toast, qs, qsa, debounce, formatDate, enableSwipeToDismiss,
-  celebrate, pulseLogTab, getRecentSearches, recordRecentSearch,
+  celebrate, pulseLogTab, getRecentSearches, recordRecentSearch, removeRecentSearch, clearRecentSearches,
 } from '../utils.js';
 import {
-  iconClose, iconSearch, iconChevronRight,
+  iconClose, iconSearch, iconChevronRight, confirmSheet,
   combinedGameResultsList, wireCombinedGameResults, wireResultDirectors,
 } from '../components.js';
 
@@ -28,8 +28,12 @@ import {
 // (title + cover), so the sheet can open instantly while the catalogue
 // lookup finishes behind it. Saving waits for it.
 export function openLogComposer({ game = null, resolveGame = null, existingLog = null, defaultReplay = false, onSaved = () => {} } = {}) {
+  // A second tap on + (or a double tap) while the sheet is open or opening
+  // must not stack another one on top.
+  if (document.querySelector('.modal-overlay[data-lc]')) return;
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
+  overlay.dataset.lc = '1';
   document.body.appendChild(overlay);
   document.body.style.overflow = 'hidden';
 
@@ -64,6 +68,13 @@ export function openLogComposer({ game = null, resolveGame = null, existingLog =
   const buzz = () => {
     if (haptics) haptics.impact({ style: 'LIGHT' }).catch(() => {});
     else { try { navigator.vibrate?.(10); } catch { /* not supported here */ } }
+  };
+
+  // The heart: a firmer two-beat buzz than the light detent used for the
+  // stars and pills, so it is clearly felt.
+  const buzzHeart = () => {
+    if (haptics) haptics.impact({ style: 'MEDIUM' }).catch(() => {});
+    else { try { navigator.vibrate?.([16, 40, 26]); } catch { /* not supported here */ } }
   };
 
   // ---------------------------------------------------------- the form
@@ -286,10 +297,10 @@ export function openLogComposer({ game = null, resolveGame = null, existingLog =
           <button type="button" class="lg-x" data-act="cancel" aria-label="Close">${iconClose()}</button>
         </header>
         <div class="lg-body lg-body--pad">
-          <label class="lg-search">
-            <span class="lg-search__icon">${iconSearch()}</span>
-            <input type="text" id="lc-search" autocomplete="off" placeholder="Name of Game" aria-label="Name of Game">
-          </label>
+          <form class="search-bar-row lc-search-row" id="lc-form">
+            <input type="search" id="lc-search" class="search-input" autocomplete="off" enterkeyhint="search"
+                   placeholder="Search games…" aria-label="Search games">
+          </form>
           <div id="lc-results"></div>
         </div>
       </div>`;
@@ -300,40 +311,67 @@ export function openLogComposer({ game = null, resolveGame = null, existingLog =
     const results = qs('#lc-results', overlay);
     let directorObserver = null;
 
-    // Games only. The Search tab keeps ONE history across both of its
-    // tabs, so the raw list has player searches in it — and a username
-    // is no use when the question on screen is which game you played.
+    // Game searches only (the Search tab keeps one history for every tab, and
+    // a username is no use when the question is which game you played).
+    // Same look as the Recent searches on the Search screen, names first and
+    // lined up under the heading.
     function paintRecent() {
-      const entries = getRecentSearches().filter((e) => e.tab === 'games'); // game searches only, not players, lists, studios or artists
+      const entries = getRecentSearches().filter((e) => e.tab === 'games');
       if (!entries.length) { results.innerHTML = ''; return; }
       results.innerHTML = `
-        <p class="search-recent__heading">Recent searches</p>
-        <div class="recent-search-list">
+        <div class="search-recent__row">
+          <p class="search-recent__heading">Recent searches</p>
+          <button type="button" class="link-btn" id="lc-clear">Clear</button>
+        </div>
+        <div class="lc-recent-list">
           ${entries.map((e) => `
-            <button type="button" class="recent-search-row__content lc-recent" data-term="${esc(e.term)}">
-              ${iconSearch()}<span>${esc(e.term)}</span>
-            </button>`).join('')}
+            <div class="lc-recent-row">
+              <button type="button" class="lc-recent" data-term="${esc(e.term)}">${esc(e.term)}</button>
+              <button type="button" class="lc-recent-x" data-del="${esc(e.term)}" aria-label="Remove ${esc(e.term)}">${iconClose()}</button>
+            </div>`).join('')}
         </div>`;
       qsa('.lc-recent', results).forEach((btn) => {
         btn.addEventListener('click', () => { input.value = btn.dataset.term; runSearch(); });
       });
+      qsa('.lc-recent-x', results).forEach((btn) => {
+        // Keep focus in the search box, so removing a row never closes the list.
+        btn.addEventListener('mousedown', (e) => e.preventDefault());
+        btn.addEventListener('click', () => { removeRecentSearch(btn.dataset.del, 'games'); paintRecent(); });
+      });
+      qs('#lc-clear', results)?.addEventListener('click', async () => {
+        const ok = await confirmSheet({ title: 'Clear search history?', confirmLabel: 'Clear', danger: true });
+        if (ok) clearRecentSearches();
+        paintRecent();
+      });
     }
 
+    let searchTicket = 0;
     async function runSearch() {
       const q = input.value.trim();
+      const ticket = ++searchTicket;
       if (!q) { paintRecent(); return; }
       results.innerHTML = '<p class="muted">Searching…</p>';
       try {
         const { results: found } = await api.searchGamesEverywhere(q);
+        if (ticket !== searchTicket) return; // a newer search has started
         if (found.length) recordRecentSearch(q, 'games');
+        if (!found.length) { results.innerHTML = '<p class="muted">No games found. Try a different spelling.</p>'; return; }
         results.innerHTML = combinedGameResultsList(found);
         wireCombinedGameResults(results, found, {
-          onLocal: (picked) => { pendingGame = null; selectedGame = picked; paintForm(); },
-          onRemote: async (picked) => { pendingGame = null; selectedGame = await api.addGame(picked, state.user.id); paintForm(); },
+          onLocal: (picked) => { pendingGame = null; selectedGame = picked; startForm(); },
+          onRemote: async (picked) => {
+            try {
+              const saved = await api.addGame(picked, state.user.id);
+              pendingGame = null; selectedGame = saved; startForm();
+            } catch (err) {
+              toast(err.message || 'Could not open that game.', 'error');
+            }
+          },
         });
         if (directorObserver) directorObserver.disconnect();
         directorObserver = wireResultDirectors(results, found, api);
       } catch (err) {
+        if (ticket !== searchTicket) return;
         results.innerHTML = `<p class="muted">Couldn't search right now: ${esc(err.message)}</p>`;
       }
     }
@@ -343,8 +381,14 @@ export function openLogComposer({ game = null, resolveGame = null, existingLog =
       if (directorObserver) directorObserver.disconnect();
       // Emptying the box goes back to the history rather than leaving
       // the last query's results under an empty field.
-      if (!input.value.trim()) { paintRecent(); return; }
+      if (!input.value.trim()) { searchTicket++; paintRecent(); return; }
       doSearch();
+    });
+    // Enter runs the search right away and puts the keyboard away.
+    qs('#lc-form', overlay).addEventListener('submit', (e) => {
+      e.preventDefault();
+      runSearch();
+      input.blur();
     });
     paintRecent();
     input.focus();
@@ -394,7 +438,7 @@ export function openLogComposer({ game = null, resolveGame = null, existingLog =
 
     if (act === 'love') {
       draft.loved = !draft.loved;
-      buzz();
+      buzzHeart();
       actBtn.setAttribute('aria-pressed', String(draft.loved));
       actBtn.setAttribute('aria-label', draft.loved ? 'Remove from loved' : 'Mark as loved');
       actBtn.innerHTML = draft.loved ? iconHeartSolid() : iconHeartLine();
@@ -433,8 +477,23 @@ export function openLogComposer({ game = null, resolveGame = null, existingLog =
     }
   });
 
-  if (selectedGame) paintForm();
+  // The form for a freshly picked game: an unreleased one can only go in the
+  // backlog, so it starts there instead of failing on Save.
+  function startForm() {
+    if (!existingLog && isUnreleased(selectedGame)) draft.status = 'backlog';
+    paintForm();
+  }
+
+  if (selectedGame) startForm();
   else paintPicker();
+}
+
+function isUnreleased(g) {
+  if (!g) return false;
+  const now = new Date(); now.setHours(0, 0, 0, 0);
+  if (g.release_date) { const rd = new Date(g.release_date); return !isNaN(rd) && rd > now; }
+  if (g.release_year) return Number(g.release_year) > now.getFullYear();
+  return false;
 }
 
 // ------------------------------------------------------------- helpers
