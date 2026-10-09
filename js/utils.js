@@ -248,8 +248,6 @@ export function enableSwipeToDismiss(modal, close, onDrag) {
     if (dy < 0) dy = 0;
     modal.style.transition = 'none';
     modal.style.transform = `translateY(${dy}px)`;
-    const ov = overlay();
-    if (ov) ov.style.opacity = String(Math.max(0.25, 1 - dy / 420));
     // Deliberately NOT tied to THRESHOLD (90px, the dismiss trigger) —
     // that reaches 1 almost immediately and then sits there for the
     // rest of a longer drag, so the blur looked like it snapped to nil

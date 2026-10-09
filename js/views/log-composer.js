@@ -62,7 +62,24 @@ export function openLogComposer({ game = null, resolveGame = null, existingLog =
   // needs to do on the way out has to be reachable from the element
   // itself. Nothing to save here (this form commits on its own button),
   // but body scroll still has to come back.
-  overlay.__dismiss = close;
+  // Back on the log form, when the game was picked from the search step,
+  // goes back to that search (same words, same results) instead of closing
+  // everything. The app's Back handling has already used up the sheet's
+  // history entry by now, so staying open puts one back for the next Back.
+  let view = 'form';
+  let cameFromPicker = false;
+  let lastQuery = '';
+  let lastFound = null;
+  overlay.__dismiss = () => {
+    if (view === 'form' && cameFromPicker) {
+      overlay.__closing = false;
+      selectedGame = null; pendingGame = null;
+      paintPicker();
+      history.pushState({ ...history.state, ov: (history.state?.ov || 0) + 1 }, '', location.href);
+      return;
+    }
+    close();
+  };
 
   const haptics = window.Capacitor?.Plugins?.Haptics || null;
   const buzz = () => {
@@ -79,6 +96,7 @@ export function openLogComposer({ game = null, resolveGame = null, existingLog =
 
   // ---------------------------------------------------------- the form
   function paintForm() {
+    view = 'form';
     const g = selectedGame;
     const today = new Date().toISOString().slice(0, 10);
 
@@ -288,11 +306,12 @@ export function openLogComposer({ game = null, resolveGame = null, existingLog =
   // year, director — because it is the same question, and two different
   // answers to "which game do you mean" is one more than the app needs.
   function paintPicker() {
+    view = 'picker';
     overlay.innerHTML = `
       <div class="modal lg-sheet lg-sheet--tall lg-sheet--picker">
         <header class="lg-head lg-head--plain">
           <div class="lg-head__text">
-            <h2 class="lg-head__title">Name of game</h2>
+            <h2 class="lg-head__title">Name of Game</h2>
           </div>
           <button type="button" class="lg-x" data-act="cancel" aria-label="Close">${iconClose()}</button>
         </header>
@@ -345,6 +364,23 @@ export function openLogComposer({ game = null, resolveGame = null, existingLog =
       });
     }
 
+    function showResults(found) {
+      results.innerHTML = combinedGameResultsList(found);
+      wireCombinedGameResults(results, found, {
+        onLocal: (picked) => { pendingGame = null; selectedGame = picked; cameFromPicker = true; startForm(); },
+        onRemote: async (picked) => {
+          try {
+            const saved = await api.addGame(picked, state.user.id);
+            pendingGame = null; selectedGame = saved; cameFromPicker = true; startForm();
+          } catch (err) {
+            toast(err.message || 'Could not open that game.', 'error');
+          }
+        },
+      });
+      if (directorObserver) directorObserver.disconnect();
+      directorObserver = wireResultDirectors(results, found, api);
+    }
+
     let searchTicket = 0;
     async function runSearch() {
       const q = input.value.trim();
@@ -356,20 +392,8 @@ export function openLogComposer({ game = null, resolveGame = null, existingLog =
         if (ticket !== searchTicket) return; // a newer search has started
         if (found.length) recordRecentSearch(q, 'games');
         if (!found.length) { results.innerHTML = '<p class="muted">No games found. Try a different spelling.</p>'; return; }
-        results.innerHTML = combinedGameResultsList(found);
-        wireCombinedGameResults(results, found, {
-          onLocal: (picked) => { pendingGame = null; selectedGame = picked; startForm(); },
-          onRemote: async (picked) => {
-            try {
-              const saved = await api.addGame(picked, state.user.id);
-              pendingGame = null; selectedGame = saved; startForm();
-            } catch (err) {
-              toast(err.message || 'Could not open that game.', 'error');
-            }
-          },
-        });
-        if (directorObserver) directorObserver.disconnect();
-        directorObserver = wireResultDirectors(results, found, api);
+        lastQuery = q; lastFound = found;
+        showResults(found);
       } catch (err) {
         if (ticket !== searchTicket) return;
         results.innerHTML = `<p class="muted">Couldn't search right now: ${esc(err.message)}</p>`;
@@ -390,8 +414,14 @@ export function openLogComposer({ game = null, resolveGame = null, existingLog =
       runSearch();
       input.blur();
     });
-    paintRecent();
-    input.focus();
+    // Coming back from a game's log form: the search is just as it was left.
+    if (lastQuery && lastFound) {
+      input.value = lastQuery;
+      showResults(lastFound);
+    } else {
+      paintRecent();
+      input.focus();
+    }
   }
 
   // ------------------------------------------------------------ wiring
