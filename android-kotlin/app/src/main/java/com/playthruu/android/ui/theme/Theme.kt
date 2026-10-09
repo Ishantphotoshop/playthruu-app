@@ -29,36 +29,39 @@ import com.playthruu.android.R
  * throw away the identity the whole thing is built on.
  */
 object Ink {
-    val bg = Color(0xFF0B0B0B)
-    val bgDeep = Color(0xFF050505)
-    val bgLift = Color(0xFF111111)
-    val surface = Color(0xFF161616)
-    val surfaceRaised = Color(0xFF1D1D1D)
-    val surfaceHigh = Color(0xFF292929)
+    // Coffee brown, lifted from the web app's :root (css/styles.css).
+    val bg = Color(0xFF1C1009)
+    val bgDeep = Color(0xFF120A05)
+    val bgLift = Color(0xFF26160D)
+    val surface = Color(0xFF2E1B10)
+    val surfaceRaised = Color(0xFF3B2416)
+    val surfaceHigh = Color(0xFF4F3220)
 
-    val ink = Color(0xFFF5F5F5)
-    val inkDim = Color(0xFF969696)
-    val inkFaint = Color(0xFF646464)
+    val ink = Color(0xFFFBEFE2)
+    val inkDim = Color(0xFFD9BB9C)
+    val inkFaint = Color(0xFFB99872)
+    val inkGhost = Color(0xFF8D6A48)
 
-    val accent = Color(0xFFFF7A29)
-    val accentBright = Color(0xFFFF9A5C)
-    val accentDeep = Color(0xFFD15C14)
-    val accentDim = Color(0x26FF7A29)
+    // The accent is green now.
+    val accent = Color(0xFF00E054)
+    val accentBright = Color(0xFF00FF62)
+    val accentDeep = Color(0xFF00C030)
+    val accentDim = Color(0x2600E054)
 
-    val gold = Color(0xFFFFC247)
-    val orange = Color(0xFFFF8C3A)
-    val coral = Color(0xFFFF6B6B)
-    val teal = Color(0xFF4DABFF)
-    val violet = Color(0xFFA78BFA)
+    val gold = Color(0xFF00E054)      // stars are the accent green
+    val starEmpty = Color(0xFF4F3220)
+    val orange = Color(0xFFFF9933)
+    val coral = Color(0xFFFF9933)
+    val teal = Color(0xFF40BCF4)
+    val violet = Color(0xFF40BCF4)
 
-    // The CSS versions are rgba over the background; these are the same
-    // colours flattened, since a Compose border does not composite the
-    // way a CSS one does.
-    val line = Color(0x14F5F5F5)
-    val lineStrong = Color(0x29F5F5F5)
+    // rgba(230,170,110,0.18) / 0.30 over the ground: Compose borders do
+    // not composite the way CSS ones do, so they are kept as alpha colours.
+    val line = Color(0x2EE6AA6E)
+    val lineStrong = Color(0x4DE6AA6E)
 
-    val danger = Color(0xFFF43F5E)
-    val success = Color(0xFF3DDC97)
+    val danger = Color(0xFFFF5A5F)
+    val success = Color(0xFF00E054)
 }
 
 /** Spacing, straight from the --space-* scale. */
@@ -67,7 +70,9 @@ object Space {
     val s2 = 8.dp
     val s3 = 14.dp
     val s4 = 20.dp
-    val s5 = 32.dp
+    val s5 = 28.dp
+    val s6 = 40.dp
+    val gutter = 16.dp
 }
 
 /**

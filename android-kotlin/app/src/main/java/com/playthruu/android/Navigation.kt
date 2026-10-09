@@ -15,8 +15,9 @@ package com.playthruu.android
 internal sealed interface Screen {
     data object Feed : Screen
     data object Search : Screen
-    data object Messages : Screen
-    data object Activity : Screen
+    data object Log : Screen
+    data object Notifications : Screen
+    data class News(val slug: String) : Screen
     data class Profile(val username: String?) : Screen
     data class Game(val id: String) : Screen
     data object Settings : Screen
@@ -74,8 +75,9 @@ internal data class NavState(val entries: List<Entry>, val nextId: Long) {
 private fun Screen.encode(): String = when (this) {
     Screen.Feed -> "feed"
     Screen.Search -> "search"
-    Screen.Messages -> "messages"
-    Screen.Activity -> "activity"
+    Screen.Log -> "log"
+    Screen.Notifications -> "notifications"
+    is Screen.News -> "news:$slug"
     Screen.Settings -> "settings"
     is Screen.Profile -> "profile:" + (username ?: "")
     is Screen.Game -> "game:$id"
@@ -86,8 +88,9 @@ private fun decodeScreen(code: String): Screen? {
     return when (code.substringBefore(':')) {
         "feed" -> Screen.Feed
         "search" -> Screen.Search
-        "messages" -> Screen.Messages
-        "activity" -> Screen.Activity
+        "log" -> Screen.Log
+        "notifications", "activity" -> Screen.Notifications
+        "news" -> Screen.News(arg)
         "settings" -> Screen.Settings
         "profile" -> Screen.Profile(arg.ifEmpty { null })
         "game" -> if (arg.isNotEmpty()) Screen.Game(arg) else null

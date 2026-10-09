@@ -55,7 +55,11 @@ import com.playthruu.android.ui.Loading
 import com.playthruu.android.ui.NavIcons
 import com.playthruu.android.ui.screens.ActivityScreen
 import com.playthruu.android.ui.screens.AuthScreen
-import com.playthruu.android.ui.screens.FeedScreen
+import com.playthruu.android.ui.screens.HomeScreen
+import com.playthruu.android.ui.BackHeader
+import com.playthruu.android.ui.BottomBar
+import com.playthruu.android.ui.PageTitle
+import com.playthruu.android.ui.Tab
 import com.playthruu.android.ui.screens.GameScreen
 import com.playthruu.android.ui.screens.ProfileScreen
 import com.playthruu.android.ui.screens.SearchScreen
@@ -180,15 +184,29 @@ private fun SignedInShell(
         }
         if (top.tab) {
             BottomBar(
-                current = top.screen,
-                onSelect = { go(nav.selectTab(it)) },
-                // The real Log button opens a composer against
-                // whatever game you land on; without that flow
-                // built yet, it takes you to find the game first.
-                onLog = { go(nav.push(Screen.Search)) },
+                current = top.screen.asTab(),
+                profile = profile,
+                unread = unread,
+                onSelect = { t ->
+                    when (t) {
+                        Tab.Feed -> go(nav.selectTab(Screen.Feed))
+                        Tab.Search -> go(nav.selectTab(Screen.Search))
+                        Tab.Log -> go(nav.push(Screen.Search))
+                        Tab.Notifications -> go(nav.selectTab(Screen.Notifications))
+                        Tab.Profile -> go(nav.selectTab(Screen.Profile(null)))
+                    }
+                },
             )
         }
     }
+}
+
+private fun Screen.asTab(): Tab? = when (this) {
+    Screen.Feed -> Tab.Feed
+    Screen.Search -> Tab.Search
+    Screen.Notifications -> Tab.Notifications
+    is Screen.Profile -> if (username == null) Tab.Profile else null
+    else -> null
 }
 
 /**
@@ -220,14 +238,16 @@ private fun EntryContent(
     pop: () -> Unit,
 ) {
     when (val screen = entry.screen) {
-        is Screen.Feed -> Column(Modifier.fillMaxSize()) {
-            HomeTopBar(unread = unread, onOpenNotifications = { push(Screen.Activity) })
-            FeedScreen(
-                userId = userId, repo = repo,
-                onOpenGame = { push(Screen.Game(it)) },
-                onOpenProfile = { push(Screen.Profile(it)) },
-            )
-        }
+        is Screen.Feed -> HomeScreen(
+            userId = userId, repo = repo,
+            onOpenGame = { push(Screen.Game(it)) },
+            onOpenProfile = { push(Screen.Profile(it)) },
+            onOpenIgdb = { g ->
+                val row = com.playthruu.android.data.Catalog.addGame(g, userId)
+                push(Screen.Game(row.id))
+            },
+            onOpenNews = { push(Screen.News(it)) },
+        )
 
         is Screen.Search -> Column(
             Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars).padding(top = 16.dp),
@@ -239,23 +259,13 @@ private fun EntryContent(
             )
         }
 
-        is Screen.Messages -> Column(
-            Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars).padding(top = 16.dp),
-        ) {
-            Text(
-                "Messages", style = MaterialTheme.typography.titleLarge,
-                color = Ink.ink, modifier = Modifier.padding(horizontal = 20.dp),
-            )
-            EmptyState("The messenger has not been ported to native yet. Open the web app or the bundled build to message someone.")
+        is Screen.Log, is Screen.News -> Column(Modifier.fillMaxSize()) {
+            BackHeader(if (screen is Screen.News) "News" else "Log a game", pop)
+            EmptyState("Coming to the native app next.")
         }
 
-        is Screen.Activity -> Column(
-            Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars).padding(top = 16.dp),
-        ) {
-            Text(
-                "Notifications", style = MaterialTheme.typography.titleLarge,
-                color = Ink.ink, modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
-            )
+        is Screen.Notifications -> Column(Modifier.fillMaxSize()) {
+            PageTitle("Notifications")
             ActivityScreen(
                 userId = userId, repo = repo,
                 onOpenProfile = { push(Screen.Profile(it)) },
@@ -288,90 +298,6 @@ private fun EntryContent(
             // Signing out swaps the whole shell for the sign-in screen,
             // which drops this stack with it.
             onSignOut = { vm.signOut() },
-        )
-    }
-}
-
-/**
- * .topbar--home: centred mark + wordmark, the bell absolutely
- * positioned so it never throws the centring off — the same layout
- * trick styles.css itself uses (position:absolute inside a
- * position:sticky parent).
- */
-@Composable
-private fun HomeTopBar(unread: Long, onOpenNotifications: () -> Unit) {
-    Box(
-        Modifier
-            .fillMaxWidth()
-            .windowInsetsPadding(WindowInsets.statusBars)
-            .padding(top = 20.dp, bottom = 14.dp),
-    ) {
-        Row(
-            Modifier.align(Alignment.Center),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Icon(NavIcons.Brand, "Playthruu", tint = Color(0xFFF2F5FA), modifier = Modifier.size(28.dp))
-            Text(
-                "Playthruu", fontFamily = Unbounded, fontWeight = FontWeight.ExtraBold,
-                fontSize = 26.sp, letterSpacing = (-0.2).sp, color = Ink.ink,
-            )
-        }
-        Box(Modifier.align(Alignment.CenterEnd).padding(end = 12.dp)) {
-            IconButton(onClick = onOpenNotifications) {
-                Box {
-                    Icon(Icons.Filled.Notifications, "Notifications", tint = Ink.ink)
-                    if (unread > 0) {
-                        Box(
-                            Modifier.align(Alignment.TopEnd).size(9.dp)
-                                .background(Ink.accentBright, CircleShape),
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-/**
- * .tabbar exactly: surfaceRaised background, hairline top border, five
- * icon-only items at 60%-white resting / full-white active colour, and
- * the centred Log button at 28dp against the others' 25dp.
- */
-@Composable
-private fun BottomBar(current: Screen, onSelect: (Screen) -> Unit, onLog: () -> Unit) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .background(Ink.surfaceRaised)
-            .padding(top = 6.dp, bottom = 6.dp)
-            .windowInsetsPadding(WindowInsets.navigationBars),
-        horizontalArrangement = Arrangement.SpaceEvenly,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        TabIcon(NavIcons.Home, "Feed", current is Screen.Feed) { onSelect(Screen.Feed) }
-        TabIcon(NavIcons.Search, "Search", current is Screen.Search) { onSelect(Screen.Search) }
-        Box(
-            Modifier.size(width = 58.dp, height = 50.dp).clickable(onClick = onLog),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(NavIcons.Brand, "Log", tint = Color.White, modifier = Modifier.size(28.dp))
-        }
-        TabIcon(NavIcons.Message, "Messages", current is Screen.Messages) { onSelect(Screen.Messages) }
-        TabIcon(NavIcons.Person, "Profile", current is Screen.Profile) { onSelect(Screen.Profile(null)) }
-    }
-}
-
-@Composable
-private fun TabIcon(icon: ImageVector, label: String, active: Boolean, onClick: () -> Unit) {
-    Box(
-        Modifier.size(width = 58.dp, height = 50.dp).clickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            icon, label,
-            tint = if (active) Color.White else Color.White.copy(alpha = 0.60f),
-            modifier = Modifier.size(25.dp),
         )
     }
 }

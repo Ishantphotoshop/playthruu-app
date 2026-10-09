@@ -4,6 +4,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -69,23 +70,24 @@ fun timeAgo(iso: String?): String {
 }
 
 /**
- * A game cover. Portrait 3:4, and a generated placeholder rather than a
- * grey box when there is no art — the web app does the same thing, and a
- * wall of identical grey rectangles is the fastest way to make a catalogue
- * look broken.
+ * A game cover, measured off the site: 3:4, 5dp corners, a 1dp white-10%
+ * border over the surface-raised ground, and a generated placeholder
+ * rather than a grey box when there is no art.
  */
 @Composable
 fun Poster(
     url: String?,
     title: String,
     modifier: Modifier = Modifier,
-    corner: Dp = 10.dp,
+    corner: Dp = 5.dp,
 ) {
+    val shape = RoundedCornerShape(corner)
     Box(
         modifier
             .aspectRatio(3f / 4f)
-            .clip(RoundedCornerShape(corner))
-            .background(placeholderBrush(title)),
+            .clip(shape)
+            .background(Ink.surfaceRaised)
+            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)), shape),
     ) {
         if (!url.isNullOrBlank()) {
             AsyncImage(
@@ -95,6 +97,7 @@ fun Poster(
                 modifier = Modifier.fillMaxSize(),
             )
         } else {
+            Box(Modifier.fillMaxSize().background(placeholderBrush(title)))
             Text(
                 title,
                 color = Color.White.copy(alpha = 0.72f),
@@ -107,6 +110,18 @@ fun Poster(
             )
         }
     }
+}
+
+/** A loading placeholder the size of a poster. */
+@Composable
+fun PosterSkeleton(modifier: Modifier = Modifier) {
+    Box(
+        modifier
+            .aspectRatio(3f / 4f)
+            .clip(RoundedCornerShape(5.dp))
+            .background(Ink.surfaceRaised.copy(alpha = 0.7f))
+            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.06f)), RoundedCornerShape(5.dp)),
+    )
 }
 
 /** A stable per-title gradient, so the same game always looks the same. */
@@ -151,28 +166,40 @@ fun Avatar(profile: Profile?, size: Dp, modifier: Modifier = Modifier) {
 }
 
 /**
- * The star row. Drawn as glyphs rather than vector icons for the same
- * reason the web app uses a font star: half-stars stay exactly half at
- * every size, and the row's baseline matches the text beside it.
+ * The star row, drawn from the site's own star path (the --star-mask shape),
+ * so a half star is cut straight down the middle of the star. [starWidth] is
+ * the width of one star; they sit [gap] apart.
  */
 @Composable
 fun StarRow(
     rating: Double?,
-    size: androidx.compose.ui.unit.TextUnit = 13.sp,
-    color: Color = Ink.ink,
+    starWidth: Dp = 10.dp,
+    color: Color = Ink.accent,
+    emptyColor: Color = Ink.starEmpty,
+    gap: Dp = 0.dp,
     showEmpty: Boolean = false,
 ) {
-    if (rating == null && !showEmpty) return
+    if ((rating == null || rating <= 0.0) && !showEmpty) return
     val value = rating ?: 0.0
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        for (i in 1..5) {
-            val glyph = when {
-                value >= i -> "★"
-                value >= i - 0.5 -> "⯨"
-                showEmpty -> "☆"
-                else -> null
-            } ?: break
-            Text(glyph, color = color, fontSize = size, fontWeight = FontWeight.Normal)
+    val count = if (showEmpty) 5 else kotlin.math.ceil(value).toInt().coerceIn(0, 5)
+    val h = starWidth * (19.9f / 20.92f)
+    androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
+        for (i in 1..count) {
+            val fill = when { value >= i -> 1f; value >= i - 0.5 -> 0.5f; else -> 0f }
+            androidx.compose.foundation.Canvas(Modifier.size(width = starWidth, height = h)) {
+                val sx = size.width / 20.92f; val sy = size.height / 19.9f
+                val path = androidx.compose.ui.graphics.Path().apply {
+                    moveTo((12f - 1.54f) * sx, (1f - 1f) * sy)
+                    val pts = listOf(14.46f to 8.62f, 22.46f to 8.6f, 15.98f to 13.29f, 18.47f to 20.9f, 12f to 16.18f,
+                        5.53f to 20.9f, 8.02f to 13.29f, 1.54f to 8.6f, 9.54f to 8.62f)
+                    pts.forEach { (x, y) -> lineTo((x - 1.54f) * sx, (y - 1f) * sy) }
+                    close()
+                }
+                if (emptyColor != Color.Transparent) drawPath(path, emptyColor)
+                if (fill > 0f) {
+                    clipRect(right = size.width * fill) { drawPath(path, color) }
+                }
+            }
         }
     }
 }

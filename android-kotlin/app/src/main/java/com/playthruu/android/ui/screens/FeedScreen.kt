@@ -168,7 +168,7 @@ fun LogCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(Space.s2),
             ) {
-                StarRow(log.rating, size = 14.sp, color = Ink.accentBright)
+                StarRow(log.rating, starWidth = 14.dp, color = Ink.accentBright)
                 if (log.status != "played") StatusStamp(log.status)
                 game?.releaseYear?.let {
                     Text(

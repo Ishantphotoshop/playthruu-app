@@ -274,7 +274,7 @@ private fun ReviewRow(log: GameLog, onOpenProfile: (String) -> Unit) {
                 style = MaterialTheme.typography.titleSmall,
                 color = Ink.ink,
             )
-            StarRow(log.rating, size = 12.sp, color = Ink.accentBright)
+            StarRow(log.rating, starWidth = 12.dp, color = Ink.accentBright)
         }
         Spacer(Modifier.height(6.dp))
         Text(

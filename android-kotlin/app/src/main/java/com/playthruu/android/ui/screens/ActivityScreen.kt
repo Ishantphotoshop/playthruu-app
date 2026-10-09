@@ -312,7 +312,7 @@ private fun ActivityRow(
             )
             if (rating != null) {
                 Spacer(Modifier.height(3.dp))
-                StarRow(rating, size = 12.sp, color = Ink.accentBright)
+                StarRow(rating, starWidth = 12.dp, color = Ink.accentBright)
             }
             if (!quote.isNullOrBlank()) {
                 Spacer(Modifier.height(3.dp))

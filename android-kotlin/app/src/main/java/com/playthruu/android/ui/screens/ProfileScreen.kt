@@ -218,7 +218,7 @@ fun ProfileScreen(
                         Poster(log.games?.coverUrl, log.games?.title ?: "Game", Modifier.fillMaxWidth())
                         if (log.rating != null) {
                             Spacer(Modifier.height(4.dp))
-                            StarRow(log.rating, size = 11.sp, color = Ink.accentBright)
+                            StarRow(log.rating, starWidth = 11.dp, color = Ink.accentBright)
                         }
                     }
                 }
