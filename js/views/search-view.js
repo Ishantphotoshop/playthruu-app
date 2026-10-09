@@ -154,7 +154,7 @@ export function renderSearchView(root, { initialTab = 'games' } = {}) {
     filterBtn.style.display = tab === 'games' ? '' : 'none';
     if (tab !== 'games') { renderSearchHistory(); return; }
     const viewed = getRecentlyViewed();
-    if (viewed.length) { paintIdleGames(viewed, 'Recently viewed'); return; }
+    if (viewed.length) { paintIdleGames(viewed, 'Jump back in'); return; }
 
     // Nothing looked at yet (new user/device) — browse what's trending
     // instead of landing on an empty screen. The live trending fetch is
