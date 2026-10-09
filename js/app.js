@@ -322,7 +322,7 @@ function wireGlobalChrome() {
 // which missed .avatar-viewer (profile-view.js) and .image-viewer
 // (message-thread-view.js) entirely, so back still stuck around on
 // exactly those two screens.
-const OVERLAY_SELECTOR = '.modal-overlay, .poster-viewer, .avatar-viewer, .image-viewer, .avatar-crop, .draw-overlay, .story-viewer';
+const OVERLAY_SELECTOR = '.modal-overlay, .poster-viewer, .avatar-viewer, .image-viewer, .avatar-crop, .draw-overlay, .story-viewer, .browse-filters';
 
 // This is the same cleanup wireHardwareBack already did for Android's
 // physical back button below — just generalized to every hashchange, so

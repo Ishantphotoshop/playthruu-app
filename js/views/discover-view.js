@@ -388,7 +388,9 @@ export function renderBrowseGames(root) {
     const draft = { ...filters };
     const sheet = document.createElement('div');
     sheet.className = 'browse-filters';
-    root.appendChild(sheet);
+    // On the body (like every other sheet) so the app's Back handling can
+    // close it: Back then closes Filters instead of leaving the page.
+    document.body.appendChild(sheet);
     const close = () => sheet.remove();
 
     const valueOf = (row) => {
