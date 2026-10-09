@@ -176,14 +176,13 @@ const chev = () => `<span class="browse-row__chev">${iconChevronRight()}</span>`
 
 // ---- Browse ----------------------------------------------------------------
 export function renderDiscoverView(root) {
-  root.innerHTML = topBar('Browse', { back: true, brand: true }) + `
+  root.innerHTML = topBar('Browse', { back: true, brand: true, flush: true }) + `
     <div class="view-body view-body--browse">
       <p class="browse-label">Browse by</p>
       <div class="browse-list">
         ${LISTS.map((l) => `
           <a class="browse-row" href="#/discover/games?list=${l.id}">
             <span class="browse-row__name">${esc(l.label)}</span>
-            <span class="browse-row__thumbs" data-thumbs="${l.id}"></span>
             ${chev()}
           </a>`).join('')}
       </div>
@@ -196,23 +195,13 @@ export function renderDiscoverView(root) {
           </a>`).join('')}
       </div>
     </div>` + navBar('/search');
-
-  // A few covers on each ready-made list, filled in as each one arrives.
-  LISTS.forEach((l) => {
-    firstPage(l.id).then(({ games }) => {
-      const slot = qs(`[data-thumbs="${l.id}"]`, root);
-      if (!slot) return;
-      slot.innerHTML = games.filter((g) => g.cover_url).slice(0, 3)
-        .map((g) => `<img src="${esc(igdbSized(g.cover_url, 'cover_small'))}" alt="" loading="lazy" decoding="async" onerror="this.remove()">`).join('');
-    }).catch(() => {});
-  });
 }
 
 // ---- one way in: its choices ------------------------------------------------
 export function renderBrowsePick(root, { kind }) {
   const k = KINDS[kind];
   if (!k) { navigate('/discover', { replace: true }); return; }
-  root.innerHTML = topBar(k.label, { back: true, brand: true }) + `
+  root.innerHTML = topBar(k.label, { back: true, brand: true, flush: true }) + `
     <div class="view-body view-body--browse">
       <div class="browse-list">
         ${k.options.map((o) => `
@@ -237,10 +226,11 @@ export function renderBrowseGames(root) {
   const shown = []; // every game on screen, by its tile's data-idx
 
   root.innerHTML = topBar(title, {
-    back: true, brand: true,
+    back: true, brand: true, flush: true,
     right: `<button type="button" class="browse-fbtn" id="browse-filter" aria-label="Filters">${iconFilter()}<em id="browse-fcount" hidden></em></button>`,
   }) + `
     <div class="view-body">
+      <div id="browse-chips" class="browse-chips" hidden></div>
       <div id="browse-grid" class="discovery-grid"></div>
       <div id="browse-more"></div>
     </div>` + navBar('/search');
@@ -255,7 +245,46 @@ export function renderBrowseGames(root) {
     const n = changed(filters);
     const el = qs('#browse-fcount', root);
     el.hidden = !n; el.textContent = n;
+    syncChips();
+    syncTitle();
   };
+
+  // What each filter says when it is on, for the chips under the header.
+  const optLabel = (opts, v) => opts.find((o) => !o.section && o.value === v)?.label || '';
+  function chipFor(key) {
+    const f = filters[key];
+    switch (key) {
+      case 'sort': return RATING_SORTS[f] || optLabel(api.BROWSE_SORTS_SIMPLE, f).replace(/ first$/, '') || '';
+      case 'year': return YEARS.find((y) => y.id === f)?.label || '';
+      case 'genre': return optLabel(GENRES, f);
+      case 'platform': return optLabel(api.BROWSE_PLATFORMS_ALL, f);
+      case 'players': return optLabel(api.BROWSE_PLAYERS, f);
+      case 'stars': return f ? starsLabel(f) : '';
+      case 'hideLogged': return f ? 'Hiding logged games' : '';
+      case 'fadeLogged': return f ? 'Fading logged games' : '';
+      default: return '';
+    }
+  }
+  const CHIP_KEYS = ['sort', 'year', 'genre', 'platform', 'players', 'stars', 'hideLogged', 'fadeLogged'];
+  function syncChips() {
+    const box = qs('#browse-chips', root);
+    const on = CHIP_KEYS.filter((k) => String(filters[k] ?? '') !== String(base[k] ?? '') && chipFor(k));
+    box.hidden = !on.length;
+    box.innerHTML = on.map((k) => `<button type="button" class="browse-chip" data-chip="${k}"><span>${esc(chipFor(k))}</span>${iconClose()}</button>`).join('');
+    qsa('[data-chip]', box).forEach((b) => b.addEventListener('click', () => {
+      filters[b.dataset.chip] = base[b.dataset.chip];
+      syncCount();
+      load(true);
+    }));
+  }
+  // The title is the list's own name until the sort is changed; then it
+  // says what the games are now sorted by.
+  function syncTitle() {
+    const el = qs('.topbar__title', root);
+    if (!el) return;
+    const sortLabel = filters.sort !== base.sort ? (RATING_SORTS[filters.sort] || optLabel(api.BROWSE_SORTS_SIMPLE, filters.sort)) : '';
+    el.textContent = sortLabel || title;
+  }
 
   async function needDiary() {
     if (diary || !state.user || !(filters.hideLogged || filters.fadeLogged)) return;
@@ -478,7 +507,7 @@ export function renderBrowseGames(root) {
         <div class="browse-filters__top">
           <button type="button" class="browse-filters__icon" data-act="back" aria-label="Back">${iconBackArrow()}</button>
           <h2>Rating</h2>
-          <span class="browse-filters__icon"></span>
+          <button type="button" class="browse-filters__icon browse-filters__icon--ok" data-act="ok" aria-label="Done">${iconCheck()}</button>
         </div>
         <div class="browse-filters__body">
           <p class="browse-label">Average rating</p>
@@ -493,6 +522,7 @@ export function renderBrowseGames(root) {
           </div>
         </div>`;
       qs('[data-act="back"]', sheet).addEventListener('click', paintList);
+      qs('[data-act="ok"]', sheet).addEventListener('click', paintList);
       qsa('[data-sort]', sheet).forEach((b) => b.addEventListener('click', () => { draft.sort = b.dataset.sort; paintList(); }));
       const range = qs('.star-pick__range', sheet);
       const sync = () => {
@@ -512,7 +542,7 @@ export function renderBrowseGames(root) {
         <div class="browse-filters__top">
           <button type="button" class="browse-filters__icon" data-act="back" aria-label="Back">${iconBackArrow()}</button>
           <h2>${esc(row.label)}</h2>
-          <span class="browse-filters__icon"></span>
+          <button type="button" class="browse-filters__icon browse-filters__icon--ok" data-act="ok" aria-label="Done">${iconCheck()}</button>
         </div>
         <div class="browse-filters__body">
           ${row.text
@@ -524,6 +554,7 @@ export function renderBrowseGames(root) {
               </button>`).join('')}
         </div>`;
       qs('[data-act="back"]', sheet).addEventListener('click', paintList);
+      qs('[data-act="ok"]', sheet).addEventListener('click', paintList);
       if (row.text) {
         const input = qs('#browse-text', sheet);
         const done = () => { draft[row.key] = input.value.trim(); paintList(); };
