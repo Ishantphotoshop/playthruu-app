@@ -1861,6 +1861,9 @@ export async function browseGames({
   // kind of release, and a floor on hype (follows) to keep "New releases"
   // to games people were actually waiting for.
   theme, mode, perspective, gameType, minHypes, players,
+  // Average rating in stars (0.5 to 5): games whose IGDB score rounds to
+  // that many stars, 5 stars = 100.
+  stars,
   // How many people rated it, as a floor and a ceiling.
   //
   // The floor is what stops "top rated" meaning "one person gave this a
@@ -1897,8 +1900,13 @@ export async function browseGames({
     if (modeIds.length) clauses.push(`game_modes = (${modeIds.join(',')})`);
     if (perspective) clauses.push(`player_perspectives = (${Number(perspective)})`);
     if (PLAYER_CLAUSES[players]) clauses.push(PLAYER_CLAUSES[players]);
+    const starVal = Number(stars);
+    if (starVal >= 0.5 && starVal <= 5) {
+      clauses.push(`total_rating >= ${starVal * 20 - 5} & total_rating ${starVal >= 5 ? '<=' : '<'} ${Math.min(100, starVal * 20 + 5)}`);
+      if (!minVotes) minVotes = CREDIBLE_VOTES;
+    }
     // "Highest rated" means nothing without enough ratings behind it.
-    if (!minVotes && (sort === 'top_rated' || sort === 'all_time')) minVotes = CREDIBLE_VOTES * 5;
+    if (!minVotes && (sort === 'top_rated' || sort === 'all_time' || sort === 'lowest')) minVotes = CREDIBLE_VOTES * 5;
     // A-Z and earliest-first are pure orderings, so without a floor they
     // start with games nobody has heard of (1950s tech demos, "2048").
     else if (!minVotes && (sort === 'az' || sort === 'oldest')) minVotes = 20;
@@ -1985,6 +1993,7 @@ export async function browseGames({
 
     let sortClause = 'total_rating_count desc';
     if (sort === 'top_rated') sortClause = 'total_rating desc';
+    else if (sort === 'lowest') { sortClause = 'total_rating asc'; clauses.push('total_rating != null'); }
     else if (sort === 'all_time') sortClause = 'aggregated_rating desc';
     else if (sort === 'anticipated') sortClause = 'hypes desc';
     else if (sort === 'newest') sortClause = 'first_release_date desc';
@@ -5470,6 +5479,24 @@ export async function getRecommendations(userId, { pool = 40 } = {}) {
     out.push({ game: pick.game, local: false });
   }
   return out;
+}
+
+// Every game this person has rated, with their rating (0.5 to 5 stars),
+// for Browse's "Your rating" sorts. One row per game: their latest rating.
+export async function getMyRatedGames(userId) {
+  const { data, error } = await supabase
+    .from('logs')
+    .select('rating, created_at, games!logs_game_id_fkey(id, title, cover_url, igdb_id, release_year)')
+    .eq('user_id', userId)
+    .not('rating', 'is', null)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  const seen = new Map();
+  for (const l of data || []) {
+    if (!l.games || seen.has(l.games.id)) continue;
+    seen.set(l.games.id, { ...l.games, my_rating: Number(l.rating) });
+  }
+  return [...seen.values()];
 }
 
 // What's in this person's diary right now, any status — so the feed can

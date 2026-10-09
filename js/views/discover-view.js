@@ -60,7 +60,7 @@ const KINDS = {
 };
 
 const BLANK = {
-  sort: 'popular', genre: '', platform: '', year: '', players: '', minRating: '',
+  sort: 'popular', genre: '', platform: '', year: '', players: '', stars: '',
   minVotes: '', maxVotes: '', minHypes: '', hideLogged: false, fadeLogged: false,
 };
 
@@ -73,7 +73,7 @@ const ROWS = [
   { key: 'genre', label: 'Genre', options: any('Any genre', GENRES) },
   { key: 'platform', label: 'Platform', options: any('Any platform', api.BROWSE_PLATFORMS_ALL) },
   { key: 'players', label: 'Players', options: any('Anyone', api.BROWSE_PLAYERS) },
-  { key: 'minRating', label: 'Rating', options: RATINGS },
+  { key: 'rating', label: 'Rating', custom: true },
   { section: 'Your games', signedIn: true },
   { key: 'hideLogged', label: 'Hide games I’ve logged', toggle: true, signedIn: true },
   { key: 'fadeLogged', label: 'Fade games I’ve logged', toggle: true, signedIn: true },
@@ -84,7 +84,7 @@ function toQuery(f, page) {
   const y = YEARS.find((x) => x.id === f.year);
   // Always full games: DLC, packs and updates never belong in these lists.
   return {
-    sort: f.sort, genre: f.genre, platform: f.platform, players: f.players, minRating: f.minRating,
+    sort: f.sort, genre: f.genre, platform: f.platform, players: f.players, stars: f.stars,
     minVotes: f.minVotes, maxVotes: f.maxVotes, minHypes: f.minHypes, gameType: 'games',
     dateFrom: y?.from || '', dateTo: y?.to || '', page,
   };
@@ -120,6 +120,21 @@ function firstPage(id) {
 export function warmDiscover() {
   LISTS.slice(0, 4).forEach((l) => firstPage(l.id));
 }
+
+// The Rating page: average rating sorts, the person's own rating sorts,
+// and a half-star slider to browse games at one star rating.
+const RATING_SORTS = {
+  top_rated: 'Average, highest first', lowest: 'Average, lowest first',
+  mine_high: 'Yours, highest first', mine_low: 'Yours, lowest first',
+};
+const MY_SORTS = new Set(['mine_high', 'mine_low']);
+const starsLabel = (v) => {
+  const n = Number(v);
+  const whole = Math.floor(n);
+  return `${whole || ''}${n % 1 ? '\u00bd' : ''} star${n === 1 ? '' : 's'}`;
+};
+// Five stars, filled to `v` (0 to 5, halves allowed).
+const starsHtml = (v) => `<span class="star-meter" aria-hidden="true"><span class="star-meter__base">\u2605\u2605\u2605\u2605\u2605</span><span class="star-meter__fill" style="width:${(Number(v) || 0) * 20}%">\u2605\u2605\u2605\u2605\u2605</span></span>`;
 
 const chev = () => `<span class="browse-row__chev">${iconChevronRight()}</span>`;
 
@@ -211,6 +226,17 @@ export function renderBrowseGames(root) {
     try { diary = await api.getDiaryGameKeys(state.user.id); } catch { diary = null; }
   }
   const logged = (g) => !!diary && api.isInDiary(diary, g);
+  async function myRated() {
+    if (page > 1) return { games: [], hasMore: false };
+    const y = YEARS.find((x) => x.id === filters.year);
+    const fromY = y?.from ? Number(y.from.slice(0, 4)) : null;
+    const toY = y?.to ? Number(y.to.slice(0, 4)) : null;
+    let rows = await api.getMyRatedGames(state.user.id);
+    if (fromY) rows = rows.filter((g) => g.release_year >= fromY && g.release_year <= toY);
+    if (filters.stars) rows = rows.filter((g) => g.my_rating === Number(filters.stars));
+    rows.sort((a, b) => (filters.sort === 'mine_low' ? a.my_rating - b.my_rating : b.my_rating - a.my_rating));
+    return { games: rows, hasMore: false };
+  }
 
   async function load(reset) {
     const my = ++ticket;
@@ -226,7 +252,10 @@ export function renderBrowseGames(root) {
       // The ready-made list's first page was usually fetched already (for
       // Browse's thumbnails); untouched filters can paint from it.
       const warm = reset && listId && LIST[listId] && !changed(filters) ? firstPage(listId) : null;
-      const { games, hasMore } = await (warm || api.browseGames(toQuery(filters, page)));
+      // Your rating: the games you've rated, from your own diary, in your
+      // order (one page, it's your list). Release date and stars still narrow it.
+      const mine = MY_SORTS.has(filters.sort) && state.user;
+      const { games, hasMore } = mine ? await myRated() : await (warm || api.browseGames(toQuery(filters, page)));
       if (my !== ticket || !grid.isConnected) return;
       if (reset) grid.innerHTML = '';
       const list = filters.hideLogged ? games.filter((g) => !logged(g)) : games;
@@ -271,6 +300,7 @@ export function renderBrowseGames(root) {
     btn.addEventListener('click', async () => {
       const g = shown[Number(btn.dataset.idx)];
       if (!g || btn.dataset.opening) return;
+      if (g.id) { navigate(`/game/${g.id}`); return; } // already in the catalogue (your rated games)
       if (!state.user) {
         if (g.igdb_id) navigate(`/game/igdb/${g.igdb_id}`);
         else toast("Couldn't open that game.", 'error');
@@ -299,11 +329,14 @@ export function renderBrowseGames(root) {
 
     const valueOf = (row) => {
       if (row.toggle) return '';
+      if (row.custom) return draft.stars ? starsLabel(draft.stars) : (RATING_SORTS[draft.sort] || 'Any');
       if (row.text) return draft[row.key]?.trim() || 'Any';
       const o = row.options.find((x) => !x.section && x.value === String(draft[row.key] ?? ''));
-      return o?.short || o?.label || 'Any';
+      return o?.short || o?.label || (row.key === 'sort' && RATING_SORTS[draft.sort]) || 'Any';
     };
-    const isSet = (row) => String(draft[row.key] ?? '') !== String(base[row.key] ?? '');
+    const isSet = (row) => (row.custom
+      ? !!draft.stars || (!!RATING_SORTS[draft.sort] && draft.sort !== base.sort)
+      : String(draft[row.key] ?? '') !== String(base[row.key] ?? ''));
 
     function paintList() {
       const rows = ROWS.filter((r) => !r.signedIn || state.user);
@@ -340,7 +373,48 @@ export function renderBrowseGames(root) {
         draft[b.dataset.toggle] = !draft[b.dataset.toggle];
         qs('.browse-switch', b).classList.toggle('is-on', draft[b.dataset.toggle]);
       }));
-      qsa('[data-row]', sheet).forEach((b) => b.addEventListener('click', () => paintRow(ROWS.find((r) => r.key === b.dataset.row))));
+      qsa('[data-row]', sheet).forEach((b) => b.addEventListener('click', () => {
+        const row = ROWS.find((r) => r.key === b.dataset.row);
+        if (row.custom) paintRating(); else paintRow(row);
+      }));
+    }
+
+    // Rating: two ways to sort by it, and stars to browse by.
+    function paintRating() {
+      const opt = (v, label) => `<button type="button" class="browse-opt${draft.sort === v ? ' is-on' : ''}" data-sort="${v}"><span>${label}</span>${draft.sort === v ? iconCheck() : ''}</button>`;
+      sheet.innerHTML = `
+        <div class="browse-filters__top">
+          <button type="button" class="browse-filters__icon" data-act="back" aria-label="Back">${iconBackArrow()}</button>
+          <h2>Rating</h2>
+          <span class="browse-filters__icon"></span>
+        </div>
+        <div class="browse-filters__body">
+          <p class="browse-label">Average rating</p>
+          ${opt('top_rated', 'Highest first')}${opt('lowest', 'Lowest first')}
+          ${state.user ? `<p class="browse-label">Your rating</p>${opt('mine_high', 'Highest first')}${opt('mine_low', 'Lowest first')}` : ''}
+          <p class="browse-label">Browse by stars</p>
+          <div class="star-pick">
+            <div class="star-pick__stars">${starsHtml(draft.stars)}
+              <input type="range" class="star-pick__range" min="0" max="5" step="0.5" value="${Number(draft.stars) || 0}" aria-label="Star rating">
+            </div>
+            <div class="star-pick__foot">
+              <span class="star-pick__label">${draft.stars ? `Games rated ${starsLabel(draft.stars)}` : 'Any rating'}</span>
+              <button type="button" class="star-pick__clear" data-act="clear-stars"${draft.stars ? '' : ' hidden'}>Clear</button>
+            </div>
+          </div>
+        </div>`;
+      qs('[data-act="back"]', sheet).addEventListener('click', paintList);
+      qsa('[data-sort]', sheet).forEach((b) => b.addEventListener('click', () => { draft.sort = b.dataset.sort; paintList(); }));
+      const range = qs('.star-pick__range', sheet);
+      const sync = () => {
+        const v = Number(range.value);
+        draft.stars = v ? String(v) : '';
+        qs('.star-meter__fill', sheet).style.width = `${v * 20}%`;
+        qs('.star-pick__label', sheet).textContent = v ? `Games rated ${starsLabel(v)}` : 'Any rating';
+        qs('[data-act="clear-stars"]', sheet).hidden = !v;
+      };
+      range.addEventListener('input', sync);
+      qs('[data-act="clear-stars"]', sheet).addEventListener('click', () => { range.value = 0; sync(); });
     }
 
     // One filter's choices (or its text box), then straight back to the list.

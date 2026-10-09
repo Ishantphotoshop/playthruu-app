@@ -6788,3 +6788,14 @@ a.gd-credit__name { text-decoration: none; }
 .browse-empty { text-align: center; padding: 64px 16px; }
 .browse-empty__title { margin: 0; font-family: var(--font-brand); font-weight: 800; font-size: 18px; color: var(--ink); }
 .browse-empty__line { margin: 8px 0 0; font-family: var(--font-body); font-size: 14px; color: var(--ink-dim); }
+
+/* Browse > Filters > Rating: drag across the stars, half a star at a time. */
+.star-pick { padding: 14px 2px 6px; }
+.star-pick__stars { position: relative; display: inline-block; }
+.star-meter { position: relative; display: inline-block; font-size: 44px; line-height: 1; letter-spacing: 6px; }
+.star-meter__base { color: var(--surface-high); }
+.star-meter__fill { position: absolute; left: 0; top: 0; overflow: hidden; white-space: nowrap; color: var(--accent-bright); }
+.star-pick__range { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.star-pick__foot { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; }
+.star-pick__label { font-family: var(--font-body); font-weight: 600; font-size: 15px; color: var(--ink-dim); }
+.star-pick__clear { background: none; border: 0; padding: 4px 0; font-family: var(--font-body); font-weight: 700; font-size: 14px; color: var(--accent-bright); }
