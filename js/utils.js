@@ -231,8 +231,22 @@ export function enableSwipeToDismiss(modal, close, onDrag) {
   // nowhere: pointerdown fired, immediately returned, and nothing ever
   // dragged. Pointer events already unify mouse/pen/touch, so the exact
   // same listeners below now just work for all three.
+  // One gesture, one frame at a time. Pointer events arrive faster than the
+  // screen redraws (and in bursts), so the sheet is only MOVED once per frame,
+  // from the latest finger position, on its own compositor layer
+  // (translate3d + will-change): nothing else on the page is touched while it
+  // is dragged, which is what keeps it at the display's full frame rate. A
+  // quick flick dismisses it too, not only a long pull.
+  let raf = 0, lastY = 0, lastT = 0, velocity = 0;
+  const paint = () => {
+    raf = 0;
+    modal.style.transform = `translate3d(0, ${dy}px, 0)`;
+    if (onDrag) onDrag(Math.min(1, dy / 420));
+  };
+
   header.addEventListener('pointerdown', (e) => {
     startY = e.clientY; dy = 0; candidate = true; dragging = false;
+    lastY = e.clientY; lastT = e.timeStamp; velocity = 0;
   });
 
   header.addEventListener('pointermove', (e) => {
@@ -243,18 +257,18 @@ export function enableSwipeToDismiss(modal, close, onDrag) {
         dragging = true;
         header.style.cursor = 'grabbing';
         try { header.setPointerCapture(e.pointerId); } catch { /* fine */ }
+        // From here the finger owns the sheet: no entrance animation or
+        // transition may fight it, and it gets its own layer.
+        modal.style.animation = 'none';
+        modal.style.transition = 'none';
+        modal.style.willChange = 'transform';
       } else return;
     }
     if (dy < 0) dy = 0;
-    modal.style.transition = 'none';
-    modal.style.transform = `translateY(${dy}px)`;
-    // Deliberately NOT tied to THRESHOLD (90px, the dismiss trigger) —
-    // that reaches 1 almost immediately and then sits there for the
-    // rest of a longer drag, so the blur looked like it snapped to nil
-    // instead of easing out with the finger. Spread over the same
-    // longer range as the overlay fade above so it tracks the whole
-    // visible gesture.
-    if (onDrag) onDrag(Math.min(1, dy / 420));
+    const dt = e.timeStamp - lastT;
+    if (dt > 0) velocity = (e.clientY - lastY) / dt; // px per ms, downwards positive
+    lastY = e.clientY; lastT = e.timeStamp;
+    if (!raf) raf = requestAnimationFrame(paint);
   });
 
   const settle = (e) => {
@@ -263,18 +277,24 @@ export function enableSwipeToDismiss(modal, close, onDrag) {
     candidate = false; dragging = false;
     header.style.cursor = 'grab';
     try { header.releasePointerCapture(e.pointerId); } catch { /* already released */ }
+    if (raf) { cancelAnimationFrame(raf); raf = 0; }
     if (!wasDragging) return; // it was a tap, not a drag — leave it alone
     const ov = overlay();
-    if (dy > THRESHOLD) {
-      modal.style.transition = 'transform 0.22s ease-in';
-      modal.style.transform = 'translateY(110%)';
-      if (ov) { ov.style.transition = 'opacity 0.22s ease'; ov.style.opacity = '0'; }
-      setTimeout(close, 200);
+    const flick = velocity > 0.55 && dy > 24;
+    if (dy > THRESHOLD || flick) {
+      // Carry on from where the finger left it: the faster the flick, the
+      // quicker it leaves.
+      const ms = Math.round(Math.max(140, Math.min(260, 260 - velocity * 90)));
+      modal.style.transition = `transform ${ms}ms cubic-bezier(0.4, 0, 0.9, 0.6)`;
+      modal.style.transform = 'translate3d(0, 110%, 0)';
+      if (ov) { ov.style.transition = `opacity ${ms}ms ease`; ov.style.opacity = '0'; }
+      setTimeout(close, ms - 20);
     } else {
-      modal.style.transition = 'transform 0.32s cubic-bezier(0.16,1,0.3,1)';
-      modal.style.transform = 'translateY(0)';
+      modal.style.transition = 'transform 0.38s cubic-bezier(0.16,1,0.3,1)';
+      modal.style.transform = 'translate3d(0, 0, 0)';
       if (ov) { ov.style.transition = 'opacity 0.2s ease'; ov.style.opacity = ''; }
       if (onDrag) onDrag(0);
+      setTimeout(() => { modal.style.willChange = ''; }, 420);
     }
   };
   header.addEventListener('pointerup', settle);

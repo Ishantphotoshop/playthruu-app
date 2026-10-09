@@ -4173,14 +4173,14 @@ a.gd-credit__name { text-decoration: none; }
    --safe-bottom, but nothing carried actual design padding on top of
    it, so the last row sat flush against the home indicator on a real
    phone. 14px + the inset gives the sheet a floor. */
-.lg-sheet { padding: 0 0 calc(14px + var(--safe-bottom)); }
+.lg-sheet { --lg-pad: var(--gutter); padding: 0 0 calc(14px + var(--safe-bottom)); }
 /* The head and the Save button stay put; only the groups between them
    scroll. Without this the sheet is taller than .modal's 88vh as soon
    as a log exists (Log it again and Delete this log add two rows) and
    the commit button is the thing that falls off the bottom edge. */
 .lg-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
 
-.lg-head { display: flex; align-items: center; gap: 13px; padding: 18px var(--space-4) 16px; }
+.lg-head { display: flex; align-items: center; gap: 13px; padding: 18px var(--lg-pad) 16px; }
 .lg-head__cover {
   width: 46px; height: 61px; flex-shrink: 0; display: block;
   border-radius: 5px; object-fit: cover; background: var(--surface-raised);
@@ -4193,7 +4193,7 @@ a.gd-credit__name { text-decoration: none; }
 
 .lg-label {
   font-size: 10.5px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
-  color: var(--ink-faint); padding: 0 var(--space-4) 8px; margin-top: 18px;
+  color: var(--ink-faint); padding: 0 var(--lg-pad) 8px; margin-top: 18px;
 }
 /* The first label sits under the head's own padding, so it does not
    need the gap that separates one group from the next. */
@@ -4206,8 +4206,8 @@ a.gd-credit__name { text-decoration: none; }
   border-top: 1px solid rgba(255, 255, 255, 0.055);
   border-bottom: 1px solid rgba(255, 255, 255, 0.055);
 }
-.lg-group--rate { display: flex; align-items: center; justify-content: space-between; padding: 12px var(--space-4); }
-.lg-group--track { display: flex; gap: 8px; padding: 14px var(--space-4); }
+.lg-group--rate { display: flex; align-items: center; justify-content: space-between; padding: 12px var(--lg-pad); }
+.lg-group--track { display: flex; gap: 8px; padding: 14px var(--lg-pad); }
 
 .lg-rate { display: flex; align-items: center; }
 /* The love mark is not a status — it is an opinion, which is why it
@@ -4237,7 +4237,7 @@ a.gd-credit__name { text-decoration: none; }
 .lg-row {
   position: relative;
   display: flex; align-items: center; gap: 14px; width: 100%;
-  padding: 13px var(--space-4);
+  padding: 13px var(--lg-pad);
   background: none; border: none; cursor: pointer;
   color: var(--ink); font-family: inherit; text-align: left;
   transition: background var(--dur-fast) var(--ease);
@@ -4298,7 +4298,7 @@ a.gd-credit__name { text-decoration: none; }
 }
 .lg-x svg { width: 15px; height: 15px; }
 
-.lg-body--pad { padding: 0 var(--space-4) var(--space-4); }
+.lg-body--pad { padding: 0 var(--lg-pad) var(--lg-pad); }
 .lg-search {
   display: flex; align-items: center; gap: 10px;
   padding: 12px 14px; border-radius: 12px;
@@ -4313,7 +4313,7 @@ a.gd-credit__name { text-decoration: none; }
 }
 .lg-search input::placeholder { color: var(--ink-ghost); }
 
-.lg-group--review { padding: 12px var(--space-4) 10px; }
+.lg-group--review { padding: 12px var(--lg-pad) 10px; }
 /* No box inside a box: the band is already a surface, so the field is
    just the text sitting on it. A border here would be the third edge in
    a row and would make the one place you are meant to write feel like
@@ -4347,7 +4347,7 @@ a.gd-credit__name { text-decoration: none; }
 .lg-switch--on { background: var(--accent); }
 .lg-switch--on .lg-switch__knob { background: var(--bg); transform: translateX(17px); }
 
-.lg-foot { padding: 20px var(--space-4) 0; }
+.lg-foot { padding: 20px var(--lg-pad) 0; }
 .lg-save {
   width: 100%; display: flex; align-items: center; justify-content: center;
   padding: 15px 22px; border-radius: 14px;
@@ -6840,3 +6840,19 @@ a.gd-credit__name { text-decoration: none; }
 .lc-recent-x svg { width: 16px; height: 16px; }
 .lg-body, .lg-sheet, .lg-sheet .modal__body { scrollbar-width: none; -ms-overflow-style: none; }
 .lg-body::-webkit-scrollbar, .lg-sheet::-webkit-scrollbar { display: none; }
+
+/* Log a game: roomy and on one edge. The bar, the heading, the names, the
+   posters and the buttons all start at the app's gutter. Result rows have no
+   inset of their own, so posters line up with the search bar above. */
+.lg-sheet--picker .result-row { padding: 12px 0; gap: 14px; }
+.lg-sheet--picker .result-list { gap: 2px; }
+.lg-sheet .lg-head { padding-top: 22px; padding-bottom: 18px; }
+.lg-sheet .lg-group--rate { padding-top: 16px; padding-bottom: 16px; }
+.lg-sheet .lg-group--track { padding-top: 16px; padding-bottom: 16px; }
+.lg-sheet .lg-row { padding-top: 15px; padding-bottom: 15px; }
+.lg-sheet .lg-label { margin-top: 22px; padding-bottom: 10px; }
+.lg-sheet .lg-head + .lg-label { margin-top: 0; }
+.lg-sheet .lg-foot { padding-top: 22px; }
+.lg-sheet--picker .lc-search-row { margin-bottom: 18px; }
+.lg-sheet--picker .search-recent__row { margin: 10px 0 6px; }
+.lc-recent { padding: 15px 0; }
