@@ -99,9 +99,9 @@ fun ActivityScreen(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(Space.s2),
         ) {
-            Segmented(
+            com.playthruu.android.ui.TabPill(
                 options = ActivityScope.entries.map { it.label },
-                selectedIndex = ActivityScope.entries.indexOf(scope),
+                selected = ActivityScope.entries.indexOf(scope),
                 onSelect = { scope = ActivityScope.entries[it] },
                 modifier = Modifier.weight(1f),
             )

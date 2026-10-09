@@ -56,6 +56,7 @@ import com.playthruu.android.ui.NavIcons
 import com.playthruu.android.ui.screens.ActivityScreen
 import com.playthruu.android.ui.screens.AuthScreen
 import com.playthruu.android.ui.screens.HomeScreen
+import com.playthruu.android.ui.screens.LogPickerScreen
 import com.playthruu.android.ui.BackHeader
 import com.playthruu.android.ui.BottomBar
 import com.playthruu.android.ui.PageTitle
@@ -191,7 +192,7 @@ private fun SignedInShell(
                     when (t) {
                         Tab.Feed -> go(nav.selectTab(Screen.Feed))
                         Tab.Search -> go(nav.selectTab(Screen.Search))
-                        Tab.Log -> go(nav.push(Screen.Search))
+                        Tab.Log -> go(nav.push(Screen.Log))
                         Tab.Notifications -> go(nav.selectTab(Screen.Notifications))
                         Tab.Profile -> go(nav.selectTab(Screen.Profile(null)))
                     }
@@ -249,19 +250,31 @@ private fun EntryContent(
             onOpenNews = { push(Screen.News(it)) },
         )
 
-        is Screen.Search -> Column(
-            Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars).padding(top = 16.dp),
-        ) {
-            SearchScreen(
-                repo = repo,
-                onOpenGame = { push(Screen.Game(it)) },
-                onOpenProfile = { push(Screen.Profile(it)) },
-            )
-        }
+        is Screen.Search -> SearchScreen(
+            repo = repo,
+            onOpenGame = { push(Screen.Game(it)) },
+            onOpenProfile = { push(Screen.Profile(it)) },
+            onOpenIgdb = { g -> push(Screen.Game(com.playthruu.android.data.Catalog.addGame(g, userId).id)) },
+        )
 
-        is Screen.Log, is Screen.News -> Column(Modifier.fillMaxSize()) {
-            BackHeader(if (screen is Screen.News) "News" else "Log a game", pop)
-            EmptyState("Coming to the native app next.")
+        is Screen.Log -> LogPickerScreen(
+            onBack = pop,
+            onOpenIgdb = { g -> push(Screen.Game(com.playthruu.android.data.Catalog.addGame(g, userId).id)) },
+        )
+
+        is Screen.News -> {
+            val ctx = androidx.compose.ui.platform.LocalContext.current
+            Column(Modifier.fillMaxSize()) {
+                BackHeader("News", pop)
+                EmptyState("Opening the story in your browser.")
+            }
+            androidx.compose.runtime.LaunchedEffect(screen.slug) {
+                ctx.startActivity(
+                    android.content.Intent(android.content.Intent.ACTION_VIEW,
+                        android.net.Uri.parse("https://playthruu.com/news/" + screen.slug)),
+                )
+                pop()
+            }
         }
 
         is Screen.Notifications -> Column(Modifier.fillMaxSize()) {
