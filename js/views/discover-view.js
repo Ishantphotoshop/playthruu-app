@@ -33,6 +33,9 @@ const RATINGS = [
   { label: '75 and up', value: '75' }, { label: '50 and up', value: '50' },
 ];
 const any = (label, list) => [{ label, value: '' }, ...list];
+// Genres people actually browse by (IGDB's tiny ones like Pinball or
+// Quiz/Trivia only ever turned up obscure games).
+const GENRES = api.BROWSE_GENRES.filter((g) => !['genre:30', 'genre:26'].includes(g.value));
 
 // Ready-made lists at the top of Browse. `f` is the filters each one
 // starts with; the Filters page can change any of them afterwards.
@@ -41,43 +44,36 @@ const LISTS = [
   { id: 'top', label: 'Highest rated', f: { sort: 'top_rated', minVotes: api.CREDIBLE_VOTES * 5 } },
   { id: 'critics', label: 'Critics’ favourites', f: { sort: 'all_time', minVotes: api.CREDIBLE_VOTES * 5 } },
   { id: 'anticipated', label: 'Most anticipated', f: { sort: 'anticipated' } },
-  { id: 'new', label: 'New releases', f: { sort: 'recent', gameType: 'games' } },
+  { id: 'new', label: 'New releases', f: { sort: 'recent' } },
   { id: 'gems', label: 'Hidden gems', f: { sort: 'top_rated', minRating: '80', minVotes: api.CREDIBLE_VOTES, maxVotes: api.FAMOUS_VOTES } },
-  { id: 'coop', label: 'Play with friends', f: { sort: 'trending', mode: '2,3' } },
+  { id: 'coop', label: 'Play with friends', f: { sort: 'popular', players: 'coop' } },
+  { id: 'couch', label: 'Split screen', f: { sort: 'popular', players: 'split' } },
 ];
 const LIST = Object.fromEntries(LISTS.map((l) => [l.id, l]));
 
 // Ways in: each opens a list of its choices, and a choice opens the games.
 const KINDS = {
-  genre: { label: 'Genre', key: 'genre', options: api.BROWSE_GENRES },
+  genre: { label: 'Genre', key: 'genre', options: GENRES },
   platform: { label: 'Platform', key: 'platform', options: api.BROWSE_PLATFORMS_ALL },
   year: { label: 'Release date', key: 'year', options: YEARS.slice(1).map((y) => ({ label: y.label, value: y.id })) },
-  theme: { label: 'Theme', key: 'theme', options: api.BROWSE_THEMES },
-  mode: { label: 'Game mode', key: 'mode', options: api.BROWSE_MODES },
-  perspective: { label: 'Perspective', key: 'perspective', options: api.BROWSE_PERSPECTIVES },
+  players: { label: 'Players', key: 'players', options: api.BROWSE_PLAYERS },
 };
 
 const BLANK = {
-  sort: 'popular', genre: '', theme: '', platform: '', year: '', mode: '', perspective: '',
-  minRating: '', gameType: '', developer: '', publisher: '', minVotes: '', maxVotes: '', minHypes: '',
-  hideLogged: false, fadeLogged: false,
+  sort: 'popular', genre: '', platform: '', year: '', players: '', minRating: '',
+  minVotes: '', maxVotes: '', minHypes: '', hideLogged: false, fadeLogged: false,
 };
 
 // The Filters rows, in order. `options` rows open a pick list; `text` rows
 // open a box to type in; `toggle` rows switch in place.
 const ROWS = [
-  { key: 'sort', label: 'Sort by', options: api.BROWSE_SORTS_FULL },
+  { key: 'sort', label: 'Sort by', options: api.BROWSE_SORTS_SIMPLE },
   { section: 'Content' },
   { key: 'year', label: 'Release date', options: YEARS.map((y) => ({ label: y.label, value: y.id })) },
-  { key: 'genre', label: 'Genre', options: any('Any genre', api.BROWSE_GENRES) },
-  { key: 'theme', label: 'Theme', options: any('Any theme', api.BROWSE_THEMES) },
+  { key: 'genre', label: 'Genre', options: any('Any genre', GENRES) },
   { key: 'platform', label: 'Platform', options: any('Any platform', api.BROWSE_PLATFORMS_ALL) },
-  { key: 'mode', label: 'Game mode', options: any('Any mode', api.BROWSE_MODES) },
-  { key: 'perspective', label: 'Perspective', options: any('Any perspective', api.BROWSE_PERSPECTIVES) },
+  { key: 'players', label: 'Players', options: any('Anyone', api.BROWSE_PLAYERS) },
   { key: 'minRating', label: 'Rating', options: RATINGS },
-  { key: 'gameType', label: 'Type', options: api.BROWSE_GAME_TYPES },
-  { key: 'developer', label: 'Developer', text: 'e.g. Naughty Dog' },
-  { key: 'publisher', label: 'Publisher', text: 'e.g. Nintendo' },
   { section: 'Your games', signedIn: true },
   { key: 'hideLogged', label: 'Hide games I’ve logged', toggle: true, signedIn: true },
   { key: 'fadeLogged', label: 'Fade games I’ve logged', toggle: true, signedIn: true },
@@ -86,10 +82,10 @@ const ROWS = [
 // What browseGames needs, from the screen's own filter object.
 function toQuery(f, page) {
   const y = YEARS.find((x) => x.id === f.year);
+  // Always full games: DLC, packs and updates never belong in these lists.
   return {
-    sort: f.sort, genre: f.genre, theme: f.theme, platform: f.platform, mode: f.mode, perspective: f.perspective,
-    minRating: f.minRating, gameType: f.gameType, developer: f.developer, publisher: f.publisher,
-    minVotes: f.minVotes, maxVotes: f.maxVotes, minHypes: f.minHypes,
+    sort: f.sort, genre: f.genre, platform: f.platform, players: f.players, minRating: f.minRating,
+    minVotes: f.minVotes, maxVotes: f.maxVotes, minHypes: f.minHypes, gameType: 'games',
     dateFrom: y?.from || '', dateTo: y?.to || '', page,
   };
 }

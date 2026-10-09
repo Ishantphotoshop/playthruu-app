@@ -1331,6 +1331,22 @@ export const BROWSE_PERSPECTIVES = [
   { label: 'First person', value: '1' }, { label: 'Third person', value: '2' }, { label: 'Top-down / isometric', value: '3' },
   { label: 'Side view', value: '4' }, { label: 'Text', value: '5' }, { label: 'Virtual reality', value: '7' },
 ];
+// Who you play with. Massively multiplayer and battle royale games are
+// left out of all of these: IGDB tags Fortnite or Minecraft with split
+// screen and co-op too, and they would bury the games people mean.
+// Split screen uses IGDB's own split-screen flag on the game's multiplayer
+// modes (It Takes Two, Need for Speed, Smash Bros.), not the looser tag.
+export const BROWSE_PLAYERS = [
+  { label: 'Single player', value: 'solo' }, { label: 'Split screen', value: 'split' },
+  { label: 'Co-op campaign', value: 'coop' },
+];
+const PLAYER_CLAUSES = {
+  solo: 'game_modes = (1) & game_modes != (2,3,5,6)',
+  split: 'multiplayer_modes.splitscreen = true & game_modes != (5,6)',
+  // Play the story together (It Takes Two, Borderlands, Left 4 Dead), not
+  // "has some online mode somewhere" like GTA V.
+  coop: 'multiplayer_modes.campaigncoop = true & game_modes != (5,6)',
+};
 // IGDB's game_type: what kind of release it is.
 export const BROWSE_GAME_TYPES = [
   { label: 'Everything', value: '' }, { label: 'Full games (no DLC)', value: 'games' }, { label: 'Main games only', value: 'main' },
@@ -1496,6 +1512,11 @@ export const BROWSE_SORTS = [
   { label: 'Newest Releases', value: 'newest' }, { label: 'A–Z', value: 'az' },
 ];
 // The Browse screen's Sort by options (same sorts, plus oldest first).
+export const BROWSE_SORTS_SIMPLE = [
+  { label: 'Trending now', value: 'trending' }, { label: 'Most popular of all time', value: 'popular' },
+  { label: 'Highest rated', value: 'top_rated' }, { label: 'Critics’ favourites', value: 'all_time' },
+  { label: 'New releases', value: 'recent' }, { label: 'Most anticipated', value: 'anticipated' },
+];
 export const BROWSE_SORTS_FULL = [
   { label: 'Trending now', value: 'trending' }, { label: 'Most rated of all time', value: 'popular' },
   { label: 'Highest rated (players and critics)', value: 'top_rated' },
@@ -1828,7 +1849,7 @@ export async function browseGames({
   // Browse screen extras: IGDB theme / game mode / perspective ids, the
   // kind of release, and a floor on hype (follows) to keep "New releases"
   // to games people were actually waiting for.
-  theme, mode, perspective, gameType, minHypes,
+  theme, mode, perspective, gameType, minHypes, players,
   // How many people rated it, as a floor and a ceiling.
   //
   // The floor is what stops "top rated" meaning "one person gave this a
@@ -1864,6 +1885,10 @@ export async function browseGames({
     const modeIds = String(mode || '').split(',').map(Number).filter(Number.isFinite).filter((n) => n > 0);
     if (modeIds.length) clauses.push(`game_modes = (${modeIds.join(',')})`);
     if (perspective) clauses.push(`player_perspectives = (${Number(perspective)})`);
+    if (PLAYER_CLAUSES[players]) clauses.push(PLAYER_CLAUSES[players]);
+    // "Highest rated" means nothing without enough ratings behind it.
+    if (!minVotes && sort === 'top_rated') minVotes = CREDIBLE_VOTES * 5;
+    else if (!minVotes && minRating) minVotes = sort === 'recent' ? 10 : CREDIBLE_VOTES;
     if (GAME_TYPE_IDS[gameType]) clauses.push(`game_type = (${GAME_TYPE_IDS[gameType]})`);
     if (minHypes) clauses.push(`hypes >= ${Number(minHypes)}`);
     if (sort === 'oldest') clauses.push('first_release_date != null');
