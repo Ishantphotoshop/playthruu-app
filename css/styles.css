@@ -6868,3 +6868,29 @@ a.gd-credit__name { text-decoration: none; }
 .confirm-sheet .confirm-sheet__title { font-size: 18px; padding: 8px 2px 4px; }
 .confirm-sheet .confirm-sheet__msg { padding: 0 2px 8px; }
 .confirm-sheet .confirm-sheet__btn { margin-top: 10px; padding: 15px; border-radius: 16px; }
+
+/* Boxed loading in Name of Game: each placeholder is the size of the poster it
+   stands in for (76 x 102), in a row with the same padding and gap. */
+.lg-sheet--picker .skeleton-list { display: flex; flex-direction: column; gap: 2px; }
+.lg-sheet--picker .skeleton-list__row { padding: 12px 0; gap: 14px; }
+.lg-sheet--picker .skeleton--thumb { width: 76px; height: 102px; aspect-ratio: auto; border-radius: 6px; }
+
+/* Are-you-sure dialog: centred on the screen, question on top, Cancel and the
+   action side by side. Used for clearing history, deleting, and the like. */
+.modal-overlay--center { align-items: center; padding: 24px; }
+.confirm-dialog {
+  width: 100%; max-width: 340px; background: var(--surface); border: 1px solid var(--line);
+  border-radius: 22px; padding: 24px 20px 20px; box-shadow: var(--shadow-modal);
+  animation: fade-in 140ms ease;
+}
+.confirm-dialog__title { margin: 0; font-family: var(--font-body); font-weight: 800; font-size: 18px; text-align: center; color: var(--ink); }
+.confirm-dialog__msg { margin: 8px 0 0; font-size: 14px; line-height: 1.5; text-align: center; color: var(--ink-dim); }
+.confirm-dialog__actions { display: flex; gap: 10px; margin-top: 22px; }
+.confirm-dialog__btn {
+  flex: 1; min-height: 48px; border: 0; border-radius: 14px;
+  font-family: var(--font-body); font-weight: 700; font-size: 15px;
+}
+.confirm-dialog__btn--no { background: var(--surface-high); color: var(--ink); }
+.confirm-dialog__btn--go { background: var(--accent); color: var(--bg-deep); }
+.confirm-dialog__btn--danger { background: var(--coral); color: #fff; }
+.confirm-dialog__btn:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--accent-bright); }

@@ -1017,22 +1017,30 @@ const REPORT_REASONS = [
 // sure" rather than a destructive action just firing immediately.
 export function confirmSheet({ title, message = '', confirmLabel = 'Confirm', danger = false }) {
   return new Promise((resolve) => {
+    // A small dialog in the middle of the screen: the question, then No / Yes
+    // side by side. Tapping outside it, or Escape, is No.
     const overlay = document.createElement('div');
-    overlay.className = 'modal-overlay';
+    overlay.className = 'modal-overlay modal-overlay--center';
+    overlay.setAttribute('role', 'presentation');
     overlay.innerHTML = `
-      <div class="modal modal--sheet confirm-sheet">
-        <header class="msg-actions__grab"></header>
-        <h3 class="confirm-sheet__title">${esc(title)}</h3>
-        ${message ? `<p class="confirm-sheet__msg">${esc(message)}</p>` : ''}
-        <button type="button" class="confirm-sheet__btn ${danger ? 'confirm-sheet__btn--danger' : 'confirm-sheet__btn--go'}" data-yes>${esc(confirmLabel)}</button>
-        <button type="button" class="confirm-sheet__btn confirm-sheet__btn--cancel" data-no>Cancel</button>
+      <div class="confirm-dialog" role="alertdialog" aria-modal="true" aria-label="${esc(title)}">
+        <h3 class="confirm-dialog__title">${esc(title)}</h3>
+        ${message ? `<p class="confirm-dialog__msg">${esc(message)}</p>` : ''}
+        <div class="confirm-dialog__actions">
+          <button type="button" class="confirm-dialog__btn confirm-dialog__btn--no" data-no>Cancel</button>
+          <button type="button" class="confirm-dialog__btn ${danger ? 'confirm-dialog__btn--danger' : 'confirm-dialog__btn--go'}" data-yes>${esc(confirmLabel)}</button>
+        </div>
       </div>`;
     document.body.appendChild(overlay);
-    const done = (val) => { overlay.remove(); resolve(val); };
+    const onKey = (e) => { if (e.key === 'Escape') done(false); };
+    const done = (val) => { document.removeEventListener('keydown', onKey); overlay.remove(); resolve(val); };
+    // Back (browser or Android) closes it as a No.
+    overlay.__dismiss = () => done(false);
+    document.addEventListener('keydown', onKey);
     overlay.addEventListener('click', (e) => { if (e.target === overlay) done(false); });
     qs('[data-yes]', overlay).addEventListener('click', () => done(true));
     qs('[data-no]', overlay).addEventListener('click', () => done(false));
-    enableSwipeToDismiss(qs('.modal', overlay), () => done(false));
+    qs('[data-no]', overlay).focus();
   });
 }
 
