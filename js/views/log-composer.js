@@ -292,7 +292,7 @@ export function openLogComposer({ game = null, resolveGame = null, existingLog =
       <div class="modal lg-sheet lg-sheet--tall lg-sheet--picker">
         <header class="lg-head lg-head--plain">
           <div class="lg-head__text">
-            <h2 class="lg-head__title">Log a game</h2>
+            <h2 class="lg-head__title">Name of game</h2>
           </div>
           <button type="button" class="lg-x" data-act="cancel" aria-label="Close">${iconClose()}</button>
         </header>
