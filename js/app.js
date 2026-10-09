@@ -463,6 +463,9 @@ async function loadSession(user) {
 function startApp(user) {
   registerRoutes();
   startRouter();
+  // Opening straight onto some other page: nothing to wait for.
+  const first = location.hash.slice(1).split('?')[0];
+  if (first && first !== '/feed' && first !== '/news') window.__hideBoot?.();
   promptUsernameIfPlaceholder();
   startPresenceHeartbeat(user.id);
 
@@ -829,6 +832,7 @@ async function boot() {
       history.replaceState(null, '', location.pathname + location.search);
     }
     startRouter();
+    window.__hideBoot?.();
   }
 
   onAuthChange(async (event, session) => {

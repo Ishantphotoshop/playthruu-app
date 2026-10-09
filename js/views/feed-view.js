@@ -281,6 +281,7 @@ async function paintFeedTab(body) {
   qs('#feed-sections', body)?.classList.remove('feed-body--loading');
   loadingEl?.remove();
   setCached(FEED_CACHE_KEY, qs('#feed-sections', body)?.innerHTML || '');
+  window.__hideBoot?.(); // the opening splash can go: Home is fresh
 }
 
 // A banner pushed from the admin build. Renders nothing at all in the

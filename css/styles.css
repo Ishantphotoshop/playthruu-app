@@ -6697,6 +6697,13 @@ a.gd-credit__name { text-decoration: none; }
 .view-body--search { padding-top: 6px; }
 .search-pane[hidden] { display: none; }
 
-/* No loading screen: until the app has drawn its first page the screen is
-   just the page background, not a logo with a glow. */
+/* Opening splash (see index.html): the brand mark, spinning, over the page
+   background. The in-page .boot-loader stays empty. */
 .boot-loader::before, .boot-loader__mark { display: none; }
+.boot-overlay { position: fixed; inset: 0; z-index: 9999; display: grid; place-items: center; background: var(--bg); }
+.boot-overlay__mark {
+  width: 64px; height: 64px; border-radius: var(--radius-m);
+  background: url('../icons/mark-blue.svg') center / cover;
+  animation: boot-spin 0.9s linear infinite;
+}
+@keyframes boot-spin { to { transform: rotate(360deg); } }

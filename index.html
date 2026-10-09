@@ -59,6 +59,22 @@
   </div>
 </div>
 
+<!-- Opening splash: the spinning mark covers the screen while Home loads fresh
+     data underneath. The app removes it as soon as Home has settled; this
+     timer is the hard cap so it can never stay up longer than a second. -->
+<div id="boot-overlay" class="boot-overlay"><div class="boot-overlay__mark"></div></div>
+<script>
+  (function () {
+    var done = false;
+    window.__hideBoot = function () {
+      if (done) return;
+      done = true;
+      var o = document.getElementById('boot-overlay');
+      if (o) o.remove();
+    };
+    setTimeout(window.__hideBoot, 1000);
+  })();
+</script>
 <script type="module" src="js/app.js"></script>
 <script>
   // A boot watchdog.
