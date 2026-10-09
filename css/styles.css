@@ -6692,7 +6692,7 @@ a.gd-credit__name { text-decoration: none; }
    size and position), so moving between the two doesn't shift anything. */
 .view-body--search .msg-inbox-head { justify-content: center; min-height: 24px; padding-top: 4px; margin-bottom: 20px; }
 .view-body--search .msg-inbox-title { font-size: 19px; letter-spacing: -0.01em; line-height: 24px; }
-.view-body--search .segmented--wide { background: var(--surface-raised); margin-bottom: 11px; }
+.view-body--search .segmented--wide { background: var(--surface-raised); margin-bottom: 6px; }
 .view-body--search .segmented__item { font-size: 15px; padding: 10px var(--space-2); min-height: 0; }
 .search-pane[hidden] { display: none; }
 .search-input::placeholder { color: var(--ink-faint); opacity: 1; }
