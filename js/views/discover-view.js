@@ -133,8 +133,17 @@ const starsLabel = (v) => {
   const whole = Math.floor(n);
   return `${whole || ''}${n % 1 ? '\u00bd' : ''} star${n === 1 ? '' : 's'}`;
 };
-// Five stars, filled to `v` (0 to 5, halves allowed).
-const starsHtml = (v) => `<span class="star-meter" aria-hidden="true"><span class="star-meter__base">\u2605\u2605\u2605\u2605\u2605</span><span class="star-meter__fill" style="width:${(Number(v) || 0) * 20}%">\u2605\u2605\u2605\u2605\u2605</span></span>`;
+// Five stars filled to `v` (0 to 5, halves allowed). Each star is its own
+// SVG with its filled copy clipped at exactly half its width, so a half
+// star is cut straight down the middle.
+const STAR_PATH = 'M12 1.8l3.1 6.6 7.2.9-5.3 5 1.3 7.1L12 17.9l-6.3 3.5 1.3-7.1-5.3-5 7.2-.9z';
+const starsHtml = (v) => {
+  const n = Number(v) || 0;
+  return `<span class="star-row" aria-hidden="true">${[1, 2, 3, 4, 5].map((i) => {
+    const fill = n >= i ? 24 : n >= i - 0.5 ? 12 : 0;
+    return `<svg class="star-row__star" viewBox="0 0 24 24"><defs><clipPath id="sc${i}"><rect x="0" y="0" width="${fill}" height="24"/></clipPath></defs><path class="star-row__base" d="${STAR_PATH}"/><path class="star-row__fill" d="${STAR_PATH}" clip-path="url(#sc${i})"/></svg>`;
+  }).join('')}</span>`;
+};
 
 const chev = () => `<span class="browse-row__chev">${iconChevronRight()}</span>`;
 
@@ -406,7 +415,7 @@ export function renderBrowseGames(root) {
       const sync = () => {
         const v = Number(range.value);
         draft.stars = v ? String(v) : '';
-        qs('.star-meter__fill', sheet).style.width = `${v * 20}%`;
+        qs('.star-row', sheet).outerHTML = starsHtml(v);
         qs('[data-act="clear-stars"]', sheet).hidden = !v;
       };
       range.addEventListener('input', sync);
