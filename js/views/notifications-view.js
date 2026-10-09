@@ -285,12 +285,29 @@ export async function renderNotificationsView(root) {
     try {
       // All = the people you follow plus what is aimed at you, never your
       // own doings; Friends = only the people you follow; You = yours.
-      const res = await api.getActivityFeed(viewerId, {
+      const ask = (limit) => api.getActivityFeed(viewerId, {
         scope: t.id === 'you' ? 'you' : 'friends',
         includeYou: false,
         includeIncoming: t.id === 'all',
         before: reset ? null : t.cursor,
+        limit,
       });
+      let res = await ask(40);
+      // Many things can share one second (an import logs dozens of games at
+      // once). Paging then asks again from that same second and gets the same
+      // rows back, so the list stopped growing with the spinner still turning.
+      // When a page brings nothing new, ask for more at once until it does.
+      if (!reset) {
+        const seenKeys = new Set(t.rows.map((r) => r.key));
+        let limit = 40;
+        for (let i = 0; i < 6 && res.hasMore && !res.rows.some((r) => !seenKeys.has(r.key)); i++) {
+          limit *= 2;
+          res = await ask(limit);
+          if (my !== t.ticket) return;
+        }
+        // Still nothing new after all that: this is the end of the list.
+        if (!res.rows.some((r) => !seenKeys.has(r.key))) res = { ...res, hasMore: false };
+      }
       if (my !== t.ticket) return; // a newer load of this same tab started meanwhile
       if (isDefaultView) setCached(CACHE_KEYS.notifications, res);
       if (reset) t.rows = res.rows;

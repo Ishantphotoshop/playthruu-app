@@ -6211,9 +6211,9 @@ a.gd-credit__name { text-decoration: none; }
    spinning at the end of the list. */
 .act-more {
   display: flex; align-items: center; justify-content: center;
-  padding: var(--space-4) 0 var(--space-2); min-height: 44px;
+  padding: 0; min-height: 0;
 }
-.act-more .spinner { width: 30px; height: 30px; }
+.act-more .spinner { width: 26px; height: 26px; margin: 10px 0 4px; }
 
 /* The activity filter chip, sitting in the Notifications head where
    Messages puts its compose button. Same 34px round chip, in the
