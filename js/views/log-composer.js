@@ -5,7 +5,7 @@ import {
   celebrate, pulseLogTab, getRecentSearches, recordRecentSearch, removeRecentSearch, clearRecentSearches,
 } from '../utils.js';
 import {
-  iconClose, iconSearch, iconChevronRight, confirmSheet,
+  iconClose, iconSearch, iconChevronRight, confirmSheet, skeletonList,
   combinedGameResultsList, wireCombinedGameResults, wireResultDirectors,
 } from '../components.js';
 
@@ -386,7 +386,7 @@ export function openLogComposer({ game = null, resolveGame = null, existingLog =
       const q = input.value.trim();
       const ticket = ++searchTicket;
       if (!q) { paintRecent(); return; }
-      results.innerHTML = '<p class="muted">Searching…</p>';
+      results.innerHTML = skeletonList(6); // boxed placeholders, same as the Search screen
       try {
         const { results: found } = await api.searchGamesEverywhere(q);
         if (ticket !== searchTicket) return; // a newer search has started
