@@ -6696,3 +6696,6 @@ a.gd-credit__name { text-decoration: none; }
 .view-body--search .segmented__item { font-size: 15px; padding: 10px var(--space-2); min-height: 0; }
 .search-pane[hidden] { display: none; }
 .search-input::placeholder { color: var(--ink-faint); opacity: 1; }
+
+/* Moving between the main tabs: the page is just there, no fade or lift-in. */
+html[data-nav='tab'] .view-body { animation: none; }
