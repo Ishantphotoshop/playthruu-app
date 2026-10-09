@@ -139,7 +139,7 @@ export function renderSearchView(root, { initialTab = 'games' } = {}) {
     delete results.dataset.q; results.dataset.mode = 'idle';
     results.innerHTML = games.length
       ? `
-        <p class="search-recent__heading">${esc(heading)}</p>
+        <p class="search-recent__heading search-idle-heading">${esc(heading)}</p>
         <div class="discovery-grid">
           ${games.map((g) => `
             <a href="${gameHref(g)}" class="discovery-tile" aria-label="${esc(g.title)}">
