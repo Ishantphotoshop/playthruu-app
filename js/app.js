@@ -295,8 +295,8 @@ function wireGlobalChrome() {
     // handled explicitly rather than generalized to every tab.
     const searchTab = e.target.closest('.tabbar [data-route="/search"]');
     if (searchTab && location.hash.slice(1).split('?')[0] === '/search') {
+      // Already here: nothing to do. Rebuilding the page made it blink.
       e.preventDefault();
-      refreshCurrentView({ dataChanged: false });
     }
   });
 }

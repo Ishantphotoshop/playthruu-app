@@ -69,11 +69,17 @@ export function renderSearchView(root, { initialTab = 'games' } = {}) {
         <input type="search" id="search-input" class="search-input" placeholder="${TAB[tab].placeholder}" autocomplete="off" enterkeyhint="search">
         <a href="#/discover/filters" class="filter-btn" id="filter-btn" aria-label="Filter games">${iconFilter()}</a>
       </form>
-      <div id="search-results" class="search-results"></div>
+      <div id="search-results" class="search-results">${TABS.map((t) => `<div class="search-pane" data-pane="${t.id}"${t.id === tab ? '' : ' hidden'}></div>`).join('')}</div>
     </div>` + navBar('/search');
 
   const input = qs('#search-input', root);
-  const results = qs('#search-results', root);
+  // One pane per tab, all kept: switching tabs shows the other pane instead
+  // of rebuilding it, so a tab keeps what it loaded and where it was
+  // scrolled. `results` always points at the pane on screen.
+  const panes = Object.fromEntries(qsa('.search-pane', root).map((el) => [el.dataset.pane, el]));
+  let results = panes[tab];
+  const scrollAt = {};
+  let gamesSnap = null;
   const filterBtn = qs('#filter-btn', root);
   const form = qs('#search-form', root);
   const tabsEl = qs('#search-tabs', root);
@@ -128,6 +134,7 @@ export function renderSearchView(root, { initialTab = 'games' } = {}) {
   // browse yet). Pulled out so both the instant cached paint and the
   // fresh-data repaint below can share it.
   function paintIdleGames(games, heading) {
+    delete results.dataset.q; results.dataset.mode = 'idle';
     results.innerHTML = games.length
       ? `
         <p class="search-recent__heading">${esc(heading)}</p>
@@ -176,6 +183,7 @@ export function renderSearchView(root, { initialTab = 'games' } = {}) {
 
   const renderSearchHistory = () => {
     filterBtn.style.display = tab === 'games' ? '' : 'none';
+    delete results.dataset.q; results.dataset.mode = 'history';
     results.innerHTML = recentSearchesBlock() || emptyState(TAB[tab].hint, { icon: iconSearch() });
     wireRecentSearches();
   };
@@ -261,8 +269,26 @@ export function renderSearchView(root, { initialTab = 'games' } = {}) {
   // button. Used both by the tab buttons and by tapping a recent search
   // that belongs to another tab.
   function switchTab(newTab) {
-    if (!TABS.some((t) => t.id === newTab)) return;
+    if (!TABS.some((t) => t.id === newTab) || newTab === tab) return;
+    const body = qs('.view-body', root);
+    scrollAt[tab] = body.scrollTop;
+    if (tab === 'games') gamesSnap = { allResults, renderedCount, searchPage, searchHasMore };
+    // Anything still loading for the tab being left is dropped; that pane
+    // is simply searched again next time it's opened.
+    searchTicket++; promptTicket++; searchLoading = false;
+    if (searchObserver) searchObserver.disconnect();
+    const from = results;
     tab = newTab;
+    results = panes[tab];
+    Object.entries(panes).forEach(([id, el]) => { el.hidden = id !== tab; });
+    body.scrollTop = scrollAt[tab] || 0;
+    if (tab === 'games' && gamesSnap && results.dataset.q) {
+      ({ allResults, renderedCount, searchPage, searchHasMore } = gamesSnap);
+      observeSearchSentinel();
+    }
+    if (from !== results && results.animate && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      results.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 150, easing: 'ease-out' });
+    }
     qsa('.segmented__item', root).forEach(b => b.classList.toggle('segmented__item--active', b.dataset.tab === tab));
     input.placeholder = TAB[tab].placeholder;
     filterBtn.style.display = tab === 'games' ? '' : 'none';
@@ -282,12 +308,17 @@ export function renderSearchView(root, { initialTab = 'games' } = {}) {
       switchTab(btn.dataset.tab);
       // Keep what was typed. Wiping it meant switching Games -> People
       // to check the same term made you retype it every single time.
-      if (input.value.trim()) { doSearch(); input.focus(); }
+      const q = input.value.trim();
+      if (q) {
+        // A tab that already has this query's results just shows them.
+        if (results.dataset.q !== q) doSearch();
+        input.focus();
+      }
       // Box was open: the recent searches stay open, in the same place
       // (it's the same list on every tab). Box wasn't: each tab's own
       // resting screen, and no keyboard popping up just for changing tab.
-      else if (keepFocus) { showPrompt(); input.focus(); }
-      else showIdle();
+      else if (keepFocus) { if (results.dataset.mode !== 'history') showPrompt(); showingHistory = true; input.focus(); }
+      else { if (results.dataset.mode !== 'idle') showIdle(); showingHistory = false; }
     });
   });
 
@@ -433,6 +464,8 @@ export function renderSearchView(root, { initialTab = 'games' } = {}) {
     searchPage = 1; searchHasMore = false; searchLoading = false;
     allResults = []; renderedCount = 0;
     if (searchObserver) searchObserver.disconnect();
+    delete results.dataset.q; delete results.dataset.mode;
+    const paneAtStart = results;
     try {
       if (tab === 'games') {
         // Clear the previous query's results IMMEDIATELY. The old code
@@ -562,6 +595,7 @@ export function renderSearchView(root, { initialTab = 'games' } = {}) {
         })), `No artists found for "${q}".`);
         if (artists.length) recordRecentSearch(q, tab, artists[0].photo);
       }
+      if (ticket === searchTicket && results === paneAtStart && results.children.length) results.dataset.q = q;
     } catch (err) {
       if (ticket !== searchTicket) return;
       results.innerHTML = `<p class="muted">Search failed: ${esc(err.message)}</p>`;
@@ -606,4 +640,31 @@ export function renderSearchView(root, { initialTab = 'games' } = {}) {
     }
     typeTimer = setTimeout(() => doSearch(), 300);
   });
+
+  // Swipe sideways on empty space to flip between Games, People and All,
+  // same as Feed/News on Home. Skips inputs, anything that scrolls sideways
+  // and the tab bar, and only counts clear, mostly-horizontal swipes.
+  let sx = 0, sy = 0, swipeOk = false;
+  const blocksSwipe = (el) => {
+    for (let n = el; n && n !== root; n = n.parentElement) {
+      if (n.matches?.('input, textarea, select, [data-no-swipe], .tabbar')) return true;
+      if (n.scrollWidth > n.clientWidth + 2 && /(auto|scroll)/.test(getComputedStyle(n).overflowX)) return true;
+    }
+    return false;
+  };
+  root.addEventListener('touchstart', (e) => {
+    swipeOk = e.touches.length === 1 && !blocksSwipe(e.target);
+    sx = e.touches[0].clientX; sy = e.touches[0].clientY;
+  }, { passive: true });
+  root.addEventListener('touchend', (e) => {
+    if (!swipeOk) return;
+    swipeOk = false;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - sx, dy = t.clientY - sy;
+    if (Math.abs(dx) < 70 || Math.abs(dy) > Math.abs(dx) * 0.6) return;
+    const i = TABS.findIndex((x) => x.id === tab) + (dx < 0 ? 1 : -1);
+    if (i < 0 || i >= TABS.length) return;
+    qs(`.segmented__item[data-tab="${TABS[i].id}"]`, root).click();
+  }, { passive: true });
+  root.addEventListener('touchcancel', () => { swipeOk = false; }, { passive: true });
 }

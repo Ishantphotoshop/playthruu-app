@@ -6687,3 +6687,9 @@ a.gd-credit__name { text-decoration: none; }
 .all-head:first-child { margin-top: 4px; }
 .all-head__label { font-family: var(--font-body); font-weight: 700; font-size: 14px; color: var(--ink-dim); }
 .all-head__more { background: none; border: 0; padding: 4px 0; font: inherit; font-weight: 700; font-size: 13px; color: var(--accent-bright); cursor: pointer; }
+
+/* Search's tab pill sits exactly where Home's Feed/News pill does, so moving
+   between the two doesn't make the pill jump up or down. */
+.view-body--search .msg-inbox-head { margin-bottom: 10px; }
+.view-body--search .segmented--wide { height: 49px; }
+.search-pane[hidden] { display: none; }
