@@ -503,6 +503,13 @@ function startApp(user) {
   api.getNotificationPrefs(user.id).then((p) => { notifPrefs = p; }).catch(() => {});
   unsubscribeNotifications?.();
   unsubscribeNotifications = api.subscribeToNotifications(user.id, (row) => {
+    // Already on the Notifications screen: it shows the new one itself (and
+    // reads it), so the bell does not count it.
+    if (row?.kind !== 'message' && location.hash.startsWith('#/notifications')) {
+      window.dispatchEvent(new CustomEvent('notifications:incoming', { detail: row }));
+      maybeSystemNotify(row);
+      return;
+    }
     unreadNotifCount += 1;
     applyNotifBadge();
     // A message notification also moves the Messages tab's own count,

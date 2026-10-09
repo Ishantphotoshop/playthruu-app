@@ -3,7 +3,7 @@ import { state } from '../state.js';
 import { navBar, avatarImg, emptyState, spinner, iconBell } from '../components.js';
 import { esc, timeAgo, starRow, qs, qsa, keepLoading } from '../utils.js';
 import { navigate } from '../router.js';
-import { wirePullToRefresh } from './feed-view.js';
+import { wirePullToRefresh, pullRefreshing } from './feed-view.js';
 import { getCached, setCached, CACHE_KEYS } from '../cache.js';
 
 // One screen for everything happening in the app: what the people you
@@ -139,8 +139,13 @@ function activityRow(row, viewerId) {
     </button>`;
 }
 
+// The tab you were on, kept only for a pull-to-refresh (which rebuilds the
+// screen); opening Notifications fresh always starts on All.
+let lastTab = 'all';
+
 export async function renderNotificationsView(root) {
-  let activeTab = 'all';
+  let activeTab = pullRefreshing ? lastTab : 'all';
+  let ticket = 0; // newest load wins; an older answer is dropped
   let rows = [];
   let cursor = null;
   let hasMore = false;
@@ -178,6 +183,9 @@ export async function renderNotificationsView(root) {
       btn.addEventListener('click', () => {
         if (btn.dataset.tab === activeTab) return;
         activeTab = btn.dataset.tab;
+        lastTab = activeTab;
+        // The other tab's rows must not sit under this tab's name while it loads.
+        if (slot()) slot().innerHTML = spinner();
         qs('#act-tabs', root).style.setProperty('--i', String(TABS.findIndex((t) => t.id === activeTab)));
         qsa('#act-tabs .home-tabs__item', root).forEach((b) =>
           b.classList.toggle('home-tabs__item--active', b.dataset.tab === activeTab));
@@ -242,8 +250,8 @@ export async function renderNotificationsView(root) {
   }
 
   async function load({ reset }) {
-    if (loading) return;
-    if (!reset && !hasMore) return;
+    if (!reset && (loading || !hasMore)) return;
+    const my = ++ticket;
     loading = true;
     if (reset) {
       rows = [];
@@ -279,6 +287,7 @@ export async function renderNotificationsView(root) {
         includeIncoming: activeTab === 'all',
         before: reset ? null : cursor,
       });
+      if (my !== ticket) return; // another tab or refresh started meanwhile
       if (isDefaultView) setCached(CACHE_KEYS.notifications, res);
       rows = reset ? res.rows : rows.concat(res.rows);
       cursor = res.cursor;
@@ -286,9 +295,10 @@ export async function renderNotificationsView(root) {
       paintList();
       markVisibleRead();
     } catch (err) {
+      if (my !== ticket) return;
       if (slot()) slot().innerHTML = `<p class="muted" style="padding:24px">Couldn't load activity: ${esc(err.message)}</p>`;
     } finally {
-      loading = false;
+      if (my === ticket) loading = false;
     }
   }
 
@@ -305,6 +315,14 @@ export async function renderNotificationsView(root) {
       .catch(() => { /* the badge simply stays until the next load */ });
   }
 
+  // Something new lands while this screen is open: it appears in the list now,
+  // already read, instead of only bumping the bell. (The You tab is your own
+  // doings, which a notification is never about.)
+  const onIncoming = () => {
+    if (!root.isConnected || activeTab === 'you' || loading) return;
+    load({ reset: true });
+  };
+  window.addEventListener('notifications:incoming', onIncoming);
   paintShell();
   load({ reset: true });
 }

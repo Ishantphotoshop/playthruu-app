@@ -24,6 +24,9 @@ const NEWS_CACHE_KEY = 'news';
 // the whole screen) comes back on the same tab instead of snapping to Feed.
 let currentFeedTab = 'feed';
 let keepFeedTab = false;
+// True while a pull-to-refresh is rebuilding the current screen, so a screen
+// with tabs (Notifications) can come back on the tab it was on.
+export let pullRefreshing = false;
 
 export async function renderFeedView(root, { initialTab = 'feed' } = {}) {
   if (keepFeedTab) { initialTab = currentFeedTab; keepFeedTab = false; }
@@ -1581,7 +1584,9 @@ export function wirePullToRefresh(body) {
       indicator.style.transform = `translateY(${THRESHOLD}px)`;
       indicator.style.opacity = '1';
       keepFeedTab = true; // only the Home screen reads this, and clears it
+      pullRefreshing = true;
       try { await refreshCurrentView({ dataChanged: false }); } catch { /* the view's own error state handles this */ }
+      pullRefreshing = false;
     } else {
       indicator.style.transform = ''; indicator.style.opacity = '0';
       indicator.classList.remove('pull-refresh--ready');
