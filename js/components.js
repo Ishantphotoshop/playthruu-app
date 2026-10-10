@@ -808,7 +808,10 @@ export function ratingHistogram(counts, { total = 0 } = {}) {
           ${values.map((v) => {
             const n = counts[v] || 0;
             // An empty slot still draws, as a short stub on the baseline.
-            const h = n === 0 ? 3 : Math.max(4, Math.round((n / max) * 76));
+            // Drawn to scale, with a small base so even one rating shows and
+            // every step up in count is a visible step up in height. A rating
+            // nobody gave is a 1px stub, always shorter than any real bar.
+            const h = n === 0 ? 1 : +(2 + (n / max) * 74).toFixed(2);
             return `
             <div class="rating-histogram__bar${n === 0 ? ' is-zero' : ''}" data-value="${v}" data-count="${n}" style="--bar-h:${h}px" role="img" aria-label="${formatHalfStar(v)} stars, ${n} rating${n === 1 ? '' : 's'}">
               <span class="rating-histogram__bar-fill"></span>
@@ -846,10 +849,10 @@ export function wireRatingHistogram(container) {
     if (totalEl) totalEl.textContent = k < 0 ? totalEl.dataset.total : Number(bars[k].dataset.count).toLocaleString('en-US');
     if (k < 0) { starsEl.classList.remove('rh-stars--on'); return; }
     const value = (k + 1) / 2;
-    // The stars fill from the right: the last slot goes half, then whole,
-    // and each further half-step reaches one slot further left.
+    // The stars fill from the left: the first slot goes half, then whole,
+    // and each further half-step reaches one slot further right. Slots never move.
     slots.forEach((slot, i) => {
-      const n = slots.length - i;
+      const n = i + 1;
       slot.dataset.fill = value >= n ? 'full' : value >= n - 0.5 ? 'half' : 'empty';
     });
     starsEl.classList.add('rh-stars--on');
