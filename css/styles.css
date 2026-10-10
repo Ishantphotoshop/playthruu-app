@@ -2352,57 +2352,49 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 
 /* The ledger carries its own RATINGS label, so it only needs space above. */
 .section-gap { height: var(--space-4); }
-/* Ratings on a profile: the ledger. No box, a hairline above and below. */
+/* Ratings on a profile: a boxed title row over ten bars. Holding the bars
+   lights the one under the finger and fills the star slots in the title row. */
 .rating-histogram {
-  border-top: 1px solid var(--line-strong); border-bottom: 1px solid var(--line-strong);
-  padding: 12px 0; margin-bottom: var(--space-2);
+  border: 1px solid var(--line-strong);
+  padding: 12px 14px; margin-bottom: var(--space-2);
 }
 .rating-histogram--empty { display: grid; place-items: center; min-height: 96px; }
 .rating-histogram__empty { color: var(--ink-faint); font-size: var(--text-meta); }
 
-.rh-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
-.rh-cap { font-size: 10.5px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-faint); }
-.rh-cap--num { font-family: var(--font-mono); font-weight: 500; letter-spacing: 0.04em; font-variant-numeric: tabular-nums; }
-.rh-body { display: flex; align-items: flex-end; gap: 18px; }
-.rh-chart { flex: 1; min-width: 0; }
-.rating-histogram__bars { display: flex; align-items: flex-end; gap: 3px; height: 72px; }
-.rating-histogram__bar {
-  flex: 1; min-width: 0; height: 100%; padding: 0; background: none; border: none;
-  display: flex; flex-direction: column; align-items: center; justify-content: flex-end; position: relative;
+.rh-head { display: flex; justify-content: space-between; align-items: center; height: 18px; margin-bottom: 14px; }
+.rh-title { font-size: 14px; font-weight: 800; display: flex; align-items: baseline; gap: 8px; color: var(--ink); }
+.rh-total { font-family: var(--font-mono); font-weight: 500; font-size: 13px; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+
+/* Five fixed slots that never move. Hidden until a bar is held; a half star
+   is the left half of a whole star's box, so it sits where the whole one will. */
+.rh-stars { display: flex; gap: 2px; visibility: hidden; }
+.rh-stars--on { visibility: visible; }
+.rh-star { position: relative; width: 13px; height: 13px; }
+.rh-star::after {
+  content: ''; position: absolute; inset: 0; background: var(--accent-bright);
+  -webkit-mask: var(--star-mask) center / contain no-repeat; mask: var(--star-mask) center / contain no-repeat;
+  clip-path: inset(0 100% 0 0);
 }
-/* Flat rectangles. Mid green for every bar, the brightest green for the
-   most common rating, a dim stub for a rating nobody gave. */
+.rh-star[data-fill="full"]::after { clip-path: inset(0 0 0 0); }
+.rh-star[data-fill="half"]::after { clip-path: inset(0 50% 0 0); }
+
+.rh-chart { position: relative; padding-top: 16px; touch-action: pan-y; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; cursor: pointer; }
+.rating-histogram__bars { display: flex; align-items: flex-end; gap: 4px; height: 72px; }
+.rating-histogram__bar { flex: 1; min-width: 0; height: 100%; position: relative; display: flex; align-items: flex-end; }
+/* Every bar is the same colour; only the held one is brighter. */
 .rating-histogram__bar-fill {
   display: block; width: 100%; height: var(--bar-h, 3px);
   border-radius: 0; background: rgba(0, 224, 84, 0.55);
-  transition: height var(--dur-slow) var(--ease), background var(--dur) var(--ease);
 }
-.rating-histogram__bar.is-top .rating-histogram__bar-fill { background: var(--accent-bright); }
 .rating-histogram__bar.is-zero .rating-histogram__bar-fill { background: var(--surface-high); }
+.rating-histogram__bar.rating-histogram__bar--active .rating-histogram__bar-fill { background: var(--accent-bright); }
 .rating-histogram__bar-count {
-  position: absolute; left: 50%; bottom: calc(var(--bar-h, 3px) + 4px); transform: translate(-50%, 3px);
-  font-family: var(--font-mono); font-size: 10.5px; font-weight: 500; color: var(--ink); line-height: 1;
-  opacity: 0; pointer-events: none;
-  transition: opacity var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+  position: absolute; left: 50%; bottom: calc(var(--bar-h, 3px) + 5px); transform: translateX(-50%);
+  font-family: var(--font-mono); font-size: 11px; font-weight: 500; color: var(--ink); line-height: 1;
+  white-space: nowrap; display: none; pointer-events: none;
 }
-.rating-histogram__bar--active .rating-histogram__bar-count { opacity: 1; transform: translate(-50%, 0); }
-.rating-histogram__bar--active .rating-histogram__bar-fill { background: var(--accent-bright); }
-
+.rating-histogram__bar--active .rating-histogram__bar-count { display: block; }
 .rh-base { border-top: 1px solid var(--line-strong); }
-/* The marker: a small triangle under the bars at the average. */
-.rh-mark { position: relative; height: 7px; }
-.rh-mark i {
-  position: absolute; top: 0; width: 0; height: 0;
-  border-left: 4px solid transparent; border-right: 4px solid transparent; border-bottom: 5px solid var(--ink);
-  transform: translateX(-50%);
-}
-.rh-axis { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; font-size: 10px; line-height: 1; color: var(--ink-faint); }
-.rh-score { flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; padding-bottom: 20px; }
-.rh-score b {
-  font-family: var(--font-mono); font-size: 40px; font-weight: 600; letter-spacing: -0.05em;
-  line-height: 1; color: var(--ink);
-}
-.rh-score .stars { gap: 1px; --star-fill: var(--accent-bright); }
 
 /* ------------------------------------------------------------ log cards ("save slot") */
 .log-list { display: flex; flex-direction: column; gap: 14px; }

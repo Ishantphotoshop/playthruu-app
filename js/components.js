@@ -778,7 +778,7 @@ function formatHalfStar(v) {
   return whole === 0 ? '½' : `${whole}½`;
 }
 
-export function ratingHistogram(counts, { average = null, total = 0 } = {}) {
+export function ratingHistogram(counts, { total = 0 } = {}) {
   const values = [];
   for (let v = 0.5; v <= 5; v += 0.5) values.push(v.toFixed(1));
   const max = Math.max(1, ...values.map((v) => counts[v] || 0));
@@ -793,61 +793,86 @@ export function ratingHistogram(counts, { average = null, total = 0 } = {}) {
       </div>`;
   }
 
-  // The ledger: a small-caps label and the total on top, ten flat bars with
-  // a star at each end of the axis, the average beside them, and a marker
-  // under the bars at the spot the average falls. Bar i covers the rating
-  // (i+1)/2, so an average of 4.8 lands between the 4.5 and 5 bars.
-  const avg = Number(average) || 0;
-  // Big audiences: 50000 reads as "50,000" and a bar's count as "18.4K".
-  const compact = (n) => (n >= 1000 ? `${(n / 1000).toFixed(n >= 100000 ? 0 : 1).replace(/\.0$/, '')}K` : String(n));
-  const markPct = Math.min(100, Math.max(0, ((avg - 0.25) / 5) * 100));
+  // A boxed title row and ten bars. The title says how many ratings the
+  // person has given in all. The five star slots at the end of the title
+  // row are there from the start but invisible; holding a bar (see
+  // wireRatingHistogram) fills them with that bar's rating.
   return `
-    <div class="rating-histogram rating-histogram--ledger">
+    <div class="rating-histogram">
       <div class="rh-head">
-        <span class="rh-cap">Ratings</span>
-        <span class="rh-cap rh-cap--num">${total.toLocaleString('en-US')} total</span>
+        <span class="rh-title">Ratings <span class="rh-total">${total.toLocaleString('en-US')}</span></span>
+        <span class="rh-stars" aria-hidden="true">${[1, 2, 3, 4, 5].map((i) => `<span class="rh-star" data-i="${i}"></span>`).join('')}</span>
       </div>
-      <div class="rh-body">
-        <div class="rh-chart">
-          <div class="rating-histogram__bars">
-            ${values.map((v) => {
-              const n = counts[v] || 0;
-              // An empty slot still draws, as a short stub on the baseline,
-              // so the row of stubs makes the tall bars read as a spread.
-              const h = n === 0 ? 3 : Math.max(4, Math.round((n / max) * 72));
-              const cls = n === 0 ? ' is-zero' : (n === max ? ' is-top' : '');
-              return `
-              <button type="button" class="rating-histogram__bar${cls}" data-value="${v}" data-count="${n}" style="--bar-h:${h}px" aria-label="${formatHalfStar(v)} stars, ${n} rating${n === 1 ? '' : 's'}">
-                <span class="rating-histogram__bar-count">${compact(n)}</span>
-                <span class="rating-histogram__bar-fill"></span>
-              </button>`;
-            }).join('')}
-          </div>
-          <div class="rh-base"></div>
-          <div class="rh-mark"><i style="left:${markPct.toFixed(1)}%"></i></div>
-          <div class="rh-axis" aria-hidden="true"><span>\u2605</span><span>\u2605\u2605\u2605\u2605\u2605</span></div>
+      <div class="rh-chart">
+        <div class="rating-histogram__bars">
+          ${values.map((v) => {
+            const n = counts[v] || 0;
+            // An empty slot still draws, as a short stub on the baseline.
+            const h = n === 0 ? 3 : Math.max(4, Math.round((n / max) * 72));
+            return `
+            <div class="rating-histogram__bar${n === 0 ? ' is-zero' : ''}" data-value="${v}" data-count="${n}" style="--bar-h:${h}px" role="img" aria-label="${formatHalfStar(v)} stars, ${n} rating${n === 1 ? '' : 's'}">
+              <span class="rating-histogram__bar-count">${n.toLocaleString('en-US')}</span>
+              <span class="rating-histogram__bar-fill"></span>
+            </div>`;
+          }).join('')}
         </div>
-        <div class="rh-score">
-          <b>${avg ? avg.toFixed(1) : '\u2014'}</b>
-          ${avg ? starRow(avg, { size: 10 }) : ''}
-        </div>
+        <div class="rh-base"></div>
       </div>
       <span class="sr-only">${total} rating${total === 1 ? '' : 's'}</span>
     </div>`;
 }
 
 
-// Press-and-hold a bar to reveal its exact count while held, hides
-// again on release — not a tap-toggle, and not a review filter.
+// Hold the bars to read them: pressing puts the bar under the finger in the
+// bright colour, shows its count above it and fills the star slots in the
+// title row with its rating. Sliding sideways follows the finger from bar
+// to bar, and the stars change in place (a half star turns into a whole one
+// in the same slot). Letting go clears everything; nothing stays selected.
 export function wireRatingHistogram(container) {
-  qsa('.rating-histogram__bar', container).forEach((bar) => {
-    const show = () => bar.classList.add('rating-histogram__bar--active');
-    const hide = () => bar.classList.remove('rating-histogram__bar--active');
-    bar.addEventListener('pointerdown', show);
-    bar.addEventListener('pointerup', hide);
-    bar.addEventListener('pointerleave', hide);
-    bar.addEventListener('pointercancel', hide);
+  const chart = qs('.rh-chart', container);
+  if (!chart) return;
+  const bars = qsa('.rating-histogram__bar', chart);
+  const slots = qsa('.rh-star', container);
+  const starsEl = qs('.rh-stars', container);
+  let held = -1;
+  let pointer = null;
+
+  const paint = (k) => {
+    if (k === held) return;
+    held = k;
+    bars.forEach((bar, i) => bar.classList.toggle('rating-histogram__bar--active', i === k));
+    if (k < 0) { starsEl.classList.remove('rh-stars--on'); return; }
+    const value = (k + 1) / 2;
+    slots.forEach((slot, i) => {
+      const n = i + 1;
+      slot.dataset.fill = value >= n ? 'full' : value >= n - 0.5 ? 'half' : 'empty';
+    });
+    starsEl.classList.add('rh-stars--on');
+  };
+  const barAt = (x) => {
+    const first = bars[0].getBoundingClientRect();
+    const last = bars[bars.length - 1].getBoundingClientRect();
+    const w = (last.right - first.left) / bars.length;
+    return Math.max(0, Math.min(bars.length - 1, Math.floor((x - first.left) / w)));
+  };
+  const release = () => {
+    if (pointer === null) return;
+    pointer = null;
+    paint(-1);
+  };
+
+  chart.addEventListener('pointerdown', (e) => {
+    pointer = e.pointerId;
+    try { chart.setPointerCapture(e.pointerId); } catch { /* fine without capture */ }
+    paint(barAt(e.clientX));
   });
+  chart.addEventListener('pointermove', (e) => {
+    if (pointer !== e.pointerId) return;
+    paint(barAt(e.clientX));
+  });
+  chart.addEventListener('pointerup', release);
+  chart.addEventListener('pointercancel', release);
+  chart.addEventListener('lostpointercapture', release);
 }
 
 export function emptyState(message, { actionLabel, actionRoute, icon } = {}) {

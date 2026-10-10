@@ -284,7 +284,6 @@ export async function renderProfileView(root, { username }) {
            person had actually rated. stats.avgRating is already computed
            over exactly the same rows the breakdown counts. */ ''}
       ${ratingHistogram(breakdown, {
-        average: stats.avgRating,
         total: Object.values(breakdown).reduce((sum, n) => sum + n, 0),
       })}
 
