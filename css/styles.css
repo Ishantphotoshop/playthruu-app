@@ -2388,12 +2388,6 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 }
 .rating-histogram__bar.is-zero .rating-histogram__bar-fill { background: var(--surface-high); }
 .rating-histogram__bar.rating-histogram__bar--active .rating-histogram__bar-fill { background: var(--accent-bright); }
-.rating-histogram__bar-count {
-  position: absolute; left: 50%; bottom: calc(var(--bar-h, 3px) + 5px); transform: translateX(-50%);
-  font-family: var(--font-mono); font-size: 11px; font-weight: 500; color: var(--ink); line-height: 1;
-  white-space: nowrap; display: none; pointer-events: none;
-}
-.rating-histogram__bar--active .rating-histogram__bar-count { display: block; }
 .rh-base { border-top: 1px solid var(--line-strong); }
 
 /* ------------------------------------------------------------ log cards ("save slot") */

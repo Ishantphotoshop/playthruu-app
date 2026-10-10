@@ -811,7 +811,6 @@ export function ratingHistogram(counts, { total = 0 } = {}) {
             const h = n === 0 ? 3 : Math.max(4, Math.round((n / max) * 72));
             return `
             <div class="rating-histogram__bar${n === 0 ? ' is-zero' : ''}" data-value="${v}" data-count="${n}" style="--bar-h:${h}px" role="img" aria-label="${formatHalfStar(v)} stars, ${n} rating${n === 1 ? '' : 's'}">
-              <span class="rating-histogram__bar-count">${n.toLocaleString('en-US')}</span>
               <span class="rating-histogram__bar-fill"></span>
             </div>`;
           }).join('')}
@@ -844,7 +843,7 @@ export function wireRatingHistogram(container) {
     bars.forEach((bar, i) => bar.classList.toggle('rating-histogram__bar--active', i === k));
     // The number beside the title is the total; while a bar is held it shows
     // that bar's count instead, and goes back to the total on release.
-    if (totalEl) totalEl.textContent = k < 0 ? totalEl.dataset.total : bars[k].querySelector('.rating-histogram__bar-count').textContent;
+    if (totalEl) totalEl.textContent = k < 0 ? totalEl.dataset.total : Number(bars[k].dataset.count).toLocaleString('en-US');
     if (k < 0) { starsEl.classList.remove('rh-stars--on'); return; }
     const value = (k + 1) / 2;
     slots.forEach((slot, i) => {
