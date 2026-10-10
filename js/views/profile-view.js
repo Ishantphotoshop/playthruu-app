@@ -245,7 +245,7 @@ export async function renderProfileView(root, { username }) {
                 ${posterFrame(l.games.cover_url, l.games.title, 'recent-played-item__cover')}
               </a>
               <div class="rp-meta">
-                ${l.rating ? starRow(l.rating, { size: 13 }) : ''}
+                ${l.rating ? starRow(l.rating, { size: 10 }) : ''}
                 ${l.is_replay ? `<span class="rp-meta__icon">${iconReplay()}</span>` : ''}
                 ${l.review ? `<span class="rp-meta__icon">${iconReviewLines()}</span>` : ''}
               </div>
@@ -309,7 +309,7 @@ export async function renderProfileView(root, { username }) {
               <img src="${esc(igdbSized(l.games.cover_url, 'cover_small') || '')}" alt="" class="diary-row__cover" loading="lazy" decoding="async" onerror="this.style.visibility='hidden'">
               <div class="diary-row__main">
                 <div class="diary-row__title">${esc(l.games.title)}</div>
-                <div class="diary-row__meta">${l.played_date ? formatDate(l.played_date) : ''} ${l.rating ? starRow(l.rating, { size: 13 }) : ''}</div>
+                <div class="diary-row__meta">${l.played_date ? formatDate(l.played_date) : ''} ${l.rating ? starRow(l.rating, { size: 10 }) : ''}</div>
               </div>
               ${statusStamp(l.status)}
             </a>`).join('')}
