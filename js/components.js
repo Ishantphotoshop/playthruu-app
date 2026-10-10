@@ -848,8 +848,10 @@ export function wireRatingHistogram(container) {
     if (totalEl) totalEl.textContent = k < 0 ? totalEl.dataset.total : Number(bars[k].dataset.count).toLocaleString('en-US');
     if (k < 0) { starsEl.classList.remove('rh-stars--on'); return; }
     const value = (k + 1) / 2;
+    // The stars fill from the right: the last slot goes half, then whole,
+    // and each further half-step reaches one slot further left.
     slots.forEach((slot, i) => {
-      const n = i + 1;
+      const n = slots.length - i;
       slot.dataset.fill = value >= n ? 'full' : value >= n - 0.5 ? 'half' : 'empty';
     });
     starsEl.classList.add('rh-stars--on');

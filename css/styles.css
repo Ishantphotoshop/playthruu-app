@@ -2385,10 +2385,10 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 .rh-star::after {
   content: ''; position: absolute; inset: 0; background: var(--rh-held);
   -webkit-mask: var(--star-mask) center / contain no-repeat; mask: var(--star-mask) center / contain no-repeat;
-  clip-path: inset(0 100% 0 0);
+  clip-path: inset(0 0 0 100%);
 }
 .rh-star[data-fill="full"]::after { clip-path: inset(0 0 0 0); }
-.rh-star[data-fill="half"]::after { clip-path: inset(0 50% 0 0); }
+.rh-star[data-fill="half"]::after { clip-path: inset(0 0 0 50%); }
 
 .rh-chart { position: relative; padding-top: 6px; touch-action: pan-y; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; cursor: pointer; }
 .rating-histogram__bars { display: flex; align-items: flex-end; gap: 4px; height: 76px; }
