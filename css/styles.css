@@ -7010,8 +7010,8 @@ a.gd-credit__name { text-decoration: none; }
 
 /* Activity: January to December. Hold and slide; the box stretches at the top. */
 .ps-act { touch-action: pan-y; user-select: none; -webkit-user-select: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
-.ps-gap { height: 0; }
-.ps-act--holding .ps-gap { height: 22px; }
+/* The room for the count above a held bar is always there, so pressing a bar never moves anything. */
+.ps-gap { height: 22px; }
 .ps-abars { display: flex; align-items: flex-end; gap: 4px; height: 56px; }
 .ps-ab { flex: 1; min-width: 0; height: 100%; display: flex; align-items: flex-end; position: relative; }
 .ps-ab i { display: block; width: 100%; background: rgba(0, 224, 84, 0.55); }
@@ -7020,7 +7020,7 @@ a.gd-credit__name { text-decoration: none; }
 .ps-cnt { position: absolute; left: 50%; transform: translateX(-50%); font-size: 13px; font-weight: 800; color: var(--ink); display: none; line-height: 1; pointer-events: none; }
 .ps-ab--on .ps-cnt { display: block; }
 .ps-alab { display: flex; gap: 4px; margin-top: 6px; }
-.ps-alab span { flex: 1; text-align: center; font-size: 10px; font-weight: 800; color: var(--ink-faint); letter-spacing: 0.04em; }
+.ps-alab span { flex: 1; min-width: 0; text-align: center; font-size: 11px; font-weight: 700; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
 .ps-alab span.ps-on { color: var(--ink); }
 
 /* The three counts under the name, Instagram style: number over label, all tappable. */

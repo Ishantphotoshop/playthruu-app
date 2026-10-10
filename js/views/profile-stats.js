@@ -10,7 +10,6 @@ import { posterFrame } from '../components.js';
 // profile has already loaded; only Compare needs the viewer's own logs.
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-const LETTERS = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'];
 
 const num = (n) => Number(n).toLocaleString('en-US');
 
@@ -68,7 +67,7 @@ function activityHtml(diary, period) {
     <div class="ps-act" data-period="${period}">
       <div class="ps-gap"></div>
       <div class="ps-abars">${bars}</div>
-      <div class="ps-alab">${LETTERS.map((l) => `<span>${l}</span>`).join('')}</div>
+      <div class="ps-alab">${counts.map((n) => `<span>${n}</span>`).join('')}</div>
     </div>`;
 }
 
