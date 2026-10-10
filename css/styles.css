@@ -6934,3 +6934,8 @@ a.gd-credit__name { text-decoration: none; }
 .act__dot { margin-left: 2px; }
 
 .act-pane[hidden] { display: none; }
+
+/* Recently played on a profile carries the same who + stars footer as the
+   home activity cards, sized to its own poster. */
+.recent-played-item--activity > a:first-child { display: block; }
+.recent-played-item--activity .card-who { width: 100%; max-width: 100%; }

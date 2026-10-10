@@ -566,7 +566,7 @@ export function wireTrendingStrip(container, games, { onSelect }) {
 // alongside the stars (all independent — someone can rate AND love AND
 // review the same log), each its own small icon so every combination
 // stays legible instead of trying to cram one composite glyph.
-function cardWho(profile, rating, { playing = false, replayed = false, hasReview = false } = {}) {
+export function cardWho(profile, rating, { playing = false, replayed = false, hasReview = false } = {}) {
   const bits = [];
   if (playing) {
     // No "Playing" label on the card itself. Both places these appear

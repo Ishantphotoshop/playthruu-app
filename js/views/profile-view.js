@@ -5,7 +5,7 @@ import { MESSENGER_ARCHIVED } from '../config.js';
 import {
   navBar, spinner, avatarImg, gameCard, showcaseGrid, SHOWCASE_MAX, ratingHistogram, wireRatingHistogram, posterFrame,
   emptyState, iconStamp, iconSettings, iconShare, iconQr, iconDotsMenu, iconClose, iconSearch, iconPlus, listCard, iconMessage,
-  combinedGameResults, wireCombinedGameResults, openReportSheet, iconFlag, iconBlock,
+  combinedGameResults, wireCombinedGameResults, openReportSheet, iconFlag, iconBlock, cardWho,
 } from '../components.js';
 import { esc, formatDate, statusStamp, starRow, qs, qsa, toast, debounce, pulseLogTab, igdbSized, enableSwipeToDismiss, promptSignIn } from '../utils.js';
 import { refreshCurrentView, navigate } from '../router.js';
@@ -240,9 +240,12 @@ export async function renderProfileView(root, { username }) {
         <h2 class="section-heading">Recently played</h2>
         <div class="recent-played-row">
           ${recentlyPlayed.map((l) => `
-            <a href="#/game/${l.games.id}" class="recent-played-item" aria-label="${esc(l.games.title)}">
-              ${posterFrame(l.games.cover_url, l.games.title, 'recent-played-item__cover')}
-            </a>`).join('')}
+            <div class="recent-played-item recent-played-item--activity">
+              <a href="#/game/${l.games.id}" aria-label="${esc(l.games.title)}">
+                ${posterFrame(l.games.cover_url, l.games.title, 'recent-played-item__cover')}
+              </a>
+              ${cardWho(profile, l.rating, { replayed: !!l.is_replay, hasReview: !!l.review })}
+            </div>`).join('')}
         </div>` : ''}
 
       ${importedGames.length ? `
