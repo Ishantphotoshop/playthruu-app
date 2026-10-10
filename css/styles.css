@@ -578,10 +578,12 @@ ul { list-style: none; margin: 0; padding: 0; }
    insets, so it's correct on a full-width phone AND a wide desktop
    browser where #app is a centred column. */
 .profile-top {
-  position: fixed; top: calc(var(--safe-top) + 8px);
+  position: fixed; top: 0;
   left: 50%; right: auto; transform: translateX(-50%);
   width: 100%; max-width: 560px; box-sizing: border-box;
-  padding: 0 var(--gutter) 4px;
+  /* The bar owns the strip above it too (status-bar gap + 8px), so
+     posters never show above it as they scroll under. */
+  padding: calc(var(--safe-top) + 8px) var(--gutter) 4px;
   background: var(--bg);
   /* A hairline under the bar, the same token every other divider in
      the app uses — the page behind it still shows through (the bar
