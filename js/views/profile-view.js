@@ -135,10 +135,7 @@ export async function renderProfileView(root, { username }) {
   root.innerHTML = `
       <div class="profile-top profile-top--masthead${cachedProfile ? '' : ' profile-top--pending'}">
         ${isOwn
-          ? `<span class="profile-top__group">
-               <button type="button" class="profile-top__btn profile-top__btn--start" id="profile-share" aria-label="Share profile">${iconShare()}</button>
-               <button type="button" class="profile-top__btn" id="profile-qr" aria-label="Show QR code">${iconQr()}</button>
-             </span>`
+          ? `<button type="button" class="profile-top__btn profile-top__btn--start" id="profile-menu" aria-label="Share">${iconQr()}</button>`
           : `<span class="profile-top__btn" aria-hidden="true"></span>`}
         <span class="profile-top__name">@${esc(username)}</span>
         ${isOwn
@@ -396,10 +393,40 @@ export async function renderProfileView(root, { username }) {
       }
     };
 
-    // Share and QR are their own buttons in the top row, next to the handle
-    // and settings, instead of hiding behind a menu.
-    qs('#profile-share', root)?.addEventListener('click', shareProfile);
-    qs('#profile-qr', root)?.addEventListener('click', () => openQrModal(shareUrl, profile));
+    // Share and the QR code used to be two chips pinned to the top right
+    // of the header itself. They are behind the menu now, which is what
+    // frees that corner — and what lets settings have the left one
+    // without three controls fighting over the same strip.
+    qs('#profile-menu', root)?.addEventListener('click', () => {
+      const overlay = document.createElement('div');
+      overlay.className = 'modal-overlay';
+      // No Cancel row. There are three ways out already — drag it down,
+      // tap the backdrop, or press back — and a row that only closes the
+      // sheet is a fourth that takes up the space of a real action.
+      overlay.innerHTML = `
+        <div class="sheet comment-sheet" data-swipe-handle>
+          <div class="sheet__grip" aria-hidden="true"></div>
+          <div class="comment-sheet__list">
+            <button type="button" class="sheet-row" data-act="share">${iconShare()}<span>Share profile</span></button>
+            <button type="button" class="sheet-row" data-act="qr">${iconQr()}<span>Show QR code</span></button>
+          </div>
+        </div>`;
+      document.body.appendChild(overlay);
+      document.body.style.overflow = 'hidden';
+      const close = () => { overlay.remove(); document.body.style.overflow = ''; };
+      // Back tears overlays down centrally without calling close(), so
+      // the hook is what puts body scroll back. See app.js.
+      overlay.__dismiss = close;
+      enableSwipeToDismiss(qs('.comment-sheet', overlay), close);
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) return close();
+        const btn = e.target.closest('[data-act]');
+        if (!btn) return;
+        close();
+        if (btn.dataset.act === 'share') shareProfile();
+        if (btn.dataset.act === 'qr') openQrModal(shareUrl, profile);
+      });
+    });
     qs('#avatar-enlarge', body).addEventListener('click', () => openAvatarLightbox(profile));
 
     // The bio clamps to two lines. Whether there is a third to reveal is
