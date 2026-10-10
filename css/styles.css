@@ -6938,25 +6938,23 @@ a.gd-credit__name { text-decoration: none; }
 
 .act-pane[hidden] { display: none; }
 
-/* Recently played on a profile: the rating row under each poster.
-   Stars sit on the poster's left edge, the review mark on its right edge,
-   and the replay mark in the middle of the space between them. Every part
-   is optional, and each keeps its own spot whichever others are missing.
-   Sized from one whole-pixel unit (--u) taken from the poster's width, and
-   the line is always reserved so unrated posters keep the row level. */
+/* Recently played on a profile: the rating row under each poster, laid out
+   as one run from the poster's left edge: the stars, then the replay mark,
+   then the review mark, each straight after the one before it. Any part can
+   be missing; what is there simply closes up. Sized from one whole-pixel
+   unit (--u) taken from the poster's width, and the line is always reserved
+   so posters with nothing to show keep the row level. */
 .recent-played-item--activity > a:first-child { display: block; }
 .rp-meta {
   --star-fill: var(--ink-ghost);
   --u: 12px;
-  display: grid; grid-template-columns: auto 1fr auto; align-items: center;
+  display: flex; align-items: center; gap: calc(var(--u) * 0.5);
   height: calc(var(--u) + 2px); margin-top: 6px; line-height: 0;
 }
 @supports (width: round(down, 10.5px, 1px)) {
   .rp-meta { --u: round(down, calc(var(--poster-w) * 0.11), 1px); }
 }
-.rp-meta .stars { --star-size: var(--u) !important; gap: 2px; grid-column: 1; }
-.rp-meta__mid { grid-column: 2; display: flex; justify-content: center; }
-.rp-meta__end { grid-column: 3; display: flex; justify-content: flex-end; }
+.rp-meta .stars { --star-size: var(--u) !important; gap: 2px; flex-shrink: 0; }
 .rp-meta__icon {
   width: var(--u); height: var(--u); flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
