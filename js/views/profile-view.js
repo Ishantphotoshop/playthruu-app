@@ -276,7 +276,7 @@ export async function renderProfileView(root, { username }) {
             </div>` : ''}</div>`
         : ''}
 
-      <h2 class="section-heading">Ratings</h2>
+      <div class="section-gap"></div>
       ${/* `total` and `average` are not optional extras here: with total
            left at its default of 0, ratingHistogram returns its "No
            ratings yet" empty state unconditionally — which is why this

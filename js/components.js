@@ -793,28 +793,41 @@ export function ratingHistogram(counts, { average = null, total = 0 } = {}) {
       </div>`;
   }
 
+  // The ledger: a small-caps label and the total on top, ten flat bars with
+  // a star at each end of the axis, the average beside them, and a marker
+  // under the bars at the spot the average falls. Bar i covers the rating
+  // (i+1)/2, so an average of 4.8 lands between the 4.5 and 5 bars.
+  const avg = Number(average) || 0;
+  const markPct = Math.min(100, Math.max(0, ((avg - 0.25) / 5) * 100));
   return `
-    <div class="rating-histogram">
-      <div class="rating-histogram__chart">
-        <span class="rating-histogram__anchor" aria-hidden="true">★</span>
-        <div class="rating-histogram__bars">
-          ${values.map((v) => {
-            const n = counts[v] || 0;
-            // An empty slot still draws — as a stub sitting on the
-            // baseline, not a full-height track. The row of stubs is what
-            // makes the one tall bar read as a distribution instead of a
-            // lone floating block.
-            const pct = n === 0 ? 0 : Math.max(10, Math.round((n / max) * 100));
-            return `
-              <button type="button" class="rating-histogram__bar${n === 0 ? ' is-zero' : ''}" data-value="${v}" data-count="${n}" style="--bar-pct:${pct}%" aria-label="${formatHalfStar(v)} stars, ${n} rating${n === 1 ? '' : 's'}">
+    <div class="rating-histogram rating-histogram--ledger">
+      <div class="rh-head">
+        <span class="rh-cap">Ratings</span>
+        <span class="rh-cap rh-cap--num">${total} total</span>
+      </div>
+      <div class="rh-body">
+        <div class="rh-chart">
+          <div class="rating-histogram__bars">
+            ${values.map((v) => {
+              const n = counts[v] || 0;
+              // An empty slot still draws, as a short stub on the baseline,
+              // so the row of stubs makes the tall bars read as a spread.
+              const h = n === 0 ? 3 : Math.max(8, Math.round((n / max) * 72));
+              const cls = n === 0 ? ' is-zero' : (n === max ? ' is-top' : '');
+              return `
+              <button type="button" class="rating-histogram__bar${cls}" data-value="${v}" data-count="${n}" style="--bar-h:${h}px" aria-label="${formatHalfStar(v)} stars, ${n} rating${n === 1 ? '' : 's'}">
                 <span class="rating-histogram__bar-count">${n}</span>
                 <span class="rating-histogram__bar-fill"></span>
               </button>`;
-          }).join('')}
+            }).join('')}
+          </div>
+          <div class="rh-base"></div>
+          <div class="rh-mark"><i style="left:${markPct.toFixed(1)}%"></i></div>
+          <div class="rh-axis" aria-hidden="true"><span>\u2605</span><span>\u2605\u2605\u2605\u2605\u2605</span></div>
         </div>
-        <div class="rating-histogram__score">
-          <b>${average ? Number(average).toFixed(1) : '—'}</b>
-          <span class="rating-histogram__score-stars" aria-hidden="true">★★★★★</span>
+        <div class="rh-score">
+          <b>${avg ? avg.toFixed(1) : '\u2014'}</b>
+          ${avg ? starRow(avg, { size: 10 }) : ''}
         </div>
       </div>
       <span class="sr-only">${total} rating${total === 1 ? '' : 's'}</span>

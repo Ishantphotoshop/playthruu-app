@@ -2350,74 +2350,59 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 .poster-grid3__item:active { transform: scale(0.96); }
 .poster-grid3__cover { width: 100%; aspect-ratio: var(--ratio-card); object-fit: cover; border-radius: 8px; background: var(--surface); box-shadow: var(--shadow-card); }
 
+/* The ledger carries its own RATINGS label, so it only needs space above. */
+.section-gap { height: var(--space-4); }
+/* Ratings on a profile: the ledger. No box, a hairline above and below. */
 .rating-histogram {
-  background: var(--surface); border: 1px solid var(--line);
-  border-radius: 3px; padding: var(--space-3) var(--space-4);
-  margin-bottom: var(--space-2);
+  border-top: 1px solid var(--line-strong); border-bottom: 1px solid var(--line-strong);
+  padding: 12px 0; margin-bottom: var(--space-2);
 }
 .rating-histogram--empty { display: grid; place-items: center; min-height: 96px; }
 .rating-histogram__empty { color: var(--ink-faint); font-size: var(--text-meta); }
 
-/* One row, baseline-aligned: a single star anchoring the low end, the
-   ten bars, then the average sitting to the right of them. The score
-   used to sit in its own header strip above the chart, which made the
-   panel read as two stacked things instead of one figure. */
-.rating-histogram__chart {
-  display: flex; align-items: flex-end; gap: var(--space-4);
-  height: 96px;
-}
-.rating-histogram__anchor {
-  flex: 0 0 auto; font-size: 13.5px; color: var(--ink);
-  line-height: 1; padding-bottom: 2px;
-}
-.rating-histogram__bars {
-  flex: 1 1 auto; min-width: 0;
-  display: flex; align-items: flex-end; gap: 4px; height: 100%;
-}
+.rh-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
+.rh-cap { font-size: 10.5px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-faint); }
+.rh-cap--num { font-family: var(--font-mono); font-weight: 500; letter-spacing: 0.04em; font-variant-numeric: tabular-nums; }
+.rh-body { display: flex; align-items: flex-end; gap: 18px; }
+.rh-chart { flex: 1; min-width: 0; }
+.rating-histogram__bars { display: flex; align-items: flex-end; gap: 3px; height: 72px; }
 .rating-histogram__bar {
-  flex: 1; min-width: 0; height: 100%;
-  display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
-  position: relative; padding: 0; background: none; border: none;
+  flex: 1; min-width: 0; height: 100%; padding: 0; background: none; border: none;
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-end; position: relative;
 }
-/* No track behind the bar. An empty slot is drawn by the fill itself at
-   its minimum height, so the baseline reads as a row of stubs rather
-   than ten grey columns competing with the real bar. */
+/* Flat rectangles. Mid green for every bar, the brightest green for the
+   most common rating, a dim stub for a rating nobody gave. */
 .rating-histogram__bar-fill {
-  display: block; width: 100%;
-  height: max(var(--bar-pct, 0%), 7px);
-  min-height: 7px;
-  border-radius: 0;
-  background: var(--accent);
+  display: block; width: 100%; height: var(--bar-h, 3px);
+  border-radius: 0; background: rgba(0, 224, 84, 0.55);
   transition: height var(--dur-slow) var(--ease), background var(--dur) var(--ease);
 }
-.rating-histogram__bar.is-zero .rating-histogram__bar-fill {
-  height: 7px;
-  background: color-mix(in srgb, var(--accent) 62%, transparent);
-}
+.rating-histogram__bar.is-top .rating-histogram__bar-fill { background: var(--accent-bright); }
+.rating-histogram__bar.is-zero .rating-histogram__bar-fill { background: var(--surface-high); }
 .rating-histogram__bar-count {
-  font-family: var(--font-mono); font-size: 10.5px; font-weight: 500; color: var(--ink);
-  margin-bottom: var(--space-1); opacity: 0; transform: translateY(3px);
+  position: absolute; left: 50%; bottom: calc(var(--bar-h, 3px) + 4px); transform: translate(-50%, 3px);
+  font-family: var(--font-mono); font-size: 10.5px; font-weight: 500; color: var(--ink); line-height: 1;
+  opacity: 0; pointer-events: none;
   transition: opacity var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
 }
-.rating-histogram__bar--active .rating-histogram__bar-count { opacity: 1; transform: translateY(0); }
-.rating-histogram__bar--active .rating-histogram__bar-fill {
-  background: color-mix(in srgb, var(--accent) 78%, #fff);
-}
+.rating-histogram__bar--active .rating-histogram__bar-count { opacity: 1; transform: translate(-50%, 0); }
+.rating-histogram__bar--active .rating-histogram__bar-fill { background: var(--accent-bright); }
 
-/* The headline figure, sat on the same baseline as the bars with its
-   star row directly beneath it. */
-.rating-histogram__score {
-  flex: 0 0 auto; display: flex; flex-direction: column;
-  align-items: flex-end; justify-content: center; align-self: stretch; gap: 6px; line-height: 1;
-  padding-left: var(--space-4); border-left: 1px solid var(--line);
+.rh-base { border-top: 1px solid var(--line-strong); }
+/* The marker: a small triangle under the bars at the average. */
+.rh-mark { position: relative; height: 7px; }
+.rh-mark i {
+  position: absolute; top: 0; width: 0; height: 0;
+  border-left: 4px solid transparent; border-right: 4px solid transparent; border-bottom: 5px solid var(--ink);
+  transform: translateX(-50%);
 }
-.rating-histogram__score b {
-  font-family: var(--font-mono); font-size: 38px; font-weight: 600;
-  color: var(--ink); letter-spacing: -0.04em; line-height: 1;
+.rh-axis { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; font-size: 10px; line-height: 1; color: var(--ink-faint); }
+.rh-score { flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; padding-bottom: 20px; }
+.rh-score b {
+  font-family: var(--font-mono); font-size: 40px; font-weight: 600; letter-spacing: -0.05em;
+  line-height: 1; color: var(--ink);
 }
-.rating-histogram__score-stars {
-  font-size: 9.5px; color: var(--accent-bright); letter-spacing: 0.06em; line-height: 1;
-}
+.rh-score .stars { gap: 1px; --star-fill: var(--accent-bright); }
 
 /* ------------------------------------------------------------ log cards ("save slot") */
 .log-list { display: flex; flex-direction: column; gap: 14px; }
