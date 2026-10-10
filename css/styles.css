@@ -2352,43 +2352,52 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 
 /* The ledger carries its own RATINGS label, so it only needs space above. */
 .section-gap { height: var(--space-4); }
-/* Ratings on a profile: a boxed title row over ten bars. Holding the bars
-   lights the one under the finger and fills the star slots in the title row. */
+/* Ratings on a profile: the vault. A deep panel with gold corner brackets,
+   a large Fraunces italic title and total, muted gold bars, and a brighter
+   gold for the bar being held. Holding the bars lights the one under the
+   finger and fills the star slots in the title row. */
 .rating-histogram {
-  border: 1px solid var(--line-strong);
-  padding: 12px 14px; margin-bottom: var(--space-2);
+  --rh-gold: #c9a96a; --rh-held: #f0d9a4;
+  position: relative; background: #170d07; border: 1px solid rgba(201, 169, 106, 0.35);
+  padding: 26px 26px 20px; margin-bottom: var(--space-2);
 }
 .rating-histogram--empty { display: grid; place-items: center; min-height: 96px; }
 .rating-histogram__empty { color: var(--ink-faint); font-size: var(--text-meta); }
+.rh-corner { position: absolute; width: 9px; height: 9px; border: 1px solid var(--rh-held); pointer-events: none; }
+.rh-corner--tl { top: 5px; left: 5px; border-right: 0; border-bottom: 0; }
+.rh-corner--tr { top: 5px; right: 5px; border-left: 0; border-bottom: 0; }
+.rh-corner--bl { bottom: 5px; left: 5px; border-right: 0; border-top: 0; }
+.rh-corner--br { bottom: 5px; right: 5px; border-left: 0; border-top: 0; }
 
-.rh-head { display: flex; justify-content: space-between; align-items: center; height: 18px; margin-bottom: 14px; }
-.rh-title { font-size: 14px; font-weight: 800; display: flex; align-items: baseline; gap: 8px; color: var(--ink); }
-.rh-total { font-family: var(--font-mono); font-weight: 500; font-size: 13px; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+.rh-head { display: flex; justify-content: space-between; align-items: center; min-height: 24px; margin-bottom: 18px; }
+.rh-title {
+  font-family: 'Fraunces', Georgia, 'Times New Roman', serif; font-style: italic; font-weight: 400;
+  font-size: 24px; line-height: 1.1; color: #f3e7d3;
+  display: flex; align-items: baseline; gap: 10px;
+}
+.rh-total { font-size: 20px; color: var(--rh-gold); font-variant-numeric: lining-nums tabular-nums; }
 
 /* Five fixed slots that never move. Hidden until a bar is held; a half star
    is the left half of a whole star's box, so it sits where the whole one will. */
-.rh-stars { display: flex; gap: 2px; visibility: hidden; }
+.rh-stars { display: flex; gap: 3px; visibility: hidden; }
 .rh-stars--on { visibility: visible; }
 .rh-star { position: relative; width: 13px; height: 13px; }
 .rh-star::after {
-  content: ''; position: absolute; inset: 0; background: var(--accent-bright);
+  content: ''; position: absolute; inset: 0; background: var(--rh-held);
   -webkit-mask: var(--star-mask) center / contain no-repeat; mask: var(--star-mask) center / contain no-repeat;
   clip-path: inset(0 100% 0 0);
 }
 .rh-star[data-fill="full"]::after { clip-path: inset(0 0 0 0); }
 .rh-star[data-fill="half"]::after { clip-path: inset(0 50% 0 0); }
 
-.rh-chart { position: relative; padding-top: 16px; touch-action: pan-y; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; cursor: pointer; }
-.rating-histogram__bars { display: flex; align-items: flex-end; gap: 4px; height: 72px; }
+.rh-chart { position: relative; padding-top: 6px; touch-action: pan-y; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; cursor: pointer; }
+.rating-histogram__bars { display: flex; align-items: flex-end; gap: 4px; height: 76px; }
 .rating-histogram__bar { flex: 1; min-width: 0; height: 100%; position: relative; display: flex; align-items: flex-end; }
-/* Every bar is the same colour; only the held one is brighter. */
-.rating-histogram__bar-fill {
-  display: block; width: 100%; height: var(--bar-h, 3px);
-  border-radius: 0; background: rgba(0, 224, 84, 0.55);
-}
-.rating-histogram__bar.is-zero .rating-histogram__bar-fill { background: var(--surface-high); }
-.rating-histogram__bar.rating-histogram__bar--active .rating-histogram__bar-fill { background: var(--accent-bright); }
-.rh-base { border-top: 1px solid var(--line-strong); }
+/* Every bar is the same muted gold; only the held one is brighter. */
+.rating-histogram__bar-fill { display: block; width: 100%; height: var(--bar-h, 3px); border-radius: 0; background: #6f5f3c; }
+.rating-histogram__bar.is-zero .rating-histogram__bar-fill { background: #2c2012; }
+.rating-histogram__bar.rating-histogram__bar--active .rating-histogram__bar-fill { background: var(--rh-held); }
+.rh-base { border-top: 1px solid rgba(201, 169, 106, 0.4); }
 
 /* ------------------------------------------------------------ log cards ("save slot") */
 .log-list { display: flex; flex-direction: column; gap: 14px; }
