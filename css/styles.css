@@ -972,9 +972,12 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
 .tabbar__item--active .tab-off { display: none; }
 .tabbar__item:not(.tabbar__item--active) .tab-on { display: none; }
 /* The profile tab is the person's own photo. */
-.tabbar__avatar { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; border: 2px solid transparent; }
-.tabbar__avatar .avatar { display: block; width: 24px !important; height: 24px !important; font-size: 10px !important; }
-.tabbar__item--active .tabbar__avatar { border-color: var(--accent); }
+.tabbar__avatar { position: relative; display: block; width: 30px; height: 30px; border-radius: 50%; overflow: hidden; }
+.tabbar__avatar .avatar { display: block; width: 30px !important; height: 30px !important; font-size: 12px !important; }
+/* The active ring is a stroke on the photo's own edge, like Edit > Stroke
+   (inside) in Photoshop: no gap between the picture and the ring. */
+.tabbar__avatar::after { content: ''; position: absolute; inset: 0; border-radius: 50%; border: 2px solid transparent; pointer-events: none; }
+.tabbar__item--active .tabbar__avatar::after { border-color: var(--accent); }
 /* A plain drop shadow to lift the glyph off the bar, and no coloured
    bloom behind it. The accent already names the active tab; a glow on
    top of that is decoration the rest of the app does not use. */
