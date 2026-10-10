@@ -1,4 +1,5 @@
 import * as api from '../api.js';
+import { profileStatsHtml, wireProfileStats } from './profile-stats.js';
 import { openPosterViewer } from './game-view.js';
 import { state } from '../state.js';
 import { MESSENGER_ARCHIVED } from '../config.js';
@@ -287,14 +288,7 @@ export async function renderProfileView(root, { username }) {
         total: Object.values(breakdown).reduce((sum, n) => sum + n, 0),
       })}
 
-      <div class="stat-links stat-links--vertical">
-        <a href="#/profile/${esc(profile.username)}/log-list/completed" class="stat-link">
-          <b>${stats.totalPlayed}<span class="stat-link__year">/${stats.thisYear}</span></b><span>Completed (total/year)</span>
-        </a>
-        <a href="#/profile/${esc(profile.username)}/log-list/logged" class="stat-link"><b>${stats.logged}</b><span>Logged</span></a>
-        <a href="#/profile/${esc(profile.username)}/log-list/reviews" class="stat-link"><b>${stats.reviews}</b><span>Reviews</span></a>
-        <button type="button" class="stat-link" data-jump-tab="wanttoplay"><b>${stats.backlog}</b><span>Want to Play</span></button>
-      </div>
+      ${profileStatsHtml({ profile, logs, stats, isOwn })}
     `;
 
     const renderJournalTab = () => `
@@ -349,6 +343,7 @@ export async function renderProfileView(root, { username }) {
     function paintTab(tab) {
       contentEl.innerHTML = tabRenderers[tab]();
       wireRatingHistogram(contentEl);
+      wireProfileStats(contentEl, { profile, logs, stats, isOwn });
       const followBtn = qs('#follow-btn', body);
       if (followBtn) wireFollowBtn(followBtn, profile);
       qsa('[data-jump-tab]', contentEl).forEach((btn) => {
