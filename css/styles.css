@@ -2338,7 +2338,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
    already-3-across slot and applying the same shrink a second time,
    squeezing the poster down to a fraction of its real size. */
 .recent-played-row .playing-slot {
-  flex-shrink: 0; width: calc((100% - 16px) / 3);
+  flex-shrink: 0; width: var(--poster-w);
 }
 .recent-played-row .playing-slot .recent-played-item { width: 100%; }
 
@@ -2845,6 +2845,16 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 }
 .playing-slot__remove svg { width: 11px; height: 11px; }
 .playing-empty-hint { padding: 8px 2px 4px; }
+/* The empty slot at the end of Currently playing: same size as a poster,
+   a plus in the middle. Tapping it opens the game search. */
+.playing-add {
+  display: grid; place-items: center; width: 100%; aspect-ratio: var(--ratio-card);
+  border-radius: var(--poster-radius); background: var(--surface);
+  border: 1px dashed var(--line-strong); color: var(--ink-dim); cursor: pointer; padding: 0;
+  transition: background 0.12s ease, transform 0.12s ease;
+}
+.playing-add:active { transform: scale(0.96); background: var(--surface-high); }
+.playing-add svg { width: 26px; height: 26px; }
 
 .diary-list { display: flex; flex-direction: column; gap: 2px; }
 .diary-row { display: flex; align-items: center; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--line); transition: background 0.12s ease; }

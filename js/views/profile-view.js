@@ -262,21 +262,19 @@ export async function renderProfileView(root, { username }) {
             </a>`).join('')}
         </div>` : ''}
 
-      <div class="feed-section-head">
-        <h2 class="section-heading">Currently playing</h2>
-        ${isOwn ? `<button type="button" class="icon-btn icon-btn--small" id="add-playing" aria-label="Add a game you're currently playing">${iconSearch()}</button>` : ''}
-      </div>
-      ${playing.length
+      <h2 class="section-heading">Currently playing</h2>
+      ${(playing.length || isOwn)
         ? `<div class="recent-played-row" id="playing-grid">${playing.map((l) => `
             <div class="playing-slot">
               <a href="#/game/${l.games.id}" class="recent-played-item" aria-label="${esc(l.games.title)}">
                 ${posterFrame(l.games.cover_url, l.games.title, 'recent-played-item__cover')}
               </a>
               ${isOwn ? `<button type="button" class="playing-slot__remove" data-remove-log="${l.id}" aria-label="Remove from currently playing">${iconClose()}</button>` : ''}
-            </div>`).join('')}</div>`
-        : isOwn
-          ? `<p class="muted playing-empty-hint">Nothing yet — tap the search icon above to add a game you're playing right now.</p>`
-          : ''}
+            </div>`).join('')}${isOwn ? `
+            <div class="playing-slot">
+              <button type="button" class="playing-add" id="add-playing" aria-label="Add a game you're currently playing">${iconPlus()}</button>
+            </div>` : ''}</div>`
+        : ''}
 
       <h2 class="section-heading">Ratings</h2>
       ${/* `total` and `average` are not optional extras here: with total
