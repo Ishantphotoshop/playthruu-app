@@ -800,7 +800,7 @@ export function ratingHistogram(counts, { total = 0 } = {}) {
   return `
     <div class="rating-histogram">
       <div class="rh-head">
-        <span class="rh-title">Ratings <span class="rh-total">${total.toLocaleString('en-US')}</span></span>
+        <span class="rh-title">Ratings <span class="rh-total" data-total="${total.toLocaleString('en-US')}">${total.toLocaleString('en-US')}</span></span>
         <span class="rh-stars" aria-hidden="true">${[1, 2, 3, 4, 5].map((i) => `<span class="rh-star" data-i="${i}"></span>`).join('')}</span>
       </div>
       <div class="rh-chart">
@@ -834,6 +834,7 @@ export function wireRatingHistogram(container) {
   const bars = qsa('.rating-histogram__bar', chart);
   const slots = qsa('.rh-star', container);
   const starsEl = qs('.rh-stars', container);
+  const totalEl = qs('.rh-total', container);
   let held = -1;
   let pointer = null;
 
@@ -841,6 +842,9 @@ export function wireRatingHistogram(container) {
     if (k === held) return;
     held = k;
     bars.forEach((bar, i) => bar.classList.toggle('rating-histogram__bar--active', i === k));
+    // The number beside the title is the total; while a bar is held it shows
+    // that bar's count instead, and goes back to the total on release.
+    if (totalEl) totalEl.textContent = k < 0 ? totalEl.dataset.total : bars[k].querySelector('.rating-histogram__bar-count').textContent;
     if (k < 0) { starsEl.classList.remove('rh-stars--on'); return; }
     const value = (k + 1) / 2;
     slots.forEach((slot, i) => {
