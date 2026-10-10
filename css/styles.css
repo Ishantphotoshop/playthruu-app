@@ -6935,7 +6935,20 @@ a.gd-credit__name { text-decoration: none; }
 
 .act-pane[hidden] { display: none; }
 
-/* Recently played on a profile carries the same who + stars footer as the
-   home activity cards, sized to its own poster. */
+/* Recently played on a profile: just the rating under each poster. Stars,
+   then the replay and review marks, all on one 14px line that is always
+   reserved, so posters without a rating keep the same height and the row
+   stays level. Left edge sits on the poster's own edge. */
 .recent-played-item--activity > a:first-child { display: block; }
-.recent-played-item--activity .card-who { width: 100%; max-width: 100%; }
+.rp-meta {
+  --star-fill: var(--ink-ghost);
+  display: flex; align-items: center; gap: 7px;
+  height: 14px; margin-top: 8px;
+}
+.rp-meta .stars { gap: 0; flex-shrink: 0; }
+.rp-meta__icon {
+  width: 12px; height: 12px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--star-fill);
+}
+.rp-meta__icon svg { width: 100%; height: 100%; display: block; stroke-width: 1.6; }
