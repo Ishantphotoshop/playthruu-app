@@ -2352,52 +2352,49 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 
 /* The ledger carries its own RATINGS label, so it only needs space above. */
 .section-gap { height: var(--space-4); }
-/* Ratings on a profile: the vault. A deep panel with gold corner brackets,
-   a large Fraunces italic title and total, muted gold bars, and a brighter
-   gold for the bar being held. Holding the bars lights the one under the
-   finger and fills the star slots in the title row. */
+/* Ratings on a profile: the marquee. A curved panel with everything centred:
+   the title in small Playfair italic, the total very large under it, and the
+   five star slots under that. Holding the bars lights the one under the
+   finger, swaps the total for that bar's count and fills the stars. */
 .rating-histogram {
-  --rh-gold: #c9a96a; --rh-held: #f0d9a4;
-  position: relative; background: #170d07; border: 1px solid rgba(201, 169, 106, 0.35);
-  padding: 26px 26px 20px; margin-bottom: var(--space-2);
+  position: relative; background: #241408; border: 1px solid rgba(230, 170, 110, 0.32);
+  border-radius: 18px; padding: 24px 20px 16px; margin-bottom: var(--space-2);
 }
 .rating-histogram--empty { display: grid; place-items: center; min-height: 96px; }
 .rating-histogram__empty { color: var(--ink-faint); font-size: var(--text-meta); }
-.rh-corner { position: absolute; width: 9px; height: 9px; border: 1px solid var(--rh-held); pointer-events: none; }
-.rh-corner--tl { top: 5px; left: 5px; border-right: 0; border-bottom: 0; }
-.rh-corner--tr { top: 5px; right: 5px; border-left: 0; border-bottom: 0; }
-.rh-corner--bl { bottom: 5px; left: 5px; border-right: 0; border-top: 0; }
-.rh-corner--br { bottom: 5px; right: 5px; border-left: 0; border-top: 0; }
 
-.rh-head { display: flex; justify-content: space-between; align-items: center; min-height: 24px; margin-bottom: 18px; }
+.rh-head { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; margin-bottom: 20px; }
 .rh-title {
-  font-family: 'Fraunces', Georgia, 'Times New Roman', serif; font-style: italic; font-weight: 400;
-  font-size: 24px; line-height: 1.1; color: #f3e7d3;
-  display: flex; align-items: baseline; gap: 10px;
+  font-family: 'Playfair Display', Georgia, 'Times New Roman', serif; font-style: italic; font-weight: 500;
+  font-size: 18px; line-height: 1.1; color: #d9bb9c;
 }
-.rh-total { font-size: 20px; color: var(--rh-gold); font-variant-numeric: lining-nums tabular-nums; }
+.rh-total {
+  font-family: 'Playfair Display', Georgia, 'Times New Roman', serif; font-style: italic; font-weight: 500;
+  font-size: 56px; line-height: 1; letter-spacing: -0.01em; color: var(--ink);
+  font-variant-numeric: lining-nums;
+}
 
 /* Five fixed slots that never move. Hidden until a bar is held; a half star
    is the left half of a whole star's box, so it sits where the whole one will. */
-.rh-stars { display: flex; gap: 3px; visibility: hidden; }
+.rh-stars { display: flex; gap: 3px; visibility: hidden; height: 13px; }
 .rh-stars--on { visibility: visible; }
 .rh-star { position: relative; width: 13px; height: 13px; }
 .rh-star::after {
-  content: ''; position: absolute; inset: 0; background: var(--rh-held);
+  content: ''; position: absolute; inset: 0; background: var(--accent-bright);
   -webkit-mask: var(--star-mask) center / contain no-repeat; mask: var(--star-mask) center / contain no-repeat;
   clip-path: inset(0 0 0 100%);
 }
 .rh-star[data-fill="full"]::after { clip-path: inset(0 0 0 0); }
 .rh-star[data-fill="half"]::after { clip-path: inset(0 0 0 50%); }
 
-.rh-chart { position: relative; padding-top: 6px; touch-action: pan-y; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; cursor: pointer; }
+.rh-chart { position: relative; padding-top: 0; touch-action: pan-y; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; cursor: pointer; }
 .rating-histogram__bars { display: flex; align-items: flex-end; gap: 4px; height: 76px; }
 .rating-histogram__bar { flex: 1; min-width: 0; height: 100%; position: relative; display: flex; align-items: flex-end; }
-/* Every bar is the same muted gold; only the held one is brighter. */
-.rating-histogram__bar-fill { display: block; width: 100%; height: var(--bar-h, 3px); border-radius: 0; background: #6f5f3c; }
-.rating-histogram__bar.is-zero .rating-histogram__bar-fill { background: #2c2012; }
-.rating-histogram__bar.rating-histogram__bar--active .rating-histogram__bar-fill { background: var(--rh-held); }
-.rh-base { border-top: 1px solid rgba(201, 169, 106, 0.4); }
+/* Every bar is the same green; only the held one is brighter. */
+.rating-histogram__bar-fill { display: block; width: 100%; height: var(--bar-h, 3px); border-radius: 0; background: rgba(0, 224, 84, 0.55); }
+.rating-histogram__bar.is-zero .rating-histogram__bar-fill { background: #4f3220; }
+.rating-histogram__bar.rating-histogram__bar--active .rating-histogram__bar-fill { background: var(--accent-bright); }
+.rh-base { border-top: 1px solid rgba(230, 170, 110, 0.32); }
 
 /* ------------------------------------------------------------ log cards ("save slot") */
 .log-list { display: flex; flex-direction: column; gap: 14px; }

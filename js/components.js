@@ -799,10 +799,9 @@ export function ratingHistogram(counts, { total = 0 } = {}) {
   // wireRatingHistogram) fills them with that bar's rating.
   return `
     <div class="rating-histogram">
-      <i class="rh-corner rh-corner--tl" aria-hidden="true"></i><i class="rh-corner rh-corner--tr" aria-hidden="true"></i>
-      <i class="rh-corner rh-corner--bl" aria-hidden="true"></i><i class="rh-corner rh-corner--br" aria-hidden="true"></i>
       <div class="rh-head">
-        <span class="rh-title">Ratings <span class="rh-total" data-total="${total.toLocaleString('en-US')}">${total.toLocaleString('en-US')}</span></span>
+        <span class="rh-title">Ratings</span>
+        <span class="rh-total" data-total="${total.toLocaleString('en-US')}">${total.toLocaleString('en-US')}</span>
         <span class="rh-stars" aria-hidden="true">${[1, 2, 3, 4, 5].map((i) => `<span class="rh-star" data-i="${i}"></span>`).join('')}</span>
       </div>
       <div class="rh-chart">
