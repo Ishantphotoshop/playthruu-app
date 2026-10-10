@@ -1528,7 +1528,7 @@ const POSTER_PINCH_MAX = 6;
 const POSTER_DISMISS_PX = 110;
 const POSTER_DISMISS_VELOCITY = 0.5;
 
-function openPosterViewer(src, title) {
+export function openPosterViewer(src, title) {
   if (!src) return;
   // `src` and `title` come from the shared `games` table, which ANY
   // signed-up user can insert rows into. Interpolating them raw let a

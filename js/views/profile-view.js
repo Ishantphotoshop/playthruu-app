@@ -1,4 +1,5 @@
 import * as api from '../api.js';
+import { openPosterViewer } from './game-view.js';
 import { state } from '../state.js';
 import { MESSENGER_ARCHIVED } from '../config.js';
 import {
@@ -552,24 +553,11 @@ function wireFollowBtn(followBtn, profile) {
 // single small square with nothing in it to inspect up close, so the
 // zoom/pan handling this used to carry only got in the way of the one
 // thing people actually do here, which is look at it and dismiss it.
+// The photo opens in the same full-screen viewer as a game's poster:
+// square edges, double-tap zoom, pinch, swipe down to close.
 function openAvatarLightbox(profile) {
   if (!profile.avatar_url) return;
-  const overlay = document.createElement('div');
-  overlay.className = 'avatar-viewer';
-  overlay.innerHTML = `
-    <button class="avatar-viewer__close" aria-label="Close">${iconClose()}</button>
-    <div class="avatar-viewer__stage">
-      <img src="${esc(profile.avatar_url)}" alt="${esc(profile.username)}" class="avatar-viewer__img" draggable="false">
-    </div>`;
-  document.body.appendChild(overlay);
-  document.body.style.overflow = 'hidden';
-
-  const close = () => { overlay.remove(); document.body.style.overflow = ''; };
-  qs('.avatar-viewer__close', overlay).addEventListener('click', close);
-  overlay.addEventListener('click', close);
-  document.addEventListener('keydown', function esc(e) {
-    if (e.key === 'Escape') { close(); document.removeEventListener('keydown', esc); }
-  });
+  openPosterViewer(profile.avatar_url, profile.display_name || profile.username);
 }
 
 function openQrModal(shareUrl, profile) {

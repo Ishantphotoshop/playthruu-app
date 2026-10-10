@@ -2519,14 +2519,14 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 .profile-header__name-text {
   margin: 0;
   font-family: var(--font-display); font-weight: var(--weight-black);
-  font-size: 23px; letter-spacing: -0.025em; line-height: 1.15;
+  font-size: 20px; letter-spacing: -0.025em; line-height: 1.15;
 }
 /* Below the name now, not beside it — small and dim, the same role a
    caption under a heading plays anywhere else in the app. */
 .profile-header__hours-inline {
   display: block; margin-top: 3px;
-  font-family: var(--font-mono); font-size: 11.5px; font-weight: 500;
-  color: var(--ink-faint); letter-spacing: 0.02em;
+  font-family: var(--font-body); font-size: 12px; font-weight: 700;
+  color: var(--ink-faint); letter-spacing: 0;
   font-variant-numeric: tabular-nums;
 }
 /* The bio and its toggle move together, so the wrapper carries the
