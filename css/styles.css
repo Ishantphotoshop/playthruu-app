@@ -6938,19 +6938,27 @@ a.gd-credit__name { text-decoration: none; }
 
 .act-pane[hidden] { display: none; }
 
-/* Recently played on a profile: just the rating under each poster. Stars,
-   then the replay and review marks, all on one 14px line that is always
-   reserved, so posters without a rating keep the same height and the row
-   stays level. Left edge sits on the poster's own edge. */
+/* Recently played on a profile: the rating row under each poster, built the
+   way the reference is: stars, then replay and review marks, ALL the same
+   height, evenly spaced, on one line that is always reserved so unrated
+   posters keep the row level. Everything is sized from one unit (--u, a
+   whole number of pixels derived from the poster's own width, so the row
+   scales with the phone and never lands on a half pixel), and the first
+   star's left tip sits on the poster's left edge. */
 .recent-played-item--activity > a:first-child { display: block; }
 .rp-meta {
   --star-fill: var(--ink-ghost);
-  display: flex; align-items: center; gap: 7px;
-  height: 14px; margin-top: 5px;
+  --u: 12px;
+  display: flex; align-items: center; gap: calc(var(--u) * 0.5);
+  height: var(--u); margin-top: 6px; box-sizing: content-box;
+  line-height: 0;
 }
-.rp-meta .stars { gap: 3px; flex-shrink: 0; }
+@supports (width: round(down, 10.5px, 1px)) {
+  .rp-meta { --u: round(down, calc(var(--poster-w) * 0.11), 1px); }
+}
+.rp-meta .stars { --star-size: var(--u) !important; gap: 2px; flex-shrink: 0; }
 .rp-meta__icon {
-  width: 10.5px; height: 10.5px; flex-shrink: 0;
+  width: var(--u); height: var(--u); flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
   color: var(--star-fill);
 }
