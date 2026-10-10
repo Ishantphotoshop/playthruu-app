@@ -152,6 +152,24 @@ export function markTabStale(path) {
   if (tp && tp !== pages.get(current?.key)) tp.stale = true;
 }
 
+// Logging, editing or deleting a game changes what Home and Profile show.
+// Every kept tab other than the one on screen is marked out of date, so it
+// is rebuilt with the new entry the moment you open it. If your own profile
+// is the page on screen, it is rebuilt right now, in place, with no spinner
+// and the scroll spot held (see resumeMainScroll).
+let logsRefreshTimer = 0;
+window.addEventListener('logs:changed', () => {
+  markPagesStale();
+  if (current?.path !== '/me') return;
+  clearTimeout(logsRefreshTimer);
+  logsRefreshTimer = setTimeout(() => {
+    if (current?.path !== '/me') return;
+    const pg = pages.get(current.key);
+    if (pg) { pg.mainTop = pg.el.querySelector('.view-body')?.scrollTop || 0; pg.stale = true; }
+    refreshCurrentView({ dataChanged: false });
+  }, 250);
+});
+
 // A rebuilt page starts at the top; take it back to where it was left.
 // Its sections fill in over the next moment, so the offset is held
 // (with scroll anchoring off, which would otherwise chase each section as
@@ -426,7 +444,10 @@ function resolve(force = false) {
     }, direction);
     return;
   }
-  const resumeTop = kept && kept.path === path && kept.stale ? kept.mainTop : 0;
+  // A rebuild of the same screen (out of date, or refreshed in place)
+  // takes the scroll spot back to where it was.
+  const prior = pages.get(st.key);
+  const resumeTop = prior && prior.path === path && (prior.stale || force) ? prior.mainTop : 0;
   const el = document.createElement('div');
   el.className = 'page';
   if (r.keep) {
