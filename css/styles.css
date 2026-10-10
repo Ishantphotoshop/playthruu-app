@@ -581,7 +581,8 @@ ul { list-style: none; margin: 0; padding: 0; }
   position: fixed; top: calc(var(--safe-top) + 8px);
   left: 50%; right: auto; transform: translateX(-50%);
   width: 100%; max-width: 560px; box-sizing: border-box;
-  padding: 0 var(--gutter) 10px;
+  padding: 0 var(--gutter) 4px;
+  background: var(--bg);
   /* A hairline under the bar, the same token every other divider in
      the app uses — the page behind it still shows through (the bar
      has no background fill of its own), so this reads as the bar's
@@ -593,11 +594,14 @@ ul { list-style: none; margin: 0; padding: 0; }
 .profile-top--pending { opacity: 0; pointer-events: none; }
 /* Extra large, from the size review: 38px -> 50px, icon 19px -> 24px. */
 .profile-top__btn {
-  width: 50px; height: 50px; flex-shrink: 0; padding: 0;
+  width: 38px; height: 38px; flex-shrink: 0; padding: 0;
   display: grid; place-items: center;
   background: none; border: none; color: var(--ink); cursor: pointer;
 }
-.profile-top__btn svg { width: 24px; height: 24px; }
+.profile-top__btn svg { width: 19px; height: 19px; }
+/* Share and QR sit side by side on the left, same row as the handle and
+   the settings gear. */
+.profile-top__group { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
 /* Corner icons flush with the poster column below: the QR's left ink
    edge lines up with Top 3's left poster edge, the gear's right ink
    edge with the right poster edge. The glyph goes to the outer side of
@@ -606,9 +610,9 @@ ul { list-style: none; margin: 0; padding: 0; }
    24-unit box — QR's stroke starts 2.6 units in, the gear's teeth end
    2.47 units short. Measured, not eyeballed. */
 .profile-top__btn--start { justify-items: start; }
-.profile-top__btn--start svg { margin-left: -0.6px; }
+.profile-top__btn--start svg { margin-left: 0; }
 .profile-top__btn--end { justify-items: end; }
-.profile-top__btn--end svg { margin-right: -0.45px; }
+.profile-top__btn--end svg { margin-right: 0; }
 /* Three slots now, not two: the menu on the left, the handle centred
    between the two buttons, settings on the right — the handle is the
    @userid, a secondary identifier, not the main name (that's the h1
@@ -618,7 +622,7 @@ ul { list-style: none; margin: 0; padding: 0; }
 .profile-top__name {
   flex: 1; text-align: center;
   font-family: var(--font-brand); font-weight: 700;
-  font-size: 15px; letter-spacing: -0.01em; line-height: 1.25;
+  font-size: 14px; letter-spacing: -0.01em; line-height: 1.25;
   color: var(--ink-faint); min-width: 0; overflow: hidden;
   text-overflow: ellipsis; white-space: nowrap;
 }
@@ -2343,7 +2347,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 
 .rating-histogram {
   background: var(--surface); border: 1px solid var(--line);
-  border-radius: var(--radius-m); padding: var(--space-4);
+  border-radius: 3px; padding: var(--space-3) var(--space-4);
   margin-bottom: var(--space-2);
 }
 .rating-histogram--empty { display: grid; place-items: center; min-height: 96px; }
@@ -2354,7 +2358,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
    used to sit in its own header strip above the chart, which made the
    panel read as two stacked things instead of one figure. */
 .rating-histogram__chart {
-  display: flex; align-items: flex-end; gap: var(--space-3);
+  display: flex; align-items: flex-end; gap: var(--space-4);
   height: 96px;
 }
 .rating-histogram__anchor {
@@ -2363,7 +2367,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 }
 .rating-histogram__bars {
   flex: 1 1 auto; min-width: 0;
-  display: flex; align-items: flex-end; gap: 5px; height: 100%;
+  display: flex; align-items: flex-end; gap: 4px; height: 100%;
 }
 .rating-histogram__bar {
   flex: 1; min-width: 0; height: 100%;
@@ -2377,7 +2381,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
   display: block; width: 100%;
   height: max(var(--bar-pct, 0%), 7px);
   min-height: 7px;
-  border-radius: 5px;
+  border-radius: 0;
   background: var(--accent);
   transition: height var(--dur-slow) var(--ease), background var(--dur) var(--ease);
 }
@@ -2399,14 +2403,15 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
    star row directly beneath it. */
 .rating-histogram__score {
   flex: 0 0 auto; display: flex; flex-direction: column;
-  align-items: flex-end; gap: 2px; line-height: 1;
+  align-items: flex-end; justify-content: center; align-self: stretch; gap: 6px; line-height: 1;
+  padding-left: var(--space-4); border-left: 1px solid var(--line);
 }
 .rating-histogram__score b {
-  font-family: var(--font-mono); font-size: 34px; font-weight: 500;
-  color: var(--ink); letter-spacing: -0.03em; line-height: 1;
+  font-family: var(--font-mono); font-size: 38px; font-weight: 600;
+  color: var(--ink); letter-spacing: -0.04em; line-height: 1;
 }
 .rating-histogram__score-stars {
-  font-size: 12.5px; color: var(--ink); letter-spacing: 0.08em; line-height: 1;
+  font-size: 9.5px; color: var(--accent-bright); letter-spacing: 0.06em; line-height: 1;
 }
 
 /* ------------------------------------------------------------ log cards ("save slot") */
@@ -2495,9 +2500,9 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
      face but space. 34px: the extra-large bar (50px buttons) still
      clears the avatar by ~30px, the rest of the header just sits
      higher than the 50px it was first given for that bar. */
-  padding: 34px 0 28px;
+  padding: 22px 0 24px;
 }
-.profile-header--hero .avatar { width: 92px; height: 92px; margin-bottom: 4px; box-shadow: 0 0 0 3px var(--surface); }
+.profile-header--hero .avatar { width: 78px; height: 78px; margin-bottom: 4px; box-shadow: 0 0 0 3px var(--surface); }
 /* The name and the small hours figure beside it are two flex children
    sharing one baseline (align-items: baseline) rather than one text
    node with a smaller word vertical-aligned against it — same
@@ -2512,14 +2517,14 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 .profile-header__name-text {
   margin: 0;
   font-family: var(--font-display); font-weight: var(--weight-black);
-  font-size: 28px; letter-spacing: -0.025em; line-height: 1.15;
+  font-size: 23px; letter-spacing: -0.025em; line-height: 1.15;
 }
 /* Below the name now, not beside it — small and dim, the same role a
    caption under a heading plays anywhere else in the app. */
 .profile-header__hours-inline {
   display: block; margin-top: 3px;
-  font-family: var(--font-brand); font-size: 11px; font-weight: 700;
-  color: var(--ink-faint); letter-spacing: -0.01em;
+  font-family: var(--font-mono); font-size: 11.5px; font-weight: 500;
+  color: var(--ink-faint); letter-spacing: 0.02em;
   font-variant-numeric: tabular-nums;
 }
 /* The bio and its toggle move together, so the wrapper carries the
@@ -2528,7 +2533,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
   width: 100%; max-width: 420px; margin: 4px auto 0;
 }
 .profile-header--hero .profile-header__bio {
-  margin: 0; text-align: center;
+  margin: 0; text-align: center; font-size: 13px; line-height: 1.5;
   /* pre-line, so a bio written with line breaks keeps them and each
      line stays centred. Without it HTML collapses every newline to a
      space and three deliberate lines arrive as one paragraph. */
