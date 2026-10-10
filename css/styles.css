@@ -6938,25 +6938,25 @@ a.gd-credit__name { text-decoration: none; }
 
 .act-pane[hidden] { display: none; }
 
-/* Recently played on a profile: the rating row under each poster, built the
-   way the reference is: stars, then replay and review marks, ALL the same
-   height, evenly spaced, on one line that is always reserved so unrated
-   posters keep the row level. Everything is sized from one unit (--u, a
-   whole number of pixels derived from the poster's own width, so the row
-   scales with the phone and never lands on a half pixel), and the first
-   star's left tip sits on the poster's left edge. */
+/* Recently played on a profile: the rating row under each poster.
+   Stars sit on the poster's left edge, the review mark on its right edge,
+   and the replay mark in the middle of the space between them. Every part
+   is optional, and each keeps its own spot whichever others are missing.
+   Sized from one whole-pixel unit (--u) taken from the poster's width, and
+   the line is always reserved so unrated posters keep the row level. */
 .recent-played-item--activity > a:first-child { display: block; }
 .rp-meta {
   --star-fill: var(--ink-ghost);
   --u: 12px;
-  display: flex; align-items: center; gap: calc(var(--u) * 0.5);
-  height: var(--u); margin-top: 6px; box-sizing: content-box;
-  line-height: 0;
+  display: grid; grid-template-columns: auto 1fr auto; align-items: center;
+  height: calc(var(--u) + 2px); margin-top: 6px; line-height: 0;
 }
 @supports (width: round(down, 10.5px, 1px)) {
   .rp-meta { --u: round(down, calc(var(--poster-w) * 0.11), 1px); }
 }
-.rp-meta .stars { --star-size: var(--u) !important; gap: 2px; flex-shrink: 0; }
+.rp-meta .stars { --star-size: var(--u) !important; gap: 2px; grid-column: 1; }
+.rp-meta__mid { grid-column: 2; display: flex; justify-content: center; }
+.rp-meta__end { grid-column: 3; display: flex; justify-content: flex-end; }
 .rp-meta__icon {
   width: var(--u); height: var(--u); flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;

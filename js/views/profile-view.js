@@ -245,9 +245,9 @@ export async function renderProfileView(root, { username }) {
                 ${posterFrame(l.games.cover_url, l.games.title, 'recent-played-item__cover')}
               </a>
               <div class="rp-meta">
-                ${l.rating ? starRow(l.rating, { size: 10 }) : ''}
-                ${l.is_replay ? `<span class="rp-meta__icon">${iconReplay()}</span>` : ''}
-                ${l.review ? `<span class="rp-meta__icon">${iconReviewLines()}</span>` : ''}
+                ${l.rating ? starRow(l.rating, { size: 12 }) : ''}
+                <span class="rp-meta__mid">${l.is_replay ? `<span class="rp-meta__icon">${iconReplay()}</span>` : ''}</span>
+                <span class="rp-meta__end">${l.review ? `<span class="rp-meta__icon">${iconReviewLines()}</span>` : ''}</span>
               </div>
             </div>`).join('')}
         </div>` : ''}
