@@ -798,12 +798,14 @@ export function ratingHistogram(counts, { average = null, total = 0 } = {}) {
   // under the bars at the spot the average falls. Bar i covers the rating
   // (i+1)/2, so an average of 4.8 lands between the 4.5 and 5 bars.
   const avg = Number(average) || 0;
+  // Big audiences: 50000 reads as "50,000" and a bar's count as "18.4K".
+  const compact = (n) => (n >= 1000 ? `${(n / 1000).toFixed(n >= 100000 ? 0 : 1).replace(/\.0$/, '')}K` : String(n));
   const markPct = Math.min(100, Math.max(0, ((avg - 0.25) / 5) * 100));
   return `
     <div class="rating-histogram rating-histogram--ledger">
       <div class="rh-head">
         <span class="rh-cap">Ratings</span>
-        <span class="rh-cap rh-cap--num">${total} total</span>
+        <span class="rh-cap rh-cap--num">${total.toLocaleString('en-US')} total</span>
       </div>
       <div class="rh-body">
         <div class="rh-chart">
@@ -812,11 +814,11 @@ export function ratingHistogram(counts, { average = null, total = 0 } = {}) {
               const n = counts[v] || 0;
               // An empty slot still draws, as a short stub on the baseline,
               // so the row of stubs makes the tall bars read as a spread.
-              const h = n === 0 ? 3 : Math.max(8, Math.round((n / max) * 72));
+              const h = n === 0 ? 3 : Math.max(4, Math.round((n / max) * 72));
               const cls = n === 0 ? ' is-zero' : (n === max ? ' is-top' : '');
               return `
               <button type="button" class="rating-histogram__bar${cls}" data-value="${v}" data-count="${n}" style="--bar-h:${h}px" aria-label="${formatHalfStar(v)} stars, ${n} rating${n === 1 ? '' : 's'}">
-                <span class="rating-histogram__bar-count">${n}</span>
+                <span class="rating-histogram__bar-count">${compact(n)}</span>
                 <span class="rating-histogram__bar-fill"></span>
               </button>`;
             }).join('')}
