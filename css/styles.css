@@ -2823,7 +2823,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 .playing-add {
   display: grid; place-items: center; width: 100%; aspect-ratio: var(--ratio-card);
   border-radius: var(--poster-radius); background: var(--surface);
-  border: 1px dashed var(--line-strong); color: var(--ink-dim); cursor: pointer; padding: 0;
+  border: 1px solid var(--line-strong); color: var(--ink-dim); cursor: pointer; padding: 0;
   transition: background 0.12s ease, transform 0.12s ease;
 }
 .playing-add:active { transform: scale(0.96); background: var(--surface-high); }
