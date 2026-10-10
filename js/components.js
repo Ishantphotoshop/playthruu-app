@@ -800,8 +800,7 @@ export function ratingHistogram(counts, { total = 0 } = {}) {
   return `
     <div class="rating-histogram">
       <div class="rh-head">
-        <span class="rh-title">Ratings</span>
-        <span class="rh-total" data-total="${total.toLocaleString('en-US')}">${total.toLocaleString('en-US')}</span>
+        <span class="rh-title">Ratings <span class="rh-total" data-total="${total.toLocaleString('en-US')}">${total.toLocaleString('en-US')}</span></span>
         <span class="rh-stars" aria-hidden="true">${[1, 2, 3, 4, 5].map((i) => `<span class="rh-star" data-i="${i}"></span>`).join('')}</span>
       </div>
       <div class="rh-chart">

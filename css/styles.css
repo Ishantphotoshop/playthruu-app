@@ -2352,31 +2352,27 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 
 /* The ledger carries its own RATINGS label, so it only needs space above. */
 .section-gap { height: var(--space-4); }
-/* Ratings on a profile: the marquee. A curved panel with everything centred:
-   the title in small Playfair italic, the total very large under it, and the
-   five star slots under that. Holding the bars lights the one under the
-   finger, swaps the total for that bar's count and fills the stars. */
+/* Ratings on a profile: a boxed title row over ten bars. The title and the
+   number beside it are Unbounded. Holding the bars lights the one under the
+   finger, swaps the number for that bar's count and fills the star slots at
+   the end of the title row. */
 .rating-histogram {
-  position: relative; background: #241408; border: 1px solid rgba(230, 170, 110, 0.32);
-  border-radius: 18px; padding: 24px 20px 16px; margin-bottom: var(--space-2);
+  border: 1px solid var(--line-strong);
+  padding: 16px 16px 14px; margin-bottom: var(--space-2);
 }
 .rating-histogram--empty { display: grid; place-items: center; min-height: 96px; }
 .rating-histogram__empty { color: var(--ink-faint); font-size: var(--text-meta); }
 
-.rh-head { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; margin-bottom: 20px; }
+.rh-head { display: flex; justify-content: space-between; align-items: center; height: 22px; margin-bottom: 18px; }
 .rh-title {
-  font-family: 'Playfair Display', Georgia, 'Times New Roman', serif; font-style: italic; font-weight: 500;
-  font-size: 18px; line-height: 1.1; color: #d9bb9c;
+  font-family: var(--font-brand); font-weight: 800; font-size: 14px; letter-spacing: -0.01em; line-height: 1;
+  color: var(--ink); display: flex; align-items: baseline; gap: 10px;
 }
-.rh-total {
-  font-family: 'Playfair Display', Georgia, 'Times New Roman', serif; font-style: italic; font-weight: 500;
-  font-size: 56px; line-height: 1; letter-spacing: -0.01em; color: var(--ink);
-  font-variant-numeric: lining-nums;
-}
+.rh-total { font-weight: 700; font-size: 13px; color: var(--ink-faint); font-variant-numeric: tabular-nums; letter-spacing: 0; }
 
 /* Five fixed slots that never move. Hidden until a bar is held; a half star
    is the left half of a whole star's box, so it sits where the whole one will. */
-.rh-stars { display: flex; gap: 3px; visibility: hidden; height: 13px; }
+.rh-stars { display: flex; align-items: center; gap: 3px; visibility: hidden; height: 13px; }
 .rh-stars--on { visibility: visible; }
 .rh-star { position: relative; width: 13px; height: 13px; }
 .rh-star::after {
