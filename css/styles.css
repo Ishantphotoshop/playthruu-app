@@ -6999,11 +6999,14 @@ a.gd-credit__name { text-decoration: none; }
    stay exactly those whichever marks are present. */
 .rp-meta__icon--replay { margin: 0 calc(var(--u) * 0.039); }
 .rp-meta__icon--review { margin-left: calc(var(--u) * 0.0945); }
-/* Star size matches the friends' activity cards on the feed: 12px, and 10px
-   on phones (see .card-who__stars). Comes after the @supports rule above so
-   it wins. */
-.rp-meta { --u: 12px; }
-@media (max-width: 560px) { .rp-meta { --u: 10px; } }
+/* Everything in this row is a share of the poster's width, the way
+   Letterboxd does it, so it looks the same on a small or a big phone:
+   a star is 8.85% of the poster (10px on a 390px-wide phone), 4px-equivalent
+   between stars (40% of a star), 7px-equivalent before and between the
+   marks (70% of a star). Not rounded to whole pixels, so the proportions are
+   exactly the same on every phone. */
+.rp-meta { --u: calc(var(--poster-w) * 0.0885); gap: calc(var(--u) * 0.7); }
+.rp-meta .stars { gap: calc(var(--u) * 0.4); }
 /* ---- Profile stats area (under Ratings): tiles, then Stats ---- */
 .ps-wrap { display: flex; flex-direction: column; gap: 12px; margin-top: 4px; }
 .ps-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
