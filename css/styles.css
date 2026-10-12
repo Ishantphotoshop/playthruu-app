@@ -6999,14 +6999,18 @@ a.gd-credit__name { text-decoration: none; }
    stay exactly those whichever marks are present. */
 .rp-meta__icon--replay { margin: 0 calc(var(--u) * 0.039); }
 .rp-meta__icon--review { margin-left: calc(var(--u) * 0.0945); }
-/* Everything in this row is a share of the poster's width, the way
-   Letterboxd does it, so it looks the same on a small or a big phone:
-   a star is 8.85% of the poster (10px on a 390px-wide phone), 4px-equivalent
-   between stars (40% of a star), 7px-equivalent before and between the
-   marks (70% of a star). Not rounded to whole pixels, so the proportions are
-   exactly the same on every phone. */
-.rp-meta { --u: calc(var(--poster-w) * 0.0885); gap: calc(var(--u) * 0.7); }
-.rp-meta .stars { gap: calc(var(--u) * 0.4); }
+/* Everything in this row is a share of the poster's width, copied from the
+   reference the user drew, so it looks the same on any phone:
+   star = 8.79% of the poster, half a star between stars, 0.72 of a star from
+   the last star to the next mark, one whole star from replay to review.
+   The marks are drawn a little wider than their boxes (see the scale()
+   above: replay spills 3.9% of a star each side, review 9.45%), so their
+   margins add that back to keep the visible gaps exact. */
+.rp-meta { --u: calc(var(--poster-w) * 0.0879); gap: 0; }
+.rp-meta .stars { gap: calc(var(--u) * 0.5); }
+.rp-meta .rp-meta__icon--replay { margin: 0 calc(var(--u) * 0.039) 0 calc(var(--u) * (0.719 + 0.039)); }
+.rp-meta .rp-meta__icon--review { margin-left: calc(var(--u) * (0.719 + 0.0945)); }
+.rp-meta .rp-meta__icon--replay + .rp-meta__icon--review { margin-left: calc(var(--u) * (1 + 0.0945)); }
 /* ---- Profile stats area (under Ratings): tiles, then Stats ---- */
 .ps-wrap { display: flex; flex-direction: column; gap: 12px; margin-top: 4px; }
 .ps-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
