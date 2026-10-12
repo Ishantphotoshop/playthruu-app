@@ -81,15 +81,15 @@ manifest, resources or the TWA config need a new APK.
 
 ## Signing
 
-`playthruu-app.jks` and `keystore.properties` are gitignored, since a
+`<your keystore password>.jks` and `keystore.properties` are gitignored, since a
 keystore is a credential — both are recorded in
 `Downloads/Questlog_Keys_Current.txt` alongside the fingerprint.
 
 ```bash
 "/c/Program Files/Android/Android Studio/jbr/bin/keytool.exe" -genkeypair -v \
-  -keystore playthruu-app.jks -alias playthruu-app \
+  -keystore <your keystore password>.jks -alias <your keystore password> \
   -keyalg RSA -keysize 2048 -validity 10000 \
-  -storepass playthruu-app -keypass playthruu-app \
+  -storepass <your keystore password> -keypass <your keystore password> \
   -dname "CN=Playthruu, O=Playthruu, L=Delhi, C=IN"
 ```
 

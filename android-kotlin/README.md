@@ -135,5 +135,5 @@ you stop wanting.
 adb install -r ~/Desktop/Playthruu-native.apk
 ```
 
-Signed with the same `playthruu-app.jks` as the other two — recorded,
+Signed with the same `<your keystore password>.jks` as the other two — recorded,
 with its fingerprint, in `Downloads/Questlog_Keys_Current.txt`.

@@ -59,7 +59,7 @@ one, with nothing to notice until the app behaved differently from the
 site.
 
 ```bash
-cd /c/Users/ishan/Downloads/playthruu-app-deploy
+cd /c/Users/ishan/Downloads/<your keystore password>-deploy
 python3 scripts/bundle-native.py
 
 cd android-native
@@ -87,7 +87,7 @@ a login form.
 
 ## Signing
 
-The same keystore as `android-app/` — `playthruu-app.jks`, gitignored,
+The same keystore as `android-app/` — `<your keystore password>.jks`, gitignored,
 recorded in `Downloads/Questlog_Keys_Current.txt`. Sharing the key is
 what lets the two builds replace each other; a different key would make
 Android refuse the install, which is exactly what the old 67 MB Capacitor
