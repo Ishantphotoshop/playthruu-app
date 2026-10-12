@@ -69,10 +69,12 @@ const KINDS = {
 // groups combine (Oldest first + Highest rated). Nothing picked = Most popular.
 // `logged` is what to do with games you've logged: '' show, 'fade', 'hide'.
 const BLANK = {
-  query: '', byPop: '', byDate: '', byRating: '', genre: '', platform: '', length: '', year: '', players: '', stars: '',
+  query: '', byPop: '', byDate: '', byRating: '', byName: '', genre: '', platform: '', length: '', year: '', players: '', stars: '',
   minVotes: '', maxVotes: '', logged: '',
 };
-const SORT_KEYS = ['byPop', 'byDate', 'byRating'];
+const SORT_KEYS = ['byPop', 'byDate', 'byRating', 'byName'];
+// A to Z doesn't mix with the others: picking it clears them, and the other way round.
+const NAME_OPTS = [{ label: 'A to Z', value: 'az' }];
 const POP_OPTS = [{ label: 'Trending now', value: 'trending' }, { label: 'Most popular', value: 'popular' }, { label: 'Most hyped', value: 'hyped' }];
 const DATE_OPTS = [{ label: 'Newest first', value: 'newest' }, { label: 'Oldest first', value: 'oldest' }];
 const RATING_OPTS = [{ label: 'Highest first', value: 'high' }, { label: 'Lowest first', value: 'low' }];
@@ -81,9 +83,9 @@ const LOGGED_OPTS = [{ label: 'Show them', value: '' }, { label: 'Fade them', va
 // What each sort pick is called on chips and in the title.
 const SORT_NAME = {
   trending: 'Trending now', popular: 'Most popular', hyped: 'Most hyped', newest: 'Newest first', oldest: 'Oldest first',
-  high: 'Highest rated', low: 'Lowest rated', mine_high: 'Your highest rated', mine_low: 'Your lowest rated',
+  high: 'Highest rated', low: 'Lowest rated', mine_high: 'Your highest rated', mine_low: 'Your lowest rated', az: 'A to Z',
 };
-const API_SORT = { trending: 'trending', popular: 'popular', hyped: 'hyped', newest: 'newest', oldest: 'oldest', high: 'top_rated', low: 'lowest' };
+const API_SORT = { trending: 'trending', popular: 'popular', hyped: 'hyped', newest: 'newest', oldest: 'oldest', high: 'top_rated', low: 'lowest', az: 'az' };
 const isMine = (f) => f.byRating === 'mine_high' || f.byRating === 'mine_low';
 const sortName = (f) => SORT_KEYS.map((k) => SORT_NAME[f[k]]).filter(Boolean).join(' + ');
 
@@ -93,6 +95,7 @@ const sortName = (f) => SORT_KEYS.map((k) => SORT_NAME[f[k]]).filter(Boolean).jo
 // order here: release date first when picked, then rating, then the order
 // they came in.
 function sortPlan(f) {
+  if (f.byName) return { sort: 'az', mix: false };
   const picked = SORT_KEYS.filter((k) => f[k]);
   if (picked.length <= 1) return { sort: API_SORT[f[picked[0]]] || 'popular', mix: false };
   return { sort: API_SORT[f.byPop || f.byRating], mix: true };
@@ -535,7 +538,8 @@ export function renderBrowseGames(root) {
             + label('Release date') + DATE_OPTS.map((o) => opt('byDate', o)).join('')
             + label('Average rating') + RATING_OPTS.map((o) => opt('byRating', o)).join('')
             + (state.user ? label('Your rating') + MINE_OPTS.map((o) => opt('byRating', o)).join('') : '')
-            + '<p class="bf-note">Pick one from each group to mix them. Oldest first + Highest first shows the best-rated games, oldest first. Tap a pick again to remove it.</p>';
+            + label('Name') + NAME_OPTS.map((o) => opt('byName', o)).join('')
+            + '<p class="bf-note">Pick one from each group to mix them. Oldest first + Highest first shows the best-rated games, oldest first. Tap a pick again to remove it. A to Z works on its own.</p>';
         case 'logged':
           return label('Games you’ve logged') + LOGGED_OPTS.map((o) => opt('logged', o)).join('');
         case 'platform':
@@ -640,6 +644,8 @@ export function renderBrowseGames(root) {
           draft[k] = (now.includes(v) ? now.filter((x) => x !== v) : [...now, v]).join(',');
         } else if (SORT_KEYS.includes(k) && draft[k] === v) draft[k] = ''; // tap a sort pick again to drop it
         else draft[k] = v;
+        if (k === 'byName' && draft.byName) SORT_KEYS.forEach((s) => { if (s !== 'byName') draft[s] = ''; });
+        else if (SORT_KEYS.includes(k) && k !== 'byName' && draft[k]) draft.byName = '';
         paint(); recount();
         return;
       }
