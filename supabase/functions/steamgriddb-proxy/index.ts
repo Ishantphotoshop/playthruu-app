@@ -1,3 +1,4 @@
+import { requireUser, allow, tooMany } from "../_shared/require-user.ts";
 // STEAMGRIDDB PROXY — server-side stand-in for the SteamGridDB API.
 //
 // Why this exists: fetching game art (a transparent-background title
@@ -52,6 +53,11 @@ function pickBestGrid(list: GridAsset[]): string | null {
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS_HEADERS });
+
+  // Only signed-in people may use this: it spends our own quota. See _shared/require-user.ts.
+  const who = await requireUser(req, CORS_HEADERS);
+  if ("error" in who) return who.error;
+  if (!allow(who.user.id, "art", 60)) return tooMany(CORS_HEADERS);
 
   if (!API_KEY) {
     return json({ error: "STEAMGRIDDB_API_KEY is not set as a Supabase secret yet." }, 500);

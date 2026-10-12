@@ -1,5 +1,6 @@
 package com.playthruu.android.data
 
+import io.github.jan.supabase.auth.auth
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.HttpTimeout
@@ -86,7 +87,8 @@ object Igdb {
         return try {
             val body = buildJsonObject { put("endpoint", endpoint); put("query", query) }.toString()
             val res = http.post(FN) {
-                header("Authorization", "Bearer $ANON")
+                // The edge function only answers signed-in people, so send this person's own login.
+                header("Authorization", "Bearer ${Supa.client.auth.currentAccessTokenOrNull() ?: ANON}")
                 contentType(ContentType.Application.Json)
                 setBody(body)
             }

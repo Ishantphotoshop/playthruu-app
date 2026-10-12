@@ -1,3 +1,4 @@
+import { requireUser, allow, tooMany } from "../_shared/require-user.ts";
 // IGDB PROXY — server-side stand-in for the IGDB API.
 //
 // Why this exists: IGDB blocks requests made directly from a browser (no
@@ -45,6 +46,11 @@ async function getAccessToken(): Promise<string> {
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS_HEADERS });
+
+  // Only signed-in people may use this: it spends our own quota. See _shared/require-user.ts.
+  const who = await requireUser(req, CORS_HEADERS);
+  if ("error" in who) return who.error;
+  if (!allow(who.user.id, "igdb", 120)) return tooMany(CORS_HEADERS);
 
   if (!CLIENT_ID || !CLIENT_SECRET) {
     return new Response(

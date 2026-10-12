@@ -1,3 +1,4 @@
+import { requireUser, allow, tooMany } from "../_shared/require-user.ts";
 // PSN PROXY — server-side stand-in for PlayStation Network.
 //
 // Why this exists: Sony has no public API and no third-party OAuth —
@@ -387,6 +388,11 @@ async function fetchCompletions(accountId: string) {
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS_HEADERS });
+
+  // Only signed-in people may use this: it spends our own quota. See _shared/require-user.ts.
+  const who = await requireUser(req, CORS_HEADERS);
+  if ("error" in who) return who.error;
+  if (!allow(who.user.id, "psn", 40)) return tooMany(CORS_HEADERS);
 
   if (!NPSSO) {
     return json({ error: "PSN_NPSSO is not set as a Supabase secret yet." }, 500);

@@ -1,3 +1,4 @@
+import { requireUser, allow, tooMany } from "../_shared/require-user.ts";
 // FETCH CAST — who voiced and performed a game's characters.
 //
 // The game page used to read cast from Wikidata on every single visit,
@@ -450,6 +451,11 @@ async function save(igdbGameId: number, pairs: Pair[]) {
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS_HEADERS });
+
+  // Only signed-in people may use this: it spends our own quota. See _shared/require-user.ts.
+  const who = await requireUser(req, CORS_HEADERS);
+  if ("error" in who) return who.error;
+  if (!allow(who.user.id, "cast", 20)) return tooMany(CORS_HEADERS);
   if (!TAVILY_API_KEY || !GEMINI_API_KEY) {
     return json({ error: "TAVILY_API_KEY / GEMINI_API_KEY are not set as Supabase secrets yet." }, 500);
   }

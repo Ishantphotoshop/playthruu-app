@@ -53,11 +53,22 @@ async function fetchWithTimeout(url, options = {}, ms = FETCH_TIMEOUT_MS) {
   }
 }
 
+// The Edge Functions that spend our free quotas (IGDB, SteamGridDB, PSN, cast) only answer signed-in
+// people, so each call carries the person's own login token. Signed out, it falls back to the public
+// key, which those functions will turn away.
+async function userAuthHeader() {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.access_token) return { Authorization: `Bearer ${session.access_token}` };
+  } catch { /* fall through */ }
+  return { Authorization: `Bearer ${SUPABASE_ANON_KEY}` };
+}
+
 async function igdb(endpoint, query, { timeout = FETCH_TIMEOUT_MS, retry = true } = {}) {
   try {
     const res = await fetchWithTimeout(IGDB_FUNCTION_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${SUPABASE_ANON_KEY}` },
+      headers: { 'Content-Type': 'application/json', ...(await userAuthHeader()) },
       body: JSON.stringify({ endpoint, query }),
     }, timeout);
     if (!res.ok) return [];
@@ -2519,7 +2530,7 @@ export async function getGameArt(game) {
   try {
     const res = await fetchWithTimeout(STEAMGRIDDB_FUNCTION_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${SUPABASE_ANON_KEY}` },
+      headers: { 'Content-Type': 'application/json', ...(await userAuthHeader()) },
       body: JSON.stringify({ title: game.title }),
     });
     if (res.ok) { const data = await res.json(); logo_url = data.logo_url || null; grid_url = data.grid_url || null; }
@@ -4081,7 +4092,7 @@ async function psnProxy(body, timeout = 40000) {
   // requests apiece.
   const res = await fetchWithTimeout(PSN_FUNCTION_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${SUPABASE_ANON_KEY}` },
+    headers: { 'Content-Type': 'application/json', ...(await userAuthHeader()) },
     body: JSON.stringify(body),
   }, timeout);
   const data = await res.json().catch(() => ({}));
@@ -5590,7 +5601,7 @@ export async function getGameCast(igdbGameId) {
   // and read the web — the view shows a skeleton the whole time.
   const res = await fetchWithTimeout(CAST_FUNCTION_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${SUPABASE_ANON_KEY}` },
+    headers: { 'Content-Type': 'application/json', ...(await userAuthHeader()) },
     body: JSON.stringify({ igdb_game_id: id }),
   }, 45000);
   // A 404 is the function not being deployed yet (see README step 3c).
