@@ -1322,6 +1322,85 @@ export const BROWSE_PLATFORMS_ALL = [
   { label: 'Game Boy Advance', value: '24' }, { label: 'PlayStation', value: '7' }, { label: 'Nintendo 64', value: '4' },
   { label: 'Super Nintendo', value: '19' }, { label: 'NES', value: '18' }, { label: 'Game Boy', value: '33' },
 ];
+// Every platform worth browsing, grouped by who makes it (Browse > Filters >
+// Platform). Ids are IGDB's own, from its platforms table.
+export const BROWSE_PLATFORM_GROUPS = [
+  { label: 'PlayStation', items: [
+    { label: 'PlayStation 5', value: '167' }, { label: 'PlayStation 4', value: '48' }, { label: 'PlayStation 3', value: '9' },
+    { label: 'PlayStation 2', value: '8' }, { label: 'PlayStation', value: '7' }, { label: 'PlayStation Portable', value: '38' },
+    { label: 'PlayStation Vita', value: '46' }, { label: 'PlayStation VR2', value: '390' }, { label: 'PlayStation VR', value: '165' },
+  ] },
+  { label: 'Xbox', items: [
+    { label: 'Xbox Series X/S', value: '169' }, { label: 'Xbox One', value: '49' }, { label: 'Xbox 360', value: '12' }, { label: 'Xbox', value: '11' },
+  ] },
+  { label: 'Nintendo', items: [
+    { label: 'Nintendo Switch 2', value: '508' }, { label: 'Nintendo Switch', value: '130' }, { label: 'Wii U', value: '41' },
+    { label: 'Wii', value: '5' }, { label: 'Nintendo 3DS', value: '37' }, { label: 'Nintendo DS', value: '20' },
+    { label: 'GameCube', value: '21' }, { label: 'Nintendo 64', value: '4' }, { label: 'Super Nintendo', value: '19' },
+    { label: 'NES', value: '18' }, { label: 'Game Boy Advance', value: '24' }, { label: 'Game Boy Color', value: '22' },
+    { label: 'Game Boy', value: '33' }, { label: 'Virtual Boy', value: '87' },
+  ] },
+  { label: 'PC and computers', items: [
+    { label: 'PC', value: '6' }, { label: 'Mac', value: '14' }, { label: 'Linux', value: '3' }, { label: 'Web browser', value: '82' },
+    { label: 'DOS', value: '13' }, { label: 'Amiga', value: '16' }, { label: 'Commodore 64', value: '15' },
+    { label: 'ZX Spectrum', value: '26' }, { label: 'MSX', value: '27' }, { label: 'Atari ST', value: '63' }, { label: 'Apple II', value: '75' },
+  ] },
+  { label: 'Phones and tablets', items: [
+    { label: 'iOS', value: '39' }, { label: 'Android', value: '34' },
+  ] },
+  { label: 'VR', items: [
+    { label: 'Meta Quest 3', value: '471' }, { label: 'Meta Quest 2', value: '386' }, { label: 'Oculus Quest', value: '384' },
+    { label: 'Oculus Rift', value: '385' }, { label: 'SteamVR', value: '163' }, { label: 'Apple Vision Pro', value: '472' },
+  ] },
+  { label: 'Sega', items: [
+    { label: 'Dreamcast', value: '23' }, { label: 'Sega Saturn', value: '32' }, { label: 'Mega Drive / Genesis', value: '29' },
+    { label: 'Sega CD', value: '78' }, { label: 'Master System', value: '64' }, { label: 'Game Gear', value: '35' },
+  ] },
+  { label: 'Other', items: [
+    { label: 'Arcade', value: '52' }, { label: 'Google Stadia', value: '170' }, { label: 'Neo Geo', value: '80' },
+    { label: 'TurboGrafx-16 / PC Engine', value: '86' }, { label: 'Atari 2600', value: '59' }, { label: 'Atari Jaguar', value: '62' },
+    { label: '3DO', value: '50' }, { label: 'Playdate', value: '381' }, { label: 'Evercade', value: '309' },
+  ] },
+];
+// How long a game takes, from IGDB's time-to-beat data: what players
+// report for a normal playthrough (story plus some extras). Only games
+// people have timed have it, so a length filter leaves the rest out.
+export const BROWSE_LENGTHS = [
+  { label: 'Under 5 hours', value: 'u5' }, { label: '5 to 10 hours', value: '5-10' },
+  { label: '10 to 20 hours', value: '10-20' }, { label: '20 to 40 hours', value: '20-40' },
+  { label: '40 hours or more', value: '40+' },
+];
+const LENGTH_HOURS = { u5: [0, 5], '5-10': [5, 10], '10-20': [10, 20], '20-40': [20, 40], '40+': [40, 100000] };
+// The games IGDB has timed inside one length, most-timed first (the ones
+// people know). Cached for the session: these barely change.
+const lengthIdCache = new Map();
+function lengthIds(key) {
+  const h = LENGTH_HOURS[key];
+  if (!h) return Promise.resolve(null);
+  if (!lengthIdCache.has(key)) {
+    const p = igdb('game_time_to_beats',
+      `fields game_id; where normally >= ${h[0] * 3600} & normally < ${h[1] * 3600} & count >= 2; sort count desc; limit 500;`)
+      .then((rows) => [...new Set(rows.map((r) => r.game_id).filter(Boolean))]);
+    p.then((ids) => { if (!ids.length) lengthIdCache.delete(key); });
+    lengthIdCache.set(key, p);
+  }
+  return lengthIdCache.get(key);
+}
+// How many games a where-clause matches (IGDB's games/count).
+async function igdbCount(where) {
+  try {
+    const res = await fetchWithTimeout(IGDB_FUNCTION_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(await userAuthHeader()) },
+      body: JSON.stringify({ endpoint: 'games/count', query: where }),
+    }, 9000);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return Number.isFinite(data?.count) ? data.count : null;
+  } catch {
+    return null;
+  }
+}
 // IGDB's themes, game modes and player perspectives (ids from its own
 // reference tables). Erotic is left out on purpose.
 export const BROWSE_THEMES = [
@@ -1890,7 +1969,11 @@ export async function browseGames({
   // makes Red Dead 2 not a hidden gem is precisely that a hundred
   // thousand people have already rated it.
   minVotes, maxVotes,
+  // How long it takes (a BROWSE_LENGTHS value), and "just say how many
+  // games match" instead of returning them (the Filters page's Show button).
+  length, countOnly,
 } = {}) {
+  const none = () => (countOnly ? 0 : { games: [], hasMore: false });
   try {
     const limit = pageSize || 20;
     const offset = (page - 1) * limit;
@@ -1899,7 +1982,7 @@ export async function browseGames({
     const text = String(query || '').trim().replace(/["\\]/g, ' ').replace(/\s+/g, ' ');
     if (text) clauses.push(`name ~ *"${text}"*`);
     if (idList) {
-      if (!idList.length) return { games: [], hasMore: false };
+      if (!idList.length) return none();
       clauses.push(`id = (${idList.join(',')})`);
     }
     // "Anticipated" is the one sort that is ABOUT unreleased games, so
@@ -1911,11 +1994,31 @@ export async function browseGames({
       clauses.push(`(first_release_date <= ${now} | first_release_date = null)`);
     }
 
+    // Several genres and platforms can be picked at once ("12,genre:31"):
+    // a game matches if it has any of them.
     if (genre) {
-      const [kind, id] = genre.split(':');
-      clauses.push(kind === 'theme' ? `themes = (${id})` : `genres = (${id})`);
+      const ids = { genre: [], theme: [] };
+      String(genre).split(',').forEach((v) => {
+        const [kind, id] = v.split(':');
+        if (Number(id) > 0) ids[kind === 'theme' ? 'theme' : 'genre'].push(Number(id));
+      });
+      const parts = [
+        ids.genre.length && `genres = (${ids.genre.join(',')})`,
+        ids.theme.length && `themes = (${ids.theme.join(',')})`,
+      ].filter(Boolean);
+      if (parts.length) clauses.push(parts.length > 1 ? `(${parts.join(' | ')})` : parts[0]);
     }
-    if (platform) clauses.push(`platforms = (${platform})`);
+    if (platform) {
+      const ids = String(platform).split(',').map(Number).filter((n) => n > 0);
+      if (ids.length) clauses.push(`platforms = (${ids.join(',')})`);
+    }
+    if (length) {
+      const ids = await lengthIds(length);
+      if (ids) {
+        if (!ids.length) return none();
+        clauses.push(`id = (${ids.join(',')})`);
+      }
+    }
     if (theme) clauses.push(`themes = (${Number(theme)})`);
     // A game matches if it has ANY of the listed modes ("2,3" = multiplayer or co-op).
     const modeIds = String(mode || '').split(',').map(Number).filter(Number.isFinite).filter((n) => n > 0);
@@ -1966,7 +2069,7 @@ export async function browseGames({
       // A name that matches no company is not the same as no filter —
       // showing the unfiltered top 20 instead would quietly answer a
       // question nobody asked.
-      if ((wantsDev && !devId) || (wantsPub && !pubId)) return { games: [], hasMore: false };
+      if ((wantsDev && !devId) || (wantsPub && !pubId)) return none();
 
       const [devGames, pubGames] = await Promise.all([
         wantsDev ? gameIdsForCompany(devId, 'developer') : null,
@@ -1977,7 +2080,7 @@ export async function browseGames({
         const pubSet = new Set(pubGames);
         pool = pool ? pool.filter((id) => pubSet.has(id)) : pubGames;
       }
-      if (!pool.length) return { games: [], hasMore: false };
+      if (!pool.length) return none();
       // Apicalypse caps how much a single where-clause can carry, and
       // the list is already ordered by IGDB's own relevance, so the head
       // of it is the right thing to keep when a studio is prolific.
@@ -2003,9 +2106,10 @@ export async function browseGames({
     // still applies, and the order is IGDB's ranking.
     if (sort === 'trending') {
       const ranked = await trendingIds();
-      if (!ranked.length) return { games: [], hasMore: false };
+      if (!ranked.length) return none();
       clauses.push(`id = (${ranked.join(',')})`);
       const where = `where ${clauses.join(' & ')}; `;
+      if (countOnly) return igdbCount(where);
       const pool = await igdb('games', `fields ${IGDB_LIST_FIELDS}; ${where}limit 500;`);
       const rank = new Map(ranked.map((id, i) => [id, i]));
       pool.sort((a, b) => (rank.get(a.id) ?? 1e9) - (rank.get(b.id) ?? 1e9));
@@ -2024,12 +2128,13 @@ export async function browseGames({
     else if (sort === 'az') sortClause = 'name asc';
 
     const where = clauses.length ? `where ${clauses.join(' & ')}; ` : '';
+    if (countOnly) return igdbCount(where);
     const q = `fields ${IGDB_LIST_FIELDS}; ${where}sort ${sortClause}; limit ${limit}; offset ${offset};`;
     const results = await igdb('games', q);
     const games = filterOutEditions(results.map(mapIgdbGame));
     return { games, hasMore: results.length === limit };
   } catch {
-    return { games: [], hasMore: false };
+    return countOnly ? null : { games: [], hasMore: false };
   }
 }
 

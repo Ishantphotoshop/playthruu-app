@@ -32,10 +32,14 @@ const RATINGS = [
   { label: 'Any rating', value: '' }, { label: '90 and up', value: '90' }, { label: '80 and up', value: '80' },
   { label: '75 and up', value: '75' }, { label: '50 and up', value: '50' },
 ];
-const any = (label, list) => [{ label, value: '' }, ...list];
-// Genres people actually browse by (IGDB's tiny ones like Pinball or
-// Quiz/Trivia only ever turned up obscure games).
-const GENRES = api.BROWSE_GENRES.filter((g) => !['genre:30', 'genre:26'].includes(g.value));
+// Every IGDB genre, plus Horror (IGDB files it as a theme, but people
+// browse by it like a genre), A to Z.
+const GENRES = [...api.BROWSE_GENRES, { label: 'Horror', value: 'theme:19' }]
+  .sort((a, b) => a.label.localeCompare(b.label));
+const PLATFORMS = api.BROWSE_PLATFORM_GROUPS.flatMap((g) => g.items);
+// Platform and genre can hold several picks at once, comma separated.
+const MULTI = new Set(['platform', 'genre']);
+const vals = (v) => String(v || '').split(',').filter(Boolean);
 
 // Ready-made lists at the top of Browse. `f` is the filters each one
 // starts with; the Filters page can change any of them afterwards.
@@ -54,29 +58,27 @@ const LIST = Object.fromEntries(LISTS.map((l) => [l.id, l]));
 // Ways in: each opens a list of its choices, and a choice opens the games.
 const KINDS = {
   genre: { label: 'Genre', key: 'genre', options: GENRES },
-  platform: { label: 'Platform', key: 'platform', options: api.BROWSE_PLATFORMS_ALL },
+  platform: { label: 'Platform', key: 'platform', options: api.BROWSE_PLATFORM_GROUPS.flatMap((g) => [{ section: g.label }, ...g.items]) },
+  length: { label: 'Length', key: 'length', options: api.BROWSE_LENGTHS },
   year: { label: 'Release date', key: 'year', options: YEARS.slice(1).map((y) => ({ label: y.label, value: y.id })) },
   players: { label: 'Players', key: 'players', options: api.BROWSE_PLAYERS },
 };
 
 const BLANK = {
-  query: '', sort: 'popular', genre: '', platform: '', year: '', players: '', stars: '',
+  query: '', sort: 'popular', genre: '', platform: '', length: '', year: '', players: '', stars: '',
   minVotes: '', maxVotes: '', minHypes: '', hideLogged: false, fadeLogged: false,
 };
 
-// The Filters rows, in order. `options` rows open a pick list; `text` rows
-// open a box to type in; `toggle` rows switch in place.
-const ROWS = [
-  { key: 'sort', label: 'Sort by', options: api.BROWSE_SORTS_SIMPLE },
-  { section: 'Content' },
-  { key: 'year', label: 'Release date', options: YEARS.map((y) => ({ label: y.label, value: y.id })) },
-  { key: 'genre', label: 'Genre', options: any('Any genre', GENRES) },
-  { key: 'platform', label: 'Platform', options: any('Any platform', api.BROWSE_PLATFORMS_ALL) },
-  { key: 'players', label: 'Players', options: any('Anyone', api.BROWSE_PLAYERS) },
-  { key: 'rating', label: 'Rating', custom: true },
-  { section: 'Your games', signedIn: true },
-  { key: 'hideLogged', label: 'Hide games I’ve logged', toggle: true, signedIn: true },
-  { key: 'fadeLogged', label: 'Fade games I’ve logged', toggle: true, signedIn: true },
+// The Filters page's side menu, top to bottom.
+const CATS = [
+  { id: 'sort', label: 'Sort' },
+  { id: 'mine', label: 'Your games', signedIn: true },
+  { id: 'platform', label: 'Platform' },
+  { id: 'genre', label: 'Genre' },
+  { id: 'length', label: 'Length' },
+  { id: 'year', label: 'Released' },
+  { id: 'players', label: 'Players' },
+  { id: 'rating', label: 'Rating' },
 ];
 
 // What browseGames needs, from the screen's own filter object.
@@ -84,7 +86,7 @@ function toQuery(f, page) {
   const y = YEARS.find((x) => x.id === f.year);
   // Always full games: DLC, packs and updates never belong in these lists.
   return {
-    query: f.query, sort: f.sort, genre: f.genre, platform: f.platform, players: f.players, stars: f.stars,
+    query: f.query, sort: f.sort, genre: f.genre, platform: f.platform, length: f.length, players: f.players, stars: f.stars,
     minVotes: f.minVotes, maxVotes: f.maxVotes, minHypes: f.minHypes, gameType: 'games',
     dateFrom: y?.from || '', dateTo: y?.to || '', page,
   };
@@ -204,7 +206,7 @@ export function renderBrowsePick(root, { kind }) {
   root.innerHTML = topBar(k.label, { back: true, brand: true, flush: true }) + `
     <div class="view-body view-body--browse">
       <div class="browse-list">
-        ${k.options.map((o) => `
+        ${k.options.map((o) => o.section ? `<p class="browse-label">${esc(o.section)}</p>` : `
           <a class="browse-row" href="#/discover/games?${k.key}=${encodeURIComponent(o.value)}">
             <span class="browse-row__name">${esc(o.label)}</span>
             ${chev()}
@@ -256,8 +258,7 @@ export function renderBrowseGames(root) {
     switch (key) {
       case 'sort': return RATING_SORTS[f] || optLabel(api.BROWSE_SORTS_SIMPLE, f).replace(/ first$/, '') || '';
       case 'year': return YEARS.find((y) => y.id === f)?.label || '';
-      case 'genre': return optLabel(GENRES, f);
-      case 'platform': return optLabel(api.BROWSE_PLATFORMS_ALL, f);
+      case 'length': return optLabel(api.BROWSE_LENGTHS, f);
       case 'players': return optLabel(api.BROWSE_PLAYERS, f);
       case 'stars': return f ? starsLabel(f) : '';
       case 'hideLogged': return f ? 'Hiding logged games' : '';
@@ -265,14 +266,31 @@ export function renderBrowseGames(root) {
       default: return '';
     }
   }
-  const CHIP_KEYS = ['sort', 'year', 'genre', 'platform', 'players', 'stars', 'hideLogged', 'fadeLogged'];
+  const CHIP_KEYS = ['sort', 'platform', 'genre', 'length', 'year', 'players', 'stars', 'hideLogged', 'fadeLogged'];
+  // One chip per filter, and one per platform or genre picked on top of
+  // where the list started.
+  function chipList() {
+    const out = [];
+    for (const k of CHIP_KEYS) {
+      if (String(filters[k] ?? '') === String(base[k] ?? '')) continue;
+      if (MULTI.has(k)) {
+        const had = vals(base[k]);
+        vals(filters[k]).filter((v) => !had.includes(v)).forEach((v) => {
+          const label = optLabel(k === 'genre' ? GENRES : PLATFORMS, v);
+          if (label) out.push({ k, v, label });
+        });
+      } else if (chipFor(k)) out.push({ k, v: '', label: chipFor(k) });
+    }
+    return out;
+  }
   function syncChips() {
     const box = qs('#browse-chips', root);
-    const on = CHIP_KEYS.filter((k) => String(filters[k] ?? '') !== String(base[k] ?? '') && chipFor(k));
+    const on = chipList();
     box.hidden = !on.length;
-    box.innerHTML = on.map((k) => `<button type="button" class="browse-chip" data-chip="${k}"><span>${esc(chipFor(k))}</span>${iconClose()}</button>`).join('');
+    box.innerHTML = on.map((c, i) => `<button type="button" class="browse-chip" data-chip="${i}"><span>${esc(c.label)}</span>${iconClose()}</button>`).join('');
     qsa('[data-chip]', box).forEach((b) => b.addEventListener('click', () => {
-      filters[b.dataset.chip] = base[b.dataset.chip];
+      const { k, v } = on[Number(b.dataset.chip)];
+      filters[k] = MULTI.has(k) ? vals(filters[k]).filter((x) => x !== v).join(',') : base[k];
       syncCount();
       load(true);
     }));
@@ -297,7 +315,7 @@ export function renderBrowseGames(root) {
   async function myRated() {
     if (fetchedPage > 1) return { games: [], hasMore: false };
     let rows = await api.getMyRatedGames(state.user.id);
-    const needsIgdb = filters.genre || filters.platform || filters.players || filters.year;
+    const needsIgdb = filters.genre || filters.platform || filters.length || filters.players || filters.year;
     if (needsIgdb) {
       const ids = rows.map((g) => g.igdb_id).filter(Boolean);
       const q = toQuery(filters, 1);
@@ -420,153 +438,165 @@ export function renderBrowseGames(root) {
     });
   }
 
-  // ---- Filters: a full page over the games. X leaves without changing
-  // anything, the tick applies, Reset goes back to where this list started.
+  // ---- Filters: a full page over the games, laid out like a shop's
+  // filters. Categories down the left (a green dot on any that is set),
+  // that category's choices on the right, and at the bottom Reset and a
+  // Show button that says how many games the choices leave. X leaves
+  // without changing anything.
   function openFilters() {
     const draft = { ...filters };
+    let cat = 'sort';
     const sheet = document.createElement('div');
     sheet.className = 'browse-filters';
     // On the body (like every other sheet) so the app's Back handling can
-    // close it: Back then closes Filters instead of leaving the page.
+    // close it.
     document.body.appendChild(sheet);
     const close = () => sheet.remove();
-    // The phone's Back button: on one of a filter's own pages (Genre, Rating...)
-    // it goes up to the Filters list, keeping what was picked; only from the
-    // list itself does it close Filters. The app's Back handling has already
-    // used up the sheet's history entry by the time this runs, so going up a
-    // level puts one back for the next Back.
-    let level = 'list';
-    sheet.__dismiss = () => {
-      if (level !== 'list') {
-        sheet.__closing = false;
-        paintList();
-        history.pushState({ ...history.state, ov: (history.state?.ov || 0) + 1 }, '', location.href);
-        return;
+    sheet.__dismiss = close;
+
+    const cats = CATS.filter((c) => !c.signedIn || state.user);
+    const differs = (k) => String(draft[k] ?? '') !== String(base[k] ?? '');
+    const catSet = (id) => (id === 'mine' ? differs('hideLogged') || differs('fadeLogged')
+      : id === 'rating' ? differs('stars') : differs(id));
+    const anySet = () => Object.keys(BLANK).some((k) => k !== 'query' && differs(k));
+
+    const tick = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+    const isOn = (k, v) => (MULTI.has(k) ? vals(draft[k]).includes(v) : String(draft[k] ?? '') === v);
+    const opt = (k, o, multi = MULTI.has(k)) => {
+      const on = isOn(k, o.value);
+      return `<button type="button" class="bf-opt" data-k="${k}" data-v="${esc(o.value)}">
+        <span class="bf-mark bf-mark--${multi ? 'check' : 'radio'}${on ? ' is-on' : ''}">${multi && on ? tick : ''}</span>
+        <span class="bf-opt__name">${esc(o.label)}</span></button>`;
+    };
+    const anyRow = (k, label) => `<button type="button" class="bf-opt" data-k="${k}" data-v="">
+        <span class="bf-mark bf-mark--radio${draft[k] ? '' : ' is-on'}"></span><span class="bf-opt__name">${esc(label)}</span></button>`;
+    const label = (text) => `<p class="browse-label">${esc(text)}</p>`;
+    const sw = (k, text) => `<button type="button" class="browse-frow" data-sw="${k}">
+        <span class="browse-frow__name">${esc(text)}</span><span class="browse-switch${draft[k] ? ' is-on' : ''}" aria-hidden="true"></span></button>`;
+
+    function pane() {
+      switch (cat) {
+        case 'sort':
+          return api.BROWSE_SORTS_SIMPLE.map((o) => (o.section ? label(o.section) : opt('sort', o))).join('')
+            + (state.user ? label('Your rating') + opt('sort', { label: 'Highest first', value: 'mine_high' }) + opt('sort', { label: 'Lowest first', value: 'mine_low' }) : '');
+        case 'mine':
+          return sw('hideLogged', 'Hide games I’ve logged') + sw('fadeLogged', 'Fade games I’ve logged');
+        case 'platform':
+          return anyRow('platform', 'Any platform') + api.BROWSE_PLATFORM_GROUPS.map((g) => label(g.label) + g.items.map((o) => opt('platform', o)).join('')).join('');
+        case 'genre':
+          return anyRow('genre', 'Any genre') + GENRES.map((o) => opt('genre', o)).join('');
+        case 'length':
+          return anyRow('length', 'Any length') + api.BROWSE_LENGTHS.map((o) => opt('length', o)).join('')
+            + '<p class="bf-note">How long players say a normal playthrough takes, from IGDB. Games nobody has timed yet are left out while a length is picked.</p>';
+        case 'year':
+          return YEARS.map((y) => opt('year', { label: y.label, value: y.id })).join('');
+        case 'players':
+          return anyRow('players', 'Anyone') + api.BROWSE_PLAYERS.map((o) => opt('players', o)).join('');
+        case 'rating':
+          return `${label('Average rating')}
+            <div class="star-pick">
+              <div class="star-pick__stars">${starsHtml(draft.stars)}
+                <input type="range" class="star-pick__range" min="0" max="5" step="0.5" value="${Number(draft.stars) || 0}" aria-label="Star rating">
+              </div>
+              <button type="button" class="star-pick__clear" data-act="clear-stars"${draft.stars ? '' : ' hidden'}>Reset</button>
+            </div>
+            <p class="bf-note">Games whose average rating rounds to this many stars.</p>`;
+        default: return '';
       }
-      sheet.remove();
-    };
+    }
 
-    const valueOf = (row) => {
-      if (row.toggle) return '';
-      if (row.custom) return draft.stars ? starsLabel(draft.stars) : (RATING_SORTS[draft.sort] || 'Any');
-      if (row.text) return draft[row.key]?.trim() || 'Any';
-      const o = row.options.find((x) => !x.section && x.value === String(draft[row.key] ?? ''));
-      return o?.short || o?.label || (row.key === 'sort' && RATING_SORTS[draft.sort]) || 'Any';
-    };
-    const isSet = (row) => (row.custom
-      ? !!draft.stars || (!!RATING_SORTS[draft.sort] && draft.sort !== base.sort)
-      : String(draft[row.key] ?? '') !== String(base[row.key] ?? ''));
-
-    function paintList() {
-      level = 'list';
-      const rows = ROWS.filter((r) => !r.signedIn || state.user);
+    function paint() {
+      const old = qs('.bf-pane', sheet);
+      const keep = old && old.dataset.cat === cat ? old.scrollTop : 0;
       sheet.innerHTML = `
         <div class="browse-filters__top">
           <button type="button" class="browse-filters__icon" data-act="close" aria-label="Close">${iconClose()}</button>
           <h2>Filters</h2>
-          <button type="button" class="browse-filters__icon browse-filters__icon--ok" data-act="apply" aria-label="Apply filters">${iconCheck()}</button>
         </div>
-        <div class="browse-filters__body">
-          ${rows.map((r) => r.section
-            ? `<p class="browse-label">${esc(r.section)}</p>`
-            : r.toggle
-              ? `<button type="button" class="browse-frow" data-toggle="${r.key}">
-                   <span class="browse-frow__name">${esc(r.label)}</span>
-                   <span class="browse-switch${draft[r.key] ? ' is-on' : ''}" aria-hidden="true"></span>
-                 </button>`
-              : `<button type="button" class="browse-frow" data-row="${r.key}">
-                   <span class="browse-frow__name">${esc(r.label)}</span>
-                   <span class="browse-frow__value${isSet(r) ? ' is-set' : ''}">${esc(valueOf(r))}</span>
-                   ${chev()}
-                 </button>`).join('')}
-          <button type="button" class="browse-reset" data-act="reset">Reset filters</button>
+        <div class="bf-split">
+          <nav class="bf-side" aria-label="Filter categories">
+            ${cats.map((c) => `<button type="button" class="bf-cat${c.id === cat ? ' is-on' : ''}" data-cat="${c.id}"><span>${esc(c.label)}</span>${catSet(c.id) ? '<i aria-label="set"></i>' : ''}</button>`).join('')}
+          </nav>
+          <div class="bf-pane" data-cat="${cat}">${pane()}</div>
+        </div>
+        <div class="bf-foot">
+          <button type="button" class="bf-reset" data-act="reset"${anySet() ? '' : ' disabled'}>Reset</button>
+          <button type="button" class="bf-show" data-act="apply">${showText}</button>
         </div>`;
-      qs('[data-act="close"]', sheet).addEventListener('click', close);
-      qs('[data-act="apply"]', sheet).addEventListener('click', () => {
+      qs('.bf-pane', sheet).scrollTop = keep;
+      const range = qs('.star-pick__range', sheet);
+      if (range) {
+        range.addEventListener('input', () => {
+          const v = Number(range.value);
+          draft.stars = v ? String(v) : '';
+          qs('.star-row', sheet).outerHTML = starsHtml(v);
+          qs('[data-act="clear-stars"]', sheet).hidden = !v;
+          syncSide();
+          recount();
+        });
+      }
+    }
+    // After a star drag: just the dots and Reset, so the drag keeps going.
+    function syncSide() {
+      qsa('.bf-cat', sheet).forEach((b) => {
+        const want = catSet(b.dataset.cat);
+        const dot = qs('i', b);
+        if (want && !dot) b.insertAdjacentHTML('beforeend', '<i aria-label="set"></i>');
+        if (!want && dot) dot.remove();
+      });
+      qs('[data-act="reset"]', sheet).disabled = !anySet();
+    }
+
+    // The Show button's count, asked of IGDB a moment after the last change.
+    let showText = 'Show games';
+    let countTimer = null;
+    let countTicket = 0;
+    function recount() {
+      clearTimeout(countTimer);
+      const my = ++countTicket;
+      if (MY_SORTS.has(draft.sort)) { setShow('Show games', false); return; }
+      countTimer = setTimeout(async () => {
+        const n = await api.browseGames({ ...toQuery(draft, 1), countOnly: true });
+        if (my !== countTicket || !sheet.isConnected) return;
+        if (typeof n !== 'number') setShow('Show games', false);
+        else setShow(n ? `Show ${n.toLocaleString('en-US')} game${n === 1 ? '' : 's'}` : 'No games match', !n);
+      }, 300);
+    }
+    function setShow(text, disabled) {
+      showText = text;
+      const b = qs('.bf-show', sheet);
+      if (b) { b.textContent = text; b.disabled = disabled; }
+    }
+
+    sheet.addEventListener('click', (e) => {
+      const el = e.target.closest('[data-k],[data-sw],[data-cat],[data-act]');
+      if (!el) return;
+      if (el.dataset.cat && el.classList.contains('bf-cat')) { cat = el.dataset.cat; paint(); return; }
+      if (el.dataset.k) {
+        const k = el.dataset.k;
+        const v = el.dataset.v;
+        if (MULTI.has(k) && v) {
+          const now = vals(draft[k]);
+          draft[k] = (now.includes(v) ? now.filter((x) => x !== v) : [...now, v]).join(',');
+        } else draft[k] = v;
+        paint(); recount();
+        return;
+      }
+      if (el.dataset.sw) { draft[el.dataset.sw] = !draft[el.dataset.sw]; paint(); return; }
+      const act = el.dataset.act;
+      if (act === 'close') close();
+      else if (act === 'reset') { Object.assign(draft, base, { query: draft.query }); paint(); recount(); }
+      else if (act === 'clear-stars') { draft.stars = ''; paint(); recount(); }
+      else if (act === 'apply') {
         Object.assign(filters, draft);
         close();
         syncCount();
         load(true);
-      });
-      qs('[data-act="reset"]', sheet).addEventListener('click', () => { Object.assign(draft, base); paintList(); });
-      qsa('[data-toggle]', sheet).forEach((b) => b.addEventListener('click', () => {
-        draft[b.dataset.toggle] = !draft[b.dataset.toggle];
-        qs('.browse-switch', b).classList.toggle('is-on', draft[b.dataset.toggle]);
-      }));
-      qsa('[data-row]', sheet).forEach((b) => b.addEventListener('click', () => {
-        const row = ROWS.find((r) => r.key === b.dataset.row);
-        if (row.custom) paintRating(); else paintRow(row);
-      }));
-    }
-
-    // Rating: two ways to sort by it, and stars to browse by.
-    function paintRating() {
-      level = 'page';
-      const opt = (v, label) => `<button type="button" class="browse-opt${draft.sort === v ? ' is-on' : ''}" data-sort="${v}"><span>${label}</span>${draft.sort === v ? iconCheck() : ''}</button>`;
-      sheet.innerHTML = `
-        <div class="browse-filters__top">
-          <button type="button" class="browse-filters__icon" data-act="back" aria-label="Back">${iconBackArrow()}</button>
-          <h2>Rating</h2>
-          <button type="button" class="browse-filters__icon browse-filters__icon--ok" data-act="ok" aria-label="Done">${iconCheck()}</button>
-        </div>
-        <div class="browse-filters__body">
-          <p class="browse-label">Average rating</p>
-          ${opt('top_rated', 'Highest first')}${opt('lowest', 'Lowest first')}
-          ${state.user ? `<p class="browse-label">Your rating</p>${opt('mine_high', 'Highest first')}${opt('mine_low', 'Lowest first')}` : ''}
-          <p class="browse-label">Browse by stars</p>
-          <div class="star-pick">
-            <div class="star-pick__stars">${starsHtml(draft.stars)}
-              <input type="range" class="star-pick__range" min="0" max="5" step="0.5" value="${Number(draft.stars) || 0}" aria-label="Star rating">
-            </div>
-            <button type="button" class="star-pick__clear" data-act="clear-stars"${draft.stars ? '' : ' hidden'}>Reset</button>
-          </div>
-        </div>`;
-      qs('[data-act="back"]', sheet).addEventListener('click', paintList);
-      qs('[data-act="ok"]', sheet).addEventListener('click', paintList);
-      qsa('[data-sort]', sheet).forEach((b) => b.addEventListener('click', () => { draft.sort = b.dataset.sort; paintList(); }));
-      const range = qs('.star-pick__range', sheet);
-      const sync = () => {
-        const v = Number(range.value);
-        draft.stars = v ? String(v) : '';
-        qs('.star-row', sheet).outerHTML = starsHtml(v);
-        qs('[data-act="clear-stars"]', sheet).hidden = !v;
-      };
-      range.addEventListener('input', sync);
-      qs('[data-act="clear-stars"]', sheet).addEventListener('click', () => { range.value = 0; sync(); });
-    }
-
-    // One filter's choices (or its text box), then straight back to the list.
-    function paintRow(row) {
-      level = 'page';
-      sheet.innerHTML = `
-        <div class="browse-filters__top">
-          <button type="button" class="browse-filters__icon" data-act="back" aria-label="Back">${iconBackArrow()}</button>
-          <h2>${esc(row.label)}</h2>
-          <button type="button" class="browse-filters__icon browse-filters__icon--ok" data-act="ok" aria-label="Done">${iconCheck()}</button>
-        </div>
-        <div class="browse-filters__body">
-          ${row.text
-            ? `<div class="browse-text"><input type="text" class="search-input" id="browse-text" placeholder="${esc(row.text)}" value="${esc(draft[row.key] || '')}" autocomplete="off" enterkeyhint="done">
-                 <button type="button" class="btn btn--accent btn--block" data-act="done">Done</button></div>`
-            : row.options.map((o) => o.section ? `<p class="browse-label">${esc(o.section)}</p>` : `
-              <button type="button" class="browse-opt${String(draft[row.key] ?? '') === o.value ? ' is-on' : ''}" data-v="${esc(o.value)}">
-                <span>${esc(o.label)}</span>${String(draft[row.key] ?? '') === o.value ? iconCheck() : ''}
-              </button>`).join('')}
-        </div>`;
-      qs('[data-act="back"]', sheet).addEventListener('click', paintList);
-      qs('[data-act="ok"]', sheet).addEventListener('click', paintList);
-      if (row.text) {
-        const input = qs('#browse-text', sheet);
-        const done = () => { draft[row.key] = input.value.trim(); paintList(); };
-        qs('[data-act="done"]', sheet).addEventListener('click', done);
-        input.addEventListener('keydown', (e) => { if (e.key === 'Enter') done(); });
-        input.focus();
-      } else {
-        qsa('.browse-opt', sheet).forEach((b) => b.addEventListener('click', () => { draft[row.key] = b.dataset.v; paintList(); }));
       }
-    }
+    });
 
-    paintList();
+    paint();
+    recount();
   }
 
   syncCount();
