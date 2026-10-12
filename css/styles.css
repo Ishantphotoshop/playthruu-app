@@ -7006,7 +7006,7 @@ a.gd-credit__name { text-decoration: none; }
    The marks are drawn a little wider than their boxes (see the scale()
    above: replay spills 3.9% of a star each side, review 9.45%), so their
    margins add that back to keep the visible gaps exact. */
-.rp-meta { --u: calc(var(--poster-w) * 0.0879); gap: 0; }
+.rp-meta { --u: calc(var(--poster-w) / 10.987); gap: 0; }
 .rp-meta .stars { gap: calc(var(--u) * 0.5); }
 .rp-meta .rp-meta__icon--replay { margin: 0 calc(var(--u) * 0.039) 0 calc(var(--u) * (0.719 + 0.039)); }
 .rp-meta .rp-meta__icon--review { margin-left: calc(var(--u) * (0.719 + 0.0945)); }
