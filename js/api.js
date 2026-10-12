@@ -3058,7 +3058,19 @@ export function warmGameByIgdb(igdbId) {
     .catch(() => gameByIgdb.delete(igdbId));
 }
 
-export async function addGame({ title, cover_url, background_url, platform, release_year, release_date, genre, developer, publisher, igdb_id, rawg_id }, addedBy) {
+// Saves already in flight, by IGDB id: two taps (or a tap and a background
+// prepare) on the same game share one save instead of racing to insert twice.
+const addingByIgdb = new Map();
+export function addGame(game, addedBy) {
+  const key = game?.igdb_id;
+  if (!key) return addGameNow(game, addedBy);
+  if (addingByIgdb.has(key)) return addingByIgdb.get(key);
+  const p = addGameNow(game, addedBy).finally(() => addingByIgdb.delete(key));
+  addingByIgdb.set(key, p);
+  return p;
+}
+
+async function addGameNow({ title, cover_url, background_url, platform, release_year, release_date, genre, developer, publisher, igdb_id, rawg_id }, addedBy) {
   if (igdb_id) {
     const warm = gameByIgdb.get(igdb_id);
     if (warm) return warm;
@@ -3081,7 +3093,16 @@ export async function addGame({ title, cover_url, background_url, platform, rele
     })
     .select()
     .single();
-  if (error) throw error;
+  if (error) {
+    // Someone else (another tap, another person, another tab) saved this game between the lookup
+    // above and this insert. That is fine: the game exists, so use it.
+    if (error.code === '23505' && (igdb_id || rawg_id)) {
+      const { data: theirs } = await supabase.from('games').select('*')
+        .eq(igdb_id ? 'igdb_id' : 'rawg_id', igdb_id || rawg_id).maybeSingle();
+      if (theirs) { if (igdb_id) gameByIgdb.set(igdb_id, theirs); return theirs; }
+    }
+    throw error;
+  }
   if (igdb_id) gameByIgdb.set(igdb_id, data);
   return data;
 }
