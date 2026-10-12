@@ -6985,16 +6985,12 @@ a.gd-credit__name { text-decoration: none; }
   color: var(--star-fill);
 }
 .rp-meta__icon svg { width: 100%; height: 100%; display: block; stroke-width: 1.6; }
-/* Same sizes as the friends' activity cards on the feed (.card-who__stars):
-   touching stars, then the replay and review marks a hair smaller. */
-.rp-meta { gap: 4px; height: 14px; margin-top: 3px; }
-.rp-meta .stars { --star-size: 12px !important; gap: 2px; }
-.rp-meta__icon { width: 11.5px; height: 11.5px; }
-@media (max-width: 560px) {
-  .rp-meta .stars { --star-size: 10px !important; }
-  .rp-meta__icon { width: 9.5px; height: 9.5px; }
-}
-
+/* Measured from the drawn shapes: the replay mark sat ~0.4px low and ran
+   past the stars' bottom, the review lines were ~1px short. Each is scaled
+   and nudged so its ink starts and ends exactly where a star's does. */
+.rp-meta__icon--replay svg, .rp-meta__icon--review svg { transform-origin: 50% 50%; }
+.rp-meta__icon--replay svg { transform: translateY(calc(var(--u) * -0.032)) scale(1.024); }
+.rp-meta__icon--review svg { transform: translateY(calc(var(--u) * -0.032)) scale(1.13); }
 /* ---- Profile stats area (under Ratings): tiles, then Stats ---- */
 .ps-wrap { display: flex; flex-direction: column; gap: 12px; margin-top: 4px; }
 .ps-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }

@@ -247,8 +247,8 @@ export async function renderProfileView(root, { username }) {
               </a>
               <div class="rp-meta">
                 ${l.rating ? starRow(l.rating, { size: 12 }) : ''}
-                ${l.is_replay ? `<span class="rp-meta__icon">${iconReplay()}</span>` : ''}
-                ${l.review ? `<span class="rp-meta__icon">${iconReviewLines()}</span>` : ''}
+                ${l.is_replay ? `<span class="rp-meta__icon rp-meta__icon--replay">${iconReplay()}</span>` : ''}
+                ${l.review ? `<span class="rp-meta__icon rp-meta__icon--review">${iconReviewLines()}</span>` : ''}
               </div>
             </div>`).join('')}
         </div>` : ''}
