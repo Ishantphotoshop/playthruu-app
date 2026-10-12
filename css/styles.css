@@ -6978,7 +6978,7 @@ a.gd-credit__name { text-decoration: none; }
 @supports (width: round(down, 10.5px, 1px)) {
   .rp-meta { --u: round(down, calc(var(--poster-w) * 0.11), 1px); }
 }
-.rp-meta .stars { --star-size: var(--u) !important; gap: 3.5px; flex-shrink: 0; }
+.rp-meta .stars { --star-size: var(--u) !important; gap: 4px; flex-shrink: 0; }
 .rp-meta__icon {
   width: var(--u); height: var(--u); flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
@@ -6993,7 +6993,7 @@ a.gd-credit__name { text-decoration: none; }
 .rp-meta__icon--replay svg, .rp-meta__icon--review svg { transform-origin: 50% 50%; }
 .rp-meta__icon--replay svg { transform: scale(1.078); }
 .rp-meta__icon--review svg { transform: scale(1.189); }
-/* 3.5px between stars, 7px from the last star to a mark and between marks.
+/* 4px between stars, 7px from the last star to a mark and between marks.
    The scaled marks spill past their boxes (replay by 3.9% of --u each side,
    review by 9.45%), so each gets that much margin back and the visible gaps
    stay exactly those whichever marks are present. */
