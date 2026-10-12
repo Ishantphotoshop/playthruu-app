@@ -76,6 +76,47 @@ function routeFor(kind: string, row: Record<string, unknown>) {
   return "#/notifications";
 }
 
+// Sends one payload to every subscribed device of these users, pruning
+// subscriptions the push service says are gone.
+// deno-lint-ignore no-explicit-any
+async function sendToUsers(admin: any, userIds: string[], message: string) {
+  if (!userIds.length) return { sent: 0, failed: 0, pruned: 0 };
+  const { data: subs } = await admin
+    .from("push_subscriptions")
+    .select("endpoint, p256dh, auth")
+    .in("user_id", userIds);
+  if (!subs?.length) return { sent: 0, failed: 0, pruned: 0 };
+  webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+  const results = await Promise.allSettled(subs.map((s: { endpoint: string; p256dh: string; auth: string }) =>
+    webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, message, { TTL: 60 * 60 * 12 })
+  ));
+  const dead: string[] = [];
+  let sent = 0;
+  results.forEach((r, i) => {
+    if (r.status === "fulfilled") { sent += 1; return; }
+    const status = (r.reason as { statusCode?: number })?.statusCode;
+    if (status === 404 || status === 410) dead.push(subs[i].endpoint);
+  });
+  if (dead.length) await admin.from("push_subscriptions").delete().in("endpoint", dead);
+  return { sent, failed: results.length - sent, pruned: dead.length };
+}
+
+// "New player joined" for the admins. Admin alerts ignore the person's own
+// push on/off setting for social notifications: they are for running the app.
+// deno-lint-ignore no-explicit-any
+async function newUserAlert(admin: any, userId: string) {
+  const { data: who } = await admin.from("profiles").select("username, display_name").eq("id", userId).single();
+  if (!who) return json({ error: "No such user" }, 404);
+  const { data: admins } = await admin.from("profiles").select("id").eq("is_admin", true).neq("id", userId);
+  const message = JSON.stringify({
+    title: "New player joined",
+    body: `@${who.username} just signed up`,
+    tag: `playthruu-newuser-${userId}`,
+    route: `#/profile/${encodeURIComponent(who.username)}`,
+  });
+  return json(await sendToUsers(admin, (admins ?? []).map((a: { id: string }) => a.id), message));
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
@@ -86,18 +127,23 @@ Deno.serve(async (req: Request) => {
   }
   if (!VAPID_PRIVATE_KEY) return json({ error: "Push is not configured" }, 500);
 
-  let payloadIn: { notification_id?: string };
+  let payloadIn: { notification_id?: string; new_user_id?: string };
   try {
     payloadIn = await req.json();
   } catch {
     return json({ error: "Bad request" }, 400);
   }
-  const notificationId = payloadIn.notification_id;
-  if (!notificationId) return json({ error: "notification_id is required" }, 400);
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
     auth: { persistSession: false },
   });
+
+  // Someone just signed up: tell every admin's phone (called by the
+  // profiles insert trigger, migrations/2026-10-12_admin_new_user_push.sql).
+  if (payloadIn.new_user_id) return await newUserAlert(admin, payloadIn.new_user_id);
+
+  const notificationId = payloadIn.notification_id;
+  if (!notificationId) return json({ error: "notification_id is required" }, 400);
 
   // Read the row back rather than trusting the body: the trigger sends
   // only an id, so there is nothing to forge, and the joined actor name

@@ -644,3 +644,28 @@ a.btn { text-decoration: none; }
 /* The gate screens sit inside the same fixed-height #app as everything
    else, so a tall setup screen has to scroll on its own. */
 .adm-gate { overflow-y: auto; }
+
+/* Reports: tap a row for what it's about and what to do. */
+.adm-row--tap { cursor: pointer; }
+.adm-report-about {
+  display: flex; flex-direction: column; gap: 6px; margin: var(--space-3) 0;
+  padding: 14px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line);
+}
+.adm-report-about b { font-weight: 700; font-size: 15px; color: var(--ink); }
+.adm-report-about p { margin: 0; font-size: 14px; line-height: 1.45; color: var(--ink-dim); white-space: pre-wrap; }
+.adm-report-about span { font-size: var(--text-meta); color: var(--ink-faint); }
+.adm-report-acts { display: flex; flex-direction: column; gap: 8px; }
+
+/* New player pop-up, top of the screen, while the admin app is open. */
+.adm-newuser {
+  position: fixed; z-index: 200; left: 12px; right: 12px; top: calc(12px + env(safe-area-inset-top, 0px));
+  max-width: 520px; margin: 0 auto; display: flex; align-items: center; gap: 10px;
+  padding: 10px 10px 10px 14px; border-radius: 16px;
+  background: var(--surface-raised); border: 1px solid var(--accent); box-shadow: 0 10px 30px rgba(0, 0, 0, .45);
+}
+.adm-newuser__icon { width: 22px; height: 22px; color: var(--accent); flex-shrink: 0; display: grid; }
+.adm-newuser__icon svg { width: 100%; height: 100%; }
+.adm-newuser__text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.adm-newuser__text b { font-weight: 800; font-size: 14px; color: var(--ink); }
+.adm-newuser__text span { font-size: 13px; color: var(--ink-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.adm-newuser .icon-btn { font-size: 20px; line-height: 1; }

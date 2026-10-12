@@ -559,7 +559,7 @@ async function loadDashboard({ quiet = false } = {}) {
     supabase.from('logs').select('id, user_id, game_id, status, rating, review, loved, created_at'),
     supabase.from('games').select('id', { count: 'exact', head: true }),
     supabase.from('user_presence').select('last_seen_at').gte('last_seen_at', iso(now - ONLINE_WINDOW_MS)),
-    supabase.from('reports').select('id', { count: 'exact', head: true }).neq('status', 'resolved'),
+    supabase.from('reports').select('id', { count: 'exact', head: true }).in('status', ['open', 'reviewed']),
   ]);
 
   const profiles = profilesRes.data || [];
@@ -1731,13 +1731,37 @@ SCREENS.reports = function reports() {
   paintReports();
 };
 
+// Open = still needs a look; done = resolved (acted on) or dismissed (fine).
+const OPEN_STATUSES = ['open', 'reviewed'];
+const DONE_STATUSES = ['resolved', 'dismissed'];
+const isDone = (r) => DONE_STATUSES.includes(r.status);
+const agoText = (t) => { const a = timeAgo(t); return /now/i.test(a) ? 'just now' : `${a} ago`; };
+const KIND_LABEL = { profile: 'Profile', log: 'Review', list: 'List', game: 'Game' };
+
+// What each report points at, and whose it is: the reported account for a
+// profile, the author of a review or list, nobody for a game.
+async function reportTargets(rows) {
+  const ids = (type) => [...new Set(rows.filter((r) => r.target_type === type).map((r) => r.target_id).filter(Boolean))];
+  const out = {};
+  const [logs, lists, games] = await Promise.all([
+    ids('log').length ? supabase.from('logs').select('id, user_id, review, rating, games!logs_game_id_fkey(title)').in('id', ids('log')) : { data: [] },
+    ids('list').length ? supabase.from('lists').select('id, user_id, name').in('id', ids('list')) : { data: [] },
+    ids('game').length ? supabase.from('games').select('id, title, is_hidden').in('id', ids('game')) : { data: [] },
+  ]);
+  ids('profile').forEach((id) => { out[id] = { userId: id }; });
+  (logs.data || []).forEach((l) => { out[l.id] = { userId: l.user_id, label: l.games?.title || 'a game', text: l.review || '' }; });
+  (lists.data || []).forEach((l) => { out[l.id] = { userId: l.user_id, label: l.name }; });
+  (games.data || []).forEach((g) => { out[g.id] = { label: g.title, hidden: !!g.is_hidden }; });
+  return out;
+}
+
 async function paintReports() {
   const screen = state.screen;
   const host = qs('#list');
   if (!host) return;
   let q = supabase.from('reports').select('*').order('created_at', { ascending: false }).limit(120);
-  if (reportsFilter === 'open') q = q.neq('status', 'resolved');
-  if (reportsFilter === 'resolved') q = q.eq('status', 'resolved');
+  if (reportsFilter === 'open') q = q.in('status', OPEN_STATUSES);
+  if (reportsFilter === 'resolved') q = q.in('status', DONE_STATUSES);
 
   const { data, error } = await q;
   if (!stillOn(screen)) return;
@@ -1751,22 +1775,36 @@ async function paintReports() {
     return;
   }
 
-  const reporterIds = [...new Set(data.map((r) => r.reporter_id).filter(Boolean))];
-  let names = {};
-  if (reporterIds.length) {
-    const { data: profs } = await supabase.from('profiles').select('id, username').in('id', reporterIds);
+  const targets = await reportTargets(data);
+  if (!stillOn(screen)) return;
+  const userIds = [...new Set([
+    ...data.map((r) => r.reporter_id),
+    ...Object.values(targets).map((t) => t.userId),
+  ].filter(Boolean))];
+  let people = {};
+  if (userIds.length) {
+    const { data: profs } = await supabase.from('profiles').select('id, username, is_suspended, is_admin').in('id', userIds);
     if (!stillOn(screen)) return;
-    names = Object.fromEntries((profs || []).map((p) => [p.id, p.username]));
+    people = Object.fromEntries((profs || []).map((p) => [p.id, p]));
   }
+  const who = (id) => (people[id] ? `@${people[id].username}` : 'a deleted account');
+  const about = (r) => {
+    const t = targets[r.target_id];
+    if (!t) return `${KIND_LABEL[r.target_type] || 'Item'} (gone)`;
+    if (r.target_type === 'profile') return people[t.userId] ? `Profile ${who(t.userId)}${people[t.userId].is_suspended ? ' (suspended)' : ''}` : 'Profile (account deleted)';
+    if (r.target_type === 'game') return `Game ${t.label}${t.hidden ? ' (hidden)' : ''}`;
+    return `${KIND_LABEL[r.target_type]} of ${t.label} by ${who(t.userId)}`;
+  };
 
   host.innerHTML = data.map((r) => `
-    <div class="list-card adm-row" data-id="${r.id}" data-bulk-row>
-      ${r.status === 'resolved' ? '' : checkbox()}
+    <div class="list-card adm-row adm-row--tap" data-id="${r.id}" data-bulk-row>
+      ${isDone(r) ? '' : checkbox()}
       <span class="adm-row__body">
         <span class="adm-row__title adm-row__title--wrap">${esc(r.reason || 'No reason given')}</span>
-        <span class="adm-row__meta"${timeTitle(r.created_at)}>${r.status === 'resolved' ? 'RESOLVED' : 'OPEN'} · ${esc(r.target_type || 'item')} · @${esc(names[r.reporter_id] || 'unknown')} · ${esc(timeAgo(r.created_at))} ago</span>
+        <span class="adm-row__meta">${esc(about(r))}</span>
+        <span class="adm-row__meta"${timeTitle(r.created_at)}>${esc(r.status.toUpperCase())} · reported by ${esc(who(r.reporter_id))} · ${esc(agoText(r.created_at))}</span>
       </span>
-      ${r.status === 'resolved' ? `
+      ${isDone(r) ? `
         <span class="adm-row__actions">
           <button class="icon-btn icon-btn--small" data-reopen aria-label="Reopen">${iconEye()}</button>
         </span>` : `
@@ -1778,25 +1816,104 @@ async function paintReports() {
   bulkSelect(host, {
     idOf: (row) => row.dataset.id,
     label: 'reports',
-    actions: [{
-      label: 'Resolve all',
-      run: async (ids) => {
-        const { error: e } = await supabase.from('reports').update({ status: 'resolved' }).in('id', ids);
-        if (e) return fail(e);
-        toast(`${ids.length} resolved`, 'success');
-        paintReports();
-      },
-    }],
+    actions: [
+      { label: 'Resolve all', run: (ids) => setMany(ids, 'resolved', 'resolved') },
+      { label: 'Dismiss all', run: (ids) => setMany(ids, 'dismissed', 'dismissed') },
+    ],
   });
 
-  const setStatus = async (id, status) => {
+  async function setMany(ids, status, word) {
+    const { error: e } = await supabase.from('reports').update({ status }).in('id', ids);
+    if (e) return fail(e);
+    toast(`${ids.length} ${word}`, 'success');
+    refreshReports();
+  }
+  const setStatus = async (id, status, msg) => {
     const { error: upErr } = await supabase.from('reports').update({ status }).eq('id', id);
-    if (upErr) return fail(upErr);
-    toast(status === 'resolved' ? 'Resolved' : 'Reopened', 'success');
-    paintReports();
+    if (upErr) { fail(upErr); return false; }
+    if (msg) toast(msg, 'success');
+    refreshReports();
+    return true;
   };
-  qsa('[data-resolve]', host).forEach((btn) => btn.addEventListener('click', () => setStatus(btn.closest('.adm-row').dataset.id, 'resolved')));
-  qsa('[data-reopen]', host).forEach((btn) => btn.addEventListener('click', () => setStatus(btn.closest('.adm-row').dataset.id, 'open')));
+  qsa('[data-resolve]', host).forEach((btn) => btn.addEventListener('click', (e) => { e.stopPropagation(); setStatus(btn.closest('.adm-row').dataset.id, 'resolved', 'Resolved'); }));
+  qsa('[data-reopen]', host).forEach((btn) => btn.addEventListener('click', (e) => { e.stopPropagation(); setStatus(btn.closest('.adm-row').dataset.id, 'open', 'Reopened'); }));
+  // Tap a report: what it's about and what to do about it.
+  qsa('.adm-row', host).forEach((row) => row.addEventListener('click', (e) => {
+    if (e.target.closest('button')) return;
+    const r = data.find((x) => x.id === row.dataset.id);
+    if (r) openReportSheet(r, targets[r.target_id], people, about(r), setStatus);
+  }));
+}
+
+// The open-reports count on the home tile and nav badge.
+async function refreshReports() {
+  paintReports();
+  const { count } = await supabase.from('reports').select('id', { count: 'exact', head: true }).in('status', OPEN_STATUSES);
+  state.openReports = count || 0;
+}
+
+function openReportSheet(r, target, people, aboutText, setStatus) {
+  const user = target?.userId ? people[target.userId] : null;
+  const isSelf = user && user.id === state.user.id;
+  const link = !target ? null
+    : r.target_type === 'profile' ? (user ? `../#/profile/${encodeURIComponent(user.username)}` : null)
+    : r.target_type === 'log' ? `../#/review/${r.target_id}`
+    : r.target_type === 'list' ? `../#/list/${r.target_id}`
+    : `../#/game/${r.target_id}`;
+  const done = isDone(r);
+  const btn = (id, text, cls = '') => `<button class="btn btn--block ${cls}" id="${id}">${esc(text)}</button>`;
+
+  openSheet('Report', `
+    <p class="modal__hint">${esc(r.reason || 'No reason given')}</p>
+    <div class="adm-report-about">
+      <b>${esc(aboutText)}</b>
+      ${target?.text ? `<p>${esc(target.text.slice(0, 400))}${target.text.length > 400 ? '…' : ''}</p>` : ''}
+      <span>Reported by ${esc(people[r.reporter_id] ? '@' + people[r.reporter_id].username : 'someone deleted')} · ${esc(agoText(r.created_at))} · ${esc(r.status)}</span>
+    </div>
+    <div class="adm-report-acts">
+      ${link ? btn('ra-open', 'Open in the app') : ''}
+      ${user && !isSelf ? btn('ra-susp', user.is_suspended ? `Unsuspend @${user.username}` : `Suspend @${user.username}`, user.is_suspended ? '' : 'btn--danger') : ''}
+      ${r.target_type === 'log' && target ? btn('ra-del', 'Delete this review', 'btn--danger') : ''}
+      ${r.target_type === 'list' && target ? btn('ra-del', 'Delete this list', 'btn--danger') : ''}
+      ${r.target_type === 'game' && target ? btn('ra-hide', target.hidden ? 'Show this game again' : 'Hide this game', target.hidden ? '' : 'btn--danger') : ''}
+      ${done ? btn('ra-reopen', 'Reopen report') : btn('ra-resolve', 'Resolve (dealt with)', 'btn--accent') + btn('ra-dismiss', 'Dismiss (nothing wrong)')}
+    </div>
+    ${isSelf ? '<p class="adm-hint">This is about your own account, so suspend is off.</p>' : ''}
+    <p class="adm-hint">Suspend, delete and hide also mark the report resolved.</p>
+    <div class="adm-btn-row"><button class="btn btn--block" data-act="close">Close</button></div>`, (sheet, close) => {
+    qs('[data-act="close"]', sheet).addEventListener('click', close);
+    const on = (id, fn) => qs(`#${id}`, sheet)?.addEventListener('click', fn);
+    // Did something about it: resolve the report too, then close.
+    const andResolve = async (msg) => { close(); if (!done) await setStatus(r.id, 'resolved', `${msg}, report resolved`); else { toast(msg, 'success'); refreshReports(); } };
+
+    on('ra-open', () => window.open(link, '_blank', 'noopener'));
+    on('ra-susp', async () => {
+      const next = !user.is_suspended;
+      if (next && !(await confirmSheet({ title: `Suspend @${user.username}?`, sub: 'They can still sign in and look around, but can’t post, review, comment or message until you unsuspend them.', confirmLabel: 'Suspend', danger: true }))) return;
+      const { error } = await supabase.from('profiles').update({ is_suspended: next }).eq('id', user.id);
+      if (error) return fail(error);
+      if (next) await andResolve(`@${user.username} suspended`);
+      else { close(); toast(`@${user.username} unsuspended`, 'success'); refreshReports(); }
+    });
+    on('ra-del', async () => {
+      const what = r.target_type === 'log' ? 'review' : 'list';
+      if (!(await confirmSheet({ title: `Delete this ${what}?`, sub: 'This removes it for good. It can’t be undone.', confirmLabel: 'Delete', danger: true }))) return;
+      const { error, count } = await supabase.from(r.target_type === 'log' ? 'logs' : 'lists').delete({ count: 'exact' }).eq('id', r.target_id);
+      if (error) return fail(error);
+      if (!count) return toast(`Couldn’t delete that ${what}`, 'error');
+      await andResolve(`${what[0].toUpperCase()}${what.slice(1)} deleted`);
+    });
+    on('ra-hide', async () => {
+      const next = !target.hidden;
+      const { error } = await supabase.from('games').update({ is_hidden: next }).eq('id', r.target_id);
+      if (error) return fail(error);
+      if (next) await andResolve('Game hidden');
+      else { close(); toast('Game shown again', 'success'); refreshReports(); }
+    });
+    on('ra-resolve', () => { close(); setStatus(r.id, 'resolved', 'Resolved'); });
+    on('ra-dismiss', () => { close(); setStatus(r.id, 'dismissed', 'Dismissed'); });
+    on('ra-reopen', () => { close(); setStatus(r.id, 'open', 'Reopened'); });
+  });
 }
 
 // ============================================================
@@ -2513,8 +2630,48 @@ async function boot() {
   if (!bannerMounted) { wireConnectionBanner(); bannerMounted = true; }
 
   render(location.hash.replace(/^#\/?/, '') || 'home');
+  watchNewUsers();
 }
 
 let bannerMounted = false;
+
+// While the admin app is open: a pop-up the moment someone signs up (the
+// phone notification covers the times it's closed, see send-push). Checks
+// every 20 seconds for profiles newer than the last one seen.
+let newUserTimer = null;
+function watchNewUsers() {
+  if (newUserTimer) return;
+  let since = new Date().toISOString();
+  const check = async () => {
+    if (document.hidden) return;
+    const { data } = await supabase.from('profiles').select('id, username, created_at')
+      .gt('created_at', since).order('created_at', { ascending: true }).limit(10);
+    if (!data?.length) return;
+    since = data[data.length - 1].created_at;
+    showNewUsers(data);
+  };
+  newUserTimer = setInterval(check, 20_000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) check(); });
+}
+function showNewUsers(users) {
+  document.querySelector('.adm-newuser')?.remove();
+  const el = document.createElement('div');
+  el.className = 'adm-newuser';
+  el.setAttribute('role', 'status');
+  const names = users.map((u) => `@${u.username}`);
+  el.innerHTML = `
+    <span class="adm-newuser__icon">${iconUser()}</span>
+    <span class="adm-newuser__text"><b>${users.length > 1 ? `${users.length} new players joined` : 'New player joined'}</b>
+      <span>${esc(names.slice(0, 3).join(', '))}${names.length > 3 ? ` +${names.length - 3}` : ''}</span></span>
+    <button class="btn btn--pill" data-act="view">View</button>
+    <button class="icon-btn icon-btn--small" data-act="x" aria-label="Dismiss">×</button>`;
+  el.addEventListener('click', (e) => {
+    const act = e.target.closest('[data-act]')?.dataset.act;
+    if (act === 'view') go('people');
+    if (act) el.remove();
+  });
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 15_000);
+}
 
 boot();
