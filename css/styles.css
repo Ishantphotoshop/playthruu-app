@@ -7001,6 +7001,11 @@ a.gd-credit__name { text-decoration: none; }
    back and the visible gap stays exactly 2px whichever marks are present. */
 .rp-meta__icon--replay { margin: 0 calc(var(--u) * 0.039); }
 .rp-meta__icon--review { margin-left: calc(var(--u) * 0.0945); }
+/* Star size matches the friends' activity cards on the feed: 12px, and 10px
+   on phones (see .card-who__stars). Comes after the @supports rule above so
+   it wins. */
+.rp-meta { --u: 12px; }
+@media (max-width: 560px) { .rp-meta { --u: 10px; } }
 /* ---- Profile stats area (under Ratings): tiles, then Stats ---- */
 .ps-wrap { display: flex; flex-direction: column; gap: 12px; margin-top: 4px; }
 .ps-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
