@@ -6972,7 +6972,7 @@ a.gd-credit__name { text-decoration: none; }
 .rp-meta {
   --star-fill: var(--ink-ghost);
   --u: 12px;
-  display: flex; align-items: center; gap: calc(var(--u) * 0.5);
+  display: flex; align-items: center; gap: 2px;
   height: calc(var(--u) + 2px); margin-top: 6px; line-height: 0;
 }
 @supports (width: round(down, 10.5px, 1px)) {
@@ -6993,6 +6993,12 @@ a.gd-credit__name { text-decoration: none; }
 .rp-meta__icon--replay svg, .rp-meta__icon--review svg { transform-origin: 50% 50%; }
 .rp-meta__icon--replay svg { transform: scale(1.078); }
 .rp-meta__icon--review svg { transform: scale(1.189); }
+/* One gap everywhere: star to star, last star to a mark, mark to mark are
+   all the stars' own 2px. The scaled marks spill past their boxes (replay
+   by 3.9% of --u each side, review by 9.45%), so each gets that much margin
+   back and the visible gap stays exactly 2px whichever marks are present. */
+.rp-meta__icon--replay { margin: 0 calc(var(--u) * 0.039); }
+.rp-meta__icon--review { margin-left: calc(var(--u) * 0.0945); }
 /* ---- Profile stats area (under Ratings): tiles, then Stats ---- */
 .ps-wrap { display: flex; flex-direction: column; gap: 12px; margin-top: 4px; }
 .ps-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
