@@ -6972,14 +6972,13 @@ a.gd-credit__name { text-decoration: none; }
 .rp-meta {
   --star-fill: var(--ink-ghost);
   --u: 12px;
-  --rp-gap: calc((var(--poster-w) - 7.267 * var(--u)) / 6);
-  display: flex; align-items: center; gap: var(--rp-gap);
+  display: flex; align-items: center; gap: 7px;
   height: calc(var(--u) + 2px); margin-top: 6px; line-height: 0;
 }
 @supports (width: round(down, 10.5px, 1px)) {
   .rp-meta { --u: round(down, calc(var(--poster-w) * 0.11), 1px); }
 }
-.rp-meta .stars { --star-size: var(--u) !important; gap: var(--rp-gap); flex-shrink: 0; }
+.rp-meta .stars { --star-size: var(--u) !important; gap: 3.5px; flex-shrink: 0; }
 .rp-meta__icon {
   width: var(--u); height: var(--u); flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
@@ -6994,11 +6993,10 @@ a.gd-credit__name { text-decoration: none; }
 .rp-meta__icon--replay svg, .rp-meta__icon--review svg { transform-origin: 50% 50%; }
 .rp-meta__icon--replay svg { transform: scale(1.078); }
 .rp-meta__icon--review svg { transform: scale(1.189); }
-/* One gap everywhere (--rp-gap): star to star, last star to a mark, mark
-   to mark. It is sized so five stars + replay + review run exactly from the
-   poster's left edge to its right edge; with fewer marks the row is shorter. The scaled marks spill past their boxes (replay
-   by 3.9% of --u each side, review by 9.45%), so each gets that much margin
-   back and the visible gap stays exactly 2px whichever marks are present. */
+/* 3.5px between stars, 7px from the last star to a mark and between marks.
+   The scaled marks spill past their boxes (replay by 3.9% of --u each side,
+   review by 9.45%), so each gets that much margin back and the visible gaps
+   stay exactly those whichever marks are present. */
 .rp-meta__icon--replay { margin: 0 calc(var(--u) * 0.039); }
 .rp-meta__icon--review { margin-left: calc(var(--u) * 0.0945); }
 /* Star size matches the friends' activity cards on the feed: 12px, and 10px
