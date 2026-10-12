@@ -6985,6 +6985,15 @@ a.gd-credit__name { text-decoration: none; }
   color: var(--star-fill);
 }
 .rp-meta__icon svg { width: 100%; height: 100%; display: block; stroke-width: 1.6; }
+/* Same sizes as the friends' activity cards on the feed (.card-who__stars):
+   touching stars, then the replay and review marks a hair smaller. */
+.rp-meta { gap: 3px; height: 14px; }
+.rp-meta .stars { --star-size: 12px !important; gap: 0; }
+.rp-meta__icon { width: 11.5px; height: 11.5px; }
+@media (max-width: 560px) {
+  .rp-meta .stars { --star-size: 10px !important; }
+  .rp-meta__icon { width: 9.5px; height: 9.5px; }
+}
 
 /* ---- Profile stats area (under Ratings): tiles, then Stats ---- */
 .ps-wrap { display: flex; flex-direction: column; gap: 12px; margin-top: 4px; }
