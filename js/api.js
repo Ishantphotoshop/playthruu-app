@@ -1972,7 +1972,11 @@ export async function browseGames({
   // How long it takes (a BROWSE_LENGTHS value), and "just say how many
   // games match" instead of returning them (the Filters page's Show button).
   length, countOnly,
+  // Only games not out yet (the next nine months, or inside dateFrom/dateTo),
+  // whatever the sort. The 'anticipated' sort implies it.
+  upcoming,
 } = {}) {
+  const future = sort === 'anticipated' || !!upcoming;
   const none = () => (countOnly ? 0 : { games: [], hasMore: false });
   try {
     const limit = pageSize || 20;
@@ -1990,7 +1994,7 @@ export async function browseGames({
     // contradicts it: together they asked for a release date that is
     // both before and after right now, which nothing satisfies, and the
     // tab came back permanently empty.
-    if (sort !== 'anticipated') {
+    if (!future) {
       clauses.push(`(first_release_date <= ${now} | first_release_date = null)`);
     }
 
@@ -2093,7 +2097,7 @@ export async function browseGames({
     // last second of dateTo, so a game out on the last day still counts.
     const fromSec = dateFrom ? Math.floor(Date.parse(`${dateFrom}T00:00:00Z`) / 1000) : null;
     const toSec = dateTo ? Math.floor(Date.parse(`${dateTo}T23:59:59Z`) / 1000) : null;
-    if (sort === 'anticipated') {
+    if (future) {
       // Unreleased only; inside the chosen dates if any, otherwise the next nine months.
       clauses.push(`first_release_date >= ${Math.max(nowSec, fromSec ?? 0)} & first_release_date <= ${toSec ?? nowSec + 9 * 30 * 86400}`);
     } else if (fromSec != null || toSec != null) {
@@ -2121,7 +2125,7 @@ export async function browseGames({
     if (sort === 'top_rated') sortClause = 'total_rating desc';
     else if (sort === 'lowest') { sortClause = 'total_rating asc'; clauses.push('total_rating != null'); }
     else if (sort === 'all_time') sortClause = 'aggregated_rating desc';
-    else if (sort === 'anticipated') sortClause = 'hypes desc';
+    else if (sort === 'anticipated' || sort === 'hyped') sortClause = 'hypes desc';
     else if (sort === 'newest') sortClause = 'first_release_date desc';
     else if (sort === 'oldest') sortClause = 'first_release_date asc';
     else if (sort === 'recent') sortClause = 'hypes desc';

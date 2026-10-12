@@ -17,8 +17,11 @@ import { navigate } from '../router.js';
 // rating and rating count, hypes), see browseGames in api.js.
 
 const THIS_YEAR = new Date().getFullYear();
+const isoDaysAgo = (n) => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10);
 const YEARS = [
   { id: '', label: 'Any time' },
+  { id: 'upcoming', label: 'Coming soon', upcoming: true },
+  { id: 'recent', label: 'Last 4 months', from: isoDaysAgo(120), to: isoDaysAgo(0) },
   { id: 'this', label: `This year (${THIS_YEAR})`, from: `${THIS_YEAR}-01-01`, to: `${THIS_YEAR}-12-31` },
   { id: 'last', label: `Last year (${THIS_YEAR - 1})`, from: `${THIS_YEAR - 1}-01-01`, to: `${THIS_YEAR - 1}-12-31` },
   { id: '2020s', label: '2020s', from: '2020-01-01', to: '2029-12-31' },
@@ -27,10 +30,6 @@ const YEARS = [
   { id: '1990s', label: '1990s', from: '1990-01-01', to: '1999-12-31' },
   { id: '1980s', label: '1980s', from: '1980-01-01', to: '1989-12-31' },
   { id: 'older', label: 'Before 1980', from: '1950-01-01', to: '1979-12-31' },
-];
-const RATINGS = [
-  { label: 'Any rating', value: '' }, { label: '90 and up', value: '90' }, { label: '80 and up', value: '80' },
-  { label: '75 and up', value: '75' }, { label: '50 and up', value: '50' },
 ];
 // Every IGDB genre, plus Horror (IGDB files it as a theme, but people
 // browse by it like a genre), A to Z.
@@ -43,15 +42,17 @@ const vals = (v) => String(v || '').split(',').filter(Boolean);
 
 // Ready-made lists at the top of Browse. `f` is the filters each one
 // starts with; the Filters page can change any of them afterwards.
+// Each one is made only of things the Filters page also has, so opening
+// Filters shows exactly the choices that make the list (Hidden gems also
+// keeps its "not famous yet" rating-count band, which has no row of its own).
 const LISTS = [
-  { id: 'popular', label: 'Popular right now', f: { sort: 'trending' } },
-  { id: 'top', label: 'Highest rated', f: { sort: 'top_rated', minVotes: api.CREDIBLE_VOTES * 5 } },
-  { id: 'critics', label: 'Critics’ favourites', f: { sort: 'all_time', minVotes: api.CREDIBLE_VOTES * 5 } },
-  { id: 'anticipated', label: 'Most anticipated', f: { sort: 'anticipated' } },
-  { id: 'new', label: 'New releases', f: { sort: 'recent' } },
-  { id: 'gems', label: 'Hidden gems', f: { sort: 'top_rated', minRating: '80', minVotes: api.CREDIBLE_VOTES, maxVotes: api.FAMOUS_VOTES } },
-  { id: 'coop', label: 'Play with friends', f: { sort: 'popular', players: 'coop' } },
-  { id: 'couch', label: 'Split screen', f: { sort: 'popular', players: 'split' } },
+  { id: 'popular', label: 'Popular right now', f: { byPop: 'trending' } },
+  { id: 'top', label: 'Highest rated', f: { byRating: 'high' } },
+  { id: 'new', label: 'New releases', f: { year: 'recent', byPop: 'hyped' } },
+  { id: 'anticipated', label: 'Most anticipated', f: { year: 'upcoming', byPop: 'hyped' } },
+  { id: 'gems', label: 'Hidden gems', f: { byRating: 'high', minVotes: api.CREDIBLE_VOTES, maxVotes: api.FAMOUS_VOTES } },
+  { id: 'coop', label: 'Play with friends', f: { players: 'coop' } },
+  { id: 'couch', label: 'Split screen', f: { players: 'split' } },
 ];
 const LIST = Object.fromEntries(LISTS.map((l) => [l.id, l]));
 
@@ -64,21 +65,67 @@ const KINDS = {
   players: { label: 'Players', key: 'players', options: api.BROWSE_PLAYERS },
 };
 
+// Sort is three groups, at most one pick in each, and picks in different
+// groups combine (Oldest first + Highest rated). Nothing picked = Most popular.
+// `logged` is what to do with games you've logged: '' show, 'fade', 'hide'.
 const BLANK = {
-  query: '', sort: 'popular', genre: '', platform: '', length: '', year: '', players: '', stars: '',
-  minVotes: '', maxVotes: '', minHypes: '', hideLogged: false, fadeLogged: false,
+  query: '', byPop: '', byDate: '', byRating: '', genre: '', platform: '', length: '', year: '', players: '', stars: '',
+  minVotes: '', maxVotes: '', logged: '',
 };
+const SORT_KEYS = ['byPop', 'byDate', 'byRating'];
+const POP_OPTS = [{ label: 'Trending now', value: 'trending' }, { label: 'Most popular', value: 'popular' }, { label: 'Most hyped', value: 'hyped' }];
+const DATE_OPTS = [{ label: 'Newest first', value: 'newest' }, { label: 'Oldest first', value: 'oldest' }];
+const RATING_OPTS = [{ label: 'Highest first', value: 'high' }, { label: 'Lowest first', value: 'low' }];
+const MINE_OPTS = [{ label: 'Highest first', value: 'mine_high' }, { label: 'Lowest first', value: 'mine_low' }];
+const LOGGED_OPTS = [{ label: 'Show them', value: '' }, { label: 'Fade them', value: 'fade' }, { label: 'Hide them', value: 'hide' }];
+// What each sort pick is called on chips and in the title.
+const SORT_NAME = {
+  trending: 'Trending now', popular: 'Most popular', hyped: 'Most hyped', newest: 'Newest first', oldest: 'Oldest first',
+  high: 'Highest rated', low: 'Lowest rated', mine_high: 'Your highest rated', mine_low: 'Your lowest rated',
+};
+const API_SORT = { trending: 'trending', popular: 'popular', hyped: 'hyped', newest: 'newest', oldest: 'oldest', high: 'top_rated', low: 'lowest' };
+const isMine = (f) => f.byRating === 'mine_high' || f.byRating === 'mine_low';
+const sortName = (f) => SORT_KEYS.map((k) => SORT_NAME[f[k]]).filter(Boolean).join(' + ');
+
+// How a set of sort picks is fetched. One pick (or none): IGDB sorts it.
+// Several: IGDB can only sort by one thing, so the top 500 by popularity
+// (or by rating, when popularity isn't picked) are fetched and put in
+// order here: release date first when picked, then rating, then the order
+// they came in.
+function sortPlan(f) {
+  const picked = SORT_KEYS.filter((k) => f[k]);
+  if (picked.length <= 1) return { sort: API_SORT[f[picked[0]]] || 'popular', mix: false };
+  return { sort: API_SORT[f.byPop || f.byRating], mix: true };
+}
+const MIX_POOL = 500;
+const byDate = (dir) => (a, b) => {
+  const x = a.release_date || '', y = b.release_date || '';
+  if (!x || !y) return (!x) - (!y);
+  return dir === 'oldest' ? x.localeCompare(y) : y.localeCompare(x);
+};
+const byRating = (dir) => (a, b) => {
+  const x = a.igdb_rating, y = b.igdb_rating;
+  if (x == null || y == null) return (x == null) - (y == null);
+  return dir === 'low' ? x - y : y - x;
+};
+function mixOrder(games, f) {
+  const steps = [];
+  if (f.byDate) steps.push(byDate(f.byDate));
+  if (f.byRating && f.byPop) steps.push(byRating(f.byRating));
+  // Release dates are whole days, so ties are common: rating breaks them.
+  return [...games].sort((a, b) => { for (const s of steps) { const r = s(a, b); if (r) return r; } return 0; });
+}
 
 // The Filters page's side menu, top to bottom.
 const CATS = [
   { id: 'sort', label: 'Sort' },
-  { id: 'mine', label: 'Your games', signedIn: true },
   { id: 'platform', label: 'Platform' },
   { id: 'genre', label: 'Genre' },
   { id: 'length', label: 'Length' },
   { id: 'year', label: 'Released' },
   { id: 'players', label: 'Players' },
-  { id: 'rating', label: 'Rating' },
+  { id: 'stars', label: 'Stars' },
+  { id: 'logged', label: 'Your games', signedIn: true },
 ];
 
 // What browseGames needs, from the screen's own filter object.
@@ -86,9 +133,9 @@ function toQuery(f, page) {
   const y = YEARS.find((x) => x.id === f.year);
   // Always full games: DLC, packs and updates never belong in these lists.
   return {
-    query: f.query, sort: f.sort, genre: f.genre, platform: f.platform, length: f.length, players: f.players, stars: f.stars,
-    minVotes: f.minVotes, maxVotes: f.maxVotes, minHypes: f.minHypes, gameType: 'games',
-    dateFrom: y?.from || '', dateTo: y?.to || '', page,
+    query: f.query, sort: sortPlan(f).sort, genre: f.genre, platform: f.platform, length: f.length, players: f.players, stars: f.stars,
+    minVotes: f.minVotes, maxVotes: f.maxVotes, gameType: 'games',
+    dateFrom: y?.from || '', dateTo: y?.to || '', upcoming: !!y?.upcoming, page,
   };
 }
 
@@ -125,13 +172,6 @@ export function warmDiscover() {
   LISTS.slice(0, 4).forEach((l) => firstPage(l.id));
 }
 
-// The Rating page: average rating sorts, the person's own rating sorts,
-// and a half-star slider to browse games at one star rating.
-const RATING_SORTS = {
-  top_rated: 'Average, highest first', lowest: 'Average, lowest first',
-  mine_high: 'Yours, highest first', mine_low: 'Yours, lowest first',
-};
-const MY_SORTS = new Set(['mine_high', 'mine_low']);
 const starsLabel = (v) => {
   const n = Number(v);
   const whole = Math.floor(n);
@@ -256,17 +296,16 @@ export function renderBrowseGames(root) {
   function chipFor(key) {
     const f = filters[key];
     switch (key) {
-      case 'sort': return RATING_SORTS[f] || optLabel(api.BROWSE_SORTS_SIMPLE, f).replace(/ first$/, '') || '';
+      case 'byPop': case 'byDate': case 'byRating': return SORT_NAME[f] || '';
       case 'year': return YEARS.find((y) => y.id === f)?.label || '';
       case 'length': return optLabel(api.BROWSE_LENGTHS, f);
       case 'players': return optLabel(api.BROWSE_PLAYERS, f);
       case 'stars': return f ? starsLabel(f) : '';
-      case 'hideLogged': return f ? 'Hiding logged games' : '';
-      case 'fadeLogged': return f ? 'Fading logged games' : '';
+      case 'logged': return f === 'hide' ? 'Hiding your games' : f === 'fade' ? 'Fading your games' : '';
       default: return '';
     }
   }
-  const CHIP_KEYS = ['sort', 'platform', 'genre', 'length', 'year', 'players', 'stars', 'hideLogged', 'fadeLogged'];
+  const CHIP_KEYS = ['byPop', 'byDate', 'byRating', 'platform', 'genre', 'length', 'year', 'players', 'stars', 'logged'];
   // One chip per filter, and one per platform or genre picked on top of
   // where the list started.
   function chipList() {
@@ -300,12 +339,12 @@ export function renderBrowseGames(root) {
   function syncTitle() {
     const el = qs('.topbar__title', root);
     if (!el) return;
-    const sortLabel = filters.sort !== base.sort ? (RATING_SORTS[filters.sort] || optLabel(api.BROWSE_SORTS_SIMPLE, filters.sort)) : '';
-    el.textContent = sortLabel || title;
+    const sortChanged = SORT_KEYS.some((k) => String(filters[k] ?? '') !== String(base[k] ?? ''));
+    el.textContent = (sortChanged && sortName(filters)) || title;
   }
 
   async function needDiary() {
-    if (diary || !state.user || !(filters.hideLogged || filters.fadeLogged)) return;
+    if (diary || !state.user || !filters.logged) return;
     try { diary = await api.getDiaryGameKeys(state.user.id); } catch { diary = null; }
   }
   const logged = (g) => !!diary && api.isInDiary(diary, g);
@@ -324,8 +363,22 @@ export function renderBrowseGames(root) {
       rows = rows.filter((g) => g.igdb_id && keep.has(g.igdb_id));
     }
     if (filters.stars) rows = rows.filter((g) => g.my_rating === Number(filters.stars));
-    rows.sort((a, b) => (filters.sort === 'mine_low' ? a.my_rating - b.my_rating : b.my_rating - a.my_rating));
+    const mine = (a, b) => (filters.byRating === 'mine_low' ? a.my_rating - b.my_rating : b.my_rating - a.my_rating);
+    // Release date picked too: that order first, your rating breaks ties.
+    const year = (a, b) => {
+      if (!filters.byDate) return 0;
+      const x = a.release_year, y = b.release_year;
+      if (!x || !y) return (!x) - (!y);
+      return filters.byDate === 'oldest' ? x - y : y - x;
+    };
+    rows.sort((a, b) => year(a, b) || mine(a, b));
     return { games: rows, hasMore: false };
+  }
+  // Several sort picks at once: the pool of up to 500, put in order here.
+  async function mixed() {
+    if (fetchedPage > 1) return { games: [], hasMore: false };
+    const res = await api.browseGames({ ...toQuery(filters, 1), limit: MIX_POOL });
+    return { games: mixOrder(res.games, filters), hasMore: false };
   }
 
   // Loads the way "Bored? Try these" does: posters come in twelve at a
@@ -351,12 +404,13 @@ export function renderBrowseGames(root) {
   // One more page from the server into the buffer (the list's own first
   // page when it was already fetched for Browse's thumbnails).
   async function fetchPage(my, { warm = null } = {}) {
-    const mine = MY_SORTS.has(filters.sort) && state.user;
+    const mine = isMine(filters) && state.user;
+    const mix = !mine && sortPlan(filters).mix;
     fetchedPage += 1;
-    const res = mine ? await myRated() : await (warm || api.browseGames(toQuery(filters, fetchedPage)));
+    const res = mine ? await myRated() : mix ? await mixed() : await (warm || api.browseGames(toQuery(filters, fetchedPage)));
     if (my !== ticket) return;
-    serverMore = !!res.hasMore && !mine;
-    buffer.push(...(filters.hideLogged ? res.games.filter((g) => !logged(g)) : res.games));
+    serverMore = !!res.hasMore && !mine && !mix;
+    buffer.push(...(filters.logged === 'hide' ? res.games.filter((g) => !logged(g)) : res.games));
   }
 
   async function load(reset) {
@@ -391,7 +445,7 @@ export function renderBrowseGames(root) {
         const start = shown.length;
         shown.push(...batch);
         grid.insertAdjacentHTML('beforeend', batch.map((g, i) => `
-          <button type="button" class="discovery-tile${filters.fadeLogged && logged(g) ? ' discovery-tile--logged' : ''}" data-idx="${start + i}" aria-label="${esc(g.title)}">
+          <button type="button" class="discovery-tile${filters.logged === 'fade' && logged(g) ? ' discovery-tile--logged' : ''}" data-idx="${start + i}" aria-label="${esc(g.title)}">
             ${posterFrame(g.cover_url, g.title, 'discovery-tile__cover')}
           </button>`).join(''));
         [...grid.children].slice(start).forEach(wireTile);
@@ -456,12 +510,14 @@ export function renderBrowseGames(root) {
 
     const cats = CATS.filter((c) => !c.signedIn || state.user);
     const differs = (k) => String(draft[k] ?? '') !== String(base[k] ?? '');
-    const catSet = (id) => (id === 'mine' ? differs('hideLogged') || differs('fadeLogged')
-      : id === 'rating' ? differs('stars') : differs(id));
+    const catSet = (id) => (id === 'sort' ? SORT_KEYS.some(differs) : differs(id));
     const anySet = () => Object.keys(BLANK).some((k) => k !== 'query' && differs(k));
 
     const tick = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
-    const isOn = (k, v) => (MULTI.has(k) ? vals(draft[k]).includes(v) : String(draft[k] ?? '') === v);
+    // With nothing picked in Sort the games come most popular first, so
+    // that one shows as picked.
+    const isOn = (k, v) => (MULTI.has(k) ? vals(draft[k]).includes(v)
+      : String(draft[k] ?? '') === v || (k === 'byPop' && v === 'popular' && !SORT_KEYS.some((s) => draft[s])));
     const opt = (k, o, multi = MULTI.has(k)) => {
       const on = isOn(k, o.value);
       return `<button type="button" class="bf-opt" data-k="${k}" data-v="${esc(o.value)}">
@@ -471,16 +527,17 @@ export function renderBrowseGames(root) {
     const anyRow = (k, label) => `<button type="button" class="bf-opt" data-k="${k}" data-v="">
         <span class="bf-mark bf-mark--radio${draft[k] ? '' : ' is-on'}"></span><span class="bf-opt__name">${esc(label)}</span></button>`;
     const label = (text) => `<p class="browse-label">${esc(text)}</p>`;
-    const sw = (k, text) => `<button type="button" class="browse-frow" data-sw="${k}">
-        <span class="browse-frow__name">${esc(text)}</span><span class="browse-switch${draft[k] ? ' is-on' : ''}" aria-hidden="true"></span></button>`;
 
     function pane() {
       switch (cat) {
         case 'sort':
-          return api.BROWSE_SORTS_SIMPLE.map((o) => (o.section ? label(o.section) : opt('sort', o))).join('')
-            + (state.user ? label('Your rating') + opt('sort', { label: 'Highest first', value: 'mine_high' }) + opt('sort', { label: 'Lowest first', value: 'mine_low' }) : '');
-        case 'mine':
-          return sw('hideLogged', 'Hide games I’ve logged') + sw('fadeLogged', 'Fade games I’ve logged');
+          return label('Popularity') + POP_OPTS.map((o) => opt('byPop', o)).join('')
+            + label('Release date') + DATE_OPTS.map((o) => opt('byDate', o)).join('')
+            + label('Average rating') + RATING_OPTS.map((o) => opt('byRating', o)).join('')
+            + (state.user ? label('Your rating') + MINE_OPTS.map((o) => opt('byRating', o)).join('') : '')
+            + '<p class="bf-note">Pick one from each group to mix them. Oldest first + Highest first shows the best-rated games, oldest first. Tap a pick again to remove it.</p>';
+        case 'logged':
+          return label('Games you’ve logged') + LOGGED_OPTS.map((o) => opt('logged', o)).join('');
         case 'platform':
           return anyRow('platform', 'Any platform') + api.BROWSE_PLATFORM_GROUPS.map((g) => label(g.label) + g.items.map((o) => opt('platform', o)).join('')).join('');
         case 'genre':
@@ -492,7 +549,7 @@ export function renderBrowseGames(root) {
           return YEARS.map((y) => opt('year', { label: y.label, value: y.id })).join('');
         case 'players':
           return anyRow('players', 'Anyone') + api.BROWSE_PLAYERS.map((o) => opt('players', o)).join('');
-        case 'rating':
+        case 'stars':
           return `${label('Average rating')}
             <div class="star-pick">
               <div class="star-pick__stars">${starsHtml(draft.stars)}
@@ -554,11 +611,14 @@ export function renderBrowseGames(root) {
     function recount() {
       clearTimeout(countTimer);
       const my = ++countTicket;
-      if (MY_SORTS.has(draft.sort)) { setShow('Show games', false); return; }
+      if (isMine(draft)) { setShow('Show games', false); return; }
       countTimer = setTimeout(async () => {
         const n = await api.browseGames({ ...toQuery(draft, 1), countOnly: true });
         if (my !== countTicket || !sheet.isConnected) return;
+        // Mixed sorts show at most the top 500 (see sortPlan).
+        const cap = sortPlan(draft).mix && n > MIX_POOL;
         if (typeof n !== 'number') setShow('Show games', false);
+        else if (cap) setShow(`Show top ${MIX_POOL} games`, false);
         else setShow(n ? `Show ${n.toLocaleString('en-US')} game${n === 1 ? '' : 's'}` : 'No games match', !n);
       }, 300);
     }
@@ -569,7 +629,7 @@ export function renderBrowseGames(root) {
     }
 
     sheet.addEventListener('click', (e) => {
-      const el = e.target.closest('[data-k],[data-sw],[data-cat],[data-act]');
+      const el = e.target.closest('[data-k],[data-cat],[data-act]');
       if (!el) return;
       if (el.dataset.cat && el.classList.contains('bf-cat')) { cat = el.dataset.cat; paint(); return; }
       if (el.dataset.k) {
@@ -578,11 +638,11 @@ export function renderBrowseGames(root) {
         if (MULTI.has(k) && v) {
           const now = vals(draft[k]);
           draft[k] = (now.includes(v) ? now.filter((x) => x !== v) : [...now, v]).join(',');
-        } else draft[k] = v;
+        } else if (SORT_KEYS.includes(k) && draft[k] === v) draft[k] = ''; // tap a sort pick again to drop it
+        else draft[k] = v;
         paint(); recount();
         return;
       }
-      if (el.dataset.sw) { draft[el.dataset.sw] = !draft[el.dataset.sw]; paint(); return; }
       const act = el.dataset.act;
       if (act === 'close') close();
       else if (act === 'reset') { Object.assign(draft, base, { query: draft.query }); paint(); recount(); }
