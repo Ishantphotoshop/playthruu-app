@@ -1,0 +1,42 @@
+// The admin's own small icon set: one stroke weight and one grid, so every
+// chip, row and button reads as part of the same family.
+const s = (inner, { fill = 'none', w = 1.8 } = {}) =>
+  `<svg viewBox="0 0 24 24" fill="${fill}" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${inner}</svg>`;
+
+export const icons = {
+  flame: () => s('<path d="M12 3c.5 3-2 4.6-2 7.4A2.6 2.6 0 0 0 12.6 13c1.5 0 2.4-1.2 2.4-2.6 1.6 1.3 3 3.2 3 5.6a6 6 0 0 1-12 0c0-3.4 2.2-5 3.2-7.2C10 7 11 5 12 3Z"/>'),
+  megaphone: () => s('<path d="M3 11v2a1 1 0 0 0 1 1h2.5l7 4.5v-14L6.5 9H4a1 1 0 0 0-1 1z"/><path d="M17.5 9.5a3.5 3.5 0 0 1 0 5"/><path d="M6.5 14v4a1.5 1.5 0 0 0 3 0v-2.5"/>'),
+  news: () => s('<rect x="4" y="4" width="16" height="16" rx="2.4"/><path d="M8 9h8M8 12.5h8M8 16h5"/>'),
+  people: () => s('<circle cx="9" cy="8.5" r="3.2"/><path d="M3 19c.4-3.2 2.8-5 6-5s5.6 1.8 6 5"/><path d="M15.8 5.6a3 3 0 0 1 0 5.8"/><path d="M17.6 14.4c2 .6 3.2 2.2 3.4 4.6"/>'),
+  user: () => s('<circle cx="12" cy="8.5" r="3.6"/><path d="M4.8 20c.5-3.6 3.4-5.6 7.2-5.6s6.7 2 7.2 5.6"/>'),
+  flag: () => s('<path d="M5.5 21V4"/><path d="M5.5 4.5h11.2l-2 4 2 4H5.5"/>'),
+  check: () => s('<path d="m5 12.5 4.4 4.4L19 7.4"/>', { w: 2.2 }),
+  review: () => s('<path d="M5 6h14M5 11h14M5 16h8"/>', { w: 2 }),
+  comment: () => s('<path d="M20 11.4a7.6 7.6 0 0 1-11.2 6.7L4 19.5l1.5-4.2A7.6 7.6 0 1 1 20 11.4Z"/>'),
+  list: () => s('<path d="M9 6.5h11M9 12h11M9 17.5h11"/><circle cx="4.6" cy="6.5" r="1" fill="currentColor"/><circle cx="4.6" cy="12" r="1" fill="currentColor"/><circle cx="4.6" cy="17.5" r="1" fill="currentColor"/>'),
+  game: () => s('<rect x="3" y="7.5" width="18" height="10" rx="4"/><path d="M8 10.5v4M6 12.5h4"/><circle cx="15.5" cy="11.5" r=".8" fill="currentColor"/><circle cx="17.5" cy="13.5" r=".8" fill="currentColor"/>'),
+  mail: () => s('<rect x="3.5" y="5.5" width="17" height="13" rx="2.4"/><path d="m4.5 7.5 7.5 5.5 7.5-5.5"/>'),
+  activity: () => s('<path d="M3 12h4l2.5-6.5L14 18l2.5-6H21"/>'),
+  chart: () => s('<path d="M4 20V10M10 20V4M16 20v-7M21 20H3"/>'),
+  eye: () => s('<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="2.8"/>'),
+  eyeOff: () => s('<path d="M4 4l16 16"/><path d="M9.9 5.8A9.5 9.5 0 0 1 12 5.5c6 0 9.5 6.5 9.5 6.5a16 16 0 0 1-3 3.8M6.4 7.5A16 16 0 0 0 2.5 12S6 18.5 12 18.5a9.4 9.4 0 0 0 3.4-.6"/><path d="M9.9 9.9a2.8 2.8 0 0 0 4.2 3.6"/>'),
+  trash: () => s('<path d="M5 7h14M9.5 7V5a1.5 1.5 0 0 1 1.5-1.5h2A1.5 1.5 0 0 1 14.5 5v2M6.5 7l1 12.5A1.5 1.5 0 0 0 9 21h6a1.5 1.5 0 0 0 1.5-1.5L17.5 7M10 11v6M14 11v6"/>'),
+  edit: () => s('<path d="M4 20h4L19 9a2.1 2.1 0 0 0-3-3L5 17z"/><path d="m14 7 3 3"/>'),
+  link: () => s('<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>'),
+  open: () => s('<path d="M14 4h6v6"/><path d="M20 4 11 13"/><path d="M18 14v4.5A1.5 1.5 0 0 1 16.5 20h-11A1.5 1.5 0 0 1 4 18.5v-11A1.5 1.5 0 0 1 5.5 6H10"/>'),
+  copy: () => s('<rect x="8.5" y="8.5" width="11" height="11" rx="2"/><path d="M15.5 8.5V6A1.5 1.5 0 0 0 14 4.5H6A1.5 1.5 0 0 0 4.5 6v8A1.5 1.5 0 0 0 6 15.5h2.5"/>'),
+  ban: () => s('<circle cx="12" cy="12" r="8.5"/><path d="m6 6 12 12"/>'),
+  shield: () => s('<path d="M12 3.5 5 6v5.5c0 4.4 2.9 7.6 7 9 4.1-1.4 7-4.6 7-9V6z"/><path d="m9 12 2.2 2.2L15.2 10"/>'),
+  grip: () => s('<circle cx="9" cy="6.5" r="1.4" fill="currentColor"/><circle cx="15" cy="6.5" r="1.4" fill="currentColor"/><circle cx="9" cy="12" r="1.4" fill="currentColor"/><circle cx="15" cy="12" r="1.4" fill="currentColor"/><circle cx="9" cy="17.5" r="1.4" fill="currentColor"/><circle cx="15" cy="17.5" r="1.4" fill="currentColor"/>'),
+  more: () => s('<circle cx="5.5" cy="12" r="1.3" fill="currentColor"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/><circle cx="18.5" cy="12" r="1.3" fill="currentColor"/>'),
+  plus: () => s('<path d="M12 5v14M5 12h14"/>', { w: 2.2 }),
+  gear: () => s('<circle cx="12" cy="12" r="3"/><path d="M19.4 13.5a7.7 7.7 0 0 0 0-3l1.9-1.5-1.9-3.3-2.3.9a7.5 7.5 0 0 0-2.6-1.5L14.1 3h-3.8l-.4 2.1a7.5 7.5 0 0 0-2.6 1.5l-2.3-.9-1.9 3.3 1.9 1.5a7.7 7.7 0 0 0 0 3l-1.9 1.5 1.9 3.3 2.3-.9a7.5 7.5 0 0 0 2.6 1.5l.4 2.1h3.8l.4-2.1a7.5 7.5 0 0 0 2.6-1.5l2.3.9 1.9-3.3z"/>'),
+  signout: () => s('<path d="M9 4.5H6.5A1.5 1.5 0 0 0 5 6v12a1.5 1.5 0 0 0 1.5 1.5H9"/><path d="M15 8l4 4-4 4M19 12H9"/>'),
+  clock: () => s('<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>'),
+  star: () => s('<path d="m12 3.8 2.5 5.1 5.6.8-4 3.9.9 5.6-5-2.6-5 2.6.9-5.6-4-3.9 5.6-.8z"/>'),
+  pin: () => s('<path d="M9 4h6l-1 5 3 3v1.5H7V12l3-3z"/><path d="M12 13.5V20"/>'),
+  download: () => s('<path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19.5h14"/>'),
+  heart: () => s('<path d="M12 20.3 4.3 12.6A4.7 4.7 0 0 1 11 6l1 1 1-1a4.7 4.7 0 0 1 6.7 6.6z"/>'),
+  refresh: () => s('<path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 4v4.5h-4.5"/>'),
+  lock: () => s('<rect x="5" y="10.5" width="14" height="9.5" rx="2.4"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/>'),
+};
