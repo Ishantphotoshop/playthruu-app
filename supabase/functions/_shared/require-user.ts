@@ -14,6 +14,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
 function reply(cors: Record<string, string>, status: number, error: string) {
   return new Response(JSON.stringify({ error }), {
@@ -22,12 +23,29 @@ function reply(cors: Record<string, string>, status: number, error: string) {
   });
 }
 
+function roleOf(token: string): string {
+  try {
+    const part = token.split(".")[1] ?? "";
+    const json = atob(part.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(part.length / 4) * 4, "="));
+    return String(JSON.parse(json).role ?? "");
+  } catch {
+    return "";
+  }
+}
+
 export async function requireUser(
   req: Request,
   cors: Record<string, string>,
 ): Promise<{ user: { id: string } } | { error: Response }> {
   const token = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
   if (!token) return { error: reply(cors, 401, "Sign in to use this.") };
+  // Our own functions calling each other (fetch-cast asks igdb-proxy for a game's name) present the
+  // project's secret service key, which only the server has. That is not a person, but it is us.
+  // These functions keep "Verify JWT" on, so the platform has already checked the token's signature
+  // before this code runs: a token that says role=service_role can only be the project's own key.
+  if ((SERVICE_ROLE_KEY && token === SERVICE_ROLE_KEY) || roleOf(token) === "service_role") {
+    return { user: { id: "server" } };
+  }
   try {
     const client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       auth: { persistSession: false, autoRefreshToken: false },
