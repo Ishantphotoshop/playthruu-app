@@ -2811,12 +2811,12 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 .icon-btn--small svg { width: 15px; height: 15px; }
 .playing-slot { position: relative; }
 .playing-slot__remove {
-  position: absolute; top: 6px; right: 6px; z-index: 2;
+  position: absolute; top: 3px; right: 3px; z-index: 2;
   width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center;
   /* Sits on its own dark disc over poster art, not the page background —
      the icon stays white regardless of theme so it doesn't go dark-on-dark. */
 }
-.playing-slot__remove svg { width: 12px; height: 12px; display: block; }
+.playing-slot__remove svg { width: 9px; height: 9px; display: block; }
 .playing-empty-hint { padding: 8px 2px 4px; }
 /* The empty slot at the end of Currently playing: same size as a poster,
    a plus in the middle. Tapping it opens the game search. */
