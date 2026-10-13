@@ -503,17 +503,17 @@ export function pulseLogTab() {
   tab.addEventListener('animationend', () => tab.classList.remove('is-logged'), { once: true });
 }
 
-// Two kinds of "played" game. A DIARY entry is a real log: made after the
-// account existed (a play date on or after the day it was created, or a rating or
-// review with no date). "Before" is everything else: games marked as played that
-// you already played before joining, or marked without a date, rating or review.
+// Like Letterboxd's Films and Diary. PLAYED holds every game you have marked as
+// played. The DIARY holds only the ones you logged with a play date on or after the
+// day your account was created (saving an entry dates it today). Marking a game as
+// played, or rating it, from the game page does not make a diary entry.
 export function playedKind(log, joinedAt) {
   const d = log.played_date ? new Date(`${String(log.played_date).slice(0, 10)}T00:00:00`) : null;
-  if (d && joinedAt) {
+  if (!d) return 'marked';
+  if (joinedAt) {
     const joined = new Date(joinedAt);
     joined.setHours(0, 0, 0, 0);
-    if (d < joined) return 'before';
+    if (d < joined) return 'marked';
   }
-  if (!d && !log.rating && !log.review) return 'before';
   return 'diary';
 }

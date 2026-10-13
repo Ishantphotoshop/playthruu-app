@@ -10,7 +10,7 @@ const THIS_YEAR = new Date().getFullYear();
 const MODES = {
   completed: { title: 'Played', statuses: ['played', 'dropped'], reviewsOnly: false, empty: (u) => `${u} hasn't played any games yet.` },
   diary: { title: 'Diary', statuses: ['played', 'dropped'], reviewsOnly: false, diary: true, keep: (l, profile) => playedKind(l, profile.created_at) === 'diary', empty: (u) => `${u} hasn't got any diary entries yet.` },
-  before: { title: 'Played', statuses: ['played', 'dropped'], reviewsOnly: false, keep: (l, profile) => playedKind(l, profile.created_at) === 'before', empty: (u) => `${u} hasn't marked any games as played yet.` },
+  played: { title: 'Played', statuses: ['played', 'dropped'], reviewsOnly: false, empty: (u) => `${u} hasn't marked any games as played yet.` },
   year: { title: 'This year', statuses: ['played', 'dropped'], reviewsOnly: false, keep: (l) => { const raw = l.played_date || l.created_at; return !!raw && new Date(raw).getFullYear() === THIS_YEAR; }, empty: (u) => `${u} hasn't played anything this year yet.` },
   logged: { title: 'Played', statuses: undefined, reviewsOnly: false, keep: (l) => l.rating || l.review || l.loved, empty: (u) => `${u} hasn't logged anything yet.` },
   reviews: { title: 'Reviews', statuses: undefined, reviewsOnly: true, empty: (u) => `${u} hasn't written any reviews yet.` },

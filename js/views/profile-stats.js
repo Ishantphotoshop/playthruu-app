@@ -39,10 +39,8 @@ function rowsHtml(profile, logs, isOwn) {
   const inYear = (l) => { const raw = l.played_date || l.created_at; return !!raw && new Date(raw).getFullYear() === THIS_YEAR; };
   const playedAll = own.filter((l) => l.status === 'played' || l.status === 'dropped');
   const diary = playedAll.filter((l) => playedKind(l, profile.created_at) === 'diary');
-  const before = playedAll.filter((l) => playedKind(l, profile.created_at) === 'before');
   const sets = {
     played: diary,
-    before,
     thisYear: diary.filter(inYear),
     logs: own.filter((l) => l.rating || l.review || l.loved),
     reviews: own.filter((l) => l.review),
@@ -56,7 +54,7 @@ function rowsHtml(profile, logs, isOwn) {
     <div class="ps-rows">
       ${row('Diary', sets.played, `href="${base}/log-list/diary"`, false)}
       ${SHOW_THIS_YEAR ? row('This year', sets.thisYear, `href="${base}/log-list/year"`) : ''}
-      ${row('Played', sets.before, `href="${base}/log-list/before"`, false, true)}
+      ${row('Played', null, `href="${base}/log-list/played"`)}
       ${row('Reviews', null, `href="${base}/log-list/reviews"`)}
       ${row('Likes', null, `href="${base}/log-list/liked"`)}
       ${row('Replays', null, `href="${base}/log-list/replayed"`)}

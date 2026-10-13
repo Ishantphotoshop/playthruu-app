@@ -49,7 +49,7 @@ export function openLogComposer({ game = null, resolveGame = null, existingLog =
     spoilers: !!existingLog?.contains_spoilers,
     replay: !!(existingLog?.is_replay || defaultReplay),
     isPublic: existingLog?.is_public !== false,
-    played_date: existingLog?.played_date || new Date().toISOString().slice(0, 10),
+    played_date: existingLog?.played_date || (() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`; })(),
     hours: existingLog?.hours_played ?? null,
   };
 
