@@ -7115,3 +7115,9 @@ a.gd-credit__name { text-decoration: none; }
 .ps-rows .ps-row { background: none; border-radius: 0; padding: 12px 0; }
 .ps-rows .ps-row__chev { display: none; }
 .ll-filters[hidden] { display: none; }
+
+/* Profile list pages: even columns that fill the width on any screen, with the
+   star row sized from each poster's own width (so phone and desktop match). */
+.ll-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px 10px; padding-top: 6px; }
+.ll-cell { container-type: inline-size; min-width: 0; --poster-w: 100cqw; }
+.ll-cell .game-card { display: block; }
