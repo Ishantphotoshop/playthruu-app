@@ -1096,6 +1096,26 @@ function iconStack() { return `<svg viewBox="0 0 24 24" fill="none"><rect x="4" 
 // picking one clears whichever was set. "Like" is deliberately NOT up
 // there — it is not a status, it is an opinion, so it sits in the list
 // below rather than competing with the three that are exclusive.
+// Holding a poster anywhere opens the same pop-up as the game page's
+// "Rate, log, review + more", not the full I Played screen.
+export async function openQuickLogSheet(lookup, onChanged = () => {}) {
+  let game;
+  try { game = await lookup; } catch { game = null; }
+  if (!game?.id) { toast('Could not open that game.', 'error'); return; }
+  const { supabase } = await import('../supabase-client.js');
+  const { data } = await supabase.from('logs').select('*').eq('user_id', state.user.id).eq('game_id', game.id)
+    .order('created_at', { ascending: false });
+  const mine = data || [];
+  openLogSheet({
+    game,
+    ownLog: mine[0] || null,
+    replayCount: mine.filter((l) => l.is_replay).length,
+    ensureSavedGame: async () => game,
+    onChanged,
+    onAddToList: () => openAddToListPicker(game),
+  });
+}
+
 function openLogSheet({ game, ownLog, replayCount, ensureSavedGame, onChanged, onAddToList }) {
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';

@@ -19,7 +19,7 @@ import { renderTrendingView } from './views/trending-view.js';
 import { renderFriendsPlayingView } from './views/friends-playing-view.js';
 import { renderCurrentlyPlayingView } from './views/currently-playing-view.js';
 import { renderLogListView } from './views/log-list-view.js';
-import { renderGameView } from './views/game-view.js';
+import { renderGameView, openQuickLogSheet } from './views/game-view.js';
 import { renderGameReviewsView } from './views/game-reviews-view.js';
 import { renderReviewView } from './views/review-view.js';
 import { renderPersonView } from './views/person-view.js';
@@ -772,21 +772,11 @@ function wirePosterLongPress() {
       swallowClick = true;
       setTimeout(() => { swallowClick = false; }, 1200);
       if (!state.user) { buzz([20]); promptSignIn('Sign in to log games.'); return; }
-      // Open at once with what the poster already shows (title, cover,
-      // year); the catalogue lookup started on press finishes behind the
-      // sheet, and saving waits for it.
-      const img = qs('img', frame);
-      const tile = frame.closest('[data-year]');
-      const standIn = {
-        title: (img?.alt || '').replace(/ cover$/, '').trim(),
-        cover_url: (img?.getAttribute('src') || '').replace(/t_[a-z0-9_]+/, 't_cover_big'),
-        release_year: Number(tile?.dataset.year) || null,
-      };
       buzz([20]);
       // Drop the pressed/focused state off the poster: once the sheet covers
       // it, no touchend/mouseup reaches it, so it stayed lifted after close.
       document.activeElement?.blur?.();
-      openLogComposer({ game: standIn, resolveGame: lookup.then((g) => { if (!g) throw new Error('not found'); return g; }), onSaved: refreshCurrentView });
+      openQuickLogSheet(lookup, refreshCurrentView);
     }, HOLD_MS);
   }
   const moved = (x, y) => { if (start && Math.hypot(x - start.x, y - start.y) > 8) cancel(); };
