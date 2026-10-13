@@ -1434,7 +1434,7 @@ function openLogSheet({ game, ownLog, replayCount, ensureSavedGame, onChanged, o
           const t0 = level(qs('.hg-top', backlogBtn));
           const b0 = level(qs('.hg-bot', backlogBtn));
           stopEgg(backlogBtn);
-          const pour = Math.max(0.8, 2.2 * t0);
+          const pour = Math.max(0.4, 0.8 * t0);
           backlogBtn.style.setProperty('--t0', String(t0));
           backlogBtn.style.setProperty('--b0', String(b0));
           backlogBtn.style.setProperty('--P', `${pour}s`);
