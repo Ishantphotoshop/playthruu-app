@@ -49,6 +49,7 @@ export function starRow(rating, { interactive = false, size = 18, count: fixedCo
 }
 
 export function statusStamp(status) {
+  if (status === 'played') return ''; // the Played stamp is switched off everywhere
   const labels = {
     played: 'PLAYED',
     playing: 'PLAYING',
