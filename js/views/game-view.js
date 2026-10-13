@@ -1282,7 +1282,7 @@ function openLogSheet({ game, ownLog, replayCount, ensureSavedGame, onChanged, o
           ${qa('played', 'Play', 'Played', qaIcon(ICON_STICK))}
           <button type="button" class="lg-qa lg-qa--like" data-act="love" aria-pressed="${draft.loved}"
                   aria-label="${draft.loved ? 'Remove from loved' : 'Mark as loved'}"><span class="lg-qa__ic">${qaIcon(ICON_HEART)}</span></button>
-          ${qa('backlog', 'Backlog', 'In backlog', qaIcon(ICON_HOURGLASS))}
+          ${qa('backlog', 'Backlog', 'In backlog', hourglassIcon())}
         </div>
         <div class="lg-pop__rate">
           <div class="lg-rate" id="lg-rating">${starRow(draft.rating, { interactive: true, size: 42 })}</div>
@@ -1398,6 +1398,7 @@ function openLogSheet({ game, ownLog, replayCount, ensureSavedGame, onChanged, o
         toast('Your rating and review live on this log — use Delete this log.', 'info');
         return;
       }
+      const prevStatus = draft.status;
       draft.status = clearing ? null : next;
       buzz();
       // In place, not a repaint. render() rebuilds the sheet's whole
@@ -1406,12 +1407,28 @@ function openLogSheet({ game, ownLog, replayCount, ensureSavedGame, onChanged, o
       // again — which is what it looked like. Only the pills change, so
       // only the pills are touched; the row underneath is kept in step
       // separately.
-      qsa('.lg-pill', overlay).forEach((b) => {
-        b.classList.toggle('lg-pill--on', b.dataset.status === draft.status);
-      });
-      // Backlog turns over like an hourglass when it switches on.
-      qsa('.lg-qa[data-status="backlog"]', overlay).forEach((b) => b.classList.toggle('qa-turned', draft.status === 'backlog'));
-      syncPageRow();
+      const applyPills = () => {
+        qsa('.lg-pill', overlay).forEach((b) => {
+          b.classList.toggle('lg-pill--on', b.dataset.status === draft.status);
+        });
+        syncPageRow();
+      };
+      const backlogBtn = qs('.lg-qa[data-status="backlog"]', overlay);
+      if (prevStatus === 'backlog' && draft.status !== 'backlog' && backlogBtn) {
+        overlay.classList.add('qa-busy');
+        if (draft.status === 'played') {
+          // Marking a backlog game as played: the sand pours to the bottom, the
+          // glass fades, and only then does Played switch on.
+          backlogBtn.classList.add('qa-finishing');
+          setTimeout(() => { backlogBtn.classList.remove('qa-finishing'); applyPills(); overlay.classList.remove('qa-busy'); }, 1450);
+        } else {
+          // Taken out of the backlog: the hourglass turns back over smoothly.
+          backlogBtn.classList.add('qa-unturning');
+          setTimeout(() => { backlogBtn.classList.remove('qa-unturning'); applyPills(); overlay.classList.remove('qa-busy'); }, 560);
+        }
+        return;
+      }
+      applyPills();
       return;
     }
 
@@ -1515,7 +1532,25 @@ function openLogSheet({ game, ownLog, replayCount, ensureSavedGame, onChanged, o
 // shape once switched on (CSS swaps them).
 const ICON_STICK = { box: '2.5 2 19 19.5', base: 'M5 17h14a1.5 1.5 0 0 1 1.5 1.5V20.5h-17V18.5A1.5 1.5 0 0 1 5 17z', knob: 'M12 3a3 3 0 1 1 0 6a3 3 0 1 1 0-6z', stem: 'M12 9v8' };
 const ICON_HEART = { box: '2.3 4.35 19.4 16.95', body: 'M12 20.3 4.7 13.4a4.7 4.7 0 0 1 6.6-6.7l.7.7.7-.7a4.7 4.7 0 0 1 6.6 6.7z' };
-const ICON_HOURGLASS = { box: '6 2 12 20', body: 'M7 3h10v3.5L13 12l4 5.5V21H7v-3.5L11 12 7 6.5z', inside: 'M9 18.5h6' };
+const HOURGLASS = 'M7 3h10v3.5L13 12l4 5.5V21H7v-3.5L11 12 7 6.5z';
+let hourglassSeq = 0;
+// Backlog's hourglass. Off: an outline. On: it turns over once, then grains fall
+// one after another for as long as the game is in the backlog. Marking the game
+// as played pours the sand to the bottom and fades the glass; taking it out of the
+// backlog turns it back over (all driven from the CSS classes on the button).
+function hourglassIcon() {
+  const id = `hgc${hourglassSeq++}`;
+  const outline = `<path d="${HOURGLASS}" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>`;
+  const clip = (inner) => `<g clip-path="url(#${id})">${inner}</g>`;
+  const off = `<svg class="lg-qa__off-ic" viewBox="6 2 12 20"><path d="${HOURGLASS}" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>`;
+  const on = `<svg class="lg-qa__on-ic lg-hg" viewBox="5.5 2 13 20"><defs><clipPath id="${id}"><path d="${HOURGLASS}"/></clipPath></defs>
+    <g class="hg-p1">${outline}${clip('<rect class="hg-rect" x="6" y="12" width="12" height="9" fill="currentColor"/>')}</g>
+    <g class="hg-p2">${outline}${clip('<rect class="hg-top hg-rect" x="6" y="3" width="12" height="9" fill="currentColor"/>')}${clip('<rect class="hg-bot hg-rect" x="6" y="12" width="12" height="9" fill="currentColor"/>')}
+      <path class="hg-stream" d="M12 11.6V19.5" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/>
+      <circle class="hg-grain" cx="12" cy="11.5" r=".7" fill="currentColor"/><circle class="hg-grain" cx="12" cy="11.5" r=".7" fill="currentColor" style="animation-delay:.45s"/><circle class="hg-grain" cx="12" cy="11.5" r=".7" fill="currentColor" style="animation-delay:.9s"/>
+    </g></svg>`;
+  return off + on;
+}
 // `box` is each glyph's own bounds plus a 1-unit margin, so drawn at one
 // height the three icons share the same top and bottom line.
 function qaIcon({ box, body, inside = '', outside = '', base = '', knob = '', stem = '' }) {
