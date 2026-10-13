@@ -7121,10 +7121,3 @@ a.gd-credit__name { text-decoration: none; }
 .ll-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px 10px; padding-top: 6px; }
 .ll-cell { container-type: inline-size; min-width: 0; --poster-w: 100cqw; }
 .ll-cell .game-card { display: block; }
-/* Bigger stars and marks on the list pages (a little past the poster width
-   when a game has all three, which reads fine). */
-.ll-cell .rp-meta { --u: calc(100cqw / 9.4); gap: 0; margin-top: 8px; }
-.ll-cell .rp-meta .stars { gap: calc(var(--u) * 0.3); }
-.ll-cell .rp-meta .rp-meta__icon--replay { margin: 0 0 0 calc(var(--u) * 0.32); }
-.ll-cell .rp-meta .rp-meta__icon--review { margin-left: calc(var(--u) * 0.32); }
-.ll-cell .rp-meta .rp-meta__icon--replay + .rp-meta__icon--review { margin-left: calc(var(--u) * 0.32); }
