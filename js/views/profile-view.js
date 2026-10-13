@@ -219,7 +219,7 @@ export async function renderProfileView(root, { username }) {
 
       <div class="segmented segmented--wide" id="profile-tabs">
         <button class="segmented__item segmented__item--active" data-tab="profile">Profile</button>
-        <button class="segmented__item" data-tab="journal">Journal</button>
+        <button class="segmented__item" data-tab="journal">Diary</button>
         <button class="segmented__item" data-tab="wanttoplay">Backlog</button>
         <button class="segmented__item" data-tab="lists">Lists</button>
       </div>
@@ -297,7 +297,7 @@ export async function renderProfileView(root, { username }) {
 
     const renderJournalTab = () => `
       ${diary.length ? diaryTilesHtml(diary.filter((l) => l.games).sort((a, b) => new Date(b.played_date || b.created_at) - new Date(a.played_date || a.created_at))) : emptyState(
-          isOwn ? 'No journal entries yet. Log a game once you\'ve played it.' : 'No journal entries yet.',
+          isOwn ? 'No journal entries yet. Log a game once you\'ve played it.' : 'No diary entries yet.',
           isOwn ? { icon: iconStamp(), actionLabel: 'Log your first game', actionRoute: '/log' } : { icon: iconStamp() }
         )}
     `;

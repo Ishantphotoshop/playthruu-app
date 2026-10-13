@@ -9,7 +9,7 @@ import { esc, qs, formatDate, statusStamp, starRow, igdbSized } from '../utils.j
 const THIS_YEAR = new Date().getFullYear();
 const MODES = {
   completed: { title: 'Played', statuses: ['played', 'dropped'], reviewsOnly: false, empty: (u) => `${u} hasn't played any games yet.` },
-  diary: { title: 'Logs', statuses: ['played', 'dropped'], reviewsOnly: false, diary: true, empty: (u) => `${u} hasn't got any diary entries yet.` },
+  diary: { title: 'Diary', statuses: ['played', 'dropped'], reviewsOnly: false, diary: true, empty: (u) => `${u} hasn't got any diary entries yet.` },
   year: { title: 'This year', statuses: ['played', 'dropped'], reviewsOnly: false, keep: (l) => { const raw = l.played_date || l.created_at; return !!raw && new Date(raw).getFullYear() === THIS_YEAR; }, empty: (u) => `${u} hasn't played anything this year yet.` },
   logged: { title: 'Played', statuses: undefined, reviewsOnly: false, keep: (l) => l.rating || l.review || l.loved, empty: (u) => `${u} hasn't logged anything yet.` },
   reviews: { title: 'Reviews', statuses: undefined, reviewsOnly: true, empty: (u) => `${u} hasn't written any reviews yet.` },
