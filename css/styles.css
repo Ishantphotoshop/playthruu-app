@@ -1463,15 +1463,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    would move the hit zones under the finger mid-drag. The picker keeps
    uniform full-width stars and the grey remainder, which is also what
    you want while aiming: you can see the half you have not filled yet. */
-.stars:not(.stars--interactive) .star--half {
-  width: calc(var(--star-size, 18px) / 2);
-}
-.stars:not(.stars--interactive) .star--half::before { content: none; }
-.stars:not(.stars--interactive) .star--half::after {
-  clip-path: none;
-  -webkit-mask-image: var(--star-mask-half);
-  mask-image: var(--star-mask-half);
-}
+/* A half star is drawn as a whole star: left half lit, right half dimmed. */
 
 .stars--interactive .star { cursor: pointer; }
 /* Swipe-to-rate: the row owns horizontal drags so sliding across the
