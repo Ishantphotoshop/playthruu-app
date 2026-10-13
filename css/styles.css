@@ -7150,14 +7150,13 @@ a.gd-credit__name { text-decoration: none; }
 .ps-rows .ps-row__chev--show { display: grid; }
 .ps-wrap .ps-box { border: 0; border-top: 1px solid var(--surface-high); border-radius: 0; padding: 14px 0; }
 
-/* Ratings box: the "Clean light" look. Paint only; sizes, spacing and the
-   press-and-slide behaviour are untouched. */
-.rating-histogram { background: #ffffff; border-color: #d7d2c4; }
-.rh-title { font-family: var(--font-body); font-weight: 800; color: #1b1a17; }
-.rh-total { color: #8a8579; }
-.rh-star::after { background: #0a9b4a; }
-.rating-histogram__bar-fill { background: #7fd49a; border-radius: 3px 3px 0 0; }
-.rating-histogram__bar.is-zero .rating-histogram__bar-fill { background: #e4dfd2; }
-.rating-histogram__bar.rating-histogram__bar--active .rating-histogram__bar-fill { background: #0a9b4a; }
-.rh-base { border-top-color: #d7d2c4; }
-.rating-histogram__empty { color: #8a8579; }
+/* Ratings box: the "Handheld" look in the app's own colours: pixel type, square
+   corners, a thick LCD frame, and bars with a stepped shadow. Paint only; sizes,
+   spacing and the press-and-slide behaviour are untouched. */
+.rating-histogram { background: var(--surface); border: 3px solid var(--accent); border-radius: 0; }
+.rh-title { font-family: 'Press Start 2P', var(--font-body); font-weight: 400; font-size: 10px; letter-spacing: 0; color: var(--ink); }
+.rh-total { font-family: 'Press Start 2P', var(--font-body); font-weight: 400; font-size: 10px; color: var(--ink-faint); }
+.rating-histogram__bar-fill { background: var(--accent); border-radius: 0; box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.28); }
+.rating-histogram__bar.is-zero .rating-histogram__bar-fill { background: #4f3220; box-shadow: none; }
+.rating-histogram__bar.rating-histogram__bar--active .rating-histogram__bar-fill { background: var(--accent-bright); }
+.rh-base { border-top: 3px solid var(--accent); }
