@@ -1,7 +1,7 @@
 import * as api from '../api.js';
 import { state } from '../state.js';
 import { topBar, navBar, logCard, emptyState, spinner, iconStamp } from '../components.js';
-import { esc, qs } from '../utils.js';
+import { esc, qs, formatDate, statusStamp, starRow, igdbSized } from '../utils.js';
 import { wireLogCards } from './feed-view.js';
 
 // `keep` narrows the list after it is fetched (the database can't ask these
@@ -10,6 +10,7 @@ import { wireLogCards } from './feed-view.js';
 const THIS_YEAR = new Date().getFullYear();
 const MODES = {
   completed: { title: 'Played', statuses: ['played', 'dropped'], reviewsOnly: false, empty: (u) => `${u} hasn't played any games yet.` },
+  diary: { title: 'Diary', statuses: ['played', 'dropped'], reviewsOnly: false, diary: true, empty: (u) => `${u} hasn't got any diary entries yet.` },
   year: { title: 'This year', statuses: ['played', 'dropped'], reviewsOnly: false, keep: (l) => l.played_date && new Date(l.played_date).getFullYear() === THIS_YEAR, empty: (u) => `${u} hasn't played anything this year yet.` },
   logged: { title: 'Logs', statuses: undefined, reviewsOnly: false, keep: (l) => l.rating || l.review || l.loved, empty: (u) => `${u} hasn't logged anything yet.` },
   reviews: { title: 'Reviews', statuses: undefined, reviewsOnly: true, empty: (u) => `${u} hasn't written any reviews yet.` },
@@ -27,6 +28,20 @@ export async function renderLogListView(root, { username, mode }) {
     let logs = await api.getLogsForUser(profile.id, { statuses: cfg.statuses, reviewsOnly: cfg.reviewsOnly, limit: cfg.keep ? 1000 : 200 });
     if (cfg.keep) logs = logs.filter(cfg.keep);
     const likes = await api.getLikesForLogs(logs.map((l) => l.id), state.user?.id);
+
+    // The Diary is a dated list (day, cover, title, stars, status), not review cards.
+    if (cfg.diary) {
+      body.innerHTML = logs.length ? `<div class="diary-list">${logs.filter((l) => l.games).map((l) => `
+        <a href="#/game/${l.games.id}" class="diary-row">
+          <img src="${esc(igdbSized(l.games.cover_url, 'cover_small') || '')}" alt="" class="diary-row__cover" loading="lazy" decoding="async" onerror="this.style.visibility='hidden'">
+          <div class="diary-row__main">
+            <div class="diary-row__title">${esc(l.games.title)}</div>
+            <div class="diary-row__meta">${l.played_date ? formatDate(l.played_date) : ''} ${l.rating ? starRow(l.rating, { size: 10 }) : ''}</div>
+          </div>
+          ${statusStamp(l.status)}
+        </a>`).join('')}</div>` : emptyState(cfg.empty(username), { icon: iconStamp() });
+      return;
+    }
 
     body.innerHTML = logs.length
       ? `<div class="log-list">${logs.map((l) => logCard(l, { showAuthor: false, likeInfo: likes[l.id], ownLog: l.user_id === state.user?.id })).join('')}</div>`

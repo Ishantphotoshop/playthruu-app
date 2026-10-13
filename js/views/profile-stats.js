@@ -40,7 +40,7 @@ function rowsHtml(profile, logs) {
       ${row('Reviews', logs.filter((l) => l.review).length, `href="${base}/log-list/reviews"`)}
       ${row('Likes', logs.filter((l) => l.loved).length, `href="${base}/log-list/liked"`)}
       ${row('Replays', logs.filter((l) => l.is_replay).length, `href="${base}/log-list/replayed"`)}
-      ${row('Diary', diary.length, 'data-jump-tab="journal"')}
+      ${row('Diary', diary.length, `href="${base}/log-list/diary"`)}
       ${row('Activity', '', `href="${base}/activity"`)}
     </div>`;
 }
