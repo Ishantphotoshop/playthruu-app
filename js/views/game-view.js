@@ -1635,7 +1635,7 @@ function qaIcon({ box, body, inside = '', outside = '', base = '', knob = '', st
   // ball) is its own group so it can wobble on its own.
   if (base) {
     return `<svg class="lg-qa__off-ic" viewBox="${box}">${line(base, 1.5)}<g class="qa-stick">${line(stem, 1.5)}${line(knob, 1.5)}</g></svg>`
-      + `<svg class="lg-qa__on-ic" viewBox="${box}"><path d="${base}" fill="currentColor"/><g class="qa-stick">${line(stem, 2)}<path d="${knob}" fill="currentColor"/></g></svg>`;
+      + `<svg class="lg-qa__on-ic" viewBox="${box}"><path d="${base}" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><g class="qa-stick">${line(stem, 1.5)}<path d="${knob}" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></g></svg>`;
   }
   const off = `<svg class="lg-qa__off-ic" viewBox="${box}">${outside ? line(outside, 1.5) : ''}${line(body, 1.5)}${inside ? line(inside, 1.5) : ''}</svg>`;
   const on = `<svg class="lg-qa__on-ic" viewBox="${box}">${outside ? line(outside, 2) : ''}<path d="${body}" fill="currentColor"${solidStroke ? ' stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"' : ''}/>${inside ? `<path d="${inside}" fill="none" stroke="var(--surface)" stroke-width="1.7" stroke-linecap="round"/>` : ''}</svg>`;
