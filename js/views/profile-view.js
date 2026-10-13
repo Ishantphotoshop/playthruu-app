@@ -6,7 +6,7 @@ import { MESSENGER_ARCHIVED } from '../config.js';
 import {
   navBar, spinner, avatarImg, gameCard, showcaseGrid, SHOWCASE_MAX, ratingHistogram, wireRatingHistogram, posterFrame,
   emptyState, iconStamp, iconSettings, iconShare, iconQr, iconDotsMenu, iconClose, iconSearch, iconPlus, listCard, iconMessage,
-  combinedGameResults, wireCombinedGameResults, openReportSheet, iconFlag, iconBlock, iconReplay, iconReviewLines,
+  combinedGameResults, wireCombinedGameResults, openReportSheet, iconFlag, iconBlock, iconReplay, iconReviewLines, iconChevronRight,
 } from '../components.js';
 import { esc, formatDate, statusStamp, starRow, qs, qsa, toast, debounce, pulseLogTab, igdbSized, enableSwipeToDismiss, promptSignIn } from '../utils.js';
 import { refreshCurrentView, navigate } from '../router.js';
@@ -239,7 +239,10 @@ export async function renderProfileView(root, { username }) {
       ${showcaseSlots.length ? showcaseGrid(showcaseSlots) : emptyState('Nothing completed yet.', { icon: iconStamp() })}
 
       ${recentlyPlayed.length ? `
-        <h2 class="section-heading">Recently played</h2>
+        <div class="feed-section-head rp-head">
+          <h2 class="section-heading">Recently played</h2>
+          <a href="#/profile/${esc(profile.username)}/log-list/diary" class="see-more-icon" aria-label="See all">${iconChevronRight()}</a>
+        </div>
         <div class="recent-played-row">
           ${recentlyPlayed.map((l) => `
             <div class="recent-played-item recent-played-item--activity">

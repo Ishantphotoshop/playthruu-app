@@ -7176,3 +7176,6 @@ a.gd-credit__name { text-decoration: none; }
 .dq-cover { width: 34px; aspect-ratio: var(--ratio-inline); object-fit: cover; border-radius: 4px; justify-self: end; }
 /* Journal tab: the month heading sits straight under the tabs. */
 .dq-month:first-child { margin-top: 14px; }
+/* Recently played on the profile: same arrow as the home sections. */
+.rp-head { margin-top: var(--space-4); margin-bottom: 12px; }
+.rp-head .section-heading { margin: 0; }
