@@ -19,6 +19,8 @@ const num = (n) => Number(n).toLocaleString('en-US');
 //   SHOW_TILES         the six boxes (Games, Diary, Reviews, Backlog, Likes, Taste)
 const SHOW_ACTIVITY_BOX = false;
 const SHOW_TILES = false;
+// The This year row under Ratings. Set to true to bring it back (its page still exists).
+const SHOW_THIS_YEAR = false;
 // The Activity (months) box on its own, at the very bottom, without the Stats bar or filter.
 const SHOW_ACTIVITY_BOTTOM = true;
 // The Hours box (total hours, average, most played). Set to true to bring it back.
@@ -39,7 +41,7 @@ function rowsHtml(profile, logs) {
   return `
     <div class="ps-rows">
       ${row('Played', diary.length, `href="${base}/log-list/completed"`)}
-      ${row('This year', thisYear, `href="${base}/log-list/year"`)}
+      ${SHOW_THIS_YEAR ? row('This year', thisYear, `href="${base}/log-list/year"`) : ''}
       ${row('Logs', logged, `href="${base}/log-list/logged"`)}
       ${row('Reviews', logs.filter((l) => l.review).length, `href="${base}/log-list/reviews"`)}
       ${row('Likes', logs.filter((l) => l.loved).length, `href="${base}/log-list/liked"`)}
