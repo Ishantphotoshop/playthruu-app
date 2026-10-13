@@ -31,23 +31,32 @@ const chevron = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d
 // The list under Ratings: each row opens its own page.
 function rowsHtml(profile, logs) {
   const base = `#/profile/${esc(profile.username)}`;
-  const diary = logs.filter((l) => l.status === 'played' || l.status === 'dropped');
-  const thisYear = diary.filter((l) => l.played_date && new Date(l.played_date).getFullYear() === new Date().getFullYear()).length;
-  const logged = logs.filter((l) => l.rating || l.review || l.loved).length;
-  const row = (label, value, attrs) => {
-    const tag = attrs.startsWith('href') ? 'a' : 'button type="button"';
-    return `<${tag} class="ps-row" ${attrs}><span class="ps-row__l">${label}</span><span class="ps-row__r">${value === '' ? '' : `<b>${num(value)}</b>`}<i class="ps-row__chev">${chevron}</i></span></${tag.split(' ')[0]}>`;
+  const THIS_YEAR = new Date().getFullYear();
+  // Same set the pages open on: backlog games never count as logs.
+  const own = logs.filter((l) => l.status !== 'backlog');
+  const inYear = (l) => l.played_date && new Date(l.played_date).getFullYear() === THIS_YEAR;
+  const diary = own.filter((l) => l.status === 'played' || l.status === 'dropped');
+  const sets = {
+    played: diary,
+    thisYear: diary.filter(inYear),
+    logs: own.filter((l) => l.rating || l.review || l.loved),
+    reviews: own.filter((l) => l.review),
+    likes: own.filter((l) => l.loved),
+    replays: own.filter((l) => l.is_replay),
   };
+  // "this year / all time", right after the name.
+  const count = (list) => `<span class="ps-row__n"><b>${num(list.filter(inYear).length)}</b><em>/ ${num(list.length)}</em></span>`;
+  const row = (label, list, attrs) => `<a class="ps-row" ${attrs}><span class="ps-row__l">${label}</span>${list ? count(list) : ''}</a>`;
   return `
     <div class="ps-rows">
-      ${row('Played', diary.length, `href="${base}/log-list/completed"`)}
-      ${SHOW_THIS_YEAR ? row('This year', thisYear, `href="${base}/log-list/year"`) : ''}
-      ${row('Logs', logged, `href="${base}/log-list/logged"`)}
-      ${row('Reviews', logs.filter((l) => l.review).length, `href="${base}/log-list/reviews"`)}
-      ${row('Likes', logs.filter((l) => l.loved).length, `href="${base}/log-list/liked"`)}
-      ${row('Replays', logs.filter((l) => l.is_replay).length, `href="${base}/log-list/replayed"`)}
-      ${row('Diary', diary.length, `href="${base}/log-list/diary"`)}
-      ${row('Activity', '', `href="${base}/activity"`)}
+      ${row('Played', sets.played, `href="${base}/log-list/completed"`)}
+      ${SHOW_THIS_YEAR ? row('This year', sets.thisYear, `href="${base}/log-list/year"`) : ''}
+      ${row('Logs', sets.logs, `href="${base}/log-list/logged"`)}
+      ${row('Reviews', sets.reviews, `href="${base}/log-list/reviews"`)}
+      ${row('Likes', sets.likes, `href="${base}/log-list/liked"`)}
+      ${row('Replays', sets.replays, `href="${base}/log-list/replayed"`)}
+      ${row('Diary', sets.played, `href="${base}/log-list/diary"`)}
+      ${row('Activity', null, `href="${base}/activity"`)}
     </div>`;
 }
 

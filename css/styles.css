@@ -7130,3 +7130,9 @@ a.gd-credit__name { text-decoration: none; }
 .ll-cell .rp-meta .rp-meta__icon--review svg,
 .recent-played-item .rp-meta .rp-meta__icon--review svg { transform: scale(1.489); transform-origin: 100% 50%; }
 .act__text { --star-fill: #fff; }
+
+/* Profile rows: name, then a small "this year / all" count right after it. */
+.ps-rows .ps-row { justify-content: flex-start; gap: 9px; }
+.ps-row__n { display: inline-flex; align-items: baseline; gap: 4px; line-height: 1; }
+.ps-row__n b { font-size: 14px; font-weight: 800; letter-spacing: -0.01em; color: var(--ink); }
+.ps-row__n em { font-style: normal; font-size: 13px; font-weight: 600; color: var(--ink-faint); }
