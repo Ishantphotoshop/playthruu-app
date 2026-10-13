@@ -7125,5 +7125,6 @@ a.gd-credit__name { text-decoration: none; }
 /* List pages: stars a bit bigger than the replay and review marks, but the
    whole row still runs from the poster's left edge to its right edge.
    Marks are 0.85 of the Recently played size; the stars take the width that frees up. */
-.ll-cell .rp-meta { --u: calc(var(--poster-w) / 10.987 * 0.85); --s: calc(var(--poster-w) * 0.1003); height: calc(var(--s) + 2px); }
+.ll-cell .rp-meta { --u: calc(var(--poster-w) / 10.987 * 0.85); --s: calc(var(--poster-w) * 0.098); height: calc(var(--s) + 2px); }
 .ll-cell .rp-meta .stars { --star-size: var(--s) !important; gap: calc(var(--s) * 0.5); }
+.ll-cell .rp-meta .rp-meta__icon--replay svg { transform: scale(1.3); }
