@@ -1409,6 +1409,8 @@ function openLogSheet({ game, ownLog, replayCount, ensureSavedGame, onChanged, o
       qsa('.lg-pill', overlay).forEach((b) => {
         b.classList.toggle('lg-pill--on', b.dataset.status === draft.status);
       });
+      // Backlog turns over like an hourglass when it switches on.
+      qsa('.lg-qa[data-status="backlog"]', overlay).forEach((b) => b.classList.toggle('qa-turned', draft.status === 'backlog'));
       syncPageRow();
       return;
     }
@@ -1423,6 +1425,14 @@ function openLogSheet({ game, ownLog, replayCount, ensureSavedGame, onChanged, o
       actBtn.setAttribute('aria-pressed', String(draft.loved));
       actBtn.setAttribute('aria-label', draft.loved ? 'Remove from loved' : 'Mark as loved');
       if (!actBtn.classList.contains('lg-qa')) actBtn.innerHTML = draft.loved ? iconHeartSolid() : iconHeartLine();
+      // Two small hearts float up from the Like button when it switches on.
+      if (draft.loved && actBtn.classList.contains('lg-qa')) {
+        actBtn.querySelectorAll('.qa-float').forEach((n) => n.remove());
+        for (const [x, delay] of [['-14px', '0s'], ['13px', '.15s']]) {
+          actBtn.insertAdjacentHTML('beforeend', `<i class="qa-float" style="--x:${x};animation-delay:${delay}">${iconHeartSolid()}</i>`);
+        }
+        setTimeout(() => actBtn.querySelectorAll('.qa-float').forEach((n) => n.remove()), 1200);
+      }
       return;
     }
 
