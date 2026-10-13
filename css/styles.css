@@ -7128,3 +7128,8 @@ a.gd-credit__name { text-decoration: none; }
 .ll-cell .rp-meta { --u: calc(var(--poster-w) / 10.987 * 0.85); --s: calc(var(--poster-w) * 0.098); height: calc(var(--s) + 2px); }
 .ll-cell .rp-meta .stars { --star-size: var(--s) !important; gap: calc(var(--s) * 0.5); }
 .ll-cell .rp-meta .rp-meta__icon--replay svg { transform: scale(1.3); }
+
+/* Recently played on the profile: same star / mark sizes as the list pages. */
+.recent-played-item .rp-meta { --u: calc(var(--poster-w) / 10.987 * 0.85); --s: calc(var(--poster-w) * 0.098); height: calc(var(--s) + 2px); }
+.recent-played-item .rp-meta .stars { --star-size: var(--s) !important; gap: calc(var(--s) * 0.5); }
+.recent-played-item .rp-meta .rp-meta__icon--replay svg { transform: scale(1.3); }
