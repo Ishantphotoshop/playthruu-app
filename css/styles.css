@@ -7121,3 +7121,9 @@ a.gd-credit__name { text-decoration: none; }
 .ll-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px 10px; padding-top: 6px; }
 .ll-cell { container-type: inline-size; min-width: 0; --poster-w: 100cqw; }
 .ll-cell .game-card { display: block; }
+
+/* List pages: stars a bit bigger than the replay and review marks, but the
+   whole row still runs from the poster's left edge to its right edge.
+   Marks are 0.85 of the Recently played size; the stars take the width that frees up. */
+.ll-cell .rp-meta { --u: calc(var(--poster-w) / 10.987 * 0.85); --s: calc(var(--poster-w) * 0.1003); height: calc(var(--s) + 2px); }
+.ll-cell .rp-meta .stars { --star-size: var(--s) !important; gap: calc(var(--s) * 0.5); }
