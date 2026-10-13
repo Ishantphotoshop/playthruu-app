@@ -45,11 +45,11 @@ function rowsHtml(profile, logs) {
     replays: own.filter((l) => l.is_replay),
   };
   // "this year / all time", right after the name.
-  const count = (list) => `<span class="ps-row__n"><b>${num(list.filter(inYear).length)}</b><em>/ ${num(list.length)}</em></span>`;
-  const row = (label, list, attrs) => `<a class="ps-row" ${attrs}><span class="ps-row__l">${label}</span>${list ? count(list) : `<i class="ps-row__chev ps-row__chev--show">${chevron}</i>`}</a>`;
+  const count = (list, withTotal = true) => `<span class="ps-row__n"><b>${num(list.filter(inYear).length)}</b>${withTotal ? `<em>/ ${num(list.length)}</em>` : ''}</span>`;
+  const row = (label, list, attrs, withTotal = true) => `<a class="ps-row" ${attrs}><span class="ps-row__l">${label}</span>${list ? count(list, withTotal) : `<i class="ps-row__chev ps-row__chev--show">${chevron}</i>`}</a>`;
   return `
     <div class="ps-rows">
-      ${row('Played', sets.played, `href="${base}/log-list/diary"`)}
+      ${row('Played', sets.played, `href="${base}/log-list/diary"`, false)}
       ${SHOW_THIS_YEAR ? row('This year', sets.thisYear, `href="${base}/log-list/year"`) : ''}
       ${row('Logs', sets.logs, `href="${base}/log-list/logged"`)}
       ${row('Reviews', sets.reviews, `href="${base}/log-list/reviews"`)}
