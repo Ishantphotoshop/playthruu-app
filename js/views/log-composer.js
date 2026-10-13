@@ -42,7 +42,9 @@ export function openLogComposer({ game = null, resolveGame = null, existingLog =
   pendingGame?.then((g) => { if (g && pendingGame === resolveGame) selectedGame = g; }).catch(() => {});
 
   const draft = {
-    status: existingLog?.status || 'played',
+    // Nothing is picked until you pick it. Saving with a rating or a review and no
+    // choice counts as Played (see save()).
+    status: existingLog?.status || null,
     rating: Number(existingLog?.rating) || 0,
     loved: !!existingLog?.loved,
     review: existingLog?.review || '',
@@ -244,6 +246,11 @@ export function openLogComposer({ game = null, resolveGame = null, existingLog =
       pendingGame = null;
     }
     const g = selectedGame;
+
+    if (!draft.status) {
+      if (draft.rating > 0 || draft.review.trim()) draft.status = 'played';
+      else { toast('Pick Played, Playing or Backlog first.', 'error'); return; }
+    }
 
     // A game that hasn't come out can't have been played or be in
     // progress; the backlog is exactly what an unreleased game is for.
