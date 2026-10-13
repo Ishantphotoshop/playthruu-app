@@ -4,7 +4,7 @@ import {
   navBar, spinner, emptyState, posterFrame, iconUser, iconBack, avatarImg,
   likeButton, iconReply, iconFlag, iconChevronRight,
 } from '../components.js';
-import { esc, starRow, formatDate, timeAgo, qs, qsa, toast, promptSignIn, recordRecentlyViewed, pulseLogTab, enableSwipeToDismiss } from '../utils.js';
+import { esc, starRow, formatDate, timeAgo, qs, qsa, toast, promptSignIn, recordRecentlyViewed, pulseLogTab, enableSwipeToDismiss, reviewText } from '../utils.js';
 import { openLogComposer } from './log-composer.js';
 import { openAddToListPicker } from './lists-view.js';
 import { refreshCurrentView, navigate, afterOverlayClosed } from '../router.js';
@@ -207,9 +207,9 @@ function reviewCardHtml(log, { likeInfo, commentCount, ownLog }) {
         ? `<button type="button" class="gd-review__body gd-review__body--spoiler" data-spoiler>
              <span class="spoiler-tag">SPOILERS</span>
              <span class="spoiler-veil">Tap to reveal</span>
-             <span class="spoiler-text">${esc(log.review)}</span>
+             <span class="spoiler-text">${reviewText(log.review)}</span>
            </button>`
-        : `<p class="gd-review__body">${esc(log.review)}</p>`}
+        : `<p class="gd-review__body">${reviewText(log.review)}</p>`}
       <div class="gd-review__foot">
         ${likeButton(log.id, likeInfo || { count: 0, liked: false })}
         <a href="#/review/${log.id}" class="gd-review__replies">${iconReply()}<span>${commentCount > 0 ? commentCount : ''}</span></a>
@@ -1242,67 +1242,39 @@ function openLogSheet({ game, ownLog, replayCount, ensureSavedGame, onChanged, o
         ${arrow ? `<span class="lg-row__go">${iconChevronRight()}</span>` : ''}
       </button>`;
 
+    // Letterboxd's pop-up: title and year, three big actions (Play, Like,
+    // Backlog), the stars, then a plain list of actions. Changes are kept when
+    // the pop-up is closed; "Review or log" opens the full I Played screen.
+    const qa = (key, off, on, icon) => `
+      <button type="button" class="lg-pill lg-qa${draft.status === key ? ' lg-pill--on' : ''}" data-status="${key}">
+        <span class="lg-qa__ic">${icon}</span><span class="lg-qa__off">${esc(off)}</span><span class="lg-qa__on">${esc(on)}</span>
+      </button>`;
+    const item = (attr, text, icon, cls = '') => `
+      <button type="button" class="lg-item${cls}" ${attr}><span class="lg-item__ic">${icon}</span><span class="lg-item__l">${esc(text)}</span></button>`;
+
     overlay.innerHTML = `
-      <div class="modal lg-sheet">
-        <header class="lg-head">
-          ${game.cover_url ? `<img class="lg-head__cover" src="${esc(game.cover_url)}" alt="">` : ''}
-          <div class="lg-head__text">
-            <h2 class="lg-head__title">${esc(headTitle())}</h2>
-            ${game.release_year ? `<p class="lg-head__year">${esc(String(game.release_year))}</p>` : ''}
-          </div>
+      <div class="modal lg-sheet lg-pop">
+        <header class="lg-pop__head">
+          <h2>${esc(headTitle())}</h2>
+          ${game.release_year ? `<p>${esc(String(game.release_year))}</p>` : ''}
         </header>
-
-        <div class="lg-body">
-        <div class="lg-label">Rate</div>
-        <div class="lg-group lg-group--rate">
-          <div class="lg-rate" id="lg-rating">${starRow(draft.rating, { interactive: true, size: 32 })}</div>
-          <button type="button" class="lg-love" data-act="love" aria-pressed="${draft.loved}"
-                  aria-label="${draft.loved ? 'Remove from loved' : 'Mark as loved'}">
-            ${draft.loved ? iconHeartSolid() : iconHeartLine()}
-          </button>
+        <div class="lg-pop__qa">
+          ${qa('played', 'Play', 'Played', iconPadLg())}
+          <button type="button" class="lg-qa lg-qa--like" data-act="love" aria-pressed="${draft.loved}"
+                  aria-label="${draft.loved ? 'Remove from loved' : 'Mark as loved'}">${draft.loved ? iconHeartSolid() : iconHeartLine()}</button>
+          ${qa('backlog', 'Backlog', 'In backlog', iconBacklogLg())}
         </div>
-
-        <div class="lg-label">Track</div>
-        <div class="lg-group lg-group--track">
-          ${pill('played', 'Played', iconController())}
-          ${pill('playing', 'Playing', iconPlay())}
-          ${pill('backlog', 'Backlog', iconBookmarkSm())}
+        <div class="lg-pop__rate">
+          <div class="lg-rate" id="lg-rating">${starRow(draft.rating, { interactive: true, size: 42 })}</div>
+          <small>Rate</small>
         </div>
-
-        <div class="lg-label">Detail</div>
-        <div class="lg-group">
-          ${row('review', log?.review ? 'Edit your review' : 'Write a review', iconPencilSm(),
-            { note: reviewNote(), arrow: true })}
-          <label class="lg-row lg-row--field">
-            <span class="lg-row__icon">${iconCalendarSm()}</span>
-            <span class="lg-row__label">Played on</span>
-            <span class="lg-row__note">${draft.played_date ? esc(shortDate(draft.played_date)) : 'add'}</span>
-            <span class="lg-row__go">${iconChevronRight()}</span>
-            <input type="date" class="lg-row__input" id="lg-date" aria-label="Date played"
-                   value="${esc(draft.played_date || '')}" min="${esc(game.release_date || '')}" max="${today}">
-          </label>
-          <label class="lg-row lg-row--field">
-            <span class="lg-row__icon">${iconClockSm()}</span>
-            <span class="lg-row__label">Hours</span>
-            <input type="number" class="lg-num" id="lg-hours" aria-label="Hours played" placeholder="add"
-                   inputmode="numeric" min="0" max="20000" step="1" value="${draft.hours ?? ''}">
-            <span class="lg-row__go">${iconChevronRight()}</span>
-          </label>
-          ${log ? row('again', 'Log it again', iconLogAgain(),
-            { note: replayCount ? `${replayCount} replay${replayCount === 1 ? '' : 's'}` : '', arrow: true }) : ''}
-        </div>
-
-        <div class="lg-label">Share</div>
-        <div class="lg-group">
-          ${row('list', 'Add to lists', iconStack(), { arrow: true })}
-          ${row('share', 'Copy link', iconLinkSm())}
-        </div>
-
-        ${log ? row('delete', 'Delete this log', iconTrashSm(), { danger: true }) : ''}
-        </div>
-
-        <div class="lg-foot">
-          <button type="button" class="lg-save" data-act="save">Save entry</button>
+        <div class="lg-pop__list">
+          ${item('data-act="review"', log ? 'Review or log' : 'Review or log', iconPlusLg())}
+          ${item('data-status="playing"', draft.status === 'playing' ? 'Currently playing' : 'Mark as currently playing', iconPlay(), ` lg-pill${draft.status === 'playing' ? ' lg-pill--on' : ''}`)}
+          ${item('data-act="list"', 'Add to lists', iconListAdd())}
+          ${item('data-act="poster"', 'View poster', iconExpand())}
+          ${item('data-act="share"', 'Share', iconShareLg())}
+          ${log ? item('data-act="delete"', 'Delete this log', iconTrashSm(), ' lg-item--danger') : ''}
         </div>
       </div>`;
 
@@ -1350,7 +1322,7 @@ function openLogSheet({ game, ownLog, replayCount, ensureSavedGame, onChanged, o
     const paint = (v) => {
       if (v === draft.rating) return;
       draft.rating = v;
-      picker.innerHTML = starRow(v, { interactive: true, size: 32 });
+      picker.innerHTML = starRow(v, { interactive: true, size: 42 });
       buzz();
     };
 
@@ -1473,6 +1445,11 @@ function openLogSheet({ game, ownLog, replayCount, ensureSavedGame, onChanged, o
       return;
     }
 
+    if (act === 'poster') {
+      openPosterViewer(game.cover_url ? game.cover_url.replace(/t_[a-z0-9_]+/, 't_1080p') : '', game.title);
+      return;
+    }
+
     if (act === 'list') {
       await commit();
       close();
@@ -1503,6 +1480,12 @@ function openLogSheet({ game, ownLog, replayCount, ensureSavedGame, onChanged, o
   });
 }
 
+function iconPadLg() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M7.5 8h9a4 4 0 0 1 3.9 4.9l-1 4.3a2 2 0 0 1-3.5.8L14 16h-4l-1.9 2a2 2 0 0 1-3.5-.8l-1-4.3A4 4 0 0 1 7.5 8z"/><path d="M8 11v3M6.5 12.5h3" stroke-linecap="round"/><circle cx="15.5" cy="11.6" r=".7" fill="currentColor"/><circle cx="17.3" cy="13.4" r=".7" fill="currentColor"/></svg>`; }
+function iconBacklogLg() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"><path d="M6 4.5h9v15l-4.5-3.3L6 19.5z"/><circle cx="17.5" cy="16.5" r="4"/><path d="M17.5 14.6v3.8M15.6 16.5h3.8"/></svg>`; }
+function iconPlusLg() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>`; }
+function iconListAdd() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3.5 7h11M3.5 12h11M3.5 17h7M18 13.5v7M14.5 17h7"/></svg>`; }
+function iconExpand() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg>`; }
+function iconShareLg() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="18" cy="5.5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="18.5" r="2.5"/><path d="M8.2 10.8l7.6-4.1M8.2 13.2l7.6 4.1"/></svg>`; }
 function iconPlay() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M10 8.5l6 3.5-6 3.5z"/></svg>`; }
 function iconBookmarkSm() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round"><path d="M6 3.8h12a1 1 0 0 1 1 1V20.5l-7-4.1-7 4.1V4.8a1 1 0 0 1 1-1z"/></svg>`; }
 function iconPencilSm() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L20 8l-4-4L4 16z"/></svg>`; }

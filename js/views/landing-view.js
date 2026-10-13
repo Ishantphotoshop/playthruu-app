@@ -4,7 +4,7 @@ import {
   iconUserFilled, iconBrowseNavFilled, iconCompassNavFilled, iconSearchFilled,
 } from '../components.js';
 import { backdropHtml, tourArtHtml, artCreditHtml, drawTourArt, preloadTourArt, resolveShowcase } from './landing-art.js';
-import { esc, starRow, qs, qsa, toast, keepLoading } from '../utils.js';
+import { esc, starRow, qs, qsa, toast, keepLoading, reviewText } from '../utils.js';
 import { renderAuthView } from './auth-view.js';
 import { navigate } from '../router.js';
 import { navBar } from '../components.js';
@@ -629,7 +629,7 @@ function reviewTeaserHtml(log) {
           <span>${esc(a.display_name || a.username)}</span>
         </div>
         ${log.rating ? `<div class="landing-review-card__stars">${starRow(log.rating, { size: 13 })}</div>` : ''}
-        ${log.review ? `<p class="landing-review-card__text">${esc(log.review)}</p>` : ''}
+        ${log.review ? `<p class="landing-review-card__text">${reviewText(log.review)}</p>` : ''}
       </div>
     </button>`;
 }

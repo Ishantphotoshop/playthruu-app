@@ -1,7 +1,7 @@
 import * as api from '../api.js';
 import { state } from '../state.js';
 import {
-  esc, starRow, toast, qs, qsa, debounce, formatDate, enableSwipeToDismiss,
+  esc, starRow, toast, qs, qsa, debounce, formatDate, enableSwipeToDismiss, reviewText,
   celebrate, pulseLogTab, getRecentSearches, recordRecentSearch, removeRecentSearch, clearRecentSearches,
 } from '../utils.js';
 import {
@@ -73,6 +73,12 @@ export function openLogComposer({ game = null, resolveGame = null, existingLog =
   let lastQuery = '';
   let lastFound = null;
   overlay.__dismiss = () => {
+    if (view === 'edit') {
+      overlay.__closing = false;
+      paintForm();
+      history.pushState({ ...history.state, ov: (history.state?.ov || 0) + 1 }, '', location.href);
+      return;
+    }
     if (view === 'form' && cameFromPicker) {
       overlay.__closing = false;
       selectedGame = null; pendingGame = null;
@@ -97,95 +103,92 @@ export function openLogComposer({ game = null, resolveGame = null, existingLog =
   };
 
   // ---------------------------------------------------------- the form
+  // Letterboxd's "I Watched" screen, as "I Played": a full screen with a close
+  // cross and a save tick, the game, the date (tap to change, the cross removes
+  // it), stars and Like, the review (opens the editor), hours, and three toggles.
   function paintForm() {
     view = 'form';
+    overlay.classList.add('modal-overlay--full');
     const g = selectedGame;
-    const today = new Date().toISOString().slice(0, 10);
-
-    const pill = (key, text) => `
-      <button type="button" class="lg-pill${draft.status === key ? ' lg-pill--on' : ''}" data-status="${key}">${esc(text)}</button>`;
-
-    const toggle = (key, text, note, on) => `
-      <button type="button" class="lg-row lg-row--toggle" data-toggle="${key}" aria-pressed="${on}">
-        <span class="lg-row__label">${esc(text)}</span>
-        <!-- Always present, even when empty: the privacy row fills this
-             in when it is switched off, and a span that only exists
-             when it already has text can never be the one that gets
-             filled. -->
-        <span class="lg-row__note">${esc(note)}</span>
-        <span class="lg-switch${on ? ' lg-switch--on' : ''}"><span class="lg-switch__knob"></span></span>
-      </button>`;
-
+    const today = localToday();
+    const title = draft.status === 'playing' ? 'I’m Playing' : draft.status === 'backlog' ? 'Backlog' : 'I Played';
     overlay.innerHTML = `
-      <div class="modal lg-sheet lg-sheet--tall">
-        <header class="lg-head">
-          ${g.cover_url ? `<img class="lg-head__cover" src="${esc(g.cover_url)}" alt="">` : ''}
-          <div class="lg-head__text">
-            <h2 class="lg-head__title">${esc(headTitle(g))}</h2>
-            ${g.release_year ? `<p class="lg-head__year">${esc(String(g.release_year))}</p>` : ''}
-          </div>
-          <button type="button" class="lg-x" data-act="cancel" aria-label="Close">${iconClose()}</button>
+      <div class="ip" role="dialog" aria-label="${esc(title)}: ${esc(headTitle(g))}">
+        <header class="ip-bar">
+          <button type="button" class="ip-bar__btn" data-act="cancel" aria-label="Close">${iconClose()}</button>
+          <h2>${title}</h2>
+          <button type="button" class="ip-bar__btn ip-save" data-act="save" aria-label="Save">${iconTick()}</button>
         </header>
-
-        <div class="lg-body">
-          <div class="lg-label">Rate</div>
-          <div class="lg-group lg-group--rate">
-            <div class="lg-rate" id="lc-rating">${starRow(draft.rating, { interactive: true, size: 32 })}</div>
-            <button type="button" class="lg-love" data-act="love" aria-pressed="${draft.loved}"
-                    aria-label="${draft.loved ? 'Remove from loved' : 'Mark as loved'}">
-              ${draft.loved ? iconHeartSolid() : iconHeartLine()}
-            </button>
+        <div class="ip-body">
+          <div class="ip-game">
+            ${g.cover_url ? `<img src="${esc(g.cover_url)}" alt="">` : ''}
+            <b>${esc(headTitle(g))}</b>
           </div>
-
-          <div class="lg-label">Track</div>
-          <div class="lg-group lg-group--track">
-            ${pill('played', 'Played')}
-            ${pill('playing', 'Playing')}
-            ${pill('backlog', 'Backlog')}
+          ${draft.status === 'backlog' ? '' : `
+          <label class="ip-date" id="lc-date-row">
+            <span class="ip-date__l">Date</span>
+            <span class="ip-date__v">${draft.played_date ? esc(longDate(draft.played_date)) : 'Add a date'}</span>
+            ${draft.played_date ? `<button type="button" class="ip-clear" data-act="nodate" aria-label="Remove date">${iconClearDot()}</button>` : ''}
+            <input type="date" class="ip-date__in" id="lc-date" aria-label="Date played"
+                   value="${esc(draft.played_date || '')}" min="${esc(g.release_date || '')}" max="${today}">
+          </label>`}
+          <div class="ip-rate">
+            <div><div class="lg-rate" id="lc-rating">${starRow(draft.rating, { interactive: true, size: 38 })}</div><small>Rate</small></div>
+            <button type="button" class="ip-like" data-act="love" aria-pressed="${draft.loved}" aria-label="${draft.loved ? 'Remove from loved' : 'Mark as loved'}">${iconHeartSolid()}<small>Like</small></button>
           </div>
-
-          <div class="lg-label">Review</div>
-          <div class="lg-group lg-group--review">
-            <textarea class="lg-text" id="lc-review" rows="5"
-              placeholder="What did you think?">${esc(draft.review)}</textarea>
-            <div class="lg-count"><span id="lc-count">${countWords(draft.review)}</span></div>
+          <button type="button" class="ip-review" data-act="edit">
+            ${draft.review.trim() ? `<span class="ip-review__t">${reviewText(draft.review)}</span>` : '<span class="ip-review__ph">Add review…</span>'}
+          </button>
+          <label class="ip-hours">
+            <span>Hours played</span>
+            <input type="number" class="lg-num" id="lc-hours" aria-label="Hours played" placeholder="add"
+                   inputmode="numeric" min="0" max="20000" step="1" value="${draft.hours ?? ''}">
+          </label>
+          <div class="ip-toggles">
+            <button type="button" data-toggle="replay" aria-pressed="${draft.replay}">${iconReplayEye()}<span>${draft.replay ? 'Replay' : 'First-time play'}</span></button>
+            <button type="button" data-toggle="spoilers" aria-pressed="${draft.spoilers}">${iconSpoilerShield(draft.spoilers)}<span>${draft.spoilers ? 'Contains spoilers' : 'No spoilers'}</span></button>
+            <button type="button" data-toggle="isPublic" aria-pressed="${!draft.isPublic}">${iconLockSm(!draft.isPublic)}<span>${draft.isPublic ? 'Public' : 'Only me'}</span></button>
           </div>
-          <div class="lg-group lg-group--flush">
-            ${toggle('spoilers', 'Contains spoilers', 'hidden behind a tap', draft.spoilers)}
-          </div>
-
-          <div class="lg-label">Detail</div>
-          <div class="lg-group" id="lc-detail">
-            <label class="lg-row lg-row--field" id="lc-date-row" ${draft.status === 'backlog' ? 'hidden' : ''}>
-              <span class="lg-row__label">Played on</span>
-              <span class="lg-row__note">${draft.played_date ? esc(shortDate(draft.played_date)) : 'add'}</span>
-              <span class="lg-row__go">${iconChevronRight()}</span>
-              <input type="date" class="lg-row__input" id="lc-date" aria-label="Date played"
-                     value="${esc(draft.played_date || '')}" min="${esc(g.release_date || '')}" max="${today}">
-            </label>
-            <label class="lg-row lg-row--field">
-              <span class="lg-row__label">Hours</span>
-              <input type="number" class="lg-num" id="lc-hours" aria-label="Hours played" placeholder="add"
-                     inputmode="numeric" min="0" max="20000" step="1" value="${draft.hours ?? ''}">
-              <span class="lg-row__go">${iconChevronRight()}</span>
-            </label>
-            ${toggle('replay', 'This is a replay', '', draft.replay)}
-            ${toggle('isPublic', 'Anyone can see it', draft.isPublic ? '' : 'only you', draft.isPublic)}
-          </div>
-
-          ${existingLog ? `
-            <button type="button" class="lg-row lg-row--danger" data-act="delete">
-              <span class="lg-row__label">Delete this entry</span>
-            </button>` : ''}
-        </div>
-
-        <div class="lg-foot">
-          <button type="button" class="lg-save" data-act="save">${existingLog ? 'Save changes' : 'Save entry'}</button>
+          ${existingLog ? '<button type="button" class="ip-delete" data-act="delete">Delete this entry</button>' : ''}
         </div>
       </div>`;
-
     wireRating();
-    enableSwipeToDismiss(qs('.modal', overlay), close);
+  }
+
+  // The full-screen review editor: a blank page, and bold, italic, quote, link,
+  // undo and redo along the bottom. Back returns to the form with the text kept.
+  let hist = [draft.review];
+  let pos = 0;
+  function paintEditor() {
+    view = 'edit';
+    hist = [draft.review]; pos = 0;
+    overlay.innerHTML = `
+      <div class="ip ip--edit" role="dialog" aria-label="Edit review">
+        <header class="ip-bar">
+          <button type="button" class="ip-bar__btn" data-act="back-edit" aria-label="Back">${iconArrowLeft()}</button>
+          <h2>Edit Text</h2>
+          <span></span>
+        </header>
+        <textarea class="ip-editor" id="lc-review" aria-label="Review">${esc(draft.review)}</textarea>
+        <div class="ip-tools">
+          <button type="button" data-fmt="b" aria-label="Bold">${iconFmtBold()}</button>
+          <button type="button" data-fmt="i" aria-label="Italic">${iconFmtItalic()}</button>
+          <button type="button" data-fmt="q" aria-label="Quote">${iconFmtQuote()}</button>
+          <button type="button" data-fmt="l" aria-label="Link">${iconFmtLink()}</button>
+          <span></span>
+          <button type="button" data-fmt="undo" aria-label="Undo" disabled>${iconFmtUndo()}</button>
+          <button type="button" data-fmt="redo" aria-label="Redo" disabled>${iconFmtRedo()}</button>
+        </div>
+      </div>`;
+    const t = qs('#lc-review', overlay);
+    t.focus();
+    t.setSelectionRange(t.value.length, t.value.length);
+  }
+  function syncUndo() {
+    const u = qs('[data-fmt="undo"]', overlay);
+    const r = qs('[data-fmt="redo"]', overlay);
+    if (u) u.disabled = pos === 0;
+    if (r) r.disabled = pos >= hist.length - 1;
   }
 
   // The rating control, identical to the game page's sheet: press
@@ -214,7 +217,7 @@ export function openLogComposer({ game = null, resolveGame = null, existingLog =
     const paint = (v) => {
       if (v === draft.rating) return;
       draft.rating = v;
-      picker.innerHTML = starRow(v, { interactive: true, size: 32 });
+      picker.innerHTML = starRow(v, { interactive: true, size: 38 });
       buzz();
     };
 
@@ -247,10 +250,8 @@ export function openLogComposer({ game = null, resolveGame = null, existingLog =
     }
     const g = selectedGame;
 
-    if (!draft.status) {
-      if (draft.rating > 0 || draft.review.trim()) draft.status = 'played';
-      else { toast('Pick Played, Playing or Backlog first.', 'error'); return; }
-    }
+    // This is the "I Played" screen: with nothing else chosen, the entry is a play.
+    if (!draft.status) draft.status = 'played';
 
     // A game that hasn't come out can't have been played or be in
     // progress; the backlog is exactly what an unreleased game is for.
@@ -285,8 +286,8 @@ export function openLogComposer({ game = null, resolveGame = null, existingLog =
       is_public: draft.isPublic,
     };
 
-    const btn = qs('.lg-save', overlay);
-    if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+    const btn = qs('.ip-save', overlay);
+    if (btn) btn.disabled = true;
     try {
       const saved = existingLog
         ? await api.updateLog(existingLog.id, payload)
@@ -303,7 +304,7 @@ export function openLogComposer({ game = null, resolveGame = null, existingLog =
       onSaved({ log: saved });
     } catch (err) {
       toast(err.message || 'Could not save that entry.', 'error');
-      if (btn) { btn.disabled = false; btn.textContent = existingLog ? 'Save changes' : 'Save entry'; }
+      if (btn) btn.disabled = false;
     }
   }
 
@@ -314,6 +315,7 @@ export function openLogComposer({ game = null, resolveGame = null, existingLog =
   // answers to "which game do you mean" is one more than the app needs.
   function paintPicker() {
     view = 'picker';
+    overlay.classList.remove('modal-overlay--full');
     overlay.innerHTML = `
       <div class="modal lg-sheet lg-sheet--tall lg-sheet--picker">
         <header class="lg-head lg-head--plain">
@@ -458,14 +460,46 @@ export function openLogComposer({ game = null, resolveGame = null, existingLog =
       const key = tgBtn.dataset.toggle;
       draft[key] = !draft[key];
       buzz();
-      tgBtn.setAttribute('aria-pressed', String(draft[key]));
-      tgBtn.querySelector('.lg-switch').classList.toggle('lg-switch--on', draft[key]);
-      if (key === 'isPublic') {
-        const note = tgBtn.querySelector('.lg-row__note');
-        if (note) note.textContent = draft.isPublic ? '' : 'only you';
-      }
+      paintForm();
       return;
     }
+
+    // The date row opens the date picker; its cross removes the date.
+    const dateRow = e.target.closest('.ip-date');
+    if (dateRow && !e.target.closest('.ip-clear') && !e.target.matches('input')) {
+      const inp = qs('#lc-date', overlay);
+      try { inp.showPicker(); } catch { inp.focus(); }
+      return;
+    }
+
+    // The editor's toolbar: wrap the selection (or a placeholder word) in the
+    // marks reviewText() understands; undo and redo step through the edits.
+    const fmtBtn = e.target.closest('[data-fmt]');
+    if (fmtBtn) {
+      const t = qs('#lc-review', overlay);
+      const k = fmtBtn.dataset.fmt;
+      if (k === 'undo' || k === 'redo') {
+        pos = Math.max(0, Math.min(hist.length - 1, pos + (k === 'undo' ? -1 : 1)));
+        draft.review = hist[pos];
+        t.value = draft.review;
+        syncUndo();
+        t.focus();
+        return;
+      }
+      const a = t.selectionStart;
+      const b = t.selectionEnd;
+      const sel = t.value.slice(a, b);
+      const [pre, post, fill] = { b: ['**', '**', 'bold'], i: ['_', '_', 'italic'], q: ['\n> ', '', 'quote'], l: ['[', '](https://)', 'link text'] }[k];
+      const body = sel || fill;
+      t.value = t.value.slice(0, a) + pre + body + post + t.value.slice(b);
+      t.focus();
+      t.setSelectionRange(a + pre.length, a + pre.length + body.length);
+      draft.review = t.value;
+      hist = hist.slice(0, pos + 1); hist.push(draft.review); pos = hist.length - 1;
+      syncUndo();
+      return;
+    }
+
 
     const actBtn = e.target.closest('[data-act]');
     if (!actBtn) return;
@@ -478,9 +512,11 @@ export function openLogComposer({ game = null, resolveGame = null, existingLog =
       buzzHeart();
       actBtn.setAttribute('aria-pressed', String(draft.loved));
       actBtn.setAttribute('aria-label', draft.loved ? 'Remove from loved' : 'Mark as loved');
-      actBtn.innerHTML = draft.loved ? iconHeartSolid() : iconHeartLine();
       return;
     }
+    if (act === 'nodate') { e.preventDefault(); draft.played_date = null; paintForm(); return; }
+    if (act === 'edit') { paintEditor(); return; }
+    if (act === 'back-edit') { paintForm(); return; }
 
     if (act === 'save') return save();
 
@@ -500,13 +536,12 @@ export function openLogComposer({ game = null, resolveGame = null, existingLog =
   overlay.addEventListener('input', (e) => {
     if (e.target.id === 'lc-review') {
       draft.review = e.target.value;
-      const count = qs('#lc-count', overlay);
-      if (count) count.textContent = countWords(draft.review);
+      hist = hist.slice(0, pos + 1); hist.push(draft.review); pos = hist.length - 1; syncUndo();
     }
     if (e.target.id === 'lc-date') {
       draft.played_date = e.target.value || null;
-      const note = e.target.closest('.lg-row')?.querySelector('.lg-row__note');
-      if (note) note.textContent = draft.played_date ? shortDate(draft.played_date) : 'add';
+      const v = qs('.ip-date__v', overlay);
+      if (v) v.textContent = draft.played_date ? longDate(draft.played_date) : 'Add a date';
     }
     if (e.target.id === 'lc-hours') {
       const n = Number(e.target.value);
@@ -554,6 +589,31 @@ function shortDate(iso) {
     ? { month: 'short', day: 'numeric' }
     : { year: 'numeric', month: 'short', day: 'numeric' });
 }
+
+function localToday() {
+  const n = new Date();
+  return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`;
+}
+function longDate(iso) {
+  const d = new Date(`${String(iso).slice(0, 10)}T00:00:00`);
+  return isNaN(d) ? '' : d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+}
+function iconTick() { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>'; }
+function iconArrowLeft() { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12H5M11 5l-7 7 7 7"/></svg>'; }
+function iconClearDot() { return '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="currentColor"/><path d="M8 8l8 8M16 8l-8 8" stroke="var(--bg)" stroke-width="2" stroke-linecap="round"/></svg>'; }
+function iconReplayEye() { return '<svg viewBox="0 0 48 30" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M2 15C7 6 15 2 24 2s17 4 22 13c-5 9-13 13-22 13S7 24 2 15z"/><path d="M30 13.5a6.3 6.3 0 1 0-1.4 5.6M30.4 9.4v4.4H26" stroke-linecap="round"/></svg>'; }
+function iconSpoilerShield(on) { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M12 3l7 3v5.5c0 4.3-3 7.8-7 9.5-4-1.7-7-5.2-7-9.5V6z"/>${on ? '<path d="M8.5 9.5l7 7M15.5 9.5l-7 7" stroke-linecap="round"/>' : '<path d="M9 12.5h6M12 9.5v6" stroke-linecap="round"/>'}</svg>`; }
+function iconLockSm(on) {
+  return on
+    ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/></svg>'
+    : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.5 2.6 3.5 5.4 3.5 8.5s-1 5.9-3.5 8.5c-2.5-2.6-3.5-5.4-3.5-8.5s1-5.9 3.5-8.5z"/></svg>';
+}
+function iconFmtBold() { return '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M7 4h6.2a4.3 4.3 0 0 1 2.9 7.5A4.6 4.6 0 0 1 13.8 20H7zm3 3v3.8h3a1.9 1.9 0 0 0 0-3.8zm0 6.6V17h3.6a2 2 0 0 0 0-4z"/></svg>'; }
+function iconFmtItalic() { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M10 4h8M6 20h8M15 4 9 20"/></svg>'; }
+function iconFmtQuote() { return '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M4 11.5C4 8 6 5.6 9.4 5l.5 1.6C8 7.3 7 8.6 7 10.4h2.7V17H4zm10 0c0-3.5 2-5.9 5.4-6.5l.5 1.6c-1.9.7-2.9 2-2.9 3.8h2.7V17H14z"/></svg>'; }
+function iconFmtLink() { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 15l6-6M10.5 6.5l1.3-1.3a4.2 4.2 0 0 1 6 6l-1.3 1.3M13.5 17.5l-1.3 1.3a4.2 4.2 0 0 1-6-6l1.3-1.3"/></svg>'; }
+function iconFmtUndo() { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 7 5 11l4 4"/><path d="M5 11h9a5 5 0 0 1 0 10h-2"/></svg>'; }
+function iconFmtRedo() { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 7 4 4-4 4"/><path d="M19 11h-9a5 5 0 0 0 0 10h2"/></svg>'; }
 
 function countWords(text) {
   const t = String(text || '').trim();

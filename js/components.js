@@ -1,4 +1,4 @@
-import { esc, starRow, statusStamp, formatDate, timeAgo, placeholderCover, igdbSized, initials, qs, qsa, toast, enableSwipeToDismiss, tapFeedback } from './utils.js';
+import { esc, starRow, statusStamp, formatDate, timeAgo, placeholderCover, igdbSized, initials, qs, qsa, toast, enableSwipeToDismiss, tapFeedback, reviewText } from './utils.js';
 import { state } from './state.js';
 import { MESSENGER_ARCHIVED } from './config.js';
 
@@ -510,9 +510,9 @@ export function logCard(log, { showAuthor = true, likeInfo = null, ownLog = fals
           ? `<button type="button" class="log-card__review log-card__review--spoiler" data-spoiler>
                <span class="spoiler-tag">SPOILERS</span>
                <span class="spoiler-veil">Tap to reveal</span>
-               <span class="spoiler-text">${esc(log.review)}</span>
+               <span class="spoiler-text">${reviewText(log.review)}</span>
              </button>`
-          : `<p class="log-card__review">${esc(log.review)}</p>`) : ''}
+          : `<p class="log-card__review">${reviewText(log.review)}</p>`) : ''}
         <div class="log-card__footer">
           <span class="log-card__time">${timeAgo(log.created_at)}</span>
           ${likeInfo ? likeButton(log.id, likeInfo) : ''}

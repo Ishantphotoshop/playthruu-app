@@ -1,7 +1,7 @@
 import * as api from '../api.js';
 import { state } from '../state.js';
 import { topBar, avatarImg, posterFrame, spinner, iconHeart, iconSend, iconFlag, iconBlock, openReportSheet } from '../components.js';
-import { esc, starRow, formatDate, timeAgo, qs, qsa, toast, tapFeedback, promptSignIn } from '../utils.js';
+import { esc, starRow, formatDate, timeAgo, qs, qsa, toast, tapFeedback, promptSignIn, reviewText } from '../utils.js';
 
 // One person's review, on its own page — opened by tapping a poster in
 // the feed's "Friend's recent activity". It is a thread, not an entry in
@@ -98,7 +98,7 @@ export async function renderReviewView(root, { id }) {
 // time, and the writing replaces it when you tap.
 function reviewBodyHtml(log) {
   if (!log.review) return '<p class="rv__nowrite">No write-up — just logged and rated.</p>';
-  const text = `<p class="rv__text">${esc(log.review)}</p>`;
+  const text = `<p class="rv__text">${reviewText(log.review)}</p>`;
   if (!log.contains_spoilers) return `<div class="rv__quote">${text}</div>`;
   return `
     <div class="rv__quote rv__quote--gated">

@@ -517,3 +517,21 @@ export function playedKind(log, joinedAt) {
   }
   return 'diary';
 }
+
+// A review as HTML: escaped first, then the few marks the review editor's
+// toolbar writes. **bold**, _italic_, a line starting with "> " as a quote, and
+// [text](https://link). Nothing else is interpreted.
+export function reviewText(str) {
+  const safe = esc(str);
+  return safe
+    .split('\n')
+    .map((line) => {
+      let l = line
+        .replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')
+        .replace(/(^|[\s(])_([^_\n]+)_(?=$|[\s).,!?])/g, '$1<em>$2</em>')
+        .replace(/\[([^\]\n]+)\]\((https?:\/\/[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+      if (l.startsWith('&gt; ')) l = `<span class="rv-quote">${l.slice(5)}</span>`;
+      return l;
+    })
+    .join('\n');
+}
