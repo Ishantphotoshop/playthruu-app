@@ -270,7 +270,7 @@ export async function renderProfileView(root, { username }) {
               <a href="#/game/${l.games.id}" class="recent-played-item" aria-label="${esc(l.games.title)}">
                 ${posterFrame(l.games.cover_url, l.games.title, 'recent-played-item__cover')}
               </a>
-              ${isOwn ? `<button type="button" class="playing-slot__remove" data-remove-log="${l.id}" aria-label="Remove from currently playing">${iconClose()}</button>` : ''}
+              ${isOwn ? `<button type="button" class="playing-slot__remove" data-remove-log="${l.id}" aria-label="Remove from currently playing"><svg viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M2 2L10 10M10 2L2 10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></button>` : ''}
             </div>`).join('')}${isOwn ? `
             <div class="playing-slot">
               <button type="button" class="playing-add" id="add-playing" aria-label="Add a game you're currently playing">${iconPlus()}</button>

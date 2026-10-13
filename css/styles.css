@@ -2816,7 +2816,7 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
   /* Sits on its own dark disc over poster art, not the page background —
      the icon stays white regardless of theme so it doesn't go dark-on-dark. */
 }
-.playing-slot__remove svg { width: 11px; height: 11px; }
+.playing-slot__remove svg { width: 12px; height: 12px; display: block; }
 .playing-empty-hint { padding: 8px 2px 4px; }
 /* The empty slot at the end of Currently playing: same size as a poster,
    a plus in the middle. Tapping it opens the game search. */
@@ -7099,3 +7099,13 @@ a.gd-credit__name { text-decoration: none; }
 .profile-header__stat { flex-direction: column; align-items: center; gap: 2px; }
 .profile-header__stat b { font-family: var(--font-body); font-size: 18px; font-weight: 800; }
 .profile-header__stat span { font-size: 12.5px; }
+
+/* Filters on the profile list pages. */
+.ll-filters { display: flex; gap: 8px; overflow-x: auto; padding: 4px 0 12px; scrollbar-width: none; }
+.ll-filters::-webkit-scrollbar { display: none; }
+.ll-sel, .ll-chip { flex: none; height: 34px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink); font: 600 13px var(--font-body); }
+.ll-chip[aria-pressed="true"] { background: var(--accent, #1fd45f); color: #000; border-color: transparent; }
+.ll-group { padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+.ll-group .diary-row { border-bottom: 0; }
+.diary-row--sub { padding-left: 66px; min-height: 0; }
+.ll-count { color: var(--ink-dim); font: 600 13px var(--font-body); }

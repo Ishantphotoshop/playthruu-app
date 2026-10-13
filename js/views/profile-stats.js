@@ -19,6 +19,8 @@ const num = (n) => Number(n).toLocaleString('en-US');
 //   SHOW_TILES         the six boxes (Games, Diary, Reviews, Backlog, Likes, Taste)
 const SHOW_ACTIVITY_BOX = false;
 const SHOW_TILES = false;
+// The Activity (months) box on its own, at the very bottom, without the Stats bar or filter.
+const SHOW_ACTIVITY_BOTTOM = true;
 
 const chevron = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 5l7 7-7 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
@@ -147,6 +149,7 @@ function statsPanelHtml(ctx, period) {
       ${activityBlock}
       ${lower}
       ${box('Hours', '', hoursBody)}
+      ${SHOW_ACTIVITY_BOTTOM && !SHOW_ACTIVITY_BOX ? box('Activity', `<span id="ps-amut">${periodNote(period)}</span>`, `<div id="ps-act-slot">${activityHtml(diary, period)}</div>`) : ''}
     </div>`;
 }
 
