@@ -11,6 +11,7 @@ import {
 import { esc, formatDate, statusStamp, starRow, qs, qsa, toast, debounce, pulseLogTab, igdbSized, enableSwipeToDismiss, promptSignIn } from '../utils.js';
 import { refreshCurrentView, navigate } from '../router.js';
 import { wirePullToRefresh } from './feed-view.js';
+import { diaryTilesHtml } from './log-list-view.js';
 import { openNewListForm } from './lists-view.js';
 import { getCached, setCached } from '../cache.js';
 
@@ -293,18 +294,7 @@ export async function renderProfileView(root, { username }) {
 
     const renderJournalTab = () => `
       <h2 class="section-heading">Journal</h2>
-      ${diary.length ? `
-        <div class="diary-list">
-          ${diary.map((l) => `
-            <a href="#/game/${l.games.id}" class="diary-row">
-              <img src="${esc(igdbSized(l.games.cover_url, 'cover_small') || '')}" alt="" class="diary-row__cover" loading="lazy" decoding="async" onerror="this.style.visibility='hidden'">
-              <div class="diary-row__main">
-                <div class="diary-row__title">${esc(l.games.title)}</div>
-                <div class="diary-row__meta">${l.played_date ? formatDate(l.played_date) : ''} ${l.rating ? starRow(l.rating, { size: 10 }) : ''}</div>
-              </div>
-              ${statusStamp(l.status)}
-            </a>`).join('')}
-        </div>` : emptyState(
+      ${diary.length ? diaryTilesHtml(diary.filter((l) => l.games).sort((a, b) => new Date(b.played_date || b.created_at) - new Date(a.played_date || a.created_at))) : emptyState(
           isOwn ? 'No journal entries yet. Log a game once you\'ve played it.' : 'No journal entries yet.',
           isOwn ? { icon: iconStamp(), actionLabel: 'Log your first game', actionRoute: '/log' } : { icon: iconStamp() }
         )}

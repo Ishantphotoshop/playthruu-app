@@ -17,6 +17,33 @@ const MODES = {
   replayed: { title: 'Replays', statuses: undefined, reviewsOnly: false, keep: (l) => l.is_replay, empty: (u) => `${u} hasn't replayed any games yet.` },
 };
 
+// Calendar tiles: weekday and day number in a tile, the game beside it, the cover
+// on the right. Grouped under a month heading when `byDate` is true (the list is in date order).
+export function diaryTilesHtml(list, byDate = true) {
+  const parts = (l) => { const raw = l.played_date || l.created_at; const d = raw ? new Date(raw + (String(raw).length === 10 ? 'T00:00:00' : '')) : null; return d && !isNaN(d) ? d : null; };
+  const row = (l) => {
+    const d = parts(l);
+    return `
+    <a href="#/game/${l.games.id}" class="dq-row">
+      <div class="dq-tile"><span>${d ? d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase() : ''}</span><b>${d ? d.getDate() : '·'}</b></div>
+      <div class="dq-main">
+        <div class="dq-title">${esc(l.games.title)}${l.games.release_year ? ` <em>${l.games.release_year}</em>` : ''}</div>
+        <div class="dq-meta">${l.rating ? starRow(l.rating, { size: 12 }) : ''}${l.is_replay ? `<span class="dq-mark">${iconReplay()}</span>` : ''}${l.review ? `<span class="dq-mark">${iconReviewLines()}</span>` : ''}</div>
+      </div>
+      <img src="${esc(igdbSized(l.games.cover_url, 'cover_small') || '')}" alt="" class="dq-cover" loading="lazy" decoding="async" onerror="this.style.visibility='hidden'">
+    </a>`;
+  };
+  if (!byDate) return `<div class="dq">${list.map(row).join('')}</div>`;
+  let last = null;
+  return `<div class="dq">${list.map((l) => {
+    const d = parts(l);
+    const key = d ? d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'No date';
+    const head = key !== last ? `<h3 class="dq-month">${key}</h3>` : '';
+    last = key;
+    return head + row(l);
+  }).join('')}</div>`;
+}
+
 export async function renderLogListView(root, { username, mode }) {
   const cfg = MODES[mode] || MODES.logged;
   root.innerHTML = topBar(cfg.title, { back: true, right: `<button type="button" class="browse-fbtn" id="ll-fbtn" aria-label="Filters">${iconFilter()}</button>` }) + `<div class="view-body" id="loglist-body">${spinner()}</div>` + navBar('');
@@ -118,33 +145,7 @@ export async function renderLogListView(root, { username, mode }) {
             ${g.slice(1).map((l) => rowHtml(l, false)).join('')}
           </div>`).join('')}</div>`;
       } else if (cfg.diary) {
-        // Calendar tiles: weekday and day number in a tile, the game beside it,
-        // the cover on the right. Grouped under a month heading when sorted by date.
-        const byDate = f.sort === 'new' || f.sort === 'old';
-        const parts = (l) => { const raw = l.played_date || l.created_at; const d = raw ? new Date(raw + (String(raw).length === 10 ? 'T00:00:00' : '')) : null; return d && !isNaN(d) ? d : null; };
-        const row = (l) => {
-          const d = parts(l);
-          return `
-          <a href="#/game/${l.games.id}" class="dq-row">
-            <div class="dq-tile"><span>${d ? d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase() : ''}</span><b>${d ? d.getDate() : '·'}</b></div>
-            <div class="dq-main">
-              <div class="dq-title">${esc(l.games.title)}${l.games.release_year ? ` <em>${l.games.release_year}</em>` : ''}</div>
-              <div class="dq-meta">${l.rating ? starRow(l.rating, { size: 12 }) : ''}${l.is_replay ? `<span class="dq-mark">${iconReplay()}</span>` : ''}${l.review ? `<span class="dq-mark">${iconReviewLines()}</span>` : ''}</div>
-            </div>
-            <img src="${esc(igdbSized(l.games.cover_url, 'cover_small') || '')}" alt="" class="dq-cover" loading="lazy" decoding="async" onerror="this.style.visibility='hidden'">
-          </a>`;
-        };
-        if (!byDate) content = `<div class="dq">${list.map(row).join('')}</div>`;
-        else {
-          let last = null;
-          content = `<div class="dq">${list.map((l) => {
-            const d = parts(l);
-            const key = d ? d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'No date';
-            const head = key !== last ? `<h3 class="dq-month">${key}</h3>` : '';
-            last = key;
-            return head + row(l);
-          }).join('')}</div>`;
-        }
+        content = diaryTilesHtml(list, f.sort === 'new' || f.sort === 'old');
       } else {
         content = `<div class="ll-grid">${list.map((l) => `<div class="ll-cell"><a class="game-card" href="#/game/${l.games.id}" aria-label="${esc(l.games.title)}">${posterFrame(l.games.cover_url, l.games.title, 'game-card__cover')}</a><div class="rp-meta">${l.rating ? starRow(l.rating, { size: 12 }) : ''}${l.is_replay ? `<span class="rp-meta__icon rp-meta__icon--replay">${iconReplay()}</span>` : ''}${l.review ? `<span class="rp-meta__icon rp-meta__icon--review">${iconReviewLines()}</span>` : ''}</div></div>`).join('')}</div>`;
       }
