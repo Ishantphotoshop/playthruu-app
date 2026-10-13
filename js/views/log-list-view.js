@@ -9,9 +9,9 @@ import { esc, qs, formatDate, statusStamp, starRow, igdbSized } from '../utils.j
 const THIS_YEAR = new Date().getFullYear();
 const MODES = {
   completed: { title: 'Played', statuses: ['played', 'dropped'], reviewsOnly: false, empty: (u) => `${u} hasn't played any games yet.` },
-  diary: { title: 'Played', statuses: ['played', 'dropped'], reviewsOnly: false, diary: true, empty: (u) => `${u} hasn't got any diary entries yet.` },
+  diary: { title: 'Logs', statuses: ['played', 'dropped'], reviewsOnly: false, diary: true, empty: (u) => `${u} hasn't got any diary entries yet.` },
   year: { title: 'This year', statuses: ['played', 'dropped'], reviewsOnly: false, keep: (l) => { const raw = l.played_date || l.created_at; return !!raw && new Date(raw).getFullYear() === THIS_YEAR; }, empty: (u) => `${u} hasn't played anything this year yet.` },
-  logged: { title: 'Logs', statuses: undefined, reviewsOnly: false, keep: (l) => l.rating || l.review || l.loved, empty: (u) => `${u} hasn't logged anything yet.` },
+  logged: { title: 'Played', statuses: undefined, reviewsOnly: false, keep: (l) => l.rating || l.review || l.loved, empty: (u) => `${u} hasn't logged anything yet.` },
   reviews: { title: 'Reviews', statuses: undefined, reviewsOnly: true, empty: (u) => `${u} hasn't written any reviews yet.` },
   liked: { title: 'Likes', statuses: undefined, reviewsOnly: false, keep: (l) => l.loved, empty: (u) => `${u} hasn't liked any games yet.` },
   replayed: { title: 'Replays', statuses: ['played', 'dropped'], reviewsOnly: false, post: (list) => { const n = {}; list.forEach((l) => { n[l.game_id] = (n[l.game_id] || 0) + 1; }); return list.filter((l) => n[l.game_id] > 1); }, empty: (u) => `${u} hasn't replayed any games yet.` },
