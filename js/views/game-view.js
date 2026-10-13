@@ -1513,13 +1513,19 @@ function openLogSheet({ game, ownLog, replayCount, ensureSavedGame, onChanged, o
 // The pop-up's three big icons (picks: Play 14 arcade stick, Like 10 heart,
 // Backlog 04 hourglass). Each is drawn twice: an outline while off and a solid
 // shape once switched on (CSS swaps them).
-const ICON_STICK = { box: '2.5 2 19 19.5', body: 'M5 17h14a1.5 1.5 0 0 1 1.5 1.5V20.5h-17V18.5A1.5 1.5 0 0 1 5 17zM12 3a3 3 0 1 1 0 6a3 3 0 1 1 0-6z', outside: 'M12 9v8' };
+const ICON_STICK = { box: '2.5 2 19 19.5', base: 'M5 17h14a1.5 1.5 0 0 1 1.5 1.5V20.5h-17V18.5A1.5 1.5 0 0 1 5 17z', knob: 'M12 3a3 3 0 1 1 0 6a3 3 0 1 1 0-6z', stem: 'M12 9v8' };
 const ICON_HEART = { box: '2.3 4.35 19.4 16.95', body: 'M12 20.3 4.7 13.4a4.7 4.7 0 0 1 6.6-6.7l.7.7.7-.7a4.7 4.7 0 0 1 6.6 6.7z' };
 const ICON_HOURGLASS = { box: '6 2 12 20', body: 'M7 3h10v3.5L13 12l4 5.5V21H7v-3.5L11 12 7 6.5z', inside: 'M9 18.5h6' };
 // `box` is each glyph's own bounds plus a 1-unit margin, so drawn at one
 // height the three icons share the same top and bottom line.
-function qaIcon({ box, body, inside = '', outside = '' }) {
+function qaIcon({ box, body, inside = '', outside = '', base = '', knob = '', stem = '' }) {
   const line = (d, w) => `<path d="${d}" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"/>`;
+  // The arcade stick is drawn in two parts: the base stays put, the stick (stem and
+  // ball) is its own group so it can wobble on its own.
+  if (base) {
+    return `<svg class="lg-qa__off-ic" viewBox="${box}">${line(base, 1.5)}<g class="qa-stick">${line(stem, 1.5)}${line(knob, 1.5)}</g></svg>`
+      + `<svg class="lg-qa__on-ic" viewBox="${box}"><path d="${base}" fill="currentColor"/><g class="qa-stick">${line(stem, 2)}<path d="${knob}" fill="currentColor"/></g></svg>`;
+  }
   const off = `<svg class="lg-qa__off-ic" viewBox="${box}">${outside ? line(outside, 1.5) : ''}${line(body, 1.5)}${inside ? line(inside, 1.5) : ''}</svg>`;
   const on = `<svg class="lg-qa__on-ic" viewBox="${box}">${outside ? line(outside, 2) : ''}<path d="${body}" fill="currentColor"/>${inside ? `<path d="${inside}" fill="none" stroke="var(--surface)" stroke-width="1.7" stroke-linecap="round"/>` : ''}</svg>`;
   return off + on;

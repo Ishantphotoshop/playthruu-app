@@ -7266,3 +7266,9 @@ a.gd-credit__name { text-decoration: none; }
   .qa-float { display: none; }
   .lg-qa.lg-pill--on[data-status="backlog"] .lg-qa__ic { animation: none; transform: rotate(180deg); }
 }
+
+/* Play: only the stick wobbles (pivoting at its base); the base never moves. */
+.qa-stick { transform-box: fill-box; transform-origin: 50% 100%; }
+.lg-qa.lg-pill--on[data-status="played"] .lg-qa__on-ic .qa-stick { animation: qa-wobble .9s ease-out; }
+@keyframes qa-wobble { 0%, 100% { transform: rotate(0); } 12% { transform: rotate(18deg); } 28% { transform: rotate(-14deg); } 44% { transform: rotate(10deg); } 60% { transform: rotate(-6deg); } 76% { transform: rotate(3deg); } }
+@media (prefers-reduced-motion: reduce) { .lg-qa.lg-pill--on[data-status="played"] .lg-qa__on-ic .qa-stick { animation: none; } }
