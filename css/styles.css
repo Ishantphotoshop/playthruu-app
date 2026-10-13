@@ -7287,12 +7287,12 @@ a.gd-credit__name { text-decoration: none; }
 .lg-qa.lg-pill--on.qa-finishing[data-status="backlog"] .hg-p1 { animation: none; opacity: 0; }
 .lg-qa.lg-pill--on.qa-finishing[data-status="backlog"] .hg-p2 { animation: none; opacity: 1; }
 .lg-qa.lg-pill--on.qa-finishing[data-status="backlog"] .hg-grain { animation: none; opacity: 0; }
-.lg-qa.lg-pill--on.qa-finishing[data-status="backlog"] .hg-top { animation: hg-drain 2.2s linear forwards; }
-.lg-qa.lg-pill--on.qa-finishing[data-status="backlog"] .hg-bot { animation: hg-pile 2.2s linear forwards; }
-.lg-qa.lg-pill--on.qa-finishing[data-status="backlog"] .hg-stream { animation: hg-stream 2.2s linear forwards; }
-.lg-qa.lg-pill--on.qa-finishing[data-status="backlog"] .lg-hg { animation: hg-out .45s ease-in 2.2s forwards; }
-@keyframes hg-drain { from { transform: scaleY(1); } to { transform: scaleY(0); } }
-@keyframes hg-pile { from { transform: scaleY(.22); } to { transform: scaleY(1); } }
+.lg-qa.lg-pill--on.qa-finishing[data-status="backlog"] .hg-top { animation: hg-drain var(--P, 2.2s) linear forwards; }
+.lg-qa.lg-pill--on.qa-finishing[data-status="backlog"] .hg-bot { animation: hg-pile var(--P, 2.2s) linear forwards; }
+.lg-qa.lg-pill--on.qa-finishing[data-status="backlog"] .hg-stream { animation: hg-stream var(--P, 2.2s) linear forwards; }
+.lg-qa.lg-pill--on.qa-finishing[data-status="backlog"] .lg-hg { animation: hg-out .45s ease-in var(--P, 2.2s) forwards; }
+@keyframes hg-drain { from { transform: scaleY(var(--t0, 1)); } to { transform: scaleY(0); } }
+@keyframes hg-pile { from { transform: scaleY(var(--b0, .22)); } to { transform: scaleY(1); } }
 @keyframes hg-stream { 0% { opacity: 0; } 4% { opacity: 1; } 96% { opacity: 1; } 100% { opacity: 0; } }
 @keyframes hg-out { to { opacity: 0; } }
 /* taken out of the backlog: it turns back over, then becomes the plain outline */
@@ -7304,3 +7304,15 @@ a.gd-credit__name { text-decoration: none; }
   .lg-qa.lg-pill--on[data-status="backlog"] .hg-grain { animation: none; }
   .lg-qa.lg-pill--on.qa-finishing[data-status="backlog"] .hg-top, .lg-qa.lg-pill--on.qa-finishing[data-status="backlog"] .hg-bot, .lg-qa.lg-pill--on.qa-finishing[data-status="backlog"] .hg-stream, .lg-qa.lg-pill--on.qa-finishing[data-status="backlog"] .lg-hg, .lg-qa.qa-unturning .lg-qa__ic { animation-duration: 0s; }
 }
+
+/* Let the turning glass swing past the box it is drawn in instead of being cut off. */
+.lg-qa__ic svg { overflow: visible; }
+
+/* 10 minute easter egg: the sand runs slowly; at the end of each run the glass turns upside down. */
+.lg-qa.lg-pill--on.qa-egg[data-status="backlog"] .hg-top { animation: hg-egg-top var(--egg-s, 600s) linear var(--egg-delay, .6s) both; }
+.lg-qa.lg-pill--on.qa-egg[data-status="backlog"] .hg-bot { animation: hg-egg-bot var(--egg-s, 600s) linear var(--egg-delay, .6s) both; }
+@keyframes hg-egg-top { from { transform: scaleY(1); } to { transform: scaleY(0); } }
+@keyframes hg-egg-bot { from { transform: scaleY(.22); } to { transform: scaleY(1); } }
+.lg-qa.qa-egg-turn .lg-qa__ic { animation: hg-egg-flip .8s ease-in-out forwards; transform-origin: 50% 50%; }
+@keyframes hg-egg-flip { from { transform: rotate(0); } to { transform: rotate(180deg); } }
+@media (prefers-reduced-motion: reduce) { .lg-qa.qa-egg-turn .lg-qa__ic { animation-duration: 0s; } }

@@ -1298,6 +1298,11 @@ function openLogSheet({ game, ownLog, replayCount, ensureSavedGame, onChanged, o
         </div>
       </div>`;
 
+    const openBacklog = qs('.lg-qa[data-status="backlog"]', overlay);
+    if (openBacklog && draft.status === 'backlog') {
+      const since = log?.status === 'backlog' ? new Date(log.updated_at || log.created_at).getTime() : Date.now();
+      startEgg(openBacklog, Number.isFinite(since) ? since : Date.now());
+    }
     wireRating();
     // Drag the head downwards to put the sheet away — the same gesture
     // every other sheet in the app answers to.
@@ -1407,22 +1412,39 @@ function openLogSheet({ game, ownLog, replayCount, ensureSavedGame, onChanged, o
       // again — which is what it looked like. Only the pills change, so
       // only the pills are touched; the row underneath is kept in step
       // separately.
+      const backlogBtn = qs('.lg-qa[data-status="backlog"]', overlay);
       const applyPills = () => {
         qsa('.lg-pill', overlay).forEach((b) => {
           b.classList.toggle('lg-pill--on', b.dataset.status === draft.status);
         });
+        // The 10 minute hourglass runs for as long as the game is in the backlog.
+        if (draft.status === 'backlog') startEgg(backlogBtn, Date.now()); else stopEgg(backlogBtn);
         syncPageRow();
       };
-      const backlogBtn = qs('.lg-qa[data-status="backlog"]', overlay);
       if (prevStatus === 'backlog' && draft.status !== 'backlog' && backlogBtn) {
         overlay.classList.add('qa-busy');
         if (draft.status === 'played') {
           // Marking a backlog game as played: the sand pours to the bottom, the
           // glass fades, and only then does Played switch on.
+          // From wherever the sand has got to: at one steady speed, so a nearly empty
+          // top finishes sooner than a full one.
+          const level = (el) => { const t = getComputedStyle(el).transform; return t && t !== 'none' ? parseFloat(t.split(',')[3]) : 1; };
+          const t0 = level(qs('.hg-top', backlogBtn));
+          const b0 = level(qs('.hg-bot', backlogBtn));
+          stopEgg(backlogBtn);
+          const pour = Math.max(0.8, 2.2 * t0);
+          backlogBtn.style.setProperty('--t0', String(t0));
+          backlogBtn.style.setProperty('--b0', String(b0));
+          backlogBtn.style.setProperty('--P', `${pour}s`);
           backlogBtn.classList.add('qa-finishing');
-          setTimeout(() => { backlogBtn.classList.remove('qa-finishing'); applyPills(); overlay.classList.remove('qa-busy'); }, 2750);
+          setTimeout(() => {
+            backlogBtn.classList.remove('qa-finishing');
+            ['--t0', '--b0', '--P'].forEach((v) => backlogBtn.style.removeProperty(v));
+            applyPills(); overlay.classList.remove('qa-busy');
+          }, pour * 1000 + 550);
         } else {
           // Taken out of the backlog: the hourglass turns back over smoothly.
+          stopEgg(backlogBtn);
           backlogBtn.classList.add('qa-unturning');
           setTimeout(() => { backlogBtn.classList.remove('qa-unturning'); applyPills(); overlay.classList.remove('qa-busy'); }, 560);
         }
@@ -1533,6 +1555,44 @@ function openLogSheet({ game, ownLog, replayCount, ensureSavedGame, onChanged, o
 const ICON_STICK = { box: '2.5 2 19 19.5', base: 'M5 17h14a1.5 1.5 0 0 1 1.5 1.5V20.5h-17V18.5A1.5 1.5 0 0 1 5 17z', knob: 'M12 3a3 3 0 1 1 0 6a3 3 0 1 1 0-6z', stem: 'M12 9v8' };
 const ICON_HEART = { box: '2.3 4.35 19.4 16.95', body: 'M12 20.3 4.7 13.4a4.7 4.7 0 0 1 6.6-6.7l.7.7.7-.7a4.7 4.7 0 0 1 6.6 6.7z' };
 const HOURGLASS = 'M7 3h10v3.5L13 12l4 5.5V21H7v-3.5L11 12 7 6.5z';
+// The 10 minute easter egg: while a game sits in the backlog the sand runs slowly,
+// and every 10 minutes the glass turns upside down and it starts again. It is
+// worked out from when the game went into the backlog, so reopening the pop-up
+// shows the sand where it should be.
+const eggMs = () => Number(window.__eggMs) || 10 * 60 * 1000;
+const eggTimers = new WeakMap();
+function stopEgg(btn) {
+  if (!btn) return;
+  clearTimeout(eggTimers.get(btn));
+  btn.classList.remove('qa-egg', 'qa-egg-turn');
+  btn.style.removeProperty('--egg-delay');
+  btn.style.removeProperty('--egg-s');
+}
+function startEgg(btn, startedAt) {
+  if (!btn) return;
+  stopEgg(btn);
+  const run = (since) => {
+    if (!btn.isConnected || !btn.classList.contains('lg-pill--on')) return;
+    const EGG_MS = eggMs();
+    const elapsed = (Date.now() - since) % EGG_MS;
+    btn.style.setProperty('--egg-s', `${EGG_MS / 1000}s`);
+    // 0.6s: the glass has just finished its first turn when the sand starts to move.
+    btn.style.setProperty('--egg-delay', `${0.6 - elapsed / 1000}s`);
+    btn.classList.remove('qa-egg');
+    void btn.offsetWidth;
+    btn.classList.add('qa-egg');
+    eggTimers.set(btn, setTimeout(() => {
+      if (!btn.isConnected || !btn.classList.contains('lg-pill--on')) return;
+      btn.classList.add('qa-egg-turn');
+      eggTimers.set(btn, setTimeout(() => {
+        btn.classList.remove('qa-egg-turn', 'qa-egg');
+        void btn.offsetWidth;
+        run(Date.now());
+      }, 850));
+    }, EGG_MS - elapsed));
+  };
+  run(startedAt);
+}
 let hourglassSeq = 0;
 // Backlog's hourglass. Off: an outline. On: it turns over once, then grains fall
 // one after another for as long as the game is in the backlog. Marking the game
