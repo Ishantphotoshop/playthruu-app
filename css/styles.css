@@ -7145,6 +7145,12 @@ a.gd-credit__name { text-decoration: none; }
 .recent-played-item .rp-meta .rp-meta__icon--review svg { transform: scale(1.9); transform-origin: 100% 50%; }
 /* Room for the taller marks: slightly tighter stars, clear gaps between star, replay and review. */
 .ll-cell .rp-meta .stars, .recent-played-item .rp-meta .stars { gap: calc(var(--s) * 0.35); }
-.ll-cell .rp-meta .rp-meta__icon--replay, .recent-played-item .rp-meta .rp-meta__icon--replay { margin: 0 0 0 calc(var(--u) * 0.85); }
+.ll-cell .rp-meta .rp-meta__icon--replay, .recent-played-item .rp-meta .rp-meta__icon--replay { margin: 0 0 0 calc(var(--u) * 0.6); }
 .ll-cell .rp-meta .rp-meta__icon--review, .recent-played-item .rp-meta .rp-meta__icon--review,
-.ll-cell .rp-meta .rp-meta__icon--replay + .rp-meta__icon--review, .recent-played-item .rp-meta .rp-meta__icon--replay + .rp-meta__icon--review { margin-left: calc(var(--u) * 1.75); }
+.ll-cell .rp-meta .rp-meta__icon--replay + .rp-meta__icon--review, .recent-played-item .rp-meta .rp-meta__icon--replay + .rp-meta__icon--review { margin-left: calc(var(--u) * 1.65); }
+
+/* The star's drawn shape is smaller than its box, so the boxes are scaled up
+   until the stars are exactly as tall as the replay and review marks. */
+.ll-cell .rp-meta, .recent-played-item .rp-meta { --ss: calc(var(--s) * 1.226); height: calc(var(--ss) + 2px); }
+.ll-cell .rp-meta .stars, .recent-played-item .rp-meta .stars { --star-size: var(--ss) !important; gap: calc(var(--s) * 0.15); }
+.ll-cell .rp-meta .stars, .recent-played-item .rp-meta .stars { position: relative; top: 0.3px; }
