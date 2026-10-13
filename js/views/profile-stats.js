@@ -1,3 +1,4 @@
+import { playedKind } from '../utils.js';
 import { openNotificationsOn } from './notifications-view.js';
 import * as api from '../api.js';
 import { state } from '../state.js';
@@ -36,9 +37,12 @@ function rowsHtml(profile, logs, isOwn) {
   // Same set the pages open on: backlog games never count as logs.
   const own = logs.filter((l) => l.status !== 'backlog');
   const inYear = (l) => { const raw = l.played_date || l.created_at; return !!raw && new Date(raw).getFullYear() === THIS_YEAR; };
-  const diary = own.filter((l) => l.status === 'played' || l.status === 'dropped');
+  const playedAll = own.filter((l) => l.status === 'played' || l.status === 'dropped');
+  const diary = playedAll.filter((l) => playedKind(l, profile.created_at) === 'diary');
+  const before = playedAll.filter((l) => playedKind(l, profile.created_at) === 'before');
   const sets = {
     played: diary,
+    before,
     thisYear: diary.filter(inYear),
     logs: own.filter((l) => l.rating || l.review || l.loved),
     reviews: own.filter((l) => l.review),
@@ -46,13 +50,13 @@ function rowsHtml(profile, logs, isOwn) {
     replays: own.filter((l) => l.is_replay),
   };
   // "this year / all time", right after the name.
-  const count = (list, withTotal = true) => `<span class="ps-row__n"><b>${num(list.filter(inYear).length)}</b>${withTotal ? `<em>/ ${num(list.length)}</em>` : ''}</span>`;
-  const row = (label, list, attrs, withTotal = true) => `<a class="ps-row" ${attrs}><span class="ps-row__l">${label}</span><span class="ps-row__r">${list ? count(list, withTotal) : ''}<i class="ps-row__chev ps-row__chev--show">${chevron}</i></span></a>`;
+  const count = (list, withTotal = true, totalOnly = false) => `<span class="ps-row__n"><b>${num(totalOnly ? list.length : list.filter(inYear).length)}</b>${withTotal && !totalOnly ? `<em>/ ${num(list.length)}</em>` : ''}</span>`;
+  const row = (label, list, attrs, withTotal = true, totalOnly = false) => `<a class="ps-row" ${attrs}><span class="ps-row__l">${label}</span><span class="ps-row__r">${list ? count(list, withTotal, totalOnly) : ''}<i class="ps-row__chev ps-row__chev--show">${chevron}</i></span></a>`;
   return `
     <div class="ps-rows">
       ${row('Diary', sets.played, `href="${base}/log-list/diary"`, false)}
       ${SHOW_THIS_YEAR ? row('This year', sets.thisYear, `href="${base}/log-list/year"`) : ''}
-      ${row('Played', sets.logs, `href="${base}/log-list/logged"`)}
+      ${row('Played', sets.before, `href="${base}/log-list/before"`, false, true)}
       ${row('Reviews', null, `href="${base}/log-list/reviews"`)}
       ${row('Likes', null, `href="${base}/log-list/liked"`)}
       ${row('Replays', null, `href="${base}/log-list/replayed"`)}
@@ -209,7 +213,7 @@ export function profileStatsHtml({ profile, logs, stats, isOwn }) {
         ${tile(esc(genres[0]?.[0] || '—'), 'Taste', { tag: 'button', attr: 'type="button" data-ps-open="taste"' })}
       </div>
       <div class="ps-bar"><span class="ps-cur" id="ps-cur">Stats</span><button type="button" class="ps-back" id="ps-back" hidden>Back to stats</button></div>` : ''}
-      <div id="ps-panel">${statsPanelHtml({ profile, logs, stats, isOwn, diary: logs.filter((l) => l.status === 'played' || l.status === 'dropped'), lastYear: 0 }, 'year')}</div>
+      <div id="ps-panel">${statsPanelHtml({ profile, logs, stats, isOwn, diary: logs.filter((l) => (l.status === 'played' || l.status === 'dropped') && playedKind(l, profile.created_at) === 'diary'), lastYear: 0 }, 'year')}</div>
     </div>`;
 }
 
@@ -223,7 +227,7 @@ export function wireProfileStats(container, { profile, logs, stats, isOwn }) {
     e.preventDefault();
     openNotificationsOn(a.dataset.openNotif);
   });
-  const diary = logs.filter((l) => l.status === 'played' || l.status === 'dropped');
+  const diary = logs.filter((l) => (l.status === 'played' || l.status === 'dropped') && playedKind(l, profile.created_at) === 'diary');
   const lastYear = diary.filter((l) => l.played_date && new Date(l.played_date).getFullYear() === new Date().getFullYear() - 1).length;
   const ctx = { profile, logs, stats, isOwn, diary, lastYear };
   const panel = qs('#ps-panel', wrap);

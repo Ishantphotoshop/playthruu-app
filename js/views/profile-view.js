@@ -8,7 +8,7 @@ import {
   emptyState, iconStamp, iconSettings, iconShare, iconQr, iconDotsMenu, iconClose, iconSearch, iconPlus, listCard, iconMessage,
   combinedGameResults, wireCombinedGameResults, openReportSheet, iconFlag, iconBlock, iconReplay, iconReviewLines, iconChevronRight,
 } from '../components.js';
-import { esc, formatDate, statusStamp, starRow, qs, qsa, toast, debounce, pulseLogTab, igdbSized, enableSwipeToDismiss, promptSignIn } from '../utils.js';
+import { esc, formatDate, statusStamp, starRow, playedKind, qs, qsa, toast, debounce, pulseLogTab, igdbSized, enableSwipeToDismiss, promptSignIn } from '../utils.js';
 import { refreshCurrentView, navigate } from '../router.js';
 import { wirePullToRefresh } from './feed-view.js';
 import { diaryTilesHtml } from './log-list-view.js';
@@ -161,7 +161,10 @@ export async function renderProfileView(root, { username }) {
     const profile = isOwn ? state.profile : await api.getProfileByUsername(username);
     const [stats, counts, logs, favorites, breakdown, lists, following, importedGames] = await profileBundle(profile);
 
-    const diary = logs.filter((l) => l.status === 'played' || l.status === 'dropped');
+    const playedAll = logs.filter((l) => l.status === 'played' || l.status === 'dropped');
+    // The diary holds real logs made after joining; games marked as played (or played before
+    // joining) live under Played.
+    const diary = playedAll.filter((l) => playedKind(l, profile.created_at) === 'diary');
     const backlog = logs.filter((l) => l.status === 'backlog');
     // logs itself is ordered by played_date first (right for the diary),
     // but "playing" entries never have a played_date, so that ordering
@@ -205,7 +208,7 @@ export async function renderProfileView(root, { username }) {
                     aria-label="Show full bio" hidden><span></span><span></span><span></span></button>
           </div>` : ''}
         <div class="profile-header__stats">
-          <a href="#/profile/${esc(profile.username)}/log-list/diary" class="profile-header__stat"><b>${diary.length}</b><span>Games</span></a>
+          <a href="#/profile/${esc(profile.username)}/log-list/diary" class="profile-header__stat"><b>${playedAll.length}</b><span>Games</span></a>
           <a href="#/profile/${esc(profile.username)}/followers" class="profile-header__stat"><b>${counts.followers}</b><span>Followers</span></a>
           <a href="#/profile/${esc(profile.username)}/following" class="profile-header__stat"><b>${counts.following}</b><span>Following</span></a>
         </div>

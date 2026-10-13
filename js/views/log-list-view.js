@@ -1,7 +1,7 @@
 import * as api from '../api.js';
 import { state } from '../state.js';
 import { topBar, navBar, emptyState, spinner, iconStamp, posterFrame, iconFilter, iconClose, iconReplay, iconReviewLines } from '../components.js';
-import { esc, qs, formatDate, statusStamp, starRow, igdbSized } from '../utils.js';
+import { esc, qs, formatDate, statusStamp, starRow, igdbSized, playedKind } from '../utils.js';
 
 // `keep` narrows the list after it is fetched (the database can't ask these
 // questions directly): this year's games, real logs (a rating, a review or a
@@ -9,7 +9,8 @@ import { esc, qs, formatDate, statusStamp, starRow, igdbSized } from '../utils.j
 const THIS_YEAR = new Date().getFullYear();
 const MODES = {
   completed: { title: 'Played', statuses: ['played', 'dropped'], reviewsOnly: false, empty: (u) => `${u} hasn't played any games yet.` },
-  diary: { title: 'Diary', statuses: ['played', 'dropped'], reviewsOnly: false, diary: true, empty: (u) => `${u} hasn't got any diary entries yet.` },
+  diary: { title: 'Diary', statuses: ['played', 'dropped'], reviewsOnly: false, diary: true, keep: (l, profile) => playedKind(l, profile.created_at) === 'diary', empty: (u) => `${u} hasn't got any diary entries yet.` },
+  before: { title: 'Played', statuses: ['played', 'dropped'], reviewsOnly: false, keep: (l, profile) => playedKind(l, profile.created_at) === 'before', empty: (u) => `${u} hasn't marked any games as played yet.` },
   year: { title: 'This year', statuses: ['played', 'dropped'], reviewsOnly: false, keep: (l) => { const raw = l.played_date || l.created_at; return !!raw && new Date(raw).getFullYear() === THIS_YEAR; }, empty: (u) => `${u} hasn't played anything this year yet.` },
   logged: { title: 'Played', statuses: undefined, reviewsOnly: false, keep: (l) => l.rating || l.review || l.loved, empty: (u) => `${u} hasn't logged anything yet.` },
   reviews: { title: 'Reviews', statuses: undefined, reviewsOnly: true, empty: (u) => `${u} hasn't written any reviews yet.` },
@@ -52,7 +53,7 @@ export async function renderLogListView(root, { username, mode }) {
   try {
     const profile = state.profile?.username === username ? state.profile : await api.getProfileByUsername(username);
     let logs = await api.getLogsForUser(profile.id, { statuses: cfg.statuses, reviewsOnly: cfg.reviewsOnly, limit: 5000 });
-    if (cfg.keep) logs = logs.filter(cfg.keep);
+    if (cfg.keep) logs = logs.filter((l) => cfg.keep(l, profile));
     if (cfg.post) logs = cfg.post(logs);
     logs = logs.filter((l) => l.status !== 'backlog'); // backlog games stay in the Backlog
 
