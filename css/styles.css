@@ -7042,7 +7042,7 @@ a.gd-credit__name { text-decoration: none; }
 }
 .ps-years button[aria-pressed="true"] { color: var(--ink); background: var(--surface-high); border-color: var(--line-strong); }
 /* Completed and Logged use the notifications font (Manrope). */
-.ps-row { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; background: var(--surface); border-radius: 12px; color: inherit; text-decoration: none; }
+.ps-row { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; background: var(--surface); border-radius: var(--poster-radius); color: inherit; text-decoration: none; }
 .ps-row__l { font-size: 13.5px; font-weight: 600; color: var(--ink-dim); }
 .ps-row__r b { font-size: 20px; font-weight: 800; letter-spacing: -0.01em; color: var(--ink); }
 .ps-row__r small { font-size: 13.5px; color: var(--ink-faint); font-weight: 600; margin-left: 3px; }
