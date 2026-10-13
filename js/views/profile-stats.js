@@ -52,9 +52,9 @@ function rowsHtml(profile, logs) {
       ${row('Played', sets.played, `href="${base}/log-list/diary"`, false)}
       ${SHOW_THIS_YEAR ? row('This year', sets.thisYear, `href="${base}/log-list/year"`) : ''}
       ${row('Logs', sets.logs, `href="${base}/log-list/logged"`)}
-      ${row('Reviews', sets.reviews, `href="${base}/log-list/reviews"`)}
-      ${row('Likes', sets.likes, `href="${base}/log-list/liked"`)}
-      ${row('Replays', sets.replays, `href="${base}/log-list/replayed"`)}
+      ${row('Reviews', null, `href="${base}/log-list/reviews"`)}
+      ${row('Likes', null, `href="${base}/log-list/liked"`)}
+      ${row('Replays', null, `href="${base}/log-list/replayed"`)}
       ${row('Activity', null, `href="${base}/activity"`)}
     </div>`;
 }
