@@ -7109,3 +7109,8 @@ a.gd-credit__name { text-decoration: none; }
 .ll-group .diary-row { border-bottom: 0; }
 .diary-row--sub { padding-left: 66px; min-height: 0; }
 .ll-count { color: var(--ink-dim); font: 600 13px var(--font-body); }
+
+/* Profile list rows: no bar, text flush with the Ratings box edges. */
+.ps-rows { gap: 0; }
+.ps-rows .ps-row { background: none; border-radius: 0; padding: 12px 0; }
+.ps-rows .ps-row__chev { display: none; }
