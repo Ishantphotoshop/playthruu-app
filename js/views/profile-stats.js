@@ -34,14 +34,14 @@ function rowsHtml(profile, logs) {
   };
   return `
     <div class="ps-rows">
-      ${row('Games played', diary.length, `href="${base}/log-list/completed"`)}
-      ${row('Played this year', thisYear, `href="${base}/log-list/year"`)}
-      ${row('Logged', logged, `href="${base}/log-list/logged"`)}
+      ${row('Played', diary.length, `href="${base}/log-list/completed"`)}
+      ${row('This year', thisYear, `href="${base}/log-list/year"`)}
+      ${row('Logs', logged, `href="${base}/log-list/logged"`)}
       ${row('Reviews', logs.filter((l) => l.review).length, `href="${base}/log-list/reviews"`)}
-      ${row('Liked games', logs.filter((l) => l.loved).length, `href="${base}/log-list/liked"`)}
-      ${row('Replayed games', logs.filter((l) => l.is_replay).length, `href="${base}/log-list/replayed"`)}
+      ${row('Likes', logs.filter((l) => l.loved).length, `href="${base}/log-list/liked"`)}
+      ${row('Replays', logs.filter((l) => l.is_replay).length, `href="${base}/log-list/replayed"`)}
       ${row('Diary', diary.length, 'data-jump-tab="journal"')}
-      ${row('All activity', '', `href="${base}/activity"`)}
+      ${row('Activity', '', `href="${base}/activity"`)}
     </div>`;
 }
 
