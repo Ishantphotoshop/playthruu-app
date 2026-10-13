@@ -7174,3 +7174,5 @@ a.gd-credit__name { text-decoration: none; }
 .dq-mark { display: inline-grid; width: 13px; height: 13px; color: var(--ink-faint); }
 .dq-mark svg { width: 100%; height: 100%; display: block; stroke-width: 1.6; }
 .dq-cover { width: 34px; aspect-ratio: var(--ratio-inline); object-fit: cover; border-radius: 4px; justify-self: end; }
+/* Journal tab: the month heading sits straight under the tabs. */
+.dq-month:first-child { margin-top: 14px; }

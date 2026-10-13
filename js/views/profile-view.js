@@ -293,7 +293,6 @@ export async function renderProfileView(root, { username }) {
     `;
 
     const renderJournalTab = () => `
-      <h2 class="section-heading">Journal</h2>
       ${diary.length ? diaryTilesHtml(diary.filter((l) => l.games).sort((a, b) => new Date(b.played_date || b.created_at) - new Date(a.played_date || a.created_at))) : emptyState(
           isOwn ? 'No journal entries yet. Log a game once you\'ve played it.' : 'No journal entries yet.',
           isOwn ? { icon: iconStamp(), actionLabel: 'Log your first game', actionRoute: '/log' } : { icon: iconStamp() }
