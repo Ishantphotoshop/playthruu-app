@@ -7179,3 +7179,5 @@ a.gd-credit__name { text-decoration: none; }
 /* Recently played on the profile: same arrow as the home sections. */
 .rp-head { margin-top: var(--space-4); margin-bottom: 12px; }
 .rp-head .section-heading { margin: 0; }
+/* Logs page: four posters across. */
+.ll-grid--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px 8px; }

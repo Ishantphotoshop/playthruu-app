@@ -147,7 +147,7 @@ export async function renderLogListView(root, { username, mode }) {
       } else if (cfg.diary) {
         content = diaryTilesHtml(list, f.sort === 'new' || f.sort === 'old');
       } else {
-        content = `<div class="ll-grid">${list.map((l) => `<div class="ll-cell"><a class="game-card" href="#/game/${l.games.id}" aria-label="${esc(l.games.title)}">${posterFrame(l.games.cover_url, l.games.title, 'game-card__cover')}</a><div class="rp-meta">${l.rating ? starRow(l.rating, { size: 12 }) : ''}${l.is_replay ? `<span class="rp-meta__icon rp-meta__icon--replay">${iconReplay()}</span>` : ''}${l.review ? `<span class="rp-meta__icon rp-meta__icon--review">${iconReviewLines()}</span>` : ''}</div></div>`).join('')}</div>`;
+        content = `<div class="ll-grid${mode === 'logged' ? ' ll-grid--4' : ''}">${list.map((l) => `<div class="ll-cell"><a class="game-card" href="#/game/${l.games.id}" aria-label="${esc(l.games.title)}">${posterFrame(l.games.cover_url, l.games.title, 'game-card__cover')}</a><div class="rp-meta">${l.rating ? starRow(l.rating, { size: 12 }) : ''}${l.is_replay ? `<span class="rp-meta__icon rp-meta__icon--replay">${iconReplay()}</span>` : ''}${l.review ? `<span class="rp-meta__icon rp-meta__icon--review">${iconReviewLines()}</span>` : ''}</div></div>`).join('')}</div>`;
       }
       body.innerHTML = `<div id="ll-results">${content}</div>`;
     };
