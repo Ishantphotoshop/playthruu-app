@@ -354,13 +354,10 @@ html.vp-gap :is(.tabbar, .filters-bar, .rv-composer, .thread-composer, .modal-ov
 }
 body {
   margin: 0;
-  /* The site page BEHIND/AROUND the app column. Plain white — the last
-     colour in the palette, and the one that sets a near-black navy
-     panel apart most cleanly. Deliberately NOT a theme token, so it
-     stays light whatever the app itself is doing. On a phone the app
-     fills the screen and this is never seen; on desktop it is the
+  /* The page BEHIND/AROUND the app column: black, so a dark room is not lit up by a white margin.
+     On a phone the app fills the screen and this is never seen; on desktop it is the
      margin either side of the centred column. */
-  background: #ffffff;
+  background: #000000;
   background-attachment: fixed;
   color: var(--ink);
   font-family: var(--font-body);
