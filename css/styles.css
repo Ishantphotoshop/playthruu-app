@@ -1659,7 +1659,7 @@ button.tabbar__item { background: none; border: none; font: inherit; cursor: poi
    for the viewer's own rating everywhere else, the way Letterboxd does
    it. The replay/review icons read --star-fill too, so this one token
    mutes the whole row. */
-.card-who__stars { --star-fill: var(--ink-ghost); }
+.card-who__stars { --star-fill: #fff; }
 .card-who__icon--replayed { color: var(--star-fill); }
 .card-who__icon--review { color: var(--star-fill); }
 /* Phone: these feed cards are far narrower than on desktop, so the whole
@@ -6970,7 +6970,7 @@ a.gd-credit__name { text-decoration: none; }
    so posters with nothing to show keep the row level. */
 .recent-played-item--activity > a:first-child { display: block; }
 .rp-meta {
-  --star-fill: var(--ink-ghost);
+  --star-fill: #fff;
   --u: 12px;
   display: flex; align-items: center; gap: 7px;
   height: calc(var(--u) + 2px); margin-top: 6px; line-height: 0;
@@ -7137,3 +7137,4 @@ a.gd-credit__name { text-decoration: none; }
 /* Replay and review marks the same height, so their tops and bottoms line up. */
 .ll-cell .rp-meta .rp-meta__icon--review svg,
 .recent-played-item .rp-meta .rp-meta__icon--review svg { transform: scale(1.489); transform-origin: 100% 50%; }
+.act__text { --star-fill: #fff; }
