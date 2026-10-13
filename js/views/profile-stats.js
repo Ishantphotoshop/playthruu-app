@@ -49,13 +49,12 @@ function rowsHtml(profile, logs) {
   const row = (label, list, attrs) => `<a class="ps-row" ${attrs}><span class="ps-row__l">${label}</span>${list ? count(list) : `<i class="ps-row__chev ps-row__chev--show">${chevron}</i>`}</a>`;
   return `
     <div class="ps-rows">
-      ${row('Played', sets.played, `href="${base}/log-list/completed"`)}
+      ${row('Played', sets.played, `href="${base}/log-list/diary"`)}
       ${SHOW_THIS_YEAR ? row('This year', sets.thisYear, `href="${base}/log-list/year"`) : ''}
       ${row('Logs', sets.logs, `href="${base}/log-list/logged"`)}
       ${row('Reviews', sets.reviews, `href="${base}/log-list/reviews"`)}
       ${row('Likes', sets.likes, `href="${base}/log-list/liked"`)}
       ${row('Replays', sets.replays, `href="${base}/log-list/replayed"`)}
-      ${row('Diary', sets.played, `href="${base}/log-list/diary"`)}
       ${row('Activity', null, `href="${base}/activity"`)}
     </div>`;
 }
