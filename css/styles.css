@@ -7029,6 +7029,12 @@ a.gd-credit__name { text-decoration: none; }
   border: 1px solid var(--line-strong); border-radius: 999px; padding: 8px 14px; cursor: pointer;
 }
 .ps-stack { display: flex; flex-direction: column; gap: 10px; }
+/* The list under Ratings: one row per page. */
+.ps-rows { display: flex; flex-direction: column; gap: 8px; }
+.ps-rows .ps-row { width: 100%; text-align: left; font-family: var(--font-body); }
+.ps-row__r { display: flex; align-items: center; gap: 10px; }
+.ps-row__chev { width: 15px; height: 15px; display: grid; color: var(--ink-faint); }
+.ps-row__chev svg { width: 100%; height: 100%; }
 .ps-years { display: flex; justify-content: flex-end; gap: 4px; }
 .ps-years button {
   font: 700 11px var(--font-body); color: var(--ink-faint); background: none;

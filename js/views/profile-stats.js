@@ -13,6 +13,38 @@ const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 
 
 const num = (n) => Number(n).toLocaleString('en-US');
 
+// Switched off for now, not deleted: set to true to bring them back.
+//   SHOW_ACTIVITY_BOX  the "Stats" bar, This year / Last / All filter, Completed and Logged
+//                      rows and the Activity (months) box
+//   SHOW_TILES         the six boxes (Games, Diary, Reviews, Backlog, Likes, Taste)
+const SHOW_ACTIVITY_BOX = false;
+const SHOW_TILES = false;
+
+const chevron = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 5l7 7-7 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+// The list under Ratings: each row opens its own page.
+function rowsHtml(profile, logs) {
+  const base = `#/profile/${esc(profile.username)}`;
+  const diary = logs.filter((l) => l.status === 'played' || l.status === 'dropped');
+  const thisYear = diary.filter((l) => l.played_date && new Date(l.played_date).getFullYear() === new Date().getFullYear()).length;
+  const logged = logs.filter((l) => l.rating || l.review || l.loved).length;
+  const row = (label, value, attrs) => {
+    const tag = attrs.startsWith('href') ? 'a' : 'button type="button"';
+    return `<${tag} class="ps-row" ${attrs}><span class="ps-row__l">${label}</span><span class="ps-row__r">${value === '' ? '' : `<b>${num(value)}</b>`}<i class="ps-row__chev">${chevron}</i></span></${tag.split(' ')[0]}>`;
+  };
+  return `
+    <div class="ps-rows">
+      ${row('Games played', diary.length, `href="${base}/log-list/completed"`)}
+      ${row('Played this year', thisYear, `href="${base}/log-list/year"`)}
+      ${row('Logged', logged, `href="${base}/log-list/logged"`)}
+      ${row('Reviews', logs.filter((l) => l.review).length, `href="${base}/log-list/reviews"`)}
+      ${row('Liked games', logs.filter((l) => l.loved).length, `href="${base}/log-list/liked"`)}
+      ${row('Replayed games', logs.filter((l) => l.is_replay).length, `href="${base}/log-list/replayed"`)}
+      ${row('Diary', diary.length, 'data-jump-tab="journal"')}
+      ${row('All activity', '', `href="${base}/activity"`)}
+    </div>`;
+}
+
 // Top genres across everything logged: the first genre on each game.
 function topGenres(logs, limit = 4) {
   const counts = new Map();
@@ -103,14 +135,16 @@ function statsPanelHtml(ctx, period) {
       <div class="ps-note ps-note--below">Most played: ${esc(most.games?.title || 'Unknown')}, ${num(Math.round(Number(most.hours_played)))} hrs</div>`;
   }
 
-  return `
-    <div class="ps-stack">
+  const activityBlock = SHOW_ACTIVITY_BOX ? `
       <div class="ps-years" role="group" aria-label="Show">
         ${[['year', 'This year'], ['last', 'Last'], ['all', 'All']].map(([k, label]) => `<button type="button" data-ps-period="${k}" aria-pressed="${k === period}">${label}</button>`).join('')}
       </div>
       <a href="${base}/completed" class="ps-row" id="ps-completed"><span class="ps-row__l">Completed</span><span class="ps-row__r">${completedValue(period, stats, lastYear)}</span></a>
       <a href="${base}/logged" class="ps-row"><span class="ps-row__l">Logged</span><span class="ps-row__r"><b>${num(stats.logged)}</b></span></a>
-      ${box('Activity', `<span id="ps-amut">${periodNote(period)}</span>`, `<div id="ps-act-slot">${activityHtml(diary, period)}</div>`)}
+      ${box('Activity', `<span id="ps-amut">${periodNote(period)}</span>`, `<div id="ps-act-slot">${activityHtml(diary, period)}</div>`)}` : '';
+  return `
+    <div class="ps-stack">
+      ${activityBlock}
       ${lower}
       ${box('Hours', '', hoursBody)}
     </div>`;
@@ -148,7 +182,8 @@ export function profileStatsHtml({ profile, logs, stats, isOwn }) {
   const tile = (inner, label, attrs) => `<${attrs.tag} class="ps-tile" ${attrs.attr}><b>${inner}</b><span>${label}</span></${attrs.tag}>`;
   return `
     <div class="ps-wrap" id="ps-wrap">
-      <div class="ps-tiles">
+      ${rowsHtml(profile, logs)}
+      ${SHOW_TILES ? `<div class="ps-tiles">
         ${tile(num(stats.logged), 'Games', { tag: 'a', attr: `href="${base}/logged"` })}
         ${tile(num(diary), 'Diary', { tag: 'button', attr: 'type="button" data-jump-tab="journal"' })}
         ${tile(num(reviews), 'Reviews', { tag: 'a', attr: `href="${base}/reviews"` })}
@@ -156,7 +191,7 @@ export function profileStatsHtml({ profile, logs, stats, isOwn }) {
         ${tile(num(likes), 'Likes', { tag: 'button', attr: 'type="button" data-ps-open="likes"' })}
         ${tile(esc(genres[0]?.[0] || '—'), 'Taste', { tag: 'button', attr: 'type="button" data-ps-open="taste"' })}
       </div>
-      <div class="ps-bar"><span class="ps-cur" id="ps-cur">Stats</span><button type="button" class="ps-back" id="ps-back" hidden>Back to stats</button></div>
+      <div class="ps-bar"><span class="ps-cur" id="ps-cur">Stats</span><button type="button" class="ps-back" id="ps-back" hidden>Back to stats</button></div>` : ''}
       <div id="ps-panel">${statsPanelHtml({ profile, logs, stats, isOwn, diary: logs.filter((l) => l.status === 'played' || l.status === 'dropped'), lastYear: 0 }, 'year')}</div>
     </div>`;
 }
@@ -208,18 +243,18 @@ export function wireProfileStats(container, { profile, logs, stats, isOwn }) {
       const label = qs('#ps-amut', panel);
       if (label) label.textContent = k > -1 ? `${MONTHS[k]}${act.dataset.period === 'all' ? ' (all years)' : ''}` : periodNote(act.dataset.period);
     };
-    slot.addEventListener('pointerdown', (e) => {
+    slot?.addEventListener('pointerdown', (e) => {
       const act = e.target.closest('.ps-act');
       if (!act) return;
       held = act;
       try { slot.setPointerCapture(e.pointerId); } catch { /* fine without capture */ }
       paint(act, barAt(act, e.clientX));
     });
-    slot.addEventListener('pointermove', (e) => { if (held) paint(held, barAt(held, e.clientX)); });
+    slot?.addEventListener('pointermove', (e) => { if (held) paint(held, barAt(held, e.clientX)); });
     const release = () => { if (!held) return; const act = held; held = null; paint(act, -1); };
-    slot.addEventListener('pointerup', release);
-    slot.addEventListener('pointercancel', release);
-    slot.addEventListener('lostpointercapture', release);
+    slot?.addEventListener('pointerup', release);
+    slot?.addEventListener('pointercancel', release);
+    slot?.addEventListener('lostpointercapture', release);
 
     if (isOwn) {
       const backlog = logs.filter((l) => l.status === 'backlog' && l.games);
@@ -274,7 +309,7 @@ export function wireProfileStats(container, { profile, logs, stats, isOwn }) {
       panel.innerHTML = which === 'likes' ? likesHtml(logs) : tasteHtml(logs);
     });
   });
-  back.addEventListener('click', showStats);
+  back?.addEventListener('click', showStats);
 
   wireStats();
 }

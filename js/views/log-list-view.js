@@ -4,10 +4,17 @@ import { topBar, navBar, logCard, emptyState, spinner, iconStamp } from '../comp
 import { esc, qs } from '../utils.js';
 import { wireLogCards } from './feed-view.js';
 
+// `keep` narrows the list after it is fetched (the database can't ask these
+// questions directly): this year's games, real logs (a rating, a review or a
+// like, not just "marked as played"), liked games, replays.
+const THIS_YEAR = new Date().getFullYear();
 const MODES = {
-  completed: { title: 'Completed', statuses: ['played', 'dropped'], reviewsOnly: false, empty: (u) => `${u} hasn't completed any games yet.` },
-  logged: { title: 'Logged', statuses: undefined, reviewsOnly: false, empty: (u) => `${u} hasn't logged anything yet.` },
+  completed: { title: 'Games played', statuses: ['played', 'dropped'], reviewsOnly: false, empty: (u) => `${u} hasn't played any games yet.` },
+  year: { title: 'Played this year', statuses: ['played', 'dropped'], reviewsOnly: false, keep: (l) => l.played_date && new Date(l.played_date).getFullYear() === THIS_YEAR, empty: (u) => `${u} hasn't played anything this year yet.` },
+  logged: { title: 'Logged', statuses: undefined, reviewsOnly: false, keep: (l) => l.rating || l.review || l.loved, empty: (u) => `${u} hasn't logged anything yet.` },
   reviews: { title: 'Reviews', statuses: undefined, reviewsOnly: true, empty: (u) => `${u} hasn't written any reviews yet.` },
+  liked: { title: 'Liked games', statuses: undefined, reviewsOnly: false, keep: (l) => l.loved, empty: (u) => `${u} hasn't liked any games yet.` },
+  replayed: { title: 'Replayed games', statuses: undefined, reviewsOnly: false, keep: (l) => l.is_replay, empty: (u) => `${u} hasn't replayed any games yet.` },
 };
 
 export async function renderLogListView(root, { username, mode }) {
@@ -17,7 +24,8 @@ export async function renderLogListView(root, { username, mode }) {
 
   try {
     const profile = state.profile?.username === username ? state.profile : await api.getProfileByUsername(username);
-    const logs = await api.getLogsForUser(profile.id, { statuses: cfg.statuses, reviewsOnly: cfg.reviewsOnly, limit: 200 });
+    let logs = await api.getLogsForUser(profile.id, { statuses: cfg.statuses, reviewsOnly: cfg.reviewsOnly, limit: cfg.keep ? 1000 : 200 });
+    if (cfg.keep) logs = logs.filter(cfg.keep);
     const likes = await api.getLikesForLogs(logs.map((l) => l.id), state.user?.id);
 
     body.innerHTML = logs.length
