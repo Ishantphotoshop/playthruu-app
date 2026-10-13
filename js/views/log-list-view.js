@@ -1,8 +1,7 @@
 import * as api from '../api.js';
 import { state } from '../state.js';
-import { topBar, navBar, logCard, emptyState, spinner, iconStamp } from '../components.js';
+import { topBar, navBar, emptyState, spinner, iconStamp, posterFrame } from '../components.js';
 import { esc, qs, formatDate, statusStamp, starRow, igdbSized } from '../utils.js';
-import { wireLogCards } from './feed-view.js';
 
 // `keep` narrows the list after it is fetched (the database can't ask these
 // questions directly): this year's games, real logs (a rating, a review or a
@@ -27,7 +26,6 @@ export async function renderLogListView(root, { username, mode }) {
     const profile = state.profile?.username === username ? state.profile : await api.getProfileByUsername(username);
     let logs = await api.getLogsForUser(profile.id, { statuses: cfg.statuses, reviewsOnly: cfg.reviewsOnly, limit: cfg.keep ? 1000 : 200 });
     if (cfg.keep) logs = logs.filter(cfg.keep);
-    const likes = await api.getLikesForLogs(logs.map((l) => l.id), state.user?.id);
 
     // Filters: sort, year, minimum rating, and "By game" (one game, every play under it).
     const f = { sort: 'new', year: 'all', rating: '0', group: mode === 'replayed' };
@@ -72,12 +70,10 @@ export async function renderLogListView(root, { username, mode }) {
             ${rowHtml(g[0], true).replace('</a>', `<span class="ll-count">${g.length}×</span></a>`)}
             ${g.slice(1).map((l) => rowHtml(l, false)).join('')}
           </div>`).join('')}</div>`;
-      } else if (cfg.diary) content = `<div class="diary-list">${list.map((l) => rowHtml(l, true)).join('')}</div>`;
-      else {
-        content = `<div class="log-list">${list.map((l) => logCard(l, { showAuthor: false, likeInfo: likes[l.id], ownLog: l.user_id === state.user?.id })).join('')}</div>`;
+      } else {
+        content = `<div class="game-grid game-grid--3col">${list.map((l) => `<a class="game-card" href="#/game/${l.games.id}">${posterFrame(l.games.cover_url, l.games.title, 'game-card__cover')}</a>`).join('')}</div>`;
       }
       body.innerHTML = bar() + `<div id="ll-results">${content}</div>`;
-      if (!f.group && !cfg.diary && list.length) wireLogCards(qs('#ll-results', body), list);
       body.querySelectorAll('.ll-sel').forEach((el) => el.addEventListener('change', () => { f[el.dataset.f] = el.value; paint(); }));
       qs('[data-group]', body).addEventListener('click', () => { f.group = !f.group; paint(); });
     };
