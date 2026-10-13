@@ -1503,13 +1503,15 @@ function openLogSheet({ game, ownLog, replayCount, ensureSavedGame, onChanged, o
 // The pop-up's three big icons (picks: Play 14 arcade stick, Like 10 heart,
 // Backlog 04 hourglass). Each is drawn twice: an outline while off and a solid
 // shape once switched on (CSS swaps them).
-const ICON_STICK = { body: 'M5 17h14a1.5 1.5 0 0 1 1.5 1.5V20.5h-17V18.5A1.5 1.5 0 0 1 5 17zM12 3a3 3 0 1 1 0 6a3 3 0 1 1 0-6z', outside: 'M12 9v8' };
-const ICON_HEART = { body: 'M12 20.3 4.7 13.4a4.7 4.7 0 0 1 6.6-6.7l.7.7.7-.7a4.7 4.7 0 0 1 6.6 6.7z' };
-const ICON_HOURGLASS = { body: 'M7 3h10v3.5L13 12l4 5.5V21H7v-3.5L11 12 7 6.5z', inside: 'M9 18.5h6' };
-function qaIcon({ body, inside = '', outside = '' }) {
+const ICON_STICK = { box: '2.5 2 19 19.5', body: 'M5 17h14a1.5 1.5 0 0 1 1.5 1.5V20.5h-17V18.5A1.5 1.5 0 0 1 5 17zM12 3a3 3 0 1 1 0 6a3 3 0 1 1 0-6z', outside: 'M12 9v8' };
+const ICON_HEART = { box: '2.3 4.35 19.4 16.95', body: 'M12 20.3 4.7 13.4a4.7 4.7 0 0 1 6.6-6.7l.7.7.7-.7a4.7 4.7 0 0 1 6.6 6.7z' };
+const ICON_HOURGLASS = { box: '6 2 12 20', body: 'M7 3h10v3.5L13 12l4 5.5V21H7v-3.5L11 12 7 6.5z', inside: 'M9 18.5h6' };
+// `box` is each glyph's own bounds plus a 1-unit margin, so drawn at one
+// height the three icons share the same top and bottom line.
+function qaIcon({ box, body, inside = '', outside = '' }) {
   const line = (d, w) => `<path d="${d}" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"/>`;
-  const off = `<svg class="lg-qa__off-ic" viewBox="0 0 24 24">${outside ? line(outside, 1.5) : ''}${line(body, 1.5)}${inside ? line(inside, 1.5) : ''}</svg>`;
-  const on = `<svg class="lg-qa__on-ic" viewBox="0 0 24 24">${outside ? line(outside, 2) : ''}<path d="${body}" fill="currentColor"/>${inside ? `<path d="${inside}" fill="none" stroke="var(--surface)" stroke-width="1.7" stroke-linecap="round"/>` : ''}</svg>`;
+  const off = `<svg class="lg-qa__off-ic" viewBox="${box}">${outside ? line(outside, 1.5) : ''}${line(body, 1.5)}${inside ? line(inside, 1.5) : ''}</svg>`;
+  const on = `<svg class="lg-qa__on-ic" viewBox="${box}">${outside ? line(outside, 2) : ''}<path d="${body}" fill="currentColor"/>${inside ? `<path d="${inside}" fill="none" stroke="var(--surface)" stroke-width="1.7" stroke-linecap="round"/>` : ''}</svg>`;
   return off + on;
 }
 function iconPadLg() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M7.5 8h9a4 4 0 0 1 3.9 4.9l-1 4.3a2 2 0 0 1-3.5.8L14 16h-4l-1.9 2a2 2 0 0 1-3.5-.8l-1-4.3A4 4 0 0 1 7.5 8z"/><path d="M8 11v3M6.5 12.5h3" stroke-linecap="round"/><circle cx="15.5" cy="11.6" r=".7" fill="currentColor"/><circle cx="17.3" cy="13.4" r=".7" fill="currentColor"/></svg>`; }
