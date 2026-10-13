@@ -7136,3 +7136,16 @@ a.gd-credit__name { text-decoration: none; }
 .ps-row__n { display: inline-flex; align-items: baseline; gap: 4px; line-height: 1; }
 .ps-row__n b { font-size: 14px; font-weight: 800; letter-spacing: -0.01em; color: var(--ink); }
 .ps-row__n em { font-style: normal; font-size: 13px; font-weight: 600; color: var(--ink-faint); }
+
+/* Profile under Ratings: one card holding the list, Backlog and Activity,
+   split by hairlines. Each row shows "this year / all time" on the right. */
+.ps-wrap { background: var(--surface); border-radius: var(--poster-radius); padding: 2px 16px; gap: 0; }
+.ps-stack { gap: 0; }
+.ps-rows .ps-row { justify-content: space-between; padding: 14px 0; border-bottom: 1px solid var(--surface-high); }
+.ps-rows .ps-row:last-child { border-bottom: 0; }
+.ps-rows .ps-row__l { font-size: 15px; font-weight: 600; color: var(--ink-dim); }
+.ps-row__n { align-items: baseline; }
+.ps-row__n b { font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.ps-row__n em { font-size: 14px; font-weight: 600; color: var(--ink-faint); margin-left: 2px; }
+.ps-rows .ps-row__chev--show { display: grid; }
+.ps-wrap .ps-box { border: 0; border-top: 1px solid var(--surface-high); border-radius: 0; padding: 14px 0; }

@@ -46,7 +46,7 @@ function rowsHtml(profile, logs) {
   };
   // "this year / all time", right after the name.
   const count = (list) => `<span class="ps-row__n"><b>${num(list.filter(inYear).length)}</b><em>/ ${num(list.length)}</em></span>`;
-  const row = (label, list, attrs) => `<a class="ps-row" ${attrs}><span class="ps-row__l">${label}</span>${list ? count(list) : ''}</a>`;
+  const row = (label, list, attrs) => `<a class="ps-row" ${attrs}><span class="ps-row__l">${label}</span>${list ? count(list) : `<i class="ps-row__chev ps-row__chev--show">${chevron}</i>`}</a>`;
   return `
     <div class="ps-rows">
       ${row('Played', sets.played, `href="${base}/log-list/completed"`)}
