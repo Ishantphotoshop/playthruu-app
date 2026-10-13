@@ -1227,7 +1227,7 @@ function openLogSheet({ game, ownLog, replayCount, ensureSavedGame, onChanged, o
   }
 
   function render() {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = (() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`; })();
 
     const pill = (key, text, icon) => `
       <button type="button" class="lg-pill${draft.status === key ? ' lg-pill--on' : ''}" data-status="${key}">
@@ -1435,6 +1435,13 @@ function openLogSheet({ game, ownLog, replayCount, ensureSavedGame, onChanged, o
     }
 
     if (act === 'save') {
+      // "Save entry" files a diary entry: a game marked as played with no date
+      // is dated today (your local day). Dismissing the sheet instead only marks
+      // the game as played and leaves it out of the diary.
+      if ((draft.status === 'played' || draft.status === 'dropped') && !draft.played_date) {
+        const n = new Date();
+        draft.played_date = `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`;
+      }
       await commit();
       return close();
     }
