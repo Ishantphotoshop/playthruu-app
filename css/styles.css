@@ -7275,7 +7275,7 @@ a.gd-credit__name { text-decoration: none; }
 .lg-hg .hg-p2 { opacity: 0; }
 .lg-hg .hg-rect { transform-box: fill-box; transform-origin: 50% 100%; }
 .lg-hg .hg-top { transform: scaleY(1); }
-.lg-hg .hg-bot { transform: scaleY(.22); }
+.lg-hg .hg-bot { transform: scaleY(0); }
 .lg-hg .hg-stream, .lg-hg .hg-grain { opacity: 0; }
 .lg-qa.lg-pill--on[data-status="backlog"] .hg-p1 { animation: hg-turn .6s ease-in-out forwards; }
 .lg-qa.lg-pill--on[data-status="backlog"] .hg-p2 { animation: hg-show 0s .6s forwards; }
@@ -7293,7 +7293,7 @@ a.gd-credit__name { text-decoration: none; }
 .lg-qa.lg-pill--on.qa-finishing[data-status="backlog"] .hg-stream { animation: hg-stream var(--P, 2.2s) linear forwards; }
 .lg-qa.lg-pill--on.qa-finishing[data-status="backlog"] .lg-hg { animation: hg-out .45s ease-in var(--P, 2.2s) forwards; }
 @keyframes hg-drain { from { transform: scaleY(var(--t0, 1)); } to { transform: scaleY(0); } }
-@keyframes hg-pile { from { transform: scaleY(var(--b0, .22)); } to { transform: scaleY(1); } }
+@keyframes hg-pile { from { transform: scaleY(var(--b0, 0)); } to { transform: scaleY(1); } }
 @keyframes hg-stream { 0% { opacity: 0; } 4% { opacity: 1; } 96% { opacity: 1; } 100% { opacity: 0; } }
 @keyframes hg-out { to { opacity: 0; } }
 /* taken out of the backlog: it turns back over, then becomes the plain outline */
@@ -7313,7 +7313,7 @@ a.gd-credit__name { text-decoration: none; }
 .lg-qa.lg-pill--on.qa-egg[data-status="backlog"] .hg-top { animation: hg-egg-top var(--egg-s, 600s) linear var(--egg-delay, .6s) both; }
 .lg-qa.lg-pill--on.qa-egg[data-status="backlog"] .hg-bot { animation: hg-egg-bot var(--egg-s, 600s) linear var(--egg-delay, .6s) both; }
 @keyframes hg-egg-top { from { transform: scaleY(1); } to { transform: scaleY(0); } }
-@keyframes hg-egg-bot { from { transform: scaleY(.22); } to { transform: scaleY(1); } }
+@keyframes hg-egg-bot { from { transform: scaleY(0); } to { transform: scaleY(1); } }
 .lg-qa.qa-egg-turn .lg-qa__ic { animation: hg-egg-flip .8s ease-in-out forwards; transform-origin: 50% 50%; }
 @keyframes hg-egg-flip { from { transform: rotate(0); } to { transform: rotate(180deg); } }
 @media (prefers-reduced-motion: reduce) { .lg-qa.qa-egg-turn .lg-qa__ic { animation-duration: 0s; } }
