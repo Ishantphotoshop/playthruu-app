@@ -1143,6 +1143,8 @@ function openLogSheet({ game, ownLog, replayCount, ensureSavedGame, onChanged, o
 
   let saving = false;
   let closed = false;
+  let likeStreak = 0;
+  let likeLast = 0;
 
   // The same light detent the log modal uses, so setting a rating feels
   // identical wherever you do it.
@@ -1464,13 +1466,26 @@ function openLogSheet({ game, ownLog, replayCount, ensureSavedGame, onChanged, o
       actBtn.setAttribute('aria-pressed', String(draft.loved));
       actBtn.setAttribute('aria-label', draft.loved ? 'Remove from loved' : 'Mark as loved');
       if (!actBtn.classList.contains('lg-qa')) actBtn.innerHTML = draft.loved ? iconHeartSolid() : iconHeartLine();
-      // Two small hearts float up from the Like button when it switches on.
+      // Hearts float up from the Like button each time it switches on. Tap again and
+      // again quickly and each round sends more. Taking the like back does not remove
+      // hearts already in the air: they carry on floating up and fade away by themselves.
       if (draft.loved && actBtn.classList.contains('lg-qa')) {
-        actBtn.querySelectorAll('.qa-float').forEach((n) => n.remove());
-        for (const [x, delay] of [['-14px', '0s'], ['13px', '.15s']]) {
-          actBtn.insertAdjacentHTML('beforeend', `<i class="qa-float" style="--x:${x};animation-delay:${delay}">${iconHeartSolid()}</i>`);
+        const now = Date.now();
+        likeStreak = now - likeLast < 900 ? likeStreak + 1 : 0;
+        likeLast = now;
+        const n = Math.min(2 + likeStreak * 2, 14);
+        for (let i = 0; i < n; i += 1) {
+          const x = Math.round((Math.random() * 2 - 1) * (16 + Math.min(likeStreak, 6) * 4));
+          const size = 9 + Math.round(Math.random() * 6);
+          const delay = (i * 0.07 + Math.random() * 0.12).toFixed(2);
+          const dur = (0.9 + Math.random() * 0.7).toFixed(2);
+          const el = document.createElement('i');
+          el.className = 'qa-float';
+          el.style.cssText = `--x:${x}px;--s:${size}px;animation-delay:${delay}s;animation-duration:${dur}s`;
+          el.innerHTML = FLOAT_HEART;
+          el.addEventListener('animationend', () => el.remove());
+          actBtn.appendChild(el);
         }
-        setTimeout(() => actBtn.querySelectorAll('.qa-float').forEach((n) => n.remove()), 1200);
       }
       return;
     }
@@ -1553,7 +1568,8 @@ function openLogSheet({ game, ownLog, replayCount, ensureSavedGame, onChanged, o
 // Backlog 04 hourglass). Each is drawn twice: an outline while off and a solid
 // shape once switched on (CSS swaps them).
 const ICON_STICK = { box: '2.5 2 19 19.5', base: 'M5 17h14a1.5 1.5 0 0 1 1.5 1.5V20.5h-17V18.5A1.5 1.5 0 0 1 5 17z', knob: 'M12 3a3 3 0 1 1 0 6a3 3 0 1 1 0-6z', stem: 'M12 9v8' };
-const ICON_HEART = { box: '2.3 4.35 19.4 16.95', body: 'M12 20.3 4.7 13.4a4.7 4.7 0 0 1 6.6-6.7l.7.7.7-.7a4.7 4.7 0 0 1 6.6 6.7z' };
+const ICON_HEART = { box: '1.9 2.9 20.2 18.9', body: 'M12 21 3.5 11.5A4.8 4.8 0 0 1 12 6a4.8 4.8 0 0 1 8.5 5.5z', solidStroke: true };
+const FLOAT_HEART = '<svg viewBox="1.9 2.9 20.2 18.9"><path d="M12 21 3.5 11.5A4.8 4.8 0 0 1 12 6a4.8 4.8 0 0 1 8.5 5.5z" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>';
 const HOURGLASS = 'M7 3h10v3.5L13 12l4 5.5V21H7v-3.5L11 12 7 6.5z';
 // The 10 minute easter egg: while a game sits in the backlog the sand runs slowly,
 // and every 10 minutes the glass turns upside down and it starts again. It is
@@ -1613,7 +1629,7 @@ function hourglassIcon() {
 }
 // `box` is each glyph's own bounds plus a 1-unit margin, so drawn at one
 // height the three icons share the same top and bottom line.
-function qaIcon({ box, body, inside = '', outside = '', base = '', knob = '', stem = '' }) {
+function qaIcon({ box, body, inside = '', outside = '', base = '', knob = '', stem = '', solidStroke = false }) {
   const line = (d, w) => `<path d="${d}" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"/>`;
   // The arcade stick is drawn in two parts: the base stays put, the stick (stem and
   // ball) is its own group so it can wobble on its own.
@@ -1622,7 +1638,7 @@ function qaIcon({ box, body, inside = '', outside = '', base = '', knob = '', st
       + `<svg class="lg-qa__on-ic" viewBox="${box}"><path d="${base}" fill="currentColor"/><g class="qa-stick">${line(stem, 2)}<path d="${knob}" fill="currentColor"/></g></svg>`;
   }
   const off = `<svg class="lg-qa__off-ic" viewBox="${box}">${outside ? line(outside, 1.5) : ''}${line(body, 1.5)}${inside ? line(inside, 1.5) : ''}</svg>`;
-  const on = `<svg class="lg-qa__on-ic" viewBox="${box}">${outside ? line(outside, 2) : ''}<path d="${body}" fill="currentColor"/>${inside ? `<path d="${inside}" fill="none" stroke="var(--surface)" stroke-width="1.7" stroke-linecap="round"/>` : ''}</svg>`;
+  const on = `<svg class="lg-qa__on-ic" viewBox="${box}">${outside ? line(outside, 2) : ''}<path d="${body}" fill="currentColor"${solidStroke ? ' stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"' : ''}/>${inside ? `<path d="${inside}" fill="none" stroke="var(--surface)" stroke-width="1.7" stroke-linecap="round"/>` : ''}</svg>`;
   return off + on;
 }
 function iconPadLg() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M7.5 8h9a4 4 0 0 1 3.9 4.9l-1 4.3a2 2 0 0 1-3.5.8L14 16h-4l-1.9 2a2 2 0 0 1-3.5-.8l-1-4.3A4 4 0 0 1 7.5 8z"/><path d="M8 11v3M6.5 12.5h3" stroke-linecap="round"/><circle cx="15.5" cy="11.6" r=".7" fill="currentColor"/><circle cx="17.3" cy="13.4" r=".7" fill="currentColor"/></svg>`; }

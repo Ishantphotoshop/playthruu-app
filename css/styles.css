@@ -7255,9 +7255,9 @@ a.gd-credit__name { text-decoration: none; }
 
 /* Pop-up icon motion: Like sends two small hearts floating up, Backlog turns over like an hourglass. */
 .lg-qa { position: relative; }
-.qa-float { position: absolute; left: calc(50% - 6px); top: 14px; width: 12px; height: 12px; color: var(--coral); display: block; pointer-events: none; animation: qa-float .9s ease-out forwards; }
+.qa-float { position: absolute; left: calc(50% - var(--s, 12px) / 2); top: 14px; width: var(--s, 12px); height: var(--s, 12px); color: var(--coral); display: block; pointer-events: none; animation: qa-float 1.1s ease-out forwards; }
 .qa-float svg { width: 100%; height: 100%; display: block; }
-@keyframes qa-float { 0% { transform: translate(var(--x), 0) scale(.5); opacity: 0; } 20% { opacity: 1; } 100% { transform: translate(var(--x), -40px) scale(1); opacity: 0; } }
+@keyframes qa-float { 0% { transform: translate(0, 0) scale(.5); opacity: 0; } 15% { opacity: 1; } 100% { transform: translate(var(--x), -52px) scale(1); opacity: 0; } }
 @keyframes qa-turn { 0% { transform: rotate(0); } 70% { transform: rotate(190deg); } 85% { transform: rotate(175deg); } 100% { transform: rotate(180deg); } }
 @media (prefers-reduced-motion: reduce) {
   .qa-float { display: none; }
