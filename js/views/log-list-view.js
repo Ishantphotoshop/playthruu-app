@@ -1,6 +1,6 @@
 import * as api from '../api.js';
 import { state } from '../state.js';
-import { topBar, navBar, emptyState, spinner, iconStamp, posterFrame } from '../components.js';
+import { topBar, navBar, emptyState, spinner, iconStamp, posterFrame, iconFilter } from '../components.js';
 import { esc, qs, formatDate, statusStamp, starRow, igdbSized } from '../utils.js';
 
 // `keep` narrows the list after it is fetched (the database can't ask these
@@ -19,7 +19,7 @@ const MODES = {
 
 export async function renderLogListView(root, { username, mode }) {
   const cfg = MODES[mode] || MODES.logged;
-  root.innerHTML = topBar(cfg.title, { back: true }) + `<div class="view-body" id="loglist-body">${spinner()}</div>` + navBar('');
+  root.innerHTML = topBar(cfg.title, { back: true, right: `<button type="button" class="browse-fbtn" id="ll-fbtn" aria-label="Filters">${iconFilter()}</button>` }) + `<div class="view-body" id="loglist-body">${spinner()}</div>` + navBar('');
   const body = qs('#loglist-body', root);
 
   try {
@@ -28,7 +28,7 @@ export async function renderLogListView(root, { username, mode }) {
     if (cfg.keep) logs = logs.filter(cfg.keep);
 
     // Filters: sort, year, minimum rating, and "By game" (one game, every play under it).
-    const f = { sort: 'new', year: 'all', rating: '0', group: mode === 'replayed' };
+    const f = { sort: 'new', year: 'all', rating: '0', group: mode === 'replayed', open: false };
     const years = [...new Set(logs.map((l) => l.played_date && new Date(l.played_date).getFullYear()).filter(Boolean))].sort((x, y) => y - x);
     const when = (l) => new Date(l.played_date || l.created_at || 0).getTime();
     const sorters = {
@@ -39,7 +39,7 @@ export async function renderLogListView(root, { username, mode }) {
       az: (x, y) => (x.games?.title || '').localeCompare(y.games?.title || ''),
     };
     const sel = (key, opts) => `<select class="ll-sel" data-f="${key}">${opts.map(([v, t]) => `<option value="${v}" ${String(f[key]) === String(v) ? 'selected' : ''}>${t}</option>`).join('')}</select>`;
-    const bar = () => `<div class="ll-filters">
+    const bar = () => `<div class="ll-filters" ${f.open ? '' : 'hidden'}>
       ${sel('sort', [['new', 'Newest first'], ['old', 'Oldest first'], ['high', 'Highest rated'], ['low', 'Lowest rated'], ['az', 'A to Z']])}
       ${years.length > 1 ? sel('year', [['all', 'All years'], ...years.map((y) => [y, y])]) : ''}
       ${sel('rating', [['0', 'Any rating'], ['3', '3★ and up'], ['4', '4★ and up'], ['5', '5★ only']])}
@@ -77,6 +77,7 @@ export async function renderLogListView(root, { username, mode }) {
       body.querySelectorAll('.ll-sel').forEach((el) => el.addEventListener('change', () => { f[el.dataset.f] = el.value; paint(); }));
       qs('[data-group]', body).addEventListener('click', () => { f.group = !f.group; paint(); });
     };
+    qs('#ll-fbtn', root).addEventListener('click', () => { f.open = !f.open; const b = qs('.ll-filters', body); if (b) b.hidden = !f.open; });
     if (!logs.length) { body.innerHTML = emptyState(cfg.empty(username), { icon: iconStamp() }); return; }
     paint();
   } catch (err) {

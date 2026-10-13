@@ -7114,3 +7114,4 @@ a.gd-credit__name { text-decoration: none; }
 .ps-rows { gap: 0; }
 .ps-rows .ps-row { background: none; border-radius: 0; padding: 12px 0; }
 .ps-rows .ps-row__chev { display: none; }
+.ll-filters[hidden] { display: none; }
