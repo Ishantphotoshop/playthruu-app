@@ -1607,7 +1607,7 @@ function hourglassIcon() {
     <g class="hg-p1">${outline}${clip('<rect class="hg-rect" x="6" y="12" width="12" height="9" fill="currentColor"/>')}</g>
     <g class="hg-p2">${outline}${clip('<rect class="hg-top hg-rect" x="6" y="3" width="12" height="9" fill="currentColor"/>')}${clip('<rect class="hg-bot hg-rect" x="6" y="12" width="12" height="9" fill="currentColor"/>')}
       <path class="hg-stream" d="M12 11.6V19.5" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/>
-      <circle class="hg-grain" cx="12" cy="11.5" r=".7" fill="currentColor"/><circle class="hg-grain" cx="12" cy="11.5" r=".7" fill="currentColor" style="animation-delay:.45s"/><circle class="hg-grain" cx="12" cy="11.5" r=".7" fill="currentColor" style="animation-delay:.9s"/>
+      <rect class="hg-grain" x="11.75" y="11.3" width="0.55" height="0.55" fill="currentColor" style="--dx:-0.5px;--r:40deg;animation-delay:0.0s;animation-duration:0.95s"/><rect class="hg-grain" x="12.25" y="11.3" width="0.45" height="0.45" fill="currentColor" style="--dx:0.6px;--r:-60deg;animation-delay:0.2s;animation-duration:1.1s"/><rect class="hg-grain" x="11.95" y="11.3" width="0.6" height="0.6" fill="currentColor" style="--dx:0.2px;--r:25deg;animation-delay:0.45s;animation-duration:0.85s"/><rect class="hg-grain" x="12.15" y="11.3" width="0.4" height="0.4" fill="currentColor" style="--dx:-0.3px;--r:-35deg;animation-delay:0.65s;animation-duration:1.0s"/><rect class="hg-grain" x="11.85" y="11.3" width="0.5" height="0.5" fill="currentColor" style="--dx:0.5px;--r:70deg;animation-delay:0.85s;animation-duration:0.9s"/>
     </g></svg>`;
   return off + on;
 }

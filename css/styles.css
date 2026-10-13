@@ -7279,10 +7279,11 @@ a.gd-credit__name { text-decoration: none; }
 .lg-hg .hg-stream, .lg-hg .hg-grain { opacity: 0; }
 .lg-qa.lg-pill--on[data-status="backlog"] .hg-p1 { animation: hg-turn .6s ease-in-out forwards; }
 .lg-qa.lg-pill--on[data-status="backlog"] .hg-p2 { animation: hg-show 0s .6s forwards; }
-.lg-qa.lg-pill--on[data-status="backlog"] .hg-grain { animation: hg-fall 1.35s linear .6s infinite; }
+.lg-hg .hg-grain { transform-box: fill-box; transform-origin: 50% 50%; }
+.lg-qa.lg-pill--on[data-status="backlog"] .hg-grain { animation-name: hg-fall; animation-timing-function: cubic-bezier(.45, .05, .9, .6); animation-iteration-count: infinite; animation-delay: .6s; animation-duration: 1s; }
 @keyframes hg-turn { 0% { transform: rotate(0); opacity: 1; } 99% { transform: rotate(180deg); opacity: 1; } 100% { transform: rotate(180deg); opacity: 0; } }
 @keyframes hg-show { to { opacity: 1; } }
-@keyframes hg-fall { 0% { transform: translateY(0); opacity: 0; } 12% { opacity: 1; } 80% { opacity: 1; } 100% { transform: translateY(7.5px); opacity: 0; } }
+@keyframes hg-fall { 0% { transform: translate(0, 0) rotate(0); opacity: 0; } 10% { opacity: 1; } 85% { opacity: 1; } 100% { transform: translate(var(--dx, 0), 7.8px) rotate(var(--r, 40deg)); opacity: 0; } }
 /* marking as played from the backlog */
 .lg-qa.lg-pill--on.qa-finishing[data-status="backlog"] .hg-p1 { animation: none; opacity: 0; }
 .lg-qa.lg-pill--on.qa-finishing[data-status="backlog"] .hg-p2 { animation: none; opacity: 1; }
@@ -7316,3 +7317,7 @@ a.gd-credit__name { text-decoration: none; }
 .lg-qa.qa-egg-turn .lg-qa__ic { animation: hg-egg-flip .8s ease-in-out forwards; transform-origin: 50% 50%; }
 @keyframes hg-egg-flip { from { transform: rotate(0); } to { transform: rotate(180deg); } }
 @media (prefers-reduced-motion: reduce) { .lg-qa.qa-egg-turn .lg-qa__ic { animation-duration: 0s; } }
+
+/* the pouring stream is made of grains too, not a smooth line */
+.lg-qa.lg-pill--on.qa-finishing[data-status="backlog"] .hg-stream { stroke-dasharray: .7 1.3; stroke-width: 1.3; animation: hg-stream var(--P, 2.2s) linear forwards, hg-flow .45s linear infinite; }
+@keyframes hg-flow { to { stroke-dashoffset: -2; } }
