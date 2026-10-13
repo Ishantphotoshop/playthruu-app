@@ -7149,3 +7149,15 @@ a.gd-credit__name { text-decoration: none; }
 .ps-row__n em { font-size: 14px; font-weight: 600; color: var(--ink-faint); margin-left: 2px; }
 .ps-rows .ps-row__chev--show { display: grid; }
 .ps-wrap .ps-box { border: 0; border-top: 1px solid var(--surface-high); border-radius: 0; padding: 14px 0; }
+
+/* Ratings box: the "Clean light" look. Paint only; sizes, spacing and the
+   press-and-slide behaviour are untouched. */
+.rating-histogram { background: #ffffff; border-color: #d7d2c4; }
+.rh-title { font-family: var(--font-body); font-weight: 800; color: #1b1a17; }
+.rh-total { color: #8a8579; }
+.rh-star::after { background: #0a9b4a; }
+.rating-histogram__bar-fill { background: #7fd49a; border-radius: 3px 3px 0 0; }
+.rating-histogram__bar.is-zero .rating-histogram__bar-fill { background: #e4dfd2; }
+.rating-histogram__bar.rating-histogram__bar--active .rating-histogram__bar-fill { background: #0a9b4a; }
+.rh-base { border-top-color: #d7d2c4; }
+.rating-histogram__empty { color: #8a8579; }
