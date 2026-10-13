@@ -7151,8 +7151,8 @@ a.gd-credit__name { text-decoration: none; }
    title and count on the app's brown surface, a slim 6px frame, the app's green
    bars. Paint only; sizes, spacing and the press-and-slide behaviour are untouched. */
 .rating-histogram { background: var(--surface); border-radius: 6px; }
-.rh-title { font-family: 'EB Garamond', Georgia, serif; font-weight: 600; font-size: 18px; letter-spacing: 0.01em; color: var(--ink); }
-.rh-total { font-family: 'EB Garamond', Georgia, serif; font-weight: 600; font-size: 16px; color: var(--ink-faint); }
+.rh-title { font-family: var(--font-brand); font-weight: 800; font-size: 14px; letter-spacing: -0.01em; color: var(--ink); }
+.rh-total { font-family: var(--font-brand); font-weight: 700; font-size: 13px; color: var(--ink-faint); }
 .rating-histogram__bar-fill { border-radius: 1px 1px 0 0; }
 
 /* Diary: calendar tiles (weekday + day in a tile, the game, the cover on the right). */
