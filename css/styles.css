@@ -176,7 +176,7 @@
   --font-display: 'Manrope', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   --font-body: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   /* The wordmark's font (see the <link> in index.html). */
-  --font-brand: 'EB Garamond', Georgia, serif;
+  --font-brand: 'Unbounded', system-ui, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Consolas, monospace;
 
   /* The type ladder. Every size in the app is one of these — the
@@ -7154,6 +7154,6 @@ a.gd-credit__name { text-decoration: none; }
    title and count on the app's brown surface, a slim 6px frame, the app's green
    bars. Paint only; sizes, spacing and the press-and-slide behaviour are untouched. */
 .rating-histogram { background: var(--surface); border-radius: 6px; }
-.rh-title { font-family: var(--font-brand); font-weight: 600; font-size: 18px; letter-spacing: 0.01em; color: var(--ink); }
+.rh-title { font-family: 'EB Garamond', Georgia, serif; font-weight: 600; font-size: 18px; letter-spacing: 0.01em; color: var(--ink); }
 .rh-total { font-family: 'EB Garamond', Georgia, serif; font-weight: 600; font-size: 16px; color: var(--ink-faint); }
 .rating-histogram__bar-fill { border-radius: 1px 1px 0 0; }
