@@ -2,7 +2,7 @@ import * as api from '../api.js';
 import { state } from '../state.js';
 import { navBar, avatarImg, emptyState, spinner, iconBell } from '../components.js';
 import { esc, timeAgo, starRow, qs, qsa, keepLoading } from '../utils.js';
-import { navigate } from '../router.js';
+import { navigate, markTabStale } from '../router.js';
 import { wirePullToRefresh, pullRefreshing } from './feed-view.js';
 import { getCached, setCached, CACHE_KEYS } from '../cache.js';
 
@@ -142,9 +142,19 @@ function activityRow(row, viewerId) {
 // The tab you were on, kept only for a pull-to-refresh (which rebuilds the
 // screen); opening Notifications fresh always starts on All.
 let lastTab = 'all';
+// Set by openNotificationsOn(): the tab the next fresh open should start on.
+let requestedTab = null;
+
+// Open Notifications on a given tab (e.g. "you") from somewhere else in the app.
+export function openNotificationsOn(tab) {
+  requestedTab = TABS.some((t) => t.id === tab) ? tab : null;
+  markTabStale('/notifications');
+  navigate('/notifications');
+}
 
 export async function renderNotificationsView(root) {
-  let activeTab = pullRefreshing ? lastTab : 'all';
+  let activeTab = pullRefreshing ? lastTab : (requestedTab || 'all');
+  requestedTab = null;
   const viewerId = state.user?.id;
 
   // One pane per tab, all kept. Switching tabs shows the other pane instead of

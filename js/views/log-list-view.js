@@ -9,12 +9,12 @@ import { esc, qs, formatDate, statusStamp, starRow, igdbSized } from '../utils.j
 const THIS_YEAR = new Date().getFullYear();
 const MODES = {
   completed: { title: 'Played', statuses: ['played', 'dropped'], reviewsOnly: false, empty: (u) => `${u} hasn't played any games yet.` },
-  diary: { title: 'Played', statuses: ['played', 'dropped'], reviewsOnly: false, diary: true, empty: (u) => `${u} hasn't got any diary entries yet.` },
-  year: { title: 'This year', statuses: ['played', 'dropped'], reviewsOnly: false, keep: (l) => l.played_date && new Date(l.played_date).getFullYear() === THIS_YEAR, empty: (u) => `${u} hasn't played anything this year yet.` },
-  logged: { title: 'Logs', statuses: undefined, reviewsOnly: false, keep: (l) => l.rating || l.review || l.loved, empty: (u) => `${u} hasn't logged anything yet.` },
+  diary: { title: 'Logs', statuses: ['played', 'dropped'], reviewsOnly: false, diary: true, empty: (u) => `${u} hasn't got any diary entries yet.` },
+  year: { title: 'This year', statuses: ['played', 'dropped'], reviewsOnly: false, keep: (l) => { const raw = l.played_date || l.created_at; return !!raw && new Date(raw).getFullYear() === THIS_YEAR; }, empty: (u) => `${u} hasn't played anything this year yet.` },
+  logged: { title: 'Played', statuses: undefined, reviewsOnly: false, keep: (l) => l.rating || l.review || l.loved, empty: (u) => `${u} hasn't logged anything yet.` },
   reviews: { title: 'Reviews', statuses: undefined, reviewsOnly: true, empty: (u) => `${u} hasn't written any reviews yet.` },
   liked: { title: 'Likes', statuses: undefined, reviewsOnly: false, keep: (l) => l.loved, empty: (u) => `${u} hasn't liked any games yet.` },
-  replayed: { title: 'Replays', statuses: undefined, reviewsOnly: false, keep: (l) => l.is_replay, empty: (u) => `${u} hasn't replayed any games yet.` },
+  replayed: { title: 'Replays', statuses: ['played', 'dropped'], reviewsOnly: false, post: (list) => { const n = {}; list.forEach((l) => { n[l.game_id] = (n[l.game_id] || 0) + 1; }); return list.filter((l) => n[l.game_id] > 1); }, empty: (u) => `${u} hasn't replayed any games yet.` },
 };
 
 // Calendar tiles: weekday and day number in a tile, the game beside it, the cover
@@ -51,13 +51,18 @@ export async function renderLogListView(root, { username, mode }) {
 
   try {
     const profile = state.profile?.username === username ? state.profile : await api.getProfileByUsername(username);
-    let logs = await api.getLogsForUser(profile.id, { statuses: cfg.statuses, reviewsOnly: cfg.reviewsOnly, limit: cfg.keep ? 1000 : 200 });
+    let logs = await api.getLogsForUser(profile.id, { statuses: cfg.statuses, reviewsOnly: cfg.reviewsOnly, limit: 5000 });
     if (cfg.keep) logs = logs.filter(cfg.keep);
+    if (cfg.post) logs = cfg.post(logs);
     logs = logs.filter((l) => l.status !== 'backlog'); // backlog games stay in the Backlog
 
     // Filters: sort, year, minimum rating, and "By game" (one game, every play under it).
-    const f = { sort: 'new', year: 'all', rating: '0', group: mode === 'replayed', open: false };
-    const years = [...new Set(logs.map((l) => l.played_date && new Date(l.played_date).getFullYear()).filter(Boolean))].sort((x, y) => y - x);
+    const fkey = `ll-filters:${username}:${mode}`;
+    const f = { sort: 'new', year: 'all', rating: '0', group: mode === 'replayed' };
+    try { Object.assign(f, JSON.parse(sessionStorage.getItem(fkey) || '{}')); } catch (_) { /* fine without it */ }
+    const dateOf = (l) => l.played_date || l.created_at;
+    const yearOf = (l) => { const raw = dateOf(l); return raw ? new Date(raw).getFullYear() : null; };
+    const years = [...new Set(logs.map(yearOf).filter(Boolean))].sort((x, y) => y - x);
     const when = (l) => new Date(l.played_date || l.created_at || 0).getTime();
     const sorters = {
       new: (x, y) => when(y) - when(x),
@@ -69,7 +74,7 @@ export async function renderLogListView(root, { username, mode }) {
     const SORTS = [['new', 'Newest first'], ['old', 'Oldest first'], ['high', 'Highest rated'], ['low', 'Lowest rated'], ['az', 'A to Z']];
     const RATINGS = [['0', 'Any rating'], ['3', '3★ and up'], ['4', '4★ and up'], ['5', '5★ only']];
     const matches = (d) => logs.filter((l) => l.games)
-      .filter((l) => d.year === 'all' || (l.played_date && new Date(l.played_date).getFullYear() === Number(d.year)))
+      .filter((l) => d.year === 'all' || yearOf(l) === Number(d.year))
       .filter((l) => (l.rating || 0) >= Number(d.rating));
     const BLANK = { sort: 'new', year: 'all', rating: '0', group: mode === 'replayed' };
 
@@ -92,7 +97,8 @@ export async function renderLogListView(root, { username, mode }) {
         return opt('group', false, 'Every play as a poster') + opt('group', true, 'By game, every play listed under it');
       };
       const paintSheet = () => {
-        const n = matches(draft).length;
+        const list = matches(draft);
+        const n = draft.group ? new Set(list.map((l) => l.games.id)).size : list.length;
         sheet.innerHTML = `
           <div class="browse-filters__top">
             <button type="button" class="browse-filters__icon" data-act="close" aria-label="Close">${iconClose()}</button>
@@ -114,7 +120,7 @@ export async function renderLogListView(root, { username, mode }) {
         else if (el.dataset.k) draft[el.dataset.k] = el.dataset.k === 'group' ? el.dataset.v === 'true' : el.dataset.v;
         else if (el.dataset.act === 'reset') Object.assign(draft, BLANK);
         else if (el.dataset.act === 'close') { close(); return; }
-        else if (el.dataset.act === 'apply') { Object.assign(f, draft); close(); paint(); return; }
+        else if (el.dataset.act === 'apply') { Object.assign(f, draft); try { sessionStorage.setItem(fkey, JSON.stringify(f)); } catch (_) { /* fine without it */ } close(); paint(); return; }
         paintSheet();
       });
       paintSheet();
@@ -124,16 +130,21 @@ export async function renderLogListView(root, { username, mode }) {
         ${withTitle ? `<img src="${esc(igdbSized(l.games.cover_url, 'cover_small') || '')}" alt="" class="diary-row__cover" loading="lazy" decoding="async" onerror="this.style.visibility='hidden'">` : ''}
         <div class="diary-row__main">
           ${withTitle ? `<div class="diary-row__title">${esc(l.games.title)}</div>` : ''}
-          <div class="diary-row__meta">${l.played_date ? formatDate(l.played_date) : ''} ${l.rating ? starRow(l.rating, { size: 10 }) : ''}</div>
+          <div class="diary-row__meta">${dateOf(l) ? formatDate(String(dateOf(l)).slice(0, 10)) : ''} ${l.rating ? starRow(l.rating, { size: 10 }) : ''}</div>
         </div>
         ${statusStamp(l.status)}
       </a>`;
 
+    // A small number on the filter icon: how many filters are on.
+    const setBadge = () => {
+      const n = Object.keys(BLANK).filter((k) => String(f[k]) !== String(BLANK[k])).length;
+      const btn = qs('#ll-fbtn', root);
+      if (!btn) return;
+      qs('.ll-fbadge', btn)?.remove();
+      if (n) btn.insertAdjacentHTML('beforeend', `<em class="ll-fbadge">${n}</em>`);
+    };
     const paint = () => {
-      let list = logs.filter((l) => l.games)
-        .filter((l) => f.year === 'all' || (l.played_date && new Date(l.played_date).getFullYear() === Number(f.year)))
-        .filter((l) => (l.rating || 0) >= Number(f.rating))
-        .sort(sorters[f.sort]);
+      let list = matches(f).sort(sorters[f.sort]);
       let content;
       if (!list.length) content = emptyState(logs.length ? 'Nothing matches those filters.' : cfg.empty(username), { icon: iconStamp() });
       else if (f.group) {
@@ -150,6 +161,7 @@ export async function renderLogListView(root, { username, mode }) {
         content = `<div class="ll-grid">${list.map((l) => `<div class="ll-cell"><a class="game-card" href="#/game/${l.games.id}" aria-label="${esc(l.games.title)}">${posterFrame(l.games.cover_url, l.games.title, 'game-card__cover')}</a><div class="rp-meta">${l.rating ? starRow(l.rating, { size: 12 }) : ''}${l.is_replay ? `<span class="rp-meta__icon rp-meta__icon--replay">${iconReplay()}</span>` : ''}${l.review ? `<span class="rp-meta__icon rp-meta__icon--review">${iconReviewLines()}</span>` : ''}</div></div>`).join('')}</div>`;
       }
       body.innerHTML = `<div id="ll-results">${content}</div>`;
+      setBadge();
     };
     qs('#ll-fbtn', root).addEventListener('click', openFilters);
     if (!logs.length) { body.innerHTML = emptyState(cfg.empty(username), { icon: iconStamp() }); return; }

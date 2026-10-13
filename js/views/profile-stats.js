@@ -1,3 +1,4 @@
+import { openNotificationsOn } from './notifications-view.js';
 import * as api from '../api.js';
 import { state } from '../state.js';
 import { esc, qs, qsa } from '../utils.js';
@@ -29,12 +30,12 @@ const SHOW_HOURS = false;
 const chevron = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 5l7 7-7 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
 // The list under Ratings: each row opens its own page.
-function rowsHtml(profile, logs) {
+function rowsHtml(profile, logs, isOwn) {
   const base = `#/profile/${esc(profile.username)}`;
   const THIS_YEAR = new Date().getFullYear();
   // Same set the pages open on: backlog games never count as logs.
   const own = logs.filter((l) => l.status !== 'backlog');
-  const inYear = (l) => l.played_date && new Date(l.played_date).getFullYear() === THIS_YEAR;
+  const inYear = (l) => { const raw = l.played_date || l.created_at; return !!raw && new Date(raw).getFullYear() === THIS_YEAR; };
   const diary = own.filter((l) => l.status === 'played' || l.status === 'dropped');
   const sets = {
     played: diary,
@@ -49,13 +50,13 @@ function rowsHtml(profile, logs) {
   const row = (label, list, attrs, withTotal = true) => `<a class="ps-row" ${attrs}><span class="ps-row__l">${label}</span><span class="ps-row__r">${list ? count(list, withTotal) : ''}<i class="ps-row__chev ps-row__chev--show">${chevron}</i></span></a>`;
   return `
     <div class="ps-rows">
-      ${row('Played', sets.played, `href="${base}/log-list/diary"`, false)}
+      ${row('Logs', sets.played, `href="${base}/log-list/diary"`, false)}
       ${SHOW_THIS_YEAR ? row('This year', sets.thisYear, `href="${base}/log-list/year"`) : ''}
-      ${row('Logs', sets.logs, `href="${base}/log-list/logged"`)}
+      ${row('Played', sets.logs, `href="${base}/log-list/logged"`)}
       ${row('Reviews', null, `href="${base}/log-list/reviews"`)}
       ${row('Likes', null, `href="${base}/log-list/liked"`)}
       ${row('Replays', null, `href="${base}/log-list/replayed"`)}
-      ${row('Activity', null, `href="${base}/activity"`)}
+      ${row('Activity', null, isOwn ? 'href="#/notifications" data-open-notif="you"' : `href="${base}/activity"`)}
     </div>`;
 }
 
@@ -78,8 +79,9 @@ function monthCounts(diary, period) {
   const counts = new Array(12).fill(0);
   const thisYear = new Date().getFullYear();
   for (const l of diary) {
-    if (!l.played_date) continue;
-    const d = new Date(l.played_date);
+    const raw = l.played_date || l.created_at;
+    if (!raw) continue;
+    const d = new Date(raw);
     const y = d.getFullYear();
     if (period === 'year' && y !== thisYear) continue;
     if (period === 'last' && y !== thisYear - 1) continue;
@@ -197,7 +199,7 @@ export function profileStatsHtml({ profile, logs, stats, isOwn }) {
   const tile = (inner, label, attrs) => `<${attrs.tag} class="ps-tile" ${attrs.attr}><b>${inner}</b><span>${label}</span></${attrs.tag}>`;
   return `
     <div class="ps-wrap" id="ps-wrap">
-      ${rowsHtml(profile, logs)}
+      ${rowsHtml(profile, logs, isOwn)}
       ${SHOW_TILES ? `<div class="ps-tiles">
         ${tile(num(stats.logged), 'Games', { tag: 'a', attr: `href="${base}/logged"` })}
         ${tile(num(diary), 'Diary', { tag: 'button', attr: 'type="button" data-jump-tab="journal"' })}
@@ -214,6 +216,13 @@ export function profileStatsHtml({ profile, logs, stats, isOwn }) {
 export function wireProfileStats(container, { profile, logs, stats, isOwn }) {
   const wrap = qs('#ps-wrap', container);
   if (!wrap) return;
+  // On your own profile, Activity opens your notifications on the You tab.
+  wrap.addEventListener('click', (e) => {
+    const a = e.target.closest('[data-open-notif]');
+    if (!a) return;
+    e.preventDefault();
+    openNotificationsOn(a.dataset.openNotif);
+  });
   const diary = logs.filter((l) => l.status === 'played' || l.status === 'dropped');
   const lastYear = diary.filter((l) => l.played_date && new Date(l.played_date).getFullYear() === new Date().getFullYear() - 1).length;
   const ctx = { profile, logs, stats, isOwn, diary, lastYear };

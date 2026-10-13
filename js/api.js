@@ -3238,13 +3238,22 @@ export async function getLog(logId) {
 }
 
 export async function getLogsForUser(userId, { statuses, reviewsOnly = false, limit = 100 } = {}) {
-  let q = supabase.from('logs').select('*, games!logs_game_id_fkey(*), profiles!logs_user_id_fkey(*)').eq('user_id', userId);
-  if (statuses?.length) q = q.in('status', statuses);
-  if (reviewsOnly) q = q.not('review', 'is', null);
-  q = q.order('played_date', { ascending: false, nullsFirst: false }).order('created_at', { ascending: false }).limit(limit);
-  const { data, error } = await q;
-  if (error) throw error;
-  return data;
+  // The database hands back at most 1000 rows per request, so bigger asks are
+  // fetched in pages until everything (or `limit` rows) is in.
+  const PAGE = 1000;
+  const all = [];
+  for (let from = 0; from < limit; from += PAGE) {
+    const to = Math.min(from + PAGE, limit) - 1;
+    let q = supabase.from('logs').select('*, games!logs_game_id_fkey(*), profiles!logs_user_id_fkey(*)').eq('user_id', userId);
+    if (statuses?.length) q = q.in('status', statuses);
+    if (reviewsOnly) q = q.not('review', 'is', null);
+    q = q.order('played_date', { ascending: false, nullsFirst: false }).order('created_at', { ascending: false }).order('id', { ascending: false }).range(from, to);
+    const { data, error } = await q;
+    if (error) throw error;
+    all.push(...(data || []));
+    if (!data || data.length < to - from + 1) break;
+  }
+  return all;
 }
 
 export async function getLogsForGame(gameId, limit = 50) {

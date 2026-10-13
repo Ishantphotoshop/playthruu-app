@@ -54,7 +54,7 @@ function profileBundle(profile) {
   return Promise.all([
     api.getUserStats(profile.id),
     api.getFollowCounts(profile.id),
-    api.getLogsForUser(profile.id, { limit: 200 }),
+    api.getLogsForUser(profile.id, { limit: 5000 }),
     api.getFavorites(profile.id),
     api.getRatingBreakdown(profile.id),
     api.getListsForUser(profile.id),
@@ -205,7 +205,7 @@ export async function renderProfileView(root, { username }) {
                     aria-label="Show full bio" hidden><span></span><span></span><span></span></button>
           </div>` : ''}
         <div class="profile-header__stats">
-          <a href="#/profile/${esc(profile.username)}/log-list/logged" class="profile-header__stat"><b>${stats.logged}</b><span>Games</span></a>
+          <a href="#/profile/${esc(profile.username)}/log-list/diary" class="profile-header__stat"><b>${diary.length}</b><span>Games</span></a>
           <a href="#/profile/${esc(profile.username)}/followers" class="profile-header__stat"><b>${counts.followers}</b><span>Followers</span></a>
           <a href="#/profile/${esc(profile.username)}/following" class="profile-header__stat"><b>${counts.following}</b><span>Following</span></a>
         </div>
@@ -230,7 +230,7 @@ export async function renderProfileView(root, { username }) {
     // Most-recently-played first, for the horizontal "Recently played" strip.
     const recentlyPlayed = diary
       .slice()
-      .sort((a, b) => new Date(b.played_date || 0) - new Date(a.played_date || 0))
+      .sort((a, b) => new Date(b.played_date || b.created_at || 0) - new Date(a.played_date || a.created_at || 0))
       .slice(0, 10);
 
     // ---- tab content renderers (all working off data already fetched above) ----
@@ -305,7 +305,7 @@ export async function renderProfileView(root, { username }) {
     // Poster grid, three across (like the discover screen) — a want-to-play
     // pile reads best as cover art you browse, not a text list.
     const renderWantToPlayTab = () => `
-      <h2 class="section-heading">Want to Play</h2>
+      <h2 class="section-heading">Backlog</h2>
       ${backlog.length ? `
         <div class="poster-grid3">
           ${backlog.map((l) => `
