@@ -7287,13 +7287,13 @@ a.gd-credit__name { text-decoration: none; }
 .lg-qa.lg-pill--on.qa-finishing[data-status="backlog"] .hg-p1 { animation: none; opacity: 0; }
 .lg-qa.lg-pill--on.qa-finishing[data-status="backlog"] .hg-p2 { animation: none; opacity: 1; }
 .lg-qa.lg-pill--on.qa-finishing[data-status="backlog"] .hg-grain { animation: none; opacity: 0; }
-.lg-qa.lg-pill--on.qa-finishing[data-status="backlog"] .hg-top { animation: hg-drain .9s linear forwards; }
-.lg-qa.lg-pill--on.qa-finishing[data-status="backlog"] .hg-bot { animation: hg-pile .9s linear forwards; }
-.lg-qa.lg-pill--on.qa-finishing[data-status="backlog"] .hg-stream { animation: hg-stream .9s linear forwards; }
-.lg-qa.lg-pill--on.qa-finishing[data-status="backlog"] .lg-hg { animation: hg-out .45s ease-in .9s forwards; }
+.lg-qa.lg-pill--on.qa-finishing[data-status="backlog"] .hg-top { animation: hg-drain 2.2s linear forwards; }
+.lg-qa.lg-pill--on.qa-finishing[data-status="backlog"] .hg-bot { animation: hg-pile 2.2s linear forwards; }
+.lg-qa.lg-pill--on.qa-finishing[data-status="backlog"] .hg-stream { animation: hg-stream 2.2s linear forwards; }
+.lg-qa.lg-pill--on.qa-finishing[data-status="backlog"] .lg-hg { animation: hg-out .45s ease-in 2.2s forwards; }
 @keyframes hg-drain { from { transform: scaleY(1); } to { transform: scaleY(0); } }
 @keyframes hg-pile { from { transform: scaleY(.22); } to { transform: scaleY(1); } }
-@keyframes hg-stream { 0% { opacity: 0; } 8% { opacity: 1; } 92% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes hg-stream { 0% { opacity: 0; } 4% { opacity: 1; } 96% { opacity: 1; } 100% { opacity: 0; } }
 @keyframes hg-out { to { opacity: 0; } }
 /* taken out of the backlog: it turns back over, then becomes the plain outline */
 .lg-qa.qa-unturning .lg-qa__ic { animation: hg-unturn .55s cubic-bezier(.5, 0, .3, 1) forwards; transform-origin: 50% 50%; }

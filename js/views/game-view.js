@@ -1420,7 +1420,7 @@ function openLogSheet({ game, ownLog, replayCount, ensureSavedGame, onChanged, o
           // Marking a backlog game as played: the sand pours to the bottom, the
           // glass fades, and only then does Played switch on.
           backlogBtn.classList.add('qa-finishing');
-          setTimeout(() => { backlogBtn.classList.remove('qa-finishing'); applyPills(); overlay.classList.remove('qa-busy'); }, 1450);
+          setTimeout(() => { backlogBtn.classList.remove('qa-finishing'); applyPills(); overlay.classList.remove('qa-busy'); }, 2750);
         } else {
           // Taken out of the backlog: the hourglass turns back over smoothly.
           backlogBtn.classList.add('qa-unturning');
