@@ -729,6 +729,8 @@ function handleSignedOut() {
 function wirePosterLongPress() {
   // Held for half a second: the sheet slides up with a buzz, together.
   const HOLD_MS = 500;
+  // The strip down each side of the screen where the back gesture starts.
+  const EDGE_PX = 28;
   let timer = 0;
   let start = null;
   let swallowClick = false;
@@ -757,6 +759,9 @@ function wirePosterLongPress() {
     const frame = target.closest?.('.poster-frame');
     if (!frame || frame.closest('.modal-overlay, .draw-overlay')) return;
     cancel();
+    // A press that starts at the very edge of the screen is the phone's
+    // back-swipe, not a hold on a poster.
+    if (x < EDGE_PX || x > window.innerWidth - EDGE_PX) return;
     start = { x, y };
     // Look the game up while the finger is still down, so the sheet is
     // ready the moment the hold completes instead of a beat after it.
@@ -784,7 +789,7 @@ function wirePosterLongPress() {
       openLogComposer({ game: standIn, resolveGame: lookup.then((g) => { if (!g) throw new Error('not found'); return g; }), onSaved: refreshCurrentView });
     }, HOLD_MS);
   }
-  const moved = (x, y) => { if (start && Math.hypot(x - start.x, y - start.y) > 12) cancel(); };
+  const moved = (x, y) => { if (start && Math.hypot(x - start.x, y - start.y) > 8) cancel(); };
 
   // Touch has its own listeners: a phone's pointer stream is cancelled by
   // the browser's own long-press handling (link preview, context menu)
@@ -795,6 +800,14 @@ function wirePosterLongPress() {
   }, { passive: true });
   document.addEventListener('touchmove', (e) => moved(e.touches[0].clientX, e.touches[0].clientY), { passive: true });
   document.addEventListener('touchend', () => { if (timer) cancel(); }, { passive: true });
+  // The browser took the touch over (back-swipe, scroll, pull-down): it never
+  // sends a touchmove for that, so without this the hold timer kept running
+  // and opened the log sheet.
+  document.addEventListener('touchcancel', cancel, { passive: true });
+  document.addEventListener('pointercancel', cancel, { passive: true });
+  window.addEventListener('hashchange', cancel);
+  window.addEventListener('popstate', cancel);
+  window.addEventListener('blur', cancel);
   document.addEventListener('mousedown', (e) => { if (e.button === 0) press(e.target, e.clientX, e.clientY); });
   document.addEventListener('mousemove', (e) => moved(e.clientX, e.clientY));
   document.addEventListener('mouseup', () => { if (timer) cancel(); });
