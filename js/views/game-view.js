@@ -1568,8 +1568,8 @@ function openLogSheet({ game, ownLog, replayCount, ensureSavedGame, onChanged, o
 // Backlog 04 hourglass). Each is drawn twice: an outline while off and a solid
 // shape once switched on (CSS swaps them).
 const ICON_STICK = { box: '2.5 2 19 19.5', base: 'M5 17h14a1.5 1.5 0 0 1 1.5 1.5V20.5h-17V18.5A1.5 1.5 0 0 1 5 17z', knob: 'M12 3a3 3 0 1 1 0 6a3 3 0 1 1 0-6z', stem: 'M12 9v8' };
-const ICON_HEART = { box: '2.3 4.35 19.4 16.95', body: 'M12 20.3 4.7 13.4a4.7 4.7 0 0 1 6.6-6.7l.7.7.7-.7a4.7 4.7 0 0 1 6.6 6.7z' };
-const FLOAT_HEART = '<svg viewBox="2.3 4.35 19.4 16.95"><path d="M12 20.3 4.7 13.4a4.7 4.7 0 0 1 6.6-6.7l.7.7.7-.7a4.7 4.7 0 0 1 6.6 6.7z" fill="currentColor"/></svg>';
+const ICON_HEART = { box: '1.5 3 21 18.5', body: 'M12 20.3C6 15.6 3 12.6 3 8.9C3 6.3 4.9 4.4 7.3 4.4C9.3 4.4 11 5.5 12 7.3C13 5.5 14.7 4.4 16.7 4.4C19.1 4.4 21 6.3 21 8.9C21 12.6 18 15.6 12 20.3z', solidStroke: true };
+const FLOAT_HEART = '<svg viewBox="1.5 3 21 18.5"><path d="M12 20.3C6 15.6 3 12.6 3 8.9C3 6.3 4.9 4.4 7.3 4.4C9.3 4.4 11 5.5 12 7.3C13 5.5 14.7 4.4 16.7 4.4C19.1 4.4 21 6.3 21 8.9C21 12.6 18 15.6 12 20.3z" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>';
 const HOURGLASS = 'M7 3h10v3.5L13 12l4 5.5V21H7v-3.5L11 12 7 6.5z';
 // The 10 minute easter egg: while a game sits in the backlog the sand runs slowly,
 // and every 10 minutes the glass turns upside down and it starts again. It is
