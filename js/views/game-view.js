@@ -653,7 +653,7 @@ export async function renderGameView(root, { id, igdbId }) {
           <section class="gd-ratings" id="rating-chart-slot">
             <div class="rt-head">Ratings</div>
             <div class="rt-row">
-              <span class="rt-low">${starRow(1, { size: 10, count: 1 })}</span>
+              <span class="rt-low">${starRow(1, { size: 11, count: 1 })}</span>
               <div class="rt-bars" id="rating-bars">
                 ${halfSteps.map((star, i) => {
                   const count = stepCounts[i];
@@ -670,7 +670,7 @@ export async function renderGameView(root, { id, igdbId }) {
               </div>
               <div class="rt-avg">
                 <span class="rt-num" id="rating-avg-num">${avgLabel}</span>
-                <span class="rt-stars" id="rating-avg-stars">${starRow(avg, { size: 10, count: 5 })}</span>
+                <span class="rt-stars" id="rating-avg-stars">${starRow(avg, { size: 11, count: 5 })}</span>
               </div>
             </div>
           </section>
@@ -870,12 +870,12 @@ export async function renderGameView(root, { id, igdbId }) {
         };
         const showAverage = () => {
           avgNumEl.textContent = avgLabel;
-          if (avgStarsEl) avgStarsEl.innerHTML = starRow(avg, { size: 10, count: 5 });
+          if (avgStarsEl) avgStarsEl.innerHTML = starRow(avg, { size: 11, count: 5 });
           setHeld(null);
         };
         const showCol = (col) => {
           avgNumEl.textContent = col.dataset.count;
-          if (avgStarsEl) avgStarsEl.innerHTML = starRow(Number(col.dataset.rating), { size: 10, count: 5 });
+          if (avgStarsEl) avgStarsEl.innerHTML = starRow(Number(col.dataset.rating), { size: 11, count: 5 });
           setHeld(col);
         };
         distBars.addEventListener('pointerdown', (e) => {
