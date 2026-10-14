@@ -7486,3 +7486,7 @@ a.gd-credit__name { text-decoration: none; }
 .comment .comment__like-n { font-size: 13px; font-weight: 600; line-height: 1; min-height: 13px; color: var(--ink-faint); }
 .comment .comment__like:active { transform: scale(.9); }
 .comment--gone { display: flex; gap: 12px; align-items: center; }
+
+/* comments: holding a row on a phone must not select text or pop the browser's own menu */
+.comment { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+.comment__text { -webkit-user-select: none; user-select: none; }

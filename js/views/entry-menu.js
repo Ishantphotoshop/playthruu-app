@@ -1,6 +1,6 @@
 import * as api from '../api.js';
 import { navigate, refreshCurrentView } from '../router.js';
-import { confirmSheet } from '../components.js';
+import { confirmSheet, iconClose } from '../components.js';
 import { formatDate, qs, toast, enableSwipeToDismiss } from '../utils.js';
 import { openLogComposer } from './log-composer.js';
 
@@ -23,6 +23,70 @@ function entryUrl(log) {
   return `${location.origin}${location.pathname}#/review/${log.id}`;
 }
 
+const WHO_OPTIONS = [
+  ['everyone', 'Everyone'],
+  ['following', 'People you follow'],
+  ['followers', 'Your followers'],
+  ['both', 'People you follow and your followers'],
+  ['nobody', 'No one'],
+];
+
+function currentWho(log) {
+  if (log.comments_disabled) return 'nobody';
+  return log.comments_who || 'everyone';
+}
+
+// The same pop-up as Browse's filters: a full-screen sheet with a close button and a
+// title on top, radio choices, and Reset / Save underneath.
+// Opening the next screen BEFORE taking the menu down matters: the app steps back one
+// history entry whenever a sheet closes on its own, and doing it the other way round
+// made that step-back swallow the screen that had just opened.
+function openWhoSheet(log, onChanged) {
+  const now = currentWho(log);
+  let pick = now;
+  const sheet = document.createElement('div');
+  sheet.className = 'browse-filters';
+  document.body.appendChild(sheet);
+  const close = () => sheet.remove();
+  sheet.__dismiss = close;
+  const paint = () => {
+    sheet.innerHTML = `
+      <div class="browse-filters__top">
+        <button type="button" class="browse-filters__icon" data-act="close" aria-label="Close">${iconClose()}</button>
+        <h2>Who can comment</h2>
+      </div>
+      <div class="browse-filters__body">
+        ${WHO_OPTIONS.map(([v, label]) => `
+          <button type="button" class="bf-opt" data-who="${v}">
+            <span class="bf-mark bf-mark--radio${v === pick ? ' is-on' : ''}"></span><span class="bf-opt__name">${label}</span>
+          </button>`).join('')}
+        <p class="bf-note">This is about your own review. You can always comment on it yourself, and you can delete or block anyone from the comment list.</p>
+      </div>
+      <div class="bf-foot">
+        <button type="button" class="bf-reset" data-act="reset"${pick === 'everyone' ? ' disabled' : ''}>Reset</button>
+        <button type="button" class="bf-show" data-act="save"${pick === now ? ' disabled' : ''}>Save</button>
+      </div>`;
+  };
+  paint();
+  sheet.addEventListener('click', async (e) => {
+    const el = e.target.closest('[data-who],[data-act]');
+    if (!el) return;
+    if (el.dataset.who) { pick = el.dataset.who; paint(); return; }
+    if (el.dataset.act === 'close') { close(); return; }
+    if (el.dataset.act === 'reset') { pick = 'everyone'; paint(); return; }
+    if (el.dataset.act === 'save') {
+      close();
+      try {
+        await api.updateLog(log.id, pick === 'nobody' ? { comments_disabled: true } : { comments_disabled: false, comments_who: pick });
+        toast(pick === 'nobody' ? 'Comments are off.' : 'Saved.', 'success');
+        onChanged();
+      } catch (err) {
+        toast('Could not change that yet. The comment settings need a database update first.', 'error');
+      }
+    }
+  });
+}
+
 export function openEntryMenu(log, isOwner, { onChanged = () => {} } = {}) {
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
@@ -31,7 +95,7 @@ export function openEntryMenu(log, isOwner, { onChanged = () => {} } = {}) {
       <header class="msg-actions__grab" aria-hidden="true"></header>
       <div class="msg-actions__list de-menu">
         ${isOwner ? '<button type="button" class="msg-actions__item" data-do="edit"><span>Edit</span></button>' : ''}
-        ${isOwner ? `<button type="button" class="msg-actions__item" data-do="comments"><span>${log.comments_disabled ? 'Turn on comments' : 'Turn off comments'}</span></button>` : ''}
+        ${isOwner ? '<button type="button" class="msg-actions__item" data-do="who"><span>Who can comment</span></button>' : ''}
         <button type="button" class="msg-actions__item" data-do="story"><span>Share to Instagram Stories</span></button>
         <button type="button" class="msg-actions__item" data-do="share"><span>Share</span></button>
         ${isOwner ? '<button type="button" class="msg-actions__item msg-actions__item--danger" data-do="delete"><span>Delete</span></button>' : ''}
@@ -46,29 +110,28 @@ export function openEntryMenu(log, isOwner, { onChanged = () => {} } = {}) {
   overlay.addEventListener('click', async (e) => {
     const act = e.target.closest('[data-do]')?.dataset.do;
     if (!act) return;
-    close();
     if (act === 'edit') {
+      // The writing screen (I Played / Edit Text), opened before this menu goes.
       openLogComposer({ existingLog: log, onSaved: () => refreshCurrentView() });
-    } else if (act === 'comments') {
-      try {
-        await api.updateLog(log.id, { comments_disabled: !log.comments_disabled });
-        toast(log.comments_disabled ? 'Comments are on again.' : 'Comments are off.', 'success');
-        onChanged();
-      } catch (err) {
-        toast('Could not change that yet. The comments switch needs a database update first.', 'error');
-      }
+      close();
+    } else if (act === 'who') {
+      openWhoSheet(log, onChanged);
+      close();
     } else if (act === 'share') {
+      close();
       shareLink(log);
     } else if (act === 'story') {
+      close();
       shareToStory(log);
     } else if (act === 'delete') {
-      const ok = await confirmSheet({
+      const asking = confirmSheet({
         title: 'Delete this diary entry?',
         message: `${log.games?.title || 'This game'} will be removed from your diary.`,
         confirmLabel: 'Delete',
         danger: true,
       });
-      if (!ok) return;
+      close();
+      if (!(await asking)) return;
       try {
         await api.deleteLog(log.id);
         toast('Deleted from your diary.', 'success');

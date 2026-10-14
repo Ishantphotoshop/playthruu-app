@@ -35,6 +35,27 @@ export async function renderReviewView(root, { id }) {
     ]);
     commentLikes = await api.getCommentLikes(comments.map((c) => c.id), state.user?.id, ownerId).catch(() => ({}));
     commentAuthor = log.profiles || null;
+
+    // Who is allowed to write here: off, everyone, or only people the author follows /
+    // the author's followers. The owner can always comment (unless comments are off).
+    let commentNote = null;
+    const authorName = log.profiles?.display_name || log.profiles?.username || 'the author';
+    if (log.comments_disabled) {
+      commentNote = 'Comments are turned off.';
+    } else if (state.user && ownerId !== state.user.id && log.comments_who && log.comments_who !== 'everyone') {
+      const [ownerFollowsMe, iFollowOwner] = await Promise.all([
+        api.isFollowing(ownerId, state.user.id).catch(() => false),
+        api.isFollowing(state.user.id, ownerId).catch(() => false),
+      ]);
+      const ok = log.comments_who === 'following' ? ownerFollowsMe
+        : log.comments_who === 'followers' ? iFollowOwner
+        : (ownerFollowsMe || iFollowOwner);
+      if (!ok) {
+        commentNote = log.comments_who === 'following' ? `Only people ${authorName} follows can comment.`
+          : log.comments_who === 'followers' ? `Only ${authorName}\u2019s followers can comment.`
+          : `Only people ${authorName} follows and ${authorName}\u2019s followers can comment.`;
+      }
+    }
     const g = log.games || {};
     const a = log.profiles || {};
     const who = a.display_name || a.username || 'Someone';
@@ -87,7 +108,7 @@ export async function renderReviewView(root, { id }) {
         </div>
       </section>`}`;
 
-    root.insertAdjacentHTML('beforeend', composerHtml(!!log.comments_disabled));
+    root.insertAdjacentHTML('beforeend', composerHtml(commentNote));
 
     // The spoiler card is replaced by the writing, rather than the
     // writing being un-blurred underneath it.
@@ -101,7 +122,7 @@ export async function renderReviewView(root, { id }) {
     }
 
     wireLike(qs('#review-like', body), id, likeInfo, qs('.rv', body));
-    wireCommentActions(root, body, { logId: id, ownerId, isOwner, commentsOff: !!log.comments_disabled });
+    wireCommentActions(root, body, { logId: id, ownerId, isOwner, commentsOff: !!commentNote });
     wireComposer(root, body, { logId: id, ownerId });
   } catch (err) {
     body.innerHTML = `<p class="muted" style="padding:24px">Couldn't load this review: ${esc(err.message)}</p>`;
@@ -135,9 +156,9 @@ const countLabel = (n) => (n ? `(${n})` : '');
 
 // Pinned to the bottom for the whole visit, which is the point: the
 // reply box should never be something you have to scroll to find.
-function composerHtml(commentsOff) {
-  if (commentsOff) {
-    return `<div class="rv-composer"><p class="rv-composer__off">Comments are turned off.</p></div>`;
+function composerHtml(note) {
+  if (note) {
+    return `<div class="rv-composer"><p class="rv-composer__off">${esc(note)}</p></div>`;
   }
   if (!state.user) {
     return `
@@ -310,22 +331,30 @@ function wireCommentActions(root, body, { logId, ownerId, isOwner, commentsOff =
 
   let timer = null;
   let moved = false;
+  let opened = false;
+  let startX = 0;
+  let startY = 0;
 
   const start = (e) => {
     const row = e.target.closest('.comment');
     if (!row || row.classList.contains('comment--gone')) return;
     if (e.target.closest('a, button')) return; // let links and the like button do their own thing
     moved = false;
+    startX = e.clientX; startY = e.clientY;
     timer = setTimeout(() => {
       if (moved) return;
       tapFeedback();
+      opened = true;
       openCommentSheet(row, { logId, ownerId, isOwner, body, commentsOff });
-    }, 420);
+    }, 380);
   };
   const cancel = () => { clearTimeout(timer); timer = null; };
 
   list.addEventListener('pointerdown', start);
-  list.addEventListener('pointermove', () => { moved = true; cancel(); });
+  // A finger always wobbles a little while it holds; only a real drag (a scroll) cancels it.
+  list.addEventListener('pointermove', (e) => {
+    if (Math.hypot(e.clientX - startX, e.clientY - startY) > 12) { moved = true; cancel(); }
+  });
   list.addEventListener('pointerup', cancel);
   list.addEventListener('pointercancel', cancel);
   // Right-click is the same intent with a mouse.
@@ -333,6 +362,8 @@ function wireCommentActions(root, body, { logId, ownerId, isOwner, commentsOff =
     const row = e.target.closest('.comment');
     if (!row || row.classList.contains('comment--gone')) return;
     e.preventDefault();
+    if (opened) { opened = false; return; }
+    cancel();
     openCommentSheet(row, { logId, ownerId, isOwner, body, commentsOff });
   });
 }
