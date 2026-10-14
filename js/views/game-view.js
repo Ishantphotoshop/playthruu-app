@@ -1139,6 +1139,7 @@ function openLogSheet({ game, ownLog, replayCount, ensureSavedGame, onChanged, o
   // What the draft looked like when it was last in sync with the row in
   // the database. Anything else means there is something to write.
   let committed = JSON.stringify(draft);
+  let notified = committed;
   const isDirty = () => JSON.stringify(draft) !== committed;
 
   let saving = false;
@@ -1191,7 +1192,9 @@ function openLogSheet({ game, ownLog, replayCount, ensureSavedGame, onChanged, o
       }
       committed = JSON.stringify(draft);
       pulseLogTab();
-      onChanged?.();
+      // Redrawing the page behind the sheet makes it flicker, so only do it when
+      // what is saved really differs from what the page already shows.
+      if (committed !== notified) { notified = committed; onChanged?.(); }
       return log;
     } catch (err) {
       if (!silent) toast(err.message || 'Could not save that.', 'error');
@@ -1416,11 +1419,19 @@ function openLogSheet({ game, ownLog, replayCount, ensureSavedGame, onChanged, o
       const prevStatus = draft.status;
       draft.status = clearing ? null : next;
       qs('.lg-qa[data-status="backlog"]', overlay)?.classList.remove('qa-rest');
-      // Un-playing a game takes its stars away with it.
+      // Un-playing a game takes its stars and its like away with it.
       if (clearing && draft.rating) {
         draft.rating = 0;
         const picker = qs('#lg-rating', overlay);
         if (picker) picker.innerHTML = starRow(0, { interactive: true, size: 42 });
+      }
+      if (clearing && next === 'played' && draft.loved) {
+        draft.loved = false;
+        const likeBtn = qs('[data-act="love"]', overlay);
+        if (likeBtn) {
+          likeBtn.setAttribute('aria-pressed', 'false');
+          likeBtn.setAttribute('aria-label', 'Mark as loved');
+        }
       }
       buzz();
       // In place, not a repaint. render() rebuilds the sheet's whole
