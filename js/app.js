@@ -737,8 +737,9 @@ function wirePosterLongPress() {
   const cancel = () => { clearTimeout(timer); timer = 0; start = null; };
 
   async function gameFor(frame) {
-    const link = frame.closest('[href^="#/game/"]');
-    const id = link?.getAttribute('href').match(/^#\/game\/([0-9a-f-]{36})$/)?.[1];
+    // Posters that open a review page carry the game's id themselves.
+    const link = frame.closest('[data-game-id], [href^="#/game/"]');
+    const id = link?.dataset?.gameId || link?.getAttribute('href').match(/^#\/game\/([0-9a-f-]{36})$/)?.[1];
     if (id) return api.getGame(id);
     const title = (qs('img', frame)?.alt || '').replace(/ cover$/, '').trim();
     if (!title) return null;
@@ -804,7 +805,7 @@ function wirePosterLongPress() {
   document.addEventListener('scroll', () => { if (timer) cancel(); }, { passive: true, capture: true });
   // Letting go after a hold must not also open the poster.
   document.addEventListener('click', (e) => {
-    if (swallowClick && e.target.closest?.('.poster-frame, .discovery-tile, .trending-card, [href^="#/game/"]')) {
+    if (swallowClick && e.target.closest?.('.poster-frame, .discovery-tile, .trending-card, [href^="#/game/"], [data-game-id]')) {
       e.preventDefault(); e.stopPropagation(); swallowClick = false;
     }
   }, true);

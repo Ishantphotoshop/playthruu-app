@@ -177,12 +177,18 @@ export async function renderProfileView(root, { username }) {
       .filter((l) => l.status === 'playing')
       .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
 
+    // A game this person has played opens their review page for it (even with no
+    // write-up); a game they have not played (backlog, playing, never) opens the game page.
+    const reviewLink = (gameId) => {
+      const l = playedAll.find((x) => x.game_id === gameId);
+      return l ? `#/review/${l.id}` : `#/game/${gameId}`;
+    };
     const showcaseSlots = favorites.length
       ? favorites.slice(0, SHOWCASE_MAX).map((f) => {
           const match = logs.find((l) => l.game_id === f.game_id);
-          return { game: f.games, rating: match?.rating, reviewed: !!match?.review };
+          return { game: f.games, rating: match?.rating, reviewed: !!match?.review, href: reviewLink(f.game_id) };
         })
-      : diary.slice(0, SHOWCASE_MAX).map((l) => ({ game: l.games, rating: l.rating, reviewed: !!l.review }));
+      : diary.slice(0, SHOWCASE_MAX).map((l) => ({ game: l.games, rating: l.rating, reviewed: !!l.review, href: `#/review/${l.id}` }));
 
     // Streak archived, not deleted (2026-09-26) — the number is still
     // computed below via stats.streak (see getUserStats/computeLogStreak
@@ -249,7 +255,7 @@ export async function renderProfileView(root, { username }) {
         <div class="recent-played-row">
           ${recentlyPlayed.map((l) => `
             <div class="recent-played-item recent-played-item--activity">
-              <a href="#/game/${l.games.id}" aria-label="${esc(l.games.title)}">
+              <a href="#/review/${l.id}" data-game-id="${esc(l.games.id)}" aria-label="${esc(l.games.title)}">
                 ${posterFrame(l.games.cover_url, l.games.title, 'recent-played-item__cover')}
               </a>
               <div class="rp-meta">

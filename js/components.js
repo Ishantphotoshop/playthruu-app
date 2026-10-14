@@ -730,7 +730,7 @@ export function showcaseGrid(slots) {
   // Bare poster art only — no rating shown beneath (a favourite is a
   // favourite; what they scored it isn't the point here).
   const cells = filled.map((s) => `
-      <a href="#/game/${s.game.id}" class="showcase-slot" aria-label="${esc(s.game.title)}">
+      <a href="${esc(s.href || `#/game/${s.game.id}`)}" class="showcase-slot" data-game-id="${esc(s.game.id)}" aria-label="${esc(s.game.title)}">
         ${posterFrame(s.game.cover_url, s.game.title, 'showcase-slot__cover')}
       </a>`);
   // A single horizontal row of the top picks.

@@ -127,7 +127,7 @@ export async function renderLogListView(root, { username, mode }) {
       paintSheet();
     }
     const rowHtml = (l, withTitle) => `
-      <a href="#/game/${l.games.id}" class="diary-row ${withTitle ? '' : 'diary-row--sub'}">
+      <a href="${l.status === 'played' || l.status === 'dropped' ? `#/review/${l.id}` : `#/game/${l.games.id}`}" class="diary-row ${withTitle ? '' : 'diary-row--sub'}">
         ${withTitle ? `<img src="${esc(igdbSized(l.games.cover_url, 'cover_small') || '')}" alt="" class="diary-row__cover" loading="lazy" decoding="async" onerror="this.style.visibility='hidden'">` : ''}
         <div class="diary-row__main">
           ${withTitle ? `<div class="diary-row__title">${esc(l.games.title)}</div>` : ''}
@@ -159,7 +159,7 @@ export async function renderLogListView(root, { username, mode }) {
       } else if (cfg.diary) {
         content = diaryTilesHtml(list, f.sort === 'new' || f.sort === 'old');
       } else {
-        content = `<div class="ll-grid">${list.map((l) => `<div class="ll-cell"><a class="game-card" href="#/game/${l.games.id}" aria-label="${esc(l.games.title)}">${posterFrame(l.games.cover_url, l.games.title, 'game-card__cover')}</a><div class="rp-meta">${l.rating ? starRow(l.rating, { size: 12 }) : ''}${l.is_replay ? `<span class="rp-meta__icon rp-meta__icon--replay">${iconReplay()}</span>` : ''}${l.review ? `<span class="rp-meta__icon rp-meta__icon--review">${iconReviewLines()}</span>` : ''}</div></div>`).join('')}</div>`;
+        content = `<div class="ll-grid">${list.map((l) => `<div class="ll-cell"><a class="game-card" data-game-id="${esc(l.games.id)}" href="${l.status === 'played' || l.status === 'dropped' ? `#/review/${l.id}` : `#/game/${l.games.id}`}" aria-label="${esc(l.games.title)}">${posterFrame(l.games.cover_url, l.games.title, 'game-card__cover')}</a><div class="rp-meta">${l.rating ? starRow(l.rating, { size: 12 }) : ''}${l.is_replay ? `<span class="rp-meta__icon rp-meta__icon--replay">${iconReplay()}</span>` : ''}${l.review ? `<span class="rp-meta__icon rp-meta__icon--review">${iconReviewLines()}</span>` : ''}</div></div>`).join('')}</div>`;
       }
       body.innerHTML = `<div id="ll-results">${content}</div>`;
       setBadge();
