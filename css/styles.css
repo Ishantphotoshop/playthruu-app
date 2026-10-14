@@ -7632,3 +7632,12 @@ a.gd-credit__name { text-decoration: none; }
 .rt-bars { height: 47px; gap: 1.5px; }
 .rt-avg { gap: 12px; }
 .rt-num { font-size: 17px; font-weight: 300; }
+
+/* game page ratings: "big and bold" (the bars above are locked and untouched) */
+.rt-avg { gap: 4px; }
+.rt-num { font-size: 19px; font-weight: 800; color: var(--ink); }
+/* keep the bars exactly where they were (locked): the columns on either side keep their old
+   widths (10px star, 58px average) and the slightly bigger stars overflow a few px into the gaps */
+.rt-low { width: 10px; overflow: visible; }
+.rt-avg { width: 58px; }
+.rt-stars .stars { gap: 0; }
