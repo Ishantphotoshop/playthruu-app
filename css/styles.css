@@ -7587,3 +7587,23 @@ a.gd-credit__name { text-decoration: none; }
   .rv__hide.is-shown { animation: none; }
 }
 .rv__head + .rv__quote--gated { margin-top: 36px; }
+
+/* ---- game page: stats row and Played / Like / Backlog buttons under the header ---- */
+.gd-stats { display: flex; margin: 8px var(--gutter) 0; padding: 14px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.gd-stats__cell { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; }
+.gd-stats__cell b { font-size: 19px; font-weight: 800; line-height: 1; color: var(--ink); }
+.gd-stats__cell > span { font-size: 12px; font-weight: 600; color: var(--ink-faint); display: inline-flex; min-height: 12px; align-items: center; }
+.gd-actions { display: flex; gap: 10px; margin: 14px var(--gutter) 4px; }
+.gd-act {
+  flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 7px; padding: 13px 6px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 14px; cursor: pointer;
+  color: var(--ink-dim); font: inherit; font-size: 12.5px; font-weight: 700;
+}
+.gd-act svg { width: 28px; height: 28px; display: block; }
+.gd-act__on { display: none !important; }
+.gd-act.is-on .gd-act__off { display: none; }
+.gd-act.is-on .gd-act__on { display: block !important; }
+.gd-act.is-on { color: var(--accent-bright); }
+.gd-act[data-act-open="like"].is-on { color: var(--coral); }
+.gd-act[data-act-open="backlog"].is-on { color: var(--ink); }
+.gd-act:active { background: var(--surface-raised); }

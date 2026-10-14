@@ -610,47 +610,32 @@ export async function renderGameView(root, { id, igdbId }) {
             </header>
           </div>
 
+          <div class="gd-stats">
+            <div class="gd-stats__cell"><b>${avgLabel}</b><span class="gd-stats__stars">${starRow(avg, { size: 11, count: 5 })}</span></div>
+            <div class="gd-stats__cell"><b>${logs.length}</b><span>${logs.length === 1 ? 'Play' : 'Plays'}</span></div>
+            <div class="gd-stats__cell"><b>${reviewedLogs.length}</b><span>${reviewedLogs.length === 1 ? 'Review' : 'Reviews'}</span></div>
+            <div class="gd-stats__cell"><b>${compactNumber(listsCount)}</b><span>${listsCount === 1 ? 'List' : 'Lists'}</span></div>
+          </div>
+
+          <!-- Where you stand with the game, as three buttons you can see. Each one
+               opens the same log sheet the long-press opens. -->
+          <div class="gd-actions" id="gd-actions">
+            <button type="button" class="gd-act${ownLog && (ownLog.status === 'played' || ownLog.status === 'dropped') ? ' is-on' : ''}" data-act-open="played">
+              ${ACT_ICONS.played}<span>Played</span>
+            </button>
+            <button type="button" class="gd-act${ownLog?.loved ? ' is-on' : ''}" data-act-open="like">
+              ${ACT_ICONS.like}<span>Like</span>
+            </button>
+            <button type="button" class="gd-act${ownLog?.status === 'backlog' ? ' is-on' : ''}" data-act-open="backlog">
+              ${ACT_ICONS.backlog}<span>Backlog</span>
+            </button>
+          </div>
+
           ${game.description ? `
             <div class="gd-synopsis-wrap" id="synopsis-wrap">
               <p class="gd-synopsis is-clamped" id="synopsis">${esc(game.description)}</p>
               <button type="button" class="gd-seemore" id="see-more" hidden>See more</button>
             </div>` : ''}
-
-          <div class="gd-rule"></div>
-
-          ${`
-            <section class="gd-dist" id="rating-chart-slot">
-              <div class="gd-dist__head">
-                <h2 class="gd-dist__title">Ratings</h2>
-              </div>
-              <div class="gd-dist__plot">
-                <span class="gd-dist__end">${starRow(1, { size: AVG_STAR, count: 1 })}</span>
-                <div class="gd-dist__bars" id="rating-bars">
-                  ${halfSteps.map((star, i) => {
-                    const count = stepCounts[i];
-                    const label = `${count} log${count === 1 ? '' : 's'} rated ${star} star${star === 1 ? '' : 's'}`;
-                    // Every bar is the same shade at rest, whatever its
-                    // height: the only one that ever lifts is whichever
-                    // one a finger is on right now (see the pointer
-                    // handlers below). With no ratings at all, stepMax
-                    // falls back to 1 and every count is 0, so this runs
-                    // unchanged and draws ten empty stubs — the chart's
-                    // own resting state rather than a separate empty
-                    // message replacing it.
-                    return `
-                    <button type="button" class="gd-dist__col"
-                            data-rating="${star}" data-count="${count}"
-                            aria-label="${label}" title="${label}">
-                      <span class="gd-dist__bar" style="height:${Math.max(4, Math.round((count / stepMax) * 100))}%"></span>
-                    </button>`;
-                  }).join('')}
-                </div>
-                <div class="gd-avg">
-                  <span class="gd-avg__num" id="rating-avg-num">${avgLabel}</span>
-                  <span class="gd-avg__stars" id="rating-avg-stars">${starRow(avg, { size: AVG_STAR, count: 5 })}</span>
-                </div>
-              </div>
-            </section>`}
 
           <div class="gd-rule"></div>
 
@@ -685,14 +670,39 @@ export async function renderGameView(root, { id, igdbId }) {
             </section>
             <div class="gd-rule"></div>` : ''}
 
-          <section class="gd-block">
-            <h2 class="gd-block__title">Social</h2>
-            <div class="gd-social">
-              ${socialCard(iconController(), logs.length, logs.length === 1 ? 'Play' : 'Plays')}
-              ${socialCard(iconPencil(), reviewedLogs.length, reviewedLogs.length === 1 ? 'Review' : 'Reviews')}
-              ${socialCard(iconStack(), compactNumber(listsCount), listsCount === 1 ? 'List' : 'Lists')}
-            </div>
-          </section>
+          ${`
+            <section class="gd-dist" id="rating-chart-slot">
+              <div class="gd-dist__head">
+                <h2 class="gd-dist__title">Ratings</h2>
+              </div>
+              <div class="gd-dist__plot">
+                <span class="gd-dist__end">${starRow(1, { size: AVG_STAR, count: 1 })}</span>
+                <div class="gd-dist__bars" id="rating-bars">
+                  ${halfSteps.map((star, i) => {
+                    const count = stepCounts[i];
+                    const label = `${count} log${count === 1 ? '' : 's'} rated ${star} star${star === 1 ? '' : 's'}`;
+                    // Every bar is the same shade at rest, whatever its
+                    // height: the only one that ever lifts is whichever
+                    // one a finger is on right now (see the pointer
+                    // handlers below). With no ratings at all, stepMax
+                    // falls back to 1 and every count is 0, so this runs
+                    // unchanged and draws ten empty stubs — the chart's
+                    // own resting state rather than a separate empty
+                    // message replacing it.
+                    return `
+                    <button type="button" class="gd-dist__col"
+                            data-rating="${star}" data-count="${count}"
+                            aria-label="${label}" title="${label}">
+                      <span class="gd-dist__bar" style="height:${Math.max(4, Math.round((count / stepMax) * 100))}%"></span>
+                    </button>`;
+                  }).join('')}
+                </div>
+                <div class="gd-avg">
+                  <span class="gd-avg__num" id="rating-avg-num">${avgLabel}</span>
+                  <span class="gd-avg__stars" id="rating-avg-stars">${starRow(avg, { size: AVG_STAR, count: 5 })}</span>
+                </div>
+              </div>
+            </section>`}
 
           <div class="gd-rule"></div>
 
@@ -743,6 +753,8 @@ export async function renderGameView(root, { id, igdbId }) {
       // Reviews are painted separately from the rest of the page so that
       // tapping a bar in the distribution can repaint just this list
       // rather than re-rendering (and re-fetching) the whole screen.
+      qsa('[data-act-open]', body).forEach((b) => b.addEventListener('click', () => qs('#open-log-sheet', body)?.click()));
+
       let ratingFilter = null;
       // 'friends' only ever gets set from the segmented control, which
       // is itself only rendered when friendsReviews is non-empty — so
@@ -1617,6 +1629,14 @@ function openLogSheet({ game, ownLog, replayCount, ensureSavedGame, onChanged, o
 // The pop-up's three big icons (picks: Play 14 arcade stick, Like 10 heart,
 // Backlog 04 hourglass). Each is drawn twice: an outline while off and a solid
 // shape once switched on (CSS swaps them).
+const ACT_ICONS = {
+  played: '<svg class="gd-act__off" viewBox="2.5 2 19 19.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 17h14a1.5 1.5 0 0 1 1.5 1.5V20.5h-17V18.5A1.5 1.5 0 0 1 5 17z"/><path d="M12 9v8"/><circle cx="12" cy="6" r="3"/></svg>'
+    + '<svg class="gd-act__on" viewBox="2.5 2 19 19.5" fill="currentColor" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 17h14a1.5 1.5 0 0 1 1.5 1.5V20.5h-17V18.5A1.5 1.5 0 0 1 5 17z"/><path d="M12 9v8"/><circle cx="12" cy="6" r="3"/></svg>',
+  like: '<svg class="gd-act__off" viewBox="2.3 4.35 19.4 16.95" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M12 20.3 4.7 13.4a4.7 4.7 0 0 1 6.6-6.7l.7.7.7-.7a4.7 4.7 0 0 1 6.6 6.7z"/></svg>'
+    + '<svg class="gd-act__on" viewBox="2.3 4.35 19.4 16.95" fill="currentColor"><path d="M12 20.3 4.7 13.4a4.7 4.7 0 0 1 6.6-6.7l.7.7.7-.7a4.7 4.7 0 0 1 6.6 6.7z"/></svg>',
+  backlog: '<svg class="gd-act__off" viewBox="6 2 12 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M7 3h10v3.5L13 12l4 5.5V21H7v-3.5L11 12 7 6.5z"/></svg>'
+    + '<svg class="gd-act__on" viewBox="6 2 12 20" fill="currentColor" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M7 3h10v3.5L13 12l4 5.5V21H7v-3.5L11 12 7 6.5z"/></svg>',
+};
 const ICON_STICK = { box: '2.5 2 19 19.5', base: 'M5 17h14a1.5 1.5 0 0 1 1.5 1.5V20.5h-17V18.5A1.5 1.5 0 0 1 5 17z', knob: 'M12 3a3 3 0 1 1 0 6a3 3 0 1 1 0-6z', stem: 'M12 9v8' };
 const ICON_HEART = { box: '2.3 4.35 19.4 16.95', body: 'M12 20.3 4.7 13.4a4.7 4.7 0 0 1 6.6-6.7l.7.7.7-.7a4.7 4.7 0 0 1 6.6 6.7z' };
 const FLOAT_HEART = '<svg viewBox="2.3 4.35 19.4 16.95"><path d="M12 20.3 4.7 13.4a4.7 4.7 0 0 1 6.6-6.7l.7.7.7-.7a4.7 4.7 0 0 1 6.6 6.7z" fill="currentColor"/></svg>';
