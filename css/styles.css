@@ -7616,3 +7616,11 @@ a.gd-credit__name { text-decoration: none; }
 .rt-avg { flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 10px; }
 .rt-num { font-size: 36px; font-weight: 500; line-height: 1; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
 .rt-stars { display: flex; }
+
+/* game page ratings: same size as the profile's chart (76px bars, 4px gaps, small stars and heading) */
+.gd-ratings .rt-head { font-size: 12px; margin-bottom: 12px; }
+.rt-row { gap: 10px; }
+.rt-bars { height: 76px; gap: 4px; }
+.rt-low { margin-bottom: 0; }
+.rt-avg { gap: 7px; }
+.rt-num { font-size: 26px; }

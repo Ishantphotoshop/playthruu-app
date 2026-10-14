@@ -653,14 +653,14 @@ export async function renderGameView(root, { id, igdbId }) {
           <section class="gd-ratings" id="rating-chart-slot">
             <div class="rt-head">Ratings</div>
             <div class="rt-row">
-              <span class="rt-low">${starRow(1, { size: 17, count: 1 })}</span>
+              <span class="rt-low">${starRow(1, { size: 13, count: 1 })}</span>
               <div class="rt-bars" id="rating-bars">
                 ${halfSteps.map((star, i) => {
                   const count = stepCounts[i];
                   const label = `${count} log${count === 1 ? '' : 's'} rated ${star} star${star === 1 ? '' : 's'}`;
                   // Drawn to scale with a small base, so one rating still shows and an
                   // empty step is a 1px stub on the baseline.
-                  const h = count === 0 ? 1 : +(3 + (count / stepMax) * 85).toFixed(1);
+                  const h = count === 0 ? 1 : +(2 + (count / stepMax) * 74).toFixed(2);
                   return `
                   <button type="button" class="rt-col${count === 0 ? ' rt-col--zero' : ''}" data-rating="${star}" data-count="${count}"
                           aria-label="${label}" title="${label}">
@@ -670,7 +670,7 @@ export async function renderGameView(root, { id, igdbId }) {
               </div>
               <div class="rt-avg">
                 <span class="rt-num" id="rating-avg-num">${avgLabel}</span>
-                <span class="rt-stars" id="rating-avg-stars">${starRow(avg, { size: 17, count: 5 })}</span>
+                <span class="rt-stars" id="rating-avg-stars">${starRow(avg, { size: 13, count: 5 })}</span>
               </div>
             </div>
           </section>
@@ -870,12 +870,12 @@ export async function renderGameView(root, { id, igdbId }) {
         };
         const showAverage = () => {
           avgNumEl.textContent = avgLabel;
-          if (avgStarsEl) avgStarsEl.innerHTML = starRow(avg, { size: 17, count: 5 });
+          if (avgStarsEl) avgStarsEl.innerHTML = starRow(avg, { size: 13, count: 5 });
           setHeld(null);
         };
         const showCol = (col) => {
           avgNumEl.textContent = col.dataset.count;
-          if (avgStarsEl) avgStarsEl.innerHTML = starRow(Number(col.dataset.rating), { size: 17, count: 5 });
+          if (avgStarsEl) avgStarsEl.innerHTML = starRow(Number(col.dataset.rating), { size: 13, count: 5 });
           setHeld(col);
         };
         distBars.addEventListener('pointerdown', (e) => {
