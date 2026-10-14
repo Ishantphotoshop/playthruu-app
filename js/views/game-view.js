@@ -642,27 +642,6 @@ export async function renderGameView(root, { id, igdbId }) {
             ${gameTitleHtml(game.title).replace('class="gd-head__title"', 'class="gd-head__title gd-head__title--row" id="gd-title"')}
           </div>
 
-          <div class="gd-stats">
-            <div class="gd-stats__cell"><b>${avgLabel}</b><span class="gd-stats__stars">${starRow(avg, { size: 11, count: 5 })}</span></div>
-            <div class="gd-stats__cell"><b>${logs.length}</b><span>${logs.length === 1 ? 'Play' : 'Plays'}</span></div>
-            <div class="gd-stats__cell"><b>${reviewedLogs.length}</b><span>${reviewedLogs.length === 1 ? 'Review' : 'Reviews'}</span></div>
-            <div class="gd-stats__cell"><b>${compactNumber(listsCount)}</b><span>${listsCount === 1 ? 'List' : 'Lists'}</span></div>
-          </div>
-
-          <!-- Where you stand with the game, as three buttons you can see. Each one
-               opens the same log sheet the long-press opens. -->
-          <div class="gd-actions" id="gd-actions">
-            <button type="button" class="gd-act${ownLog && (ownLog.status === 'played' || ownLog.status === 'dropped') ? ' is-on' : ''}" data-act-open="played">
-              ${ACT_ICONS.played}<span>Played</span>
-            </button>
-            <button type="button" class="gd-act${ownLog?.loved ? ' is-on' : ''}" data-act-open="like">
-              ${ACT_ICONS.like}<span>Like</span>
-            </button>
-            <button type="button" class="gd-act${ownLog?.status === 'backlog' ? ' is-on' : ''}" data-act-open="backlog">
-              ${ACT_ICONS.backlog}<span>Backlog</span>
-            </button>
-          </div>
-
           ${game.description ? `
             <div class="gd-synopsis-wrap" id="synopsis-wrap">
               <p class="gd-synopsis is-clamped" id="synopsis">${esc(game.description)}</p>
@@ -670,37 +649,6 @@ export async function renderGameView(root, { id, igdbId }) {
             </div>` : ''}
 
           <div class="gd-rule"></div>
-
-          <!-- One row that reports where you stand, not three abstract
-               verbs. Three fixed actions have to be written for the case
-               where you have done none of them, so they stay generic
-               forever; a row that says "You're playing this" is doing a
-               second job at the same size. The whole row opens the sheet
-               where the actual choices live. -->
-          <button type="button" class="gd-log" id="open-log-sheet">
-            <span class="gd-log__mark">${state.profile ? avatarImg(state.profile, 30) : iconUser()}</span>
-            <span class="gd-log__text">${logRowLabel(ownLog, ownLogs.length)}</span>
-            <span class="gd-log__more" aria-hidden="true">${iconDots()}</span>
-          </button>
-
-          <div class="gd-rule"></div>
-
-          ${crowdHtml}
-
-          <!-- Label and icons share one row, per the sketch — this is a
-               one-line fact about the game, not a section with a heading
-               and a body. -->
-          ${platforms.length ? `
-            <section class="gd-block gd-block--inline">
-              <h2 class="gd-block__title">Where to play</h2>
-              <div class="gd-platforms">
-                ${platforms.map((p) => `
-                  <span class="gd-platform" title="${esc(p)}">
-                    <span class="gd-platform__icon">${platformIcon(p)}</span>
-                  </span>`).join('')}
-              </div>
-            </section>
-            <div class="gd-rule"></div>` : ''}
 
           ${`
             <section class="gd-dist" id="rating-chart-slot">
@@ -735,6 +683,48 @@ export async function renderGameView(root, { id, igdbId }) {
                 </div>
               </div>
             </section>`}
+
+          <div class="gd-rule"></div>
+
+          <!-- One row that reports where you stand, not three abstract
+               verbs. Three fixed actions have to be written for the case
+               where you have done none of them, so they stay generic
+               forever; a row that says "You're playing this" is doing a
+               second job at the same size. The whole row opens the sheet
+               where the actual choices live. -->
+          <button type="button" class="gd-log" id="open-log-sheet">
+            <span class="gd-log__mark">${state.profile ? avatarImg(state.profile, 30) : iconUser()}</span>
+            <span class="gd-log__text">${logRowLabel(ownLog, ownLogs.length)}</span>
+            <span class="gd-log__more" aria-hidden="true">${iconDots()}</span>
+          </button>
+
+          <div class="gd-rule"></div>
+
+          ${crowdHtml}
+
+          <!-- Label and icons share one row, per the sketch — this is a
+               one-line fact about the game, not a section with a heading
+               and a body. -->
+          ${platforms.length ? `
+            <section class="gd-block gd-block--inline">
+              <h2 class="gd-block__title">Where to play</h2>
+              <div class="gd-platforms">
+                ${platforms.map((p) => `
+                  <span class="gd-platform" title="${esc(p)}">
+                    <span class="gd-platform__icon">${platformIcon(p)}</span>
+                  </span>`).join('')}
+              </div>
+            </section>
+            <div class="gd-rule"></div>` : ''}
+
+          <section class="gd-block">
+            <h2 class="gd-block__title">Social</h2>
+            <div class="gd-social">
+              ${socialCard(iconController(), logs.length, logs.length === 1 ? 'Play' : 'Plays')}
+              ${socialCard(iconPencil(), reviewedLogs.length, reviewedLogs.length === 1 ? 'Review' : 'Reviews')}
+              ${socialCard(iconStack(), compactNumber(listsCount), listsCount === 1 ? 'List' : 'Lists')}
+            </div>
+          </section>
 
           <div class="gd-rule"></div>
 
@@ -797,8 +787,6 @@ export async function renderGameView(root, { id, igdbId }) {
         document.fonts?.ready?.then(fit);
       }
       matchStatusBarToArt(game.background_url);
-
-      qsa('[data-act-open]', body).forEach((b) => b.addEventListener('click', () => qs('#open-log-sheet', body)?.click()));
 
       let ratingFilter = null;
       // 'friends' only ever gets set from the segmented control, which
@@ -1674,14 +1662,6 @@ function openLogSheet({ game, ownLog, replayCount, ensureSavedGame, onChanged, o
 // The pop-up's three big icons (picks: Play 14 arcade stick, Like 10 heart,
 // Backlog 04 hourglass). Each is drawn twice: an outline while off and a solid
 // shape once switched on (CSS swaps them).
-const ACT_ICONS = {
-  played: '<svg class="gd-act__off" viewBox="2.5 2 19 19.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 17h14a1.5 1.5 0 0 1 1.5 1.5V20.5h-17V18.5A1.5 1.5 0 0 1 5 17z"/><path d="M12 9v8"/><circle cx="12" cy="6" r="3"/></svg>'
-    + '<svg class="gd-act__on" viewBox="2.5 2 19 19.5" fill="currentColor" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 17h14a1.5 1.5 0 0 1 1.5 1.5V20.5h-17V18.5A1.5 1.5 0 0 1 5 17z"/><path d="M12 9v8"/><circle cx="12" cy="6" r="3"/></svg>',
-  like: '<svg class="gd-act__off" viewBox="2.3 4.35 19.4 16.95" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M12 20.3 4.7 13.4a4.7 4.7 0 0 1 6.6-6.7l.7.7.7-.7a4.7 4.7 0 0 1 6.6 6.7z"/></svg>'
-    + '<svg class="gd-act__on" viewBox="2.3 4.35 19.4 16.95" fill="currentColor"><path d="M12 20.3 4.7 13.4a4.7 4.7 0 0 1 6.6-6.7l.7.7.7-.7a4.7 4.7 0 0 1 6.6 6.7z"/></svg>',
-  backlog: '<svg class="gd-act__off" viewBox="6 2 12 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M7 3h10v3.5L13 12l4 5.5V21H7v-3.5L11 12 7 6.5z"/></svg>'
-    + '<svg class="gd-act__on" viewBox="6 2 12 20" fill="currentColor" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M7 3h10v3.5L13 12l4 5.5V21H7v-3.5L11 12 7 6.5z"/></svg>',
-};
 const ICON_STICK = { box: '2.5 2 19 19.5', base: 'M5 17h14a1.5 1.5 0 0 1 1.5 1.5V20.5h-17V18.5A1.5 1.5 0 0 1 5 17z', knob: 'M12 3a3 3 0 1 1 0 6a3 3 0 1 1 0-6z', stem: 'M12 9v8' };
 const ICON_HEART = { box: '2.3 4.35 19.4 16.95', body: 'M12 20.3 4.7 13.4a4.7 4.7 0 0 1 6.6-6.7l.7.7.7-.7a4.7 4.7 0 0 1 6.6 6.7z' };
 const FLOAT_HEART = '<svg viewBox="2.3 4.35 19.4 16.95"><path d="M12 20.3 4.7 13.4a4.7 4.7 0 0 1 6.6-6.7l.7.7.7-.7a4.7 4.7 0 0 1 6.6 6.7z" fill="currentColor"/></svg>';
