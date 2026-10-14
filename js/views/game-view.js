@@ -2,7 +2,7 @@ import * as api from '../api.js';
 import { state } from '../state.js';
 import {
   navBar, spinner, emptyState, posterFrame, iconUser, iconBack, avatarImg,
-  likeButton, iconReply, iconFlag, iconChevronRight, confirmSheet, ratingHistogram, wireRatingHistogram,
+  likeButton, iconReply, iconFlag, iconChevronRight, confirmSheet,
 } from '../components.js';
 import { esc, starRow, formatDate, timeAgo, qs, qsa, toast, promptSignIn, recordRecentlyViewed, pulseLogTab, enableSwipeToDismiss, reviewText, playedKind } from '../utils.js';
 import { openLogComposer } from './log-composer.js';
@@ -651,10 +651,28 @@ export async function renderGameView(root, { id, igdbId }) {
           <div class="gd-rule"></div>
 
           <section class="gd-ratings" id="rating-chart-slot">
-            ${ratingHistogram(breakdown, {
-              total: Object.values(breakdown).reduce((sum, n) => sum + n, 0),
-              average: avg ? avg.toFixed(1) : null,
-            })}
+            <div class="rt-head">Ratings</div>
+            <div class="rt-row">
+              <span class="rt-low">${starRow(1, { size: 17, count: 1 })}</span>
+              <div class="rt-bars" id="rating-bars">
+                ${halfSteps.map((star, i) => {
+                  const count = stepCounts[i];
+                  const label = `${count} log${count === 1 ? '' : 's'} rated ${star} star${star === 1 ? '' : 's'}`;
+                  // Drawn to scale with a small base, so one rating still shows and an
+                  // empty step is a 1px stub on the baseline.
+                  const h = count === 0 ? 1 : +(3 + (count / stepMax) * 85).toFixed(1);
+                  return `
+                  <button type="button" class="rt-col${count === 0 ? ' rt-col--zero' : ''}" data-rating="${star}" data-count="${count}"
+                          aria-label="${label}" title="${label}">
+                    <span class="rt-bar" style="height:${h}px"></span>
+                  </button>`;
+                }).join('')}
+              </div>
+              <div class="rt-avg">
+                <span class="rt-num" id="rating-avg-num">${avgLabel}</span>
+                <span class="rt-stars" id="rating-avg-stars">${starRow(avg, { size: 17, count: 5 })}</span>
+              </div>
+            </div>
           </section>
 
           <div class="gd-rule"></div>
@@ -830,20 +848,62 @@ export async function renderGameView(root, { id, igdbId }) {
         });
       });
 
-      // The profile's chart: hold or drag to read a bar (wired in components.js); a plain
-      // tap on a bar filters the reviews to that rating, tap it again to clear.
-      const chartEl = qs('#rating-chart-slot .rh-chart', body);
-      if (chartEl) {
-        wireRatingHistogram(qs('#rating-chart-slot', body));
-        chartEl.addEventListener('click', (e) => {
-          const bar = qsa('.rating-histogram__bar', chartEl).find((el) => {
-            const r = el.getBoundingClientRect();
-            return e.clientX >= r.left && e.clientX <= r.right;
-          });
-          if (!bar) return;
-          const star = Number(bar.dataset.value);
-          setRatingFilter(ratingFilter === star ? null : star);
+      // The chart: hold a bar, or drag across several, and the average number turns into that
+      // bar's count and the stars into its rating; let go and the average comes back. A plain
+      // tap filters the reviews to that rating, and tapping it again clears the filter.
+      const distBars = qs('#rating-bars', body);
+      const avgNumEl = qs('#rating-avg-num', body);
+      const avgStarsEl = qs('#rating-avg-stars', body);
+      if (distBars && avgNumEl) {
+        const cols = qsa('.rt-col', distBars);
+        let held = null;
+        let holding = false;
+        let startCol = null;
+        let startX = 0;
+        let moved = false;
+        const colAtX = (x) => cols.find((c) => { const r = c.getBoundingClientRect(); return x >= r.left && x <= r.right; }) || null;
+        const setHeld = (col) => {
+          if (held === col) return;
+          held?.classList.remove('rt-col--held');
+          col?.classList.add('rt-col--held');
+          held = col;
+        };
+        const showAverage = () => {
+          avgNumEl.textContent = avgLabel;
+          if (avgStarsEl) avgStarsEl.innerHTML = starRow(avg, { size: 17, count: 5 });
+          setHeld(null);
+        };
+        const showCol = (col) => {
+          avgNumEl.textContent = col.dataset.count;
+          if (avgStarsEl) avgStarsEl.innerHTML = starRow(Number(col.dataset.rating), { size: 17, count: 5 });
+          setHeld(col);
+        };
+        distBars.addEventListener('pointerdown', (e) => {
+          holding = true;
+          moved = false;
+          startX = e.clientX;
+          try { distBars.setPointerCapture(e.pointerId); } catch { /* fine without capture */ }
+          startCol = colAtX(e.clientX);
+          if (startCol) showCol(startCol);
         });
+        distBars.addEventListener('pointermove', (e) => {
+          if (!holding) return;
+          if (Math.abs(e.clientX - startX) > 6) moved = true;
+          const col = colAtX(e.clientX);
+          if (col) showCol(col);
+        });
+        const release = (e) => {
+          if (!holding) return;
+          holding = false;
+          if (e?.pointerId != null && distBars.hasPointerCapture?.(e.pointerId)) distBars.releasePointerCapture(e.pointerId);
+          showAverage();
+          if (e?.type === 'pointerup' && !moved && startCol) {
+            const star = Number(startCol.dataset.rating);
+            setRatingFilter(ratingFilter === star ? null : star);
+          }
+        };
+        distBars.addEventListener('pointerup', release);
+        distBars.addEventListener('pointercancel', release);
       }
 
       paintReviews();

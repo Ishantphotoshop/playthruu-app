@@ -7603,3 +7603,16 @@ a.gd-credit__name { text-decoration: none; }
 .gd-ratings .rh-head { margin-bottom: 12px; }
 .gd-ratings .rh-title { font-family: var(--font-display); font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
 .gd-ratings .rh-total { font-family: var(--font-display); font-size: 13px; }
+
+/* ---- game page: Ratings (spaced heading, a green star, ten square bars, big average over five stars) ---- */
+.gd-ratings .rt-head { font-size: 12.5px; letter-spacing: 0.16em; font-weight: 600; text-transform: uppercase; color: var(--ink-faint); margin-bottom: 14px; }
+.rt-row { display: flex; align-items: flex-end; gap: 12px; }
+.rt-low { flex-shrink: 0; display: flex; margin-bottom: 2px; }
+.rt-bars { flex: 1; min-width: 0; display: flex; align-items: flex-end; gap: 2px; height: 92px; touch-action: none; user-select: none; -webkit-user-select: none; }
+.rt-col { flex: 1; min-width: 0; height: 100%; padding: 0; display: flex; align-items: flex-end; background: none; border: 0; border-radius: 0; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.rt-bar { display: block; width: 100%; min-height: 2px; background: #6b4a30; border-radius: 0; pointer-events: none; }
+.rt-col--zero .rt-bar { background: var(--surface-high); }
+.rt-col--held .rt-bar { background: #a8794c; }
+.rt-avg { flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.rt-num { font-size: 36px; font-weight: 500; line-height: 1; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+.rt-stars { display: flex; }
