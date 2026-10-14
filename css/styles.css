@@ -7645,3 +7645,5 @@ a.gd-credit__name { text-decoration: none; }
 .rt-bars { height: 54px; }
 /* game page ratings: just enough space that the stars read as separate (1px) */
 .rt-stars .stars { gap: 1px; }
+/* game page ratings: a little more space between the stars (1.5px) */
+.rt-stars .stars { gap: 1.5px; }
