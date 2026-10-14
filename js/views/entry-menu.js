@@ -23,7 +23,7 @@ function entryUrl(log) {
   return `${location.origin}${location.pathname}#/review/${log.id}`;
 }
 
-export function openEntryMenu(log, isOwner) {
+export function openEntryMenu(log, isOwner, { onChanged = () => {} } = {}) {
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
   overlay.innerHTML = `
@@ -31,6 +31,7 @@ export function openEntryMenu(log, isOwner) {
       <header class="msg-actions__grab" aria-hidden="true"></header>
       <div class="msg-actions__list de-menu">
         ${isOwner ? '<button type="button" class="msg-actions__item" data-do="edit"><span>Edit</span></button>' : ''}
+        ${isOwner ? `<button type="button" class="msg-actions__item" data-do="comments"><span>${log.comments_disabled ? 'Turn on comments' : 'Turn off comments'}</span></button>` : ''}
         <button type="button" class="msg-actions__item" data-do="story"><span>Share to Instagram Stories</span></button>
         <button type="button" class="msg-actions__item" data-do="share"><span>Share</span></button>
         ${isOwner ? '<button type="button" class="msg-actions__item msg-actions__item--danger" data-do="delete"><span>Delete</span></button>' : ''}
@@ -48,6 +49,14 @@ export function openEntryMenu(log, isOwner) {
     close();
     if (act === 'edit') {
       openLogComposer({ existingLog: log, onSaved: () => refreshCurrentView() });
+    } else if (act === 'comments') {
+      try {
+        await api.updateLog(log.id, { comments_disabled: !log.comments_disabled });
+        toast(log.comments_disabled ? 'Comments are on again.' : 'Comments are off.', 'success');
+        onChanged();
+      } catch (err) {
+        toast('Could not change that yet. The comments switch needs a database update first.', 'error');
+      }
     } else if (act === 'share') {
       shareLink(log);
     } else if (act === 'story') {

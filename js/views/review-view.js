@@ -2,6 +2,7 @@ import * as api from '../api.js';
 import { state } from '../state.js';
 import { topBar, avatarImg, posterFrame, spinner, iconHeart, iconSend, iconFlag, iconBlock, iconDotsMenu, openReportSheet } from '../components.js';
 import { openEntryMenu } from './entry-menu.js';
+import { navigate, refreshCurrentView } from '../router.js';
 import { esc, starRow, formatDate, timeAgo, qs, qsa, toast, tapFeedback, promptSignIn, reviewText, enableSwipeToDismiss } from '../utils.js';
 
 // Likes on the comments of the review being shown: { commentId: { count, liked } }.
@@ -45,7 +46,7 @@ export async function renderReviewView(root, { id }) {
     if (isOwner && bar) qs('.topbar__title', bar).textContent = 'Your review';
     if (bar) {
       qs('.topbar__right', bar).innerHTML = `<button type="button" class="icon-btn" id="rv-menu-btn" aria-label="Review options">${iconDotsMenu()}</button>`;
-      qs('#rv-menu-btn', bar).addEventListener('click', () => openEntryMenu(log, isOwner));
+      qs('#rv-menu-btn', bar).addEventListener('click', () => openEntryMenu(log, isOwner, { onChanged: () => refreshCurrentView() }));
     }
 
     body.innerHTML = `
@@ -64,14 +65,14 @@ export async function renderReviewView(root, { id }) {
           </div>
         </div>
 
-        <h2 class="rv__whose"><a href="#/profile/${esc(a.username)}">${isOwner ? 'Your review' : `${esc(possessive)} review`}</a></h2>
+        ${log.review ? `<h2 class="rv__whose"><a href="#/profile/${esc(a.username)}">${isOwner ? 'Your review' : `${esc(possessive)} review`}</a></h2>` : ''}
 
         ${reviewBodyHtml(log)}
 
-        <button type="button" class="rv__like${likeInfo.liked ? ' rv__like--on' : ''}" id="review-like"
+        ${log.review ? `<button type="button" class="rv__like${likeInfo.liked ? ' rv__like--on' : ''}" id="review-like"
                 aria-pressed="${likeInfo.liked}" aria-label="${likeInfo.liked ? 'Unlike' : 'Like'} this review">
           ${iconHeart()}<span id="review-like-count">${likeLabel(likeInfo.count)}</span>
-        </button>
+        </button>` : ''}
       </article>
 
       <section class="rv-comments">
@@ -79,11 +80,11 @@ export async function renderReviewView(root, { id }) {
         <div class="comment-list" id="comment-list">
           ${comments.length
             ? comments.map((c) => commentHtml(c, ownerId)).join('')
-            : '<p class="rv-comments__empty">No comments yet. Be the first.</p>'}
+            : `<p class="rv-comments__empty">${log.comments_disabled ? 'Comments are turned off for this review.' : 'No comments yet. Be the first.'}</p>`}
         </div>
       </section>`;
 
-    root.insertAdjacentHTML('beforeend', composerHtml());
+    root.insertAdjacentHTML('beforeend', composerHtml(!!log.comments_disabled));
 
     // The spoiler card is replaced by the writing, rather than the
     // writing being un-blurred underneath it.
@@ -96,7 +97,7 @@ export async function renderReviewView(root, { id }) {
       }, { once: true });
     }
 
-    wireLike(qs('#review-like', body), id, likeInfo);
+    wireLike(qs('#review-like', body), id, likeInfo, qs('.rv', body));
     wireCommentActions(root, body, { logId: id, ownerId, isOwner });
     wireComposer(root, body, { logId: id, ownerId });
   } catch (err) {
@@ -110,7 +111,7 @@ export async function renderReviewView(root, { id }) {
 // card of ONE fixed height says the same thing in the same space every
 // time, and the writing replaces it when you tap.
 function reviewBodyHtml(log) {
-  if (!log.review) return '<p class="rv__nowrite">No write-up — just logged and rated.</p>';
+  if (!log.review) return '';
   const text = `<p class="rv__text">${reviewText(log.review)}</p>`;
   if (!log.contains_spoilers) return `<div class="rv__quote">${text}</div>`;
   return `
@@ -131,7 +132,10 @@ const countLabel = (n) => (n ? `(${n})` : '');
 
 // Pinned to the bottom for the whole visit, which is the point: the
 // reply box should never be something you have to scroll to find.
-function composerHtml() {
+function composerHtml(commentsOff) {
+  if (commentsOff) {
+    return `<div class="rv-composer"><p class="rv-composer__off">Comments are turned off.</p></div>`;
+  }
   if (!state.user) {
     return `
       <div class="rv-composer">
@@ -394,7 +398,7 @@ function openLikersSheet(logId) {
   overlay.innerHTML = `
     <div class="sheet likers-sheet">
       <div class="sheet__grip" aria-hidden="true"></div>
-      <h3 class="likers-sheet__title">Likes</h3>
+      <h3 class="likers-sheet__title">Liked by</h3>
       <div class="likers-sheet__list" id="likers-list">${spinner()}</div>
     </div>`;
   document.body.appendChild(overlay);
@@ -402,11 +406,19 @@ function openLikersSheet(logId) {
   overlay.__dismiss = close;
   overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
   enableSwipeToDismiss(qs('.sheet', overlay), close);
-  overlay.addEventListener('click', (e) => { if (e.target.closest('a')) close(); });
+  // Going to a profile: navigate while the sheet still has its history entry (it
+  // becomes the profile's entry), then take the sheet down. Closing it first
+  // made the app step back and land on the review again.
+  overlay.addEventListener('click', (e) => {
+    const link = e.target.closest('a[href^="#/"]');
+    if (!link) return;
+    e.preventDefault();
+    navigate(link.getAttribute('href').slice(1));
+    overlay.remove();
+  });
   const meId = state.user?.id || null;
   Promise.all([api.getLogLikers(logId), api.getFollowingIdSet(meId).catch(() => new Set())]).then(([people, followingSet]) => {
     const list = qs('#likers-list', overlay);
-    qs('.likers-sheet__title', overlay).innerHTML = `Likes${people.length ? ` <em>${people.length}</em>` : ''}`;
     if (!people.length) { list.innerHTML = '<p class="likers-sheet__empty">No likes yet.</p>'; return; }
     list.innerHTML = people.map((p) => `
       <div class="lkr">
@@ -440,12 +452,35 @@ function openLikersSheet(logId) {
   });
 }
 
-function wireLike(btn, logId, likeInfo) {
+function wireLike(btn, logId, likeInfo, article) {
   if (!btn) return;
   let liked = likeInfo.liked;
   let count = likeInfo.count;
   let held = false;
   let holdTimer = null;
+  let chain = Promise.resolve();
+  const paint = () => {
+    btn.classList.toggle('rv__like--on', liked);
+    btn.setAttribute('aria-pressed', String(liked));
+    qs('#review-like-count', btn).textContent = likeLabel(count);
+  };
+  // The heart answers at once; the save follows it and is undone only if it fails.
+  const setLiked = (next) => {
+    if (!state.user) { promptSignIn('Sign in to like this review.'); return; }
+    if (next === liked) return;
+    const was = liked;
+    liked = next;
+    count = Math.max(0, count + (next ? 1 : -1));
+    paint();
+    if (next) tapFeedback();
+    chain = chain.then(() => api.toggleLike(state.user.id, logId, was)).catch((err) => {
+      liked = was;
+      count = Math.max(0, count + (was ? 1 : -1));
+      paint();
+      toast(err.message || 'Could not update like.', 'error');
+    });
+  };
+
   const cancelHold = () => { clearTimeout(holdTimer); holdTimer = null; };
   btn.addEventListener('pointerdown', () => {
     held = false;
@@ -454,25 +489,28 @@ function wireLike(btn, logId, likeInfo) {
   });
   ['pointerup', 'pointerleave', 'pointercancel'].forEach((t) => btn.addEventListener(t, cancelHold));
   btn.addEventListener('contextmenu', (e) => { e.preventDefault(); if (!held) { held = true; openLikersSheet(logId); } });
-  btn.addEventListener('click', async (e) => {
+  btn.addEventListener('click', (e) => {
     // The press that opened the list is not also a like.
     if (held) { held = false; e.preventDefault(); return; }
-    if (!state.user) { promptSignIn('Sign in to like this review.'); return; }
-    btn.disabled = true;
-    try {
-      await api.toggleLike(state.user.id, logId, liked);
-      if (!liked) tapFeedback();
-      liked = !liked;
-      count += liked ? 1 : -1;
-      btn.classList.toggle('rv__like--on', liked);
-      btn.setAttribute('aria-pressed', String(liked));
-      qs('#review-like-count', btn).textContent = likeLabel(count);
-    } catch (err) {
-      toast(err.message || 'Could not update like.', 'error');
-    } finally {
-      btn.disabled = false;
-    }
+    setLiked(!liked);
   });
+
+  // Double-tap the review to like it (it only ever likes, never un-likes).
+  if (article) {
+    let lastTap = 0;
+    let lastX = 0;
+    let lastY = 0;
+    article.addEventListener('pointerup', (e) => {
+      if (e.target.closest('a, button, input')) return;
+      const now = Date.now();
+      if (now - lastTap < 320 && Math.hypot(e.clientX - lastX, e.clientY - lastY) < 40) {
+        lastTap = 0;
+        setLiked(true);
+      } else {
+        lastTap = now; lastX = e.clientX; lastY = e.clientY;
+      }
+    });
+  }
 }
 
 function bumpCommentCount(scope, delta) {

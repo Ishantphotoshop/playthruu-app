@@ -7408,3 +7408,17 @@ a.gd-credit__name { text-decoration: none; }
 .likers-sheet__list::-webkit-scrollbar { display: none; width: 0; height: 0; }
 .lkr { min-height: 64px; padding: 8px 0; }
 .lkr__btn { min-width: 108px; height: 34px; padding: 0 14px; text-align: center; display: inline-flex; align-items: center; justify-content: center; }
+
+/* review page: no quotation marks around the write-up; the note when comments are off */
+.rv__text::before, .rv__text::after { content: none; }
+.rv-composer__off { margin: 0; padding: 14px 0; text-align: center; font-size: 14px; color: var(--ink-faint); }
+
+/* likes popup: names flush with the page edge on the left, Follow flush on the right */
+.likers-sheet { padding-left: var(--gutter); padding-right: var(--gutter); }
+.likers-sheet__title { text-align: left; }
+.lkr { padding-left: 0; padding-right: 0; }
+.lkr__link { margin-left: 0; }
+.lkr__btn { margin-right: 0; margin-left: auto; }
+/* the like heart should not jitter while pressed or held */
+.rv__like:active { transform: none; }
+.rv__like { touch-action: manipulation; }
