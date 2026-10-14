@@ -1333,7 +1333,7 @@ function openLogSheet({ game, ownLog, replayCount, ensureSavedGame, onChanged, o
       const stars = qsa('.star', picker);
       if (!stars.length) return draft.rating;
       const first = stars[0].getBoundingClientRect();
-      if (clientX < first.left + 2) return 0.5;
+      if (clientX < first.left) return 0;
       let val = 0.5;
       for (const st of stars) {
         const box = st.getBoundingClientRect();
@@ -1413,6 +1413,12 @@ function openLogSheet({ game, ownLog, replayCount, ensureSavedGame, onChanged, o
       }
       const prevStatus = draft.status;
       draft.status = clearing ? null : next;
+      // Un-playing a game takes its stars away with it.
+      if (clearing && draft.rating) {
+        draft.rating = 0;
+        const picker = qs('#lg-rating', overlay);
+        if (picker) picker.innerHTML = starRow(0, { interactive: true, size: 42 });
+      }
       buzz();
       // In place, not a repaint. render() rebuilds the sheet's whole
       // innerHTML, and replacing every node under an open sheet to move
