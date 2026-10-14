@@ -2,9 +2,9 @@ import * as api from '../api.js';
 import { state } from '../state.js';
 import {
   navBar, spinner, emptyState, posterFrame, iconUser, iconBack, avatarImg,
-  likeButton, iconReply, iconFlag, iconChevronRight,
+  likeButton, iconReply, iconFlag, iconChevronRight, confirmSheet,
 } from '../components.js';
-import { esc, starRow, formatDate, timeAgo, qs, qsa, toast, promptSignIn, recordRecentlyViewed, pulseLogTab, enableSwipeToDismiss, reviewText } from '../utils.js';
+import { esc, starRow, formatDate, timeAgo, qs, qsa, toast, promptSignIn, recordRecentlyViewed, pulseLogTab, enableSwipeToDismiss, reviewText, playedKind } from '../utils.js';
 import { openLogComposer } from './log-composer.js';
 import { openAddToListPicker } from './lists-view.js';
 import { refreshCurrentView, navigate, afterOverlayClosed } from '../router.js';
@@ -1412,6 +1412,30 @@ function openLogSheet({ game, ownLog, replayCount, ensureSavedGame, onChanged, o
       const clearing = draft.status === next;
       // Refuse here rather than at write time, so the answer arrives
       // while the control that asked the question is still on screen.
+      // A game you logged (it is in your diary, or carries a rating, review, like or
+      // hours) is not un-played with a tap: it asks, and deleting the log is the answer.
+      const isLogged = !!log && (log.rating || log.review || log.loved || log.hours_played
+        || playedKind(log, state.profile?.created_at) === 'diary');
+      if (clearing && isLogged && (next === 'played' || next === 'dropped')) {
+        const doomed = log;
+        const day = doomed.played_date ? ` on ${formatDate(doomed.played_date)}` : '';
+        const ok = await confirmSheet({
+          title: 'You logged this game',
+          message: `It is in your diary${day}. Remove it and everything you did on it (rating, review, like)?`,
+          confirmLabel: 'Delete from diary',
+          danger: true,
+        });
+        if (!ok) return;
+        draft = { status: null, rating: 0, loved: false, played_date: null, hours: null };
+        committed = JSON.stringify(draft);
+        close();
+        try {
+          await api.deleteLog(doomed.id);
+          toast('Deleted from your diary.', 'success');
+          onChanged?.();
+        } catch (err) { toast(err.message || 'Could not delete that.', 'error'); }
+        return;
+      }
       if (clearing && log && (log.rating || log.review)) {
         toast('Your rating and review live on this log — use Delete this log.', 'info');
         return;

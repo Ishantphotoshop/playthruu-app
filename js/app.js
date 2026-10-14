@@ -22,6 +22,7 @@ import { renderLogListView } from './views/log-list-view.js';
 import { renderGameView, openQuickLogSheet } from './views/game-view.js';
 import { renderGameReviewsView } from './views/game-reviews-view.js';
 import { renderReviewView } from './views/review-view.js';
+import { renderDiaryEntryView } from './views/diary-entry-view.js';
 import { renderPersonView } from './views/person-view.js';
 import { renderDirectorView } from './views/director-view.js';
 import { renderStudioView } from './views/studio-view.js';
@@ -237,6 +238,7 @@ function registerRoutes() {
   route('/profile/:username/log-list/:mode', (p) => renderLogListView(pageEl(), p));
   route('/game/:id/reviews', (p) => renderGameReviewsView(pageEl(), p));
   route('/review/:id', (p) => renderReviewView(pageEl(), p));
+  route('/diary/:id', (p) => renderDiaryEntryView(pageEl(), p));
   route('/person/:qid', (p) => renderPersonView(pageEl(), p));
   route('/director/:slug', (p) => renderDirectorView(pageEl(), p));
   route('/studio/:companyId', (p) => renderStudioView(pageEl(), p));
