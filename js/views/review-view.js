@@ -1,8 +1,11 @@
 import * as api from '../api.js';
 import { state } from '../state.js';
-import { topBar, avatarImg, posterFrame, spinner, iconHeart, iconSend, iconFlag, iconBlock, iconDotsMenu, openReportSheet } from '../components.js';
+import { topBar, avatarImg, posterFrame, spinner, iconHeart, iconSend, iconFlag, iconBlock, iconDotsMenu, openReportSheet, profileRow } from '../components.js';
 import { openEntryMenu } from './entry-menu.js';
-import { esc, starRow, formatDate, timeAgo, qs, qsa, toast, tapFeedback, promptSignIn, reviewText } from '../utils.js';
+import { esc, starRow, formatDate, timeAgo, qs, qsa, toast, tapFeedback, promptSignIn, reviewText, enableSwipeToDismiss } from '../utils.js';
+
+// Likes on the comments of the review being shown: { commentId: { count, liked } }.
+let commentLikes = {};
 
 // One person's review, on its own page — opened by tapping a poster in
 // the feed's "Friend's recent activity". It is a thread, not an entry in
@@ -27,6 +30,7 @@ export async function renderReviewView(root, { id }) {
       api.getLikeInfo(id, state.user?.id).catch(() => ({ count: 0, liked: false })),
       api.getComments(id, { ownerId }).catch(() => []),
     ]);
+    commentLikes = await api.getCommentLikes(comments.map((c) => c.id), state.user?.id).catch(() => ({}));
     const g = log.games || {};
     const a = log.profiles || {};
     const who = a.display_name || a.username || 'Someone';
@@ -184,6 +188,18 @@ function wireComposer(root, body, { logId, ownerId }) {
   });
 }
 
+// "5 min ago", "2 hours ago", "3 days ago" — written out, not "5m".
+function agoText(dateStr) {
+  const secs = Math.max(0, (Date.now() - new Date(dateStr).getTime()) / 1000);
+  if (!Number.isFinite(secs) || secs < 60) return 'just now';
+  const units = [['year', 31536000], ['month', 2592000], ['week', 604800], ['day', 86400], ['hour', 3600], ['min', 60]];
+  for (const [name, size] of units) {
+    const v = Math.floor(secs / size);
+    if (v >= 1) return `${v} ${name}${v > 1 && name !== 'min' ? 's' : ''} ago`;
+  }
+  return 'just now';
+}
+
 // A deleted comment keeps its place and says what happened to it.
 function commentHtml(c, ownerId) {
   const p = c.profiles || {};
@@ -194,6 +210,7 @@ function commentHtml(c, ownerId) {
         <p class="comment__deleted">The author deleted this comment.</p>
       </div>`;
   }
+  const cl = commentLikes[c.id] || { count: 0, liked: false };
   return `
     <div class="comment${c.pinned_at ? ' comment--pinned' : ''}" data-id="${esc(c.id)}" data-user="${esc(c.user_id)}" data-name="${esc(p.username || '')}">
       <a href="#/profile/${esc(p.username)}" class="comment__avatar">${avatarImg(p, 34)}</a>
@@ -201,12 +218,12 @@ function commentHtml(c, ownerId) {
         ${c.pinned_at ? '<span class="comment__pin">Pinned</span>' : ''}
         <div class="comment__head">
           <a href="#/profile/${esc(p.username)}" class="comment__name">${esc(p.display_name || p.username)}</a>
-          <span class="comment__time">${timeAgo(c.created_at)}</span>
+          <span class="comment__time">${agoText(c.created_at)}</span>
           ${c.restricted_at ? '<span class="comment__restricted">Only you and the author can see this</span>' : ''}
         </div>
         <p class="comment__text">${linkMentions(c.body)}</p>
       </div>
-      <button type="button" class="comment__like" data-like="${esc(c.id)}" aria-label="Like comment" aria-pressed="false">${iconHeart()}</button>
+      <button type="button" class="comment__like${cl.liked ? ' is-on' : ''}" data-like="${esc(c.id)}" aria-label="Like comment" aria-pressed="${cl.liked}">${iconHeart()}<span class="comment__like-n">${cl.count || ''}</span></button>
     </div>`;
 }
 
@@ -227,14 +244,34 @@ function wireCommentActions(root, body, { logId, ownerId, isOwner }) {
   if (!list) return;
 
   // Liking is the one action common enough to earn its own target.
-  list.addEventListener('click', (e) => {
+  list.addEventListener('click', async (e) => {
     const likeBtn = e.target.closest('[data-like]');
     if (!likeBtn) return;
     if (!state.user) { promptSignIn('Sign in to like comments.'); return; }
-    const on = likeBtn.getAttribute('aria-pressed') !== 'true';
-    likeBtn.setAttribute('aria-pressed', String(on));
-    likeBtn.classList.toggle('is-on', on);
-    if (on) tapFeedback();
+    if (likeBtn.disabled) return;
+    const cid = likeBtn.dataset.like;
+    const was = likeBtn.getAttribute('aria-pressed') === 'true';
+    const cur = commentLikes[cid] || { count: 0, liked: false };
+    const paint = (liked, count) => {
+      likeBtn.setAttribute('aria-pressed', String(liked));
+      likeBtn.classList.toggle('is-on', liked);
+      qs('.comment__like-n', likeBtn).textContent = count || '';
+    };
+    // Show it at once; put it back if the save fails.
+    const next = { liked: !was, count: Math.max(0, cur.count + (was ? -1 : 1)) };
+    commentLikes[cid] = next;
+    paint(next.liked, next.count);
+    if (next.liked) tapFeedback();
+    likeBtn.disabled = true;
+    try {
+      await api.toggleCommentLike(state.user.id, cid, was);
+    } catch (err) {
+      commentLikes[cid] = cur;
+      paint(cur.liked, cur.count);
+      toast('Could not save that like.', 'error');
+    } finally {
+      likeBtn.disabled = false;
+    }
   });
 
   let timer = null;
@@ -350,11 +387,48 @@ function openCommentSheet(row, { logId, ownerId, isOwner, body }) {
   }));
 }
 
+// Press and hold the likes line to see who liked the review.
+function openLikersSheet(logId) {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="sheet likers-sheet">
+      <div class="sheet__grip" aria-hidden="true"></div>
+      <h3 class="likers-sheet__title">Likes</h3>
+      <div class="likers-sheet__list" id="likers-list">${spinner()}</div>
+    </div>`;
+  document.body.appendChild(overlay);
+  const close = () => overlay.remove();
+  overlay.__dismiss = close;
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+  enableSwipeToDismiss(qs('.sheet', overlay), close);
+  overlay.addEventListener('click', (e) => { if (e.target.closest('a')) close(); });
+  api.getLogLikers(logId).then((people) => {
+    qs('#likers-list', overlay).innerHTML = people.length
+      ? people.map((p) => profileRow(p)).join('')
+      : '<p class="likers-sheet__empty">No likes yet.</p>';
+  }).catch(() => {
+    qs('#likers-list', overlay).innerHTML = '<p class="likers-sheet__empty">Could not load the likes.</p>';
+  });
+}
+
 function wireLike(btn, logId, likeInfo) {
   if (!btn) return;
   let liked = likeInfo.liked;
   let count = likeInfo.count;
-  btn.addEventListener('click', async () => {
+  let held = false;
+  let holdTimer = null;
+  const cancelHold = () => { clearTimeout(holdTimer); holdTimer = null; };
+  btn.addEventListener('pointerdown', () => {
+    held = false;
+    cancelHold();
+    holdTimer = setTimeout(() => { held = true; tapFeedback(); openLikersSheet(logId); }, 420);
+  });
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach((t) => btn.addEventListener(t, cancelHold));
+  btn.addEventListener('contextmenu', (e) => { e.preventDefault(); if (!held) { held = true; openLikersSheet(logId); } });
+  btn.addEventListener('click', async (e) => {
+    // The press that opened the list is not also a like.
+    if (held) { held = false; e.preventDefault(); return; }
     if (!state.user) { promptSignIn('Sign in to like this review.'); return; }
     btn.disabled = true;
     try {

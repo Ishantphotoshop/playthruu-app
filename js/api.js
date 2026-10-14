@@ -3583,6 +3583,44 @@ export async function getLikeInfo(logId, userId) {
   return { count: count || 0, liked };
 }
 
+// Who liked a review, newest first, with their profiles.
+export async function getLogLikers(logId) {
+  const { data, error } = await supabase
+    .from('log_likes')
+    .select('created_at, profiles(*)')
+    .eq('log_id', logId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data || []).map((r) => r.profiles).filter(Boolean);
+}
+
+// Likes on comments (migrations/2026-10-15_comment_likes.sql). Until that
+// migration has been run the table does not exist; the reads below then
+// answer "no likes" instead of breaking the page.
+export async function getCommentLikes(commentIds, userId) {
+  const map = {};
+  commentIds.forEach((id) => (map[id] = { count: 0, liked: false }));
+  if (!commentIds.length) return map;
+  const { data, error } = await supabase.from('comment_likes').select('comment_id, user_id').in('comment_id', commentIds);
+  if (error) return map;
+  (data || []).forEach((r) => {
+    if (!map[r.comment_id]) return;
+    map[r.comment_id].count += 1;
+    if (userId && r.user_id === userId) map[r.comment_id].liked = true;
+  });
+  return map;
+}
+
+export async function toggleCommentLike(userId, commentId, currentlyLiked) {
+  if (currentlyLiked) {
+    const { error } = await supabase.from('comment_likes').delete().eq('user_id', userId).eq('comment_id', commentId);
+    if (error) throw error;
+  } else {
+    const { error } = await supabase.from('comment_likes').insert({ user_id: userId, comment_id: commentId });
+    if (error) throw error;
+  }
+}
+
 // ---- comments on a review (a log) --------------------------
 // Backed by the `comments` table (migrations/2026-08-17_comments.sql).
 // Bulk reply counts for a list of logs — the same shape/tradeoff as
