@@ -1350,6 +1350,12 @@ function openLogSheet({ game, ownLog, replayCount, ensureSavedGame, onChanged, o
       if (v === draft.rating) return;
       draft.rating = v;
       picker.innerHTML = starRow(v, { interactive: true, size: 42 });
+      // Giving a star rating with nothing picked yet counts as playing it:
+      // the Play icon lights up by itself.
+      if (v > 0 && !draft.status) {
+        draft.status = 'played';
+        qsa('.lg-pill', overlay).forEach((b) => b.classList.toggle('lg-pill--on', b.dataset.status === 'played'));
+      }
       buzz();
     };
 
