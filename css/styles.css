@@ -7607,3 +7607,10 @@ a.gd-credit__name { text-decoration: none; }
 .gd-act[data-act-open="like"].is-on { color: var(--coral); }
 .gd-act[data-act-open="backlog"].is-on { color: var(--ink); }
 .gd-act:active { background: var(--surface-raised); }
+
+/* game page header: a smaller poster, and the game's name on one line of its own under it */
+.gd-head__cover { width: 104px; }
+.gd-head__title--row {
+  position: relative; z-index: 1; margin: 0; padding-top: 6px;
+  font-size: 22px; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}

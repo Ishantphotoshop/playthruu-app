@@ -109,6 +109,38 @@ function headCreditHtml(year, director, developer) {
 // network round trip, the layout jump when it swapped in late, and a
 // heading rendered in whatever font a third-party asset shipped with
 // rather than the app's own.
+// The phone draws its own status bar (time, wifi, battery) and a web page cannot paint under
+// it on Android, so the bar is given the artwork's top colour instead: the picture appears to
+// run right up to the top of the screen. The page's normal colour comes back when you leave.
+let statusBarRestore = null;
+function matchStatusBarToArt(url) {
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (!meta) return;
+  if (!statusBarRestore) {
+    const original = meta.getAttribute('content');
+    statusBarRestore = () => { meta.setAttribute('content', original); statusBarRestore = null; };
+    window.addEventListener('hashchange', () => { if (!/^#\/game\//.test(location.hash)) statusBarRestore?.(); });
+  }
+  if (!url) return;
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = () => {
+    try {
+      const c = document.createElement('canvas');
+      c.width = 24; c.height = 4;
+      const ctx = c.getContext('2d');
+      // The very top strip of the picture is what sits against the status bar.
+      ctx.drawImage(img, 0, 0, img.naturalWidth, Math.max(1, img.naturalHeight * 0.05), 0, 0, 24, 4);
+      const d = ctx.getImageData(0, 0, 24, 4).data;
+      let r = 0; let g = 0; let b = 0; const n = d.length / 4;
+      for (let i = 0; i < d.length; i += 4) { r += d[i]; g += d[i + 1]; b += d[i + 2]; }
+      const hex = [r, g, b].map((v) => Math.round(v / n).toString(16).padStart(2, '0')).join('');
+      meta.setAttribute('content', `#${hex}`);
+    } catch { /* the picture does not allow reading its pixels: leave the usual colour */ }
+  };
+  img.src = url;
+}
+
 function gameTitleHtml(title) {
   return `<h1 class="gd-head__title">${esc(title)}</h1>`;
 }
@@ -600,7 +632,6 @@ export async function renderGameView(root, { id, igdbId }) {
             <header class="gd-head">
               ${posterFrame(poster, game.title, 'gd-head__cover', { id: 'game-cover', full: true })}
               <div class="gd-head__main">
-                ${gameTitleHtml(game.title)}
                 <div id="director-slot">${headCreditHtml(year, castDirectorData?.director, game.developer)}</div>
                 ${game.trailer_url ? `
                   <button type="button" class="gd-trailer" id="play-trailer">
@@ -608,6 +639,7 @@ export async function renderGameView(root, { id, igdbId }) {
                   </button>` : ''}
               </div>
             </header>
+            ${gameTitleHtml(game.title).replace('class="gd-head__title"', 'class="gd-head__title gd-head__title--row" id="gd-title"')}
           </div>
 
           <div class="gd-stats">
@@ -753,6 +785,19 @@ export async function renderGameView(root, { id, igdbId }) {
       // Reviews are painted separately from the rest of the page so that
       // tapping a bar in the distribution can repaint just this list
       // rather than re-rendering (and re-fetching) the whole screen.
+      // One line: shrink the name a little if it is long, then cut it with … as a last resort.
+      const titleEl = qs('#gd-title', body);
+      if (titleEl) {
+        const fit = () => {
+          let size = 22;
+          titleEl.style.fontSize = `${size}px`;
+          while (titleEl.scrollWidth > titleEl.clientWidth + 1 && size > 15) { size -= 0.5; titleEl.style.fontSize = `${size}px`; }
+        };
+        fit();
+        document.fonts?.ready?.then(fit);
+      }
+      matchStatusBarToArt(game.background_url);
+
       qsa('[data-act-open]', body).forEach((b) => b.addEventListener('click', () => qs('#open-log-sheet', body)?.click()));
 
       let ratingFilter = null;
