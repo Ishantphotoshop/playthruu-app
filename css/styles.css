@@ -7543,3 +7543,6 @@ a.gd-credit__name { text-decoration: none; }
 @media (prefers-reduced-motion: reduce) {
   .cs-float, .cs-lift, .cs-menu, .cs-float.is-out, .cs-float.is-out .cs-lift, .cs-float.is-out .cs-menu { animation: none; }
 }
+
+/* comment bar without the reaction row: back to the shorter bar */
+.view-body--review { padding-bottom: max(calc(134px + var(--safe-bottom)), calc(var(--bar-clear, 0px) + 44px)); }

@@ -166,16 +166,12 @@ function composerHtml(note) {
         <button type="button" class="rv-composer__signin" id="comment-signin">Sign in to comment</button>
       </div>`;
   }
-  const me = state.profile?.display_name || state.profile?.username || 'you';
   return `
     <div class="rv-composer">
-      <div class="rv-quick" id="comment-quick" role="group" aria-label="Quick reactions">
-        ${['❤️', '🔥', '👏', '😂', '😮', '😢'].map((e) => `<button type="button" data-emoji="${e}" aria-label="Add ${e}">${e}</button>`).join('')}
-      </div>
       <form class="rv-composer__row" id="comment-form">
         ${avatarImg(state.profile, 34)}
         <div class="rv-composer__field">
-          <input type="text" id="comment-input" maxlength="1000" placeholder="Add a comment as ${esc(me)}…" autocomplete="off" enterkeyhint="send">
+          <input type="text" id="comment-input" maxlength="1000" placeholder="Add a comment…" autocomplete="off" enterkeyhint="send">
           <button type="submit" class="rv-composer__send" id="comment-send" aria-label="Post comment">Post</button>
         </div>
       </form>
@@ -193,14 +189,6 @@ function wireComposer(root, body, { logId, ownerId }) {
   const sync = () => send.classList.toggle('is-ready', !!input.value.trim());
   input.addEventListener('input', sync);
   sync();
-  // A tapped reaction goes into the box, ready to post with or without more words.
-  qs('#comment-quick', root)?.addEventListener('click', (e) => {
-    const b = e.target.closest('[data-emoji]');
-    if (!b) return;
-    input.value += b.dataset.emoji;
-    input.dispatchEvent(new Event('input', { bubbles: true }));
-    input.focus();
-  });
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
