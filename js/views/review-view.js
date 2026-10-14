@@ -1,6 +1,7 @@
 import * as api from '../api.js';
 import { state } from '../state.js';
-import { topBar, avatarImg, posterFrame, spinner, iconHeart, iconSend, iconFlag, iconBlock, openReportSheet } from '../components.js';
+import { topBar, avatarImg, posterFrame, spinner, iconHeart, iconSend, iconFlag, iconBlock, iconDotsMenu, openReportSheet } from '../components.js';
+import { openEntryMenu } from './entry-menu.js';
 import { esc, starRow, formatDate, timeAgo, qs, qsa, toast, tapFeedback, promptSignIn, reviewText } from '../utils.js';
 
 // One person's review, on its own page — opened by tapping a poster in
@@ -34,6 +35,15 @@ export async function renderReviewView(root, { id }) {
     const possessive = /s$/i.test(who) ? `${who}’` : `${who}’s`;
     const isOwner = !!state.user && state.user.id === ownerId;
 
+    // Your own review says so at the top, and carries the three dots: Edit,
+    // Share to Instagram Stories, Share and Delete.
+    const bar = qs('.topbar', root);
+    if (isOwner && bar) qs('.topbar__title', bar).textContent = 'Your review';
+    if (bar) {
+      qs('.topbar__right', bar).innerHTML = `<button type="button" class="icon-btn" id="rv-menu-btn" aria-label="Review options">${iconDotsMenu()}</button>`;
+      qs('#rv-menu-btn', bar).addEventListener('click', () => openEntryMenu(log, isOwner));
+    }
+
     body.innerHTML = `
       <article class="rv">
         <div class="rv__head">
@@ -42,14 +52,14 @@ export async function renderReviewView(root, { id }) {
           </a>
           <div class="rv__meta">
             <a href="#/profile/${esc(a.username)}" class="rv__by">
-              ${avatarImg(a, 28)}<span class="rv__by-name">${esc(possessive)} review</span>
+              ${avatarImg(a, 28)}<span class="rv__by-name">${isOwner ? esc(who) : `${esc(possessive)} review`}</span>
             </a>
             <a href="#/game/${g.id}" class="rv__game">
               <h1 class="rv__title">${esc(g.title || 'Untitled')}</h1>
               ${g.release_year ? `<span class="rv__year">${esc(String(g.release_year))}</span>` : ''}
             </a>
-            ${log.rating ? `<div class="rv__stars">${starRow(log.rating, { size: 18 })}</div>` : ''}
-            ${log.played_date ? `<p class="rv__played">Played on ${formatDate(log.played_date)}</p>` : ''}
+            ${log.rating || log.loved ? `<div class="rv__stars">${log.rating ? starRow(log.rating, { size: 18 }) : ''}${log.loved ? `<span class="rv__loved" aria-label="Liked">${iconHeart()}</span>` : ''}</div>` : ''}
+            ${(log.played_date || log.created_at) ? `<p class="rv__played">Played on ${formatDate(log.played_date || String(log.created_at).slice(0, 10))}</p>` : ''}
           </div>
         </div>
 

@@ -7337,3 +7337,6 @@ a.gd-credit__name { text-decoration: none; }
 .de__facts dt { color: var(--ink-faint); font-size: var(--text-meta); }
 .de__facts dd { margin: 0; text-align: right; color: var(--ink); font-size: 14px; }
 .de-menu .msg-actions__item { padding-left: 22px; padding-right: 22px; }
+.rv__stars { align-items: center; gap: 8px; }
+.rv__loved { display: inline-flex; width: 18px; height: 18px; color: var(--coral); }
+.rv__loved svg { width: 100%; height: 100%; fill: currentColor; stroke: currentColor; }

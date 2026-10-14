@@ -25,7 +25,7 @@ export function diaryTilesHtml(list, byDate = true) {
   const row = (l) => {
     const d = parts(l);
     return `
-    <a href="#/diary/${l.id}" class="dq-row">
+    <a href="#/review/${l.id}" class="dq-row">
       <div class="dq-tile"><span>${d ? d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase() : ''}</span><b>${d ? d.getDate() : '·'}</b></div>
       <div class="dq-main">
         <div class="dq-title">${esc(l.games.title)}${l.games.release_year ? ` <em>${l.games.release_year}</em>` : ''}</div>

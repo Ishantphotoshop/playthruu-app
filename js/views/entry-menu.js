@@ -1,16 +1,11 @@
 import * as api from '../api.js';
-import { state } from '../state.js';
 import { navigate, refreshCurrentView } from '../router.js';
-import { topBar, posterFrame, spinner, iconDotsMenu, iconReplay, confirmSheet } from '../components.js';
-import { esc, starRow, formatDate, qs, toast, reviewText, enableSwipeToDismiss } from '../utils.js';
+import { confirmSheet } from '../components.js';
+import { formatDate, qs, toast, enableSwipeToDismiss } from '../utils.js';
 import { openLogComposer } from './log-composer.js';
 
-// One diary entry, on its own page: the game, when it came out, what was done
-// to it (played, rated, replayed, liked) and the day it was logged. Opened by
-// tapping a game in the Diary. The three dots top right hold Edit, Delete,
-// Share to Instagram Stories and Share.
-
-const STATUS_LABEL = { played: 'Played', dropped: 'Dropped', playing: 'Playing', backlog: 'Backlog' };
+// The three-dots menu on your own review page: Edit, Share to Instagram Stories,
+// Share and Delete (the last two shown to everyone / only the owner as noted).
 
 function releaseText(g) {
   if (g.release_date) return formatDate(g.release_date);
@@ -24,78 +19,11 @@ function longDate(raw) {
   return d.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 }
 
-export async function renderDiaryEntryView(root, { id }) {
-  root.innerHTML = topBar('Diary entry', { back: true }) +
-    `<div class="view-body view-body--review" id="diary-body">${spinner()}</div>`;
-  const body = qs('#diary-body', root);
-
-  try {
-    const log = await api.getLogById(id);
-    const g = log.games || {};
-    const a = log.profiles || {};
-    const isOwner = !!state.user && state.user.id === log.user_id;
-    const when = log.played_date || log.created_at;
-    const chips = [
-      STATUS_LABEL[log.status] ? `<span class="de-chip">${STATUS_LABEL[log.status]}</span>` : '',
-      log.is_replay ? `<span class="de-chip de-chip--icon">${iconReplay()}Replay</span>` : '',
-      log.loved ? '<span class="de-chip de-chip--love">Liked</span>' : '',
-      log.hours_played ? `<span class="de-chip">${esc(String(log.hours_played))} h</span>` : '',
-    ].filter(Boolean).join('');
-
-    // The three dots: the owner can edit and delete, everyone can share.
-    const topRight = qs('.topbar__right', root);
-    if (topRight) {
-      topRight.innerHTML = `<button type="button" class="icon-btn" id="de-menu-btn" aria-label="Entry options">${iconDotsMenu()}</button>`;
-    }
-
-    body.innerHTML = `
-      <article class="rv de">
-        <div class="rv__head">
-          <a href="#/game/${esc(g.id)}" class="rv__cover-link" aria-label="${esc(g.title || 'Game')}">
-            ${posterFrame(g.cover_url, g.title, 'rv__cover')}
-          </a>
-          <div class="rv__meta">
-            <p class="de__kind">${isOwner ? 'Your diary entry' : `${esc(a.display_name || a.username || 'Someone')}’s diary entry`}</p>
-            <a href="#/game/${esc(g.id)}" class="rv__game">
-              <h1 class="rv__title">${esc(g.title || 'Untitled')}</h1>
-              ${releaseText(g) ? `<span class="rv__year">Released ${esc(releaseText(g))}</span>` : ''}
-            </a>
-            ${log.rating ? `<div class="rv__stars">${starRow(log.rating, { size: 18 })}</div>` : ''}
-          </div>
-        </div>
-
-        ${chips ? `<div class="de__chips">${chips}</div>` : ''}
-
-        <dl class="de__facts">
-          <div><dt>Logged on</dt><dd>${esc(longDate(when) || 'No date')}</dd></div>
-          ${log.status ? `<div><dt>Activity</dt><dd>${esc(activityLine(log))}</dd></div>` : ''}
-        </dl>
-
-        ${log.review
-          ? `<div class="rv__quote"><p class="rv__text">${reviewText(log.review)}</p></div>`
-          : ''}
-      </article>`;
-
-    qs('#de-menu-btn', root)?.addEventListener('click', () => openMenu(log, isOwner));
-  } catch (err) {
-    body.innerHTML = `<p class="muted" style="padding:24px">Couldn't load this diary entry: ${esc(err.message)}</p>`;
-  }
-}
-
-function activityLine(log) {
-  const parts = [];
-  parts.push(log.status === 'dropped' ? 'Dropped it' : log.is_replay ? 'Played it again' : 'Played it');
-  if (log.rating) parts.push(`rated it ${log.rating} out of 5`);
-  if (log.review) parts.push('wrote a review');
-  if (log.loved) parts.push('liked it');
-  return parts.join(', ');
-}
-
 function entryUrl(log) {
-  return `${location.origin}${location.pathname}#/diary/${log.id}`;
+  return `${location.origin}${location.pathname}#/review/${log.id}`;
 }
 
-function openMenu(log, isOwner) {
+export function openEntryMenu(log, isOwner) {
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
   overlay.innerHTML = `
