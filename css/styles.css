@@ -7546,3 +7546,10 @@ a.gd-credit__name { text-decoration: none; }
 
 /* comment bar without the reaction row: back to the shorter bar */
 .view-body--review { padding-bottom: max(calc(134px + var(--safe-bottom)), calc(var(--bar-clear, 0px) + 44px)); }
+
+/* "Aditya's review": a small line at the top of the header, above the game's name */
+.rv__whose { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 13.5px; font-weight: 700; color: var(--ink-dim); text-decoration: none; }
+.rv__whose img, .rv__whose .avatar { width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--line); box-sizing: border-box; flex-shrink: 0; }
+.rv__whose span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rv__whose::first-letter { text-transform: none; }
+.rv__head + .rv__quote, .rv__head + .rv__nowrite { margin-top: 24px; }

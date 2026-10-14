@@ -80,6 +80,7 @@ export async function renderReviewView(root, { id }) {
             ${posterFrame(g.cover_url, g.title, 'rv__cover')}
           </a>
           <div class="rv__meta">
+            ${log.review ? `<a href="#/profile/${esc(a.username)}" class="rv__whose">${avatarImg(a, 22)}<span>${isOwner ? 'Your review' : `${esc(possessive)} review`}</span></a>` : ''}
             <a href="#/game/${g.id}" class="rv__game">
               <h1 class="rv__title">${esc(g.title || 'Untitled')}</h1>
               ${g.release_year ? `<span class="rv__year">${esc(String(g.release_year))}</span>` : ''}
@@ -88,8 +89,6 @@ export async function renderReviewView(root, { id }) {
             ${(log.played_date || log.created_at) ? `<p class="rv__played">${log.is_replay ? 'Replayed' : 'Played'} on ${formatDate(log.played_date || String(log.created_at).slice(0, 10))}</p>` : ''}
           </div>
         </div>
-
-        ${log.review ? `<h2 class="rv__whose"><a href="#/profile/${esc(a.username)}">${isOwner ? 'Your review' : `${esc(possessive)} review`}</a></h2>` : ''}
 
         ${reviewBodyHtml(log)}
 
