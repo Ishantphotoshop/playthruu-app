@@ -778,7 +778,7 @@ function formatHalfStar(v) {
   return whole === 0 ? '½' : `${whole}½`;
 }
 
-export function ratingHistogram(counts, { total = 0 } = {}) {
+export function ratingHistogram(counts, { total = 0, average = null } = {}) {
   const values = [];
   for (let v = 0.5; v <= 5; v += 0.5) values.push(v.toFixed(1));
   const max = Math.max(1, ...values.map((v) => counts[v] || 0));
@@ -801,7 +801,10 @@ export function ratingHistogram(counts, { total = 0 } = {}) {
     <div class="rating-histogram">
       <div class="rh-head">
         <span class="rh-title">Ratings <span class="rh-total" data-total="${total.toLocaleString('en-US')}">${total.toLocaleString('en-US')}</span></span>
-        <span class="rh-stars" aria-hidden="true">${[1, 2, 3, 4, 5].map((i) => `<span class="rh-star" data-i="${i}"></span>`).join('')}</span>
+        <span class="rh-right">
+          <span class="rh-stars" aria-hidden="true">${[1, 2, 3, 4, 5].map((i) => `<span class="rh-star" data-i="${i}"></span>`).join('')}</span>
+          ${average ? `<span class="rh-avg" title="Average rating">${esc(String(average))}</span>` : ''}
+        </span>
       </div>
       <div class="rh-chart">
         <div class="rating-histogram__bars">

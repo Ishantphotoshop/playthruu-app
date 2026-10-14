@@ -7590,3 +7590,10 @@ a.gd-credit__name { text-decoration: none; }
 /* game page header: a smaller poster, and the game's name on one line beside it */
 .gd-head__cover { width: 104px; }
 .gd-head__title--one { align-self: stretch; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.3; }
+
+/* game page: the profile's rating chart, with the average at the top right while nothing is held */
+.gd-ratings { margin: 0 0 var(--space-2); }
+.rh-right { position: relative; display: flex; align-items: center; justify-content: flex-end; min-width: 77px; }
+.rh-avg { position: absolute; right: 0; font-weight: 800; font-size: 14px; color: var(--ink); font-variant-numeric: tabular-nums; }
+.rh-avg::before { content: '\2605'; color: var(--accent-bright); margin-right: 5px; font-size: 12px; }
+.rh-stars--on + .rh-avg { visibility: hidden; }
