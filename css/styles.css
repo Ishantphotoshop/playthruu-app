@@ -7597,3 +7597,9 @@ a.gd-credit__name { text-decoration: none; }
 .rh-avg { position: absolute; right: 0; font-weight: 800; font-size: 14px; color: var(--ink); font-variant-numeric: tabular-nums; }
 .rh-avg::before { content: '\2605'; color: var(--accent-bright); margin-right: 5px; font-size: 12px; }
 .rh-stars--on + .rh-avg { visibility: hidden; }
+
+/* game page: no box (the page's own rules sit above and below it), lined up with the other sections */
+.gd-ratings .rating-histogram { background: none; border: 0; border-radius: 0; padding: 0; margin: 0; }
+.gd-ratings .rh-head { margin-bottom: 12px; }
+.gd-ratings .rh-title { font-family: var(--font-display); font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+.gd-ratings .rh-total { font-family: var(--font-display); font-size: 13px; }
