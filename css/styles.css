@@ -7553,3 +7553,7 @@ a.gd-credit__name { text-decoration: none; }
 .rv__whose span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rv__whose::first-letter { text-transform: none; }
 .rv__head + .rv__quote, .rv__head + .rv__nowrite { margin-top: 24px; }
+
+/* "Aditya's review" line: a more comfortable size */
+.rv__whose { gap: 10px; font-size: 16px; font-weight: 800; color: var(--ink); }
+.rv__whose img, .rv__whose .avatar { width: 32px !important; height: 32px !important; }

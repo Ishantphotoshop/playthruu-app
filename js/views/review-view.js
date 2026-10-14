@@ -80,7 +80,7 @@ export async function renderReviewView(root, { id }) {
             ${posterFrame(g.cover_url, g.title, 'rv__cover')}
           </a>
           <div class="rv__meta">
-            ${log.review ? `<a href="#/profile/${esc(a.username)}" class="rv__whose">${avatarImg(a, 22)}<span>${isOwner ? 'Your review' : `${esc(possessive)} review`}</span></a>` : ''}
+            ${log.review ? `<a href="#/profile/${esc(a.username)}" class="rv__whose">${avatarImg(a, 32)}<span>${isOwner ? 'Your review' : `${esc(possessive)} review`}</span></a>` : ''}
             <a href="#/game/${g.id}" class="rv__game">
               <h1 class="rv__title">${esc(g.title || 'Untitled')}</h1>
               ${g.release_year ? `<span class="rv__year">${esc(String(g.release_year))}</span>` : ''}
