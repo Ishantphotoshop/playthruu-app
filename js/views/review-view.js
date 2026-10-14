@@ -60,7 +60,7 @@ export async function renderReviewView(root, { id }) {
               ${g.release_year ? `<span class="rv__year">${esc(String(g.release_year))}</span>` : ''}
             </a>
             ${log.rating || log.loved ? `<div class="rv__stars">${log.rating ? starRow(log.rating, { size: 18 }) : ''}${log.loved ? `<span class="rv__loved" aria-label="Liked">${iconHeart()}</span>` : ''}</div>` : ''}
-            ${(log.played_date || log.created_at) ? `<p class="rv__played">Played on ${formatDate(log.played_date || String(log.created_at).slice(0, 10))}</p>` : ''}
+            ${(log.played_date || log.created_at) ? `<p class="rv__played">${log.is_replay ? 'Replayed' : 'Played'} on ${formatDate(log.played_date || String(log.created_at).slice(0, 10))}</p>` : ''}
           </div>
         </div>
 
