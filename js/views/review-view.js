@@ -111,13 +111,21 @@ export async function renderReviewView(root, { id }) {
 
     // The spoiler card is replaced by the writing, rather than the
     // writing being un-blurred underneath it.
+    // A review that does contain spoilers is covered. Tapping the cover brings the words
+    // in one by one; "Hide the words" under the review covers it again.
     const gate = qs('#spoiler-gate', body);
-    if (gate) {
+    const card = qs('#spoiler-card', body);
+    if (gate && card) {
+      wrapWords(qs('.rv__text', card));
+      const hide = qs('#spoiler-hide', body);
       gate.addEventListener('click', () => {
-        const holder = gate.closest('.rv__quote');
-        holder.classList.add('is-revealed');
-        gate.remove();
-      }, { once: true });
+        card.classList.add('is-revealed');
+        hide.classList.add('is-shown');
+      });
+      hide.addEventListener('click', () => {
+        card.classList.remove('is-revealed');
+        hide.classList.remove('is-shown');
+      });
     }
 
     wireLike(qs('#review-like', body), id, likeInfo, qs('.rv', body));
@@ -133,18 +141,46 @@ export async function renderReviewView(root, { id }) {
 // whatever is behind it, and every review ends up a different size. A
 // card of ONE fixed height says the same thing in the same space every
 // time, and the writing replaces it when you tap.
+// Wrap every word of the (already escaped and formatted) review in a span, keeping
+// the bold / italic / link markup around them, so the words can arrive one by one.
+function wrapWords(root) {
+  if (!root) return;
+  let i = 0;
+  const walk = (node) => {
+    Array.from(node.childNodes).forEach((n) => {
+      if (n.nodeType === 3) {
+        const frag = document.createDocumentFragment();
+        n.textContent.split(/(\s+)/).forEach((part) => {
+          if (!part) return;
+          if (/^\s+$/.test(part)) { frag.appendChild(document.createTextNode(part)); return; }
+          const w = document.createElement('span');
+          w.className = 'rv__w';
+          w.style.setProperty('--i', String(i++));
+          w.textContent = part;
+          frag.appendChild(w);
+        });
+        n.replaceWith(frag);
+      } else if (n.nodeType === 1 && n.tagName !== 'BR') {
+        walk(n);
+      }
+    });
+  };
+  walk(root);
+}
+
 function reviewBodyHtml(log) {
   if (!log.review) return '';
   const text = `<p class="rv__text">${reviewText(log.review)}</p>`;
   if (!log.contains_spoilers) return `<div class="rv__quote">${text}</div>`;
   return `
-    <div class="rv__quote rv__quote--gated">
-      <button type="button" class="rv__spoiler" id="spoiler-gate">
-        <span class="rv__spoiler-title">This review may contain spoilers</span>
-        <span class="rv__spoiler-hint">Tap to read it anyway</span>
-      </button>
+    <div class="rv__quote rv__quote--gated" id="spoiler-card">
       ${text}
-    </div>`;
+      <button type="button" class="rv__spoiler" id="spoiler-gate">
+        <span class="rv__spoiler-title">Every word here is a spoiler</span>
+        <span class="rv__spoiler-hint">Tap to read</span>
+      </button>
+    </div>
+    <button type="button" class="rv__hide" id="spoiler-hide">Hide the words</button>`;
 }
 
 const likeLabel = (n) => (n ? `${n} ${n === 1 ? 'like' : 'likes'}` : 'No likes yet');
