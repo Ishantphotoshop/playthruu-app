@@ -7321,3 +7321,7 @@ a.gd-credit__name { text-decoration: none; }
 /* the pouring stream is made of grains too, not a smooth line */
 .lg-qa.lg-pill--on.qa-finishing[data-status="backlog"] .hg-stream { stroke-dasharray: .7 1.3; stroke-width: 1.3; animation: hg-stream var(--P, 2.2s) linear forwards, hg-flow .45s linear infinite; }
 @keyframes hg-flow { to { stroke-dashoffset: -2; } }
+
+/* Sheet opened on a game already in the backlog: the glass stands as it is, no turning. */
+.lg-qa.lg-pill--on.qa-rest[data-status="backlog"] .hg-p1 { animation: none; opacity: 0; }
+.lg-qa.lg-pill--on.qa-rest[data-status="backlog"] .hg-p2 { animation: none; opacity: 1; }

@@ -1302,6 +1302,8 @@ function openLogSheet({ game, ownLog, replayCount, ensureSavedGame, onChanged, o
 
     const openBacklog = qs('.lg-qa[data-status="backlog"]', overlay);
     if (openBacklog && draft.status === 'backlog') {
+      // Already in the backlog when the sheet opens: the glass just stands there, no turning.
+      if (log?.status === 'backlog') openBacklog.classList.add('qa-rest');
       const since = log?.status === 'backlog' ? new Date(log.updated_at || log.created_at).getTime() : Date.now();
       startEgg(openBacklog, Number.isFinite(since) ? since : Date.now());
     }
@@ -1413,6 +1415,7 @@ function openLogSheet({ game, ownLog, replayCount, ensureSavedGame, onChanged, o
       }
       const prevStatus = draft.status;
       draft.status = clearing ? null : next;
+      qs('.lg-qa[data-status="backlog"]', overlay)?.classList.remove('qa-rest');
       // Un-playing a game takes its stars away with it.
       if (clearing && draft.rating) {
         draft.rating = 0;
@@ -1605,7 +1608,7 @@ function startEgg(btn, startedAt) {
     const elapsed = (Date.now() - since) % EGG_MS;
     btn.style.setProperty('--egg-s', `${EGG_MS / 1000}s`);
     // 0.6s: the glass has just finished its first turn when the sand starts to move.
-    btn.style.setProperty('--egg-delay', `${0.6 - elapsed / 1000}s`);
+    btn.style.setProperty('--egg-delay', `${(btn.classList.contains('qa-rest') ? 0 : 0.6) - elapsed / 1000}s`);
     btn.classList.remove('qa-egg');
     void btn.offsetWidth;
     btn.classList.add('qa-egg');
