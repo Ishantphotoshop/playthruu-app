@@ -7340,3 +7340,9 @@ a.gd-credit__name { text-decoration: none; }
 .rv__stars { align-items: center; gap: 8px; }
 .rv__loved { display: inline-flex; width: 18px; height: 18px; color: var(--coral); }
 .rv__loved svg { width: 100%; height: 100%; fill: currentColor; stroke: currentColor; }
+
+/* review page: "Aditya's review" is a plain heading, no line beside it */
+.rv__whose { margin: var(--space-5) 0 0; font-family: var(--font-display); font-weight: var(--weight-bold); font-size: 16px; color: var(--ink); }
+.rv__whose a { color: inherit; text-decoration: none; }
+.rv__whose::first-letter { text-transform: uppercase; }
+.rv__whose + .rv__quote, .rv__whose + .rv__nowrite { margin-top: 10px; }

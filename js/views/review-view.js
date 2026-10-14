@@ -51,9 +51,6 @@ export async function renderReviewView(root, { id }) {
             ${posterFrame(g.cover_url, g.title, 'rv__cover')}
           </a>
           <div class="rv__meta">
-            <a href="#/profile/${esc(a.username)}" class="rv__by">
-              ${avatarImg(a, 28)}<span class="rv__by-name">${isOwner ? esc(who) : `${esc(possessive)} review`}</span>
-            </a>
             <a href="#/game/${g.id}" class="rv__game">
               <h1 class="rv__title">${esc(g.title || 'Untitled')}</h1>
               ${g.release_year ? `<span class="rv__year">${esc(String(g.release_year))}</span>` : ''}
@@ -63,11 +60,13 @@ export async function renderReviewView(root, { id }) {
           </div>
         </div>
 
+        <h2 class="rv__whose"><a href="#/profile/${esc(a.username)}">${isOwner ? 'Your review' : `${esc(possessive)} review`}</a></h2>
+
         ${reviewBodyHtml(log)}
 
         <button type="button" class="rv__like${likeInfo.liked ? ' rv__like--on' : ''}" id="review-like"
                 aria-pressed="${likeInfo.liked}" aria-label="${likeInfo.liked ? 'Unlike' : 'Like'} this review">
-          ${iconHeart()}<span id="review-like-count">${likeInfo.count || ''}</span>
+          ${iconHeart()}<span id="review-like-count">${likeLabel(likeInfo.count)}</span>
         </button>
       </article>
 
@@ -120,6 +119,7 @@ function reviewBodyHtml(log) {
     </div>`;
 }
 
+const likeLabel = (n) => (n ? `${n} ${n === 1 ? 'like' : 'likes'}` : 'No likes yet');
 const visibleCount = (comments) => comments.filter((c) => !c.deleted_at).length;
 // No "(0)" — a zero in brackets is a count of nothing dressed up as
 // information.
@@ -364,7 +364,7 @@ function wireLike(btn, logId, likeInfo) {
       count += liked ? 1 : -1;
       btn.classList.toggle('rv__like--on', liked);
       btn.setAttribute('aria-pressed', String(liked));
-      qs('#review-like-count', btn).textContent = count || '';
+      qs('#review-like-count', btn).textContent = likeLabel(count);
     } catch (err) {
       toast(err.message || 'Could not update like.', 'error');
     } finally {
