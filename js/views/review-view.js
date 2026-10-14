@@ -75,14 +75,14 @@ export async function renderReviewView(root, { id }) {
         </button>` : ''}
       </article>
 
-      <section class="rv-comments">
+      ${log.comments_disabled && !visibleCount(comments) ? '' : `<section class="rv-comments">
         <h2 class="rv-comments__head">Comments <span id="comment-count">${countLabel(visibleCount(comments))}</span></h2>
         <div class="comment-list" id="comment-list">
           ${comments.length
             ? comments.map((c) => commentHtml(c, ownerId)).join('')
-            : `<p class="rv-comments__empty">${log.comments_disabled ? 'Comments are turned off for this review.' : 'No comments yet. Be the first.'}</p>`}
+            : '<p class="rv-comments__empty">No comments yet. Be the first.</p>'}
         </div>
-      </section>`;
+      </section>`}`;
 
     root.insertAdjacentHTML('beforeend', composerHtml(!!log.comments_disabled));
 
@@ -98,7 +98,7 @@ export async function renderReviewView(root, { id }) {
     }
 
     wireLike(qs('#review-like', body), id, likeInfo, qs('.rv', body));
-    wireCommentActions(root, body, { logId: id, ownerId, isOwner });
+    wireCommentActions(root, body, { logId: id, ownerId, isOwner, commentsOff: !!log.comments_disabled });
     wireComposer(root, body, { logId: id, ownerId });
   } catch (err) {
     body.innerHTML = `<p class="muted" style="padding:24px">Couldn't load this review: ${esc(err.message)}</p>`;
@@ -243,7 +243,7 @@ function linkMentions(bodyText) {
 // Press and hold a comment for everything you can do to it. A long
 // press rather than a visible row of icons: there are six actions here,
 // most of them rare, and six icons on every row would bury the reading.
-function wireCommentActions(root, body, { logId, ownerId, isOwner }) {
+function wireCommentActions(root, body, { logId, ownerId, isOwner, commentsOff = false }) {
   const list = qs('#comment-list', body);
   if (!list) return;
 
@@ -289,7 +289,7 @@ function wireCommentActions(root, body, { logId, ownerId, isOwner }) {
     timer = setTimeout(() => {
       if (moved) return;
       tapFeedback();
-      openCommentSheet(row, { logId, ownerId, isOwner, body });
+      openCommentSheet(row, { logId, ownerId, isOwner, body, commentsOff });
     }, 420);
   };
   const cancel = () => { clearTimeout(timer); timer = null; };
@@ -303,11 +303,11 @@ function wireCommentActions(root, body, { logId, ownerId, isOwner }) {
     const row = e.target.closest('.comment');
     if (!row || row.classList.contains('comment--gone')) return;
     e.preventDefault();
-    openCommentSheet(row, { logId, ownerId, isOwner, body });
+    openCommentSheet(row, { logId, ownerId, isOwner, body, commentsOff });
   });
 }
 
-function openCommentSheet(row, { logId, ownerId, isOwner, body }) {
+function openCommentSheet(row, { logId, ownerId, isOwner, body, commentsOff = false }) {
   const commentId = row.dataset.id;
   const authorId = row.dataset.user;
   const handle = row.dataset.name;
@@ -316,7 +316,8 @@ function openCommentSheet(row, { logId, ownerId, isOwner, body }) {
   const restricted = !!qs('.comment__restricted', row);
 
   const actions = [];
-  actions.push({ id: 'reply', label: `Reply to @${handle}` });
+  // With comments off there is no box to reply in; delete, pin, report and block still work.
+  if (!commentsOff) actions.push({ id: 'reply', label: `Reply to @${handle}` });
   if (isOwner) actions.push({ id: 'pin', label: pinned ? 'Unpin comment' : 'Pin to top' });
   if (isOwner && !mine) actions.push({ id: 'restrict', label: restricted ? 'Un-restrict' : 'Restrict this comment' });
   if (mine || isOwner) actions.push({ id: 'delete', label: 'Delete', danger: true });
