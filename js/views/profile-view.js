@@ -177,10 +177,11 @@ export async function renderProfileView(root, { username }) {
       .filter((l) => l.status === 'playing')
       .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
 
-    // A game this person has played opens their review page for it (even with no
-    // write-up); a game they have not played (backlog, playing, never) opens the game page.
+    // A game this person logged properly (a diary entry) opens their review page for it, even
+    // with no write-up. A game only marked as played (the quick sheet), or not played at all
+    // (backlog, playing, never), opens the game page.
     const reviewLink = (gameId) => {
-      const l = playedAll.find((x) => x.game_id === gameId);
+      const l = diary.find((x) => x.game_id === gameId);
       return l ? `#/review/${l.id}` : `#/game/${gameId}`;
     };
     const showcaseSlots = favorites.length

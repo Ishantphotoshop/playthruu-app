@@ -3,7 +3,7 @@ import { state } from '../state.js';
 import { topBar, avatarImg, posterFrame, spinner, iconHeart, iconSend, iconFlag, iconBlock, iconDotsMenu, iconClose, openReportSheet } from '../components.js';
 import { openEntryMenu } from './entry-menu.js';
 import { navigate, refreshCurrentView } from '../router.js';
-import { esc, starRow, formatDate, timeAgo, qs, qsa, toast, tapFeedback, promptSignIn, reviewText, enableSwipeToDismiss } from '../utils.js';
+import { esc, starRow, formatDate, timeAgo, qs, qsa, toast, tapFeedback, promptSignIn, reviewText, enableSwipeToDismiss, playedKind } from '../utils.js';
 
 // Likes on the comments of the review being shown: { commentId: { count, liked } }.
 let commentLikes = {};
@@ -28,6 +28,12 @@ export async function renderReviewView(root, { id }) {
 
   try {
     const log = await api.getLogById(id);
+    // A game that was only marked as played (no diary entry, no write-up) has no review page:
+    // send it to the game page.
+    if (!log.review && playedKind(log, log.profiles?.created_at) === 'marked' && log.games?.id) {
+      navigate(`/game/${log.games.id}`, { replace: true });
+      return;
+    }
     const ownerId = log.user_id;
     const [likeInfo, comments] = await Promise.all([
       api.getLikeInfo(id, state.user?.id).catch(() => ({ count: 0, liked: false })),

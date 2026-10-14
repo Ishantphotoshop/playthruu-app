@@ -61,6 +61,9 @@ export async function renderLogListView(root, { username, mode }) {
     const fkey = `ll-filters:${username}:${mode}`;
     const f = { sort: 'new', year: 'all', rating: '0', group: mode === 'replayed' };
     try { Object.assign(f, JSON.parse(sessionStorage.getItem(fkey) || '{}')); } catch (_) { /* fine without it */ }
+    // Only a properly logged game (a diary entry) has a review page; a game just marked as
+    // played opens the game page.
+    const isLogged = (l) => (l.status === 'played' || l.status === 'dropped') && playedKind(l, profile.created_at) === 'diary';
     const dateOf = (l) => l.played_date || l.created_at;
     const yearOf = (l) => { const raw = dateOf(l); return raw ? new Date(raw).getFullYear() : null; };
     const years = [...new Set(logs.map(yearOf).filter(Boolean))].sort((x, y) => y - x);
@@ -127,7 +130,7 @@ export async function renderLogListView(root, { username, mode }) {
       paintSheet();
     }
     const rowHtml = (l, withTitle) => `
-      <a href="${l.status === 'played' || l.status === 'dropped' ? `#/review/${l.id}` : `#/game/${l.games.id}`}" class="diary-row ${withTitle ? '' : 'diary-row--sub'}">
+      <a href="${isLogged(l) ? `#/review/${l.id}` : `#/game/${l.games.id}`}" class="diary-row ${withTitle ? '' : 'diary-row--sub'}">
         ${withTitle ? `<img src="${esc(igdbSized(l.games.cover_url, 'cover_small') || '')}" alt="" class="diary-row__cover" loading="lazy" decoding="async" onerror="this.style.visibility='hidden'">` : ''}
         <div class="diary-row__main">
           ${withTitle ? `<div class="diary-row__title">${esc(l.games.title)}</div>` : ''}
@@ -159,7 +162,7 @@ export async function renderLogListView(root, { username, mode }) {
       } else if (cfg.diary) {
         content = diaryTilesHtml(list, f.sort === 'new' || f.sort === 'old');
       } else {
-        content = `<div class="ll-grid">${list.map((l) => `<div class="ll-cell"><a class="game-card" data-game-id="${esc(l.games.id)}" href="${l.status === 'played' || l.status === 'dropped' ? `#/review/${l.id}` : `#/game/${l.games.id}`}" aria-label="${esc(l.games.title)}">${posterFrame(l.games.cover_url, l.games.title, 'game-card__cover')}</a><div class="rp-meta">${l.rating ? starRow(l.rating, { size: 12 }) : ''}${l.is_replay ? `<span class="rp-meta__icon rp-meta__icon--replay">${iconReplay()}</span>` : ''}${l.review ? `<span class="rp-meta__icon rp-meta__icon--review">${iconReviewLines()}</span>` : ''}</div></div>`).join('')}</div>`;
+        content = `<div class="ll-grid">${list.map((l) => `<div class="ll-cell"><a class="game-card" data-game-id="${esc(l.games.id)}" href="${isLogged(l) ? `#/review/${l.id}` : `#/game/${l.games.id}`}" aria-label="${esc(l.games.title)}">${posterFrame(l.games.cover_url, l.games.title, 'game-card__cover')}</a><div class="rp-meta">${l.rating ? starRow(l.rating, { size: 12 }) : ''}${l.is_replay ? `<span class="rp-meta__icon rp-meta__icon--replay">${iconReplay()}</span>` : ''}${l.review ? `<span class="rp-meta__icon rp-meta__icon--review">${iconReviewLines()}</span>` : ''}</div></div>`).join('')}</div>`;
       }
       body.innerHTML = `<div id="ll-results">${content}</div>`;
       setBadge();
