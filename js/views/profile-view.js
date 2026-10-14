@@ -215,7 +215,7 @@ export async function renderProfileView(root, { username }) {
                     aria-label="Show full bio" hidden><span></span><span></span><span></span></button>
           </div>` : ''}
         <div class="profile-header__stats">
-          <a href="#/profile/${esc(profile.username)}/log-list/diary" class="profile-header__stat"><b>${playedAll.length}</b><span>Games</span></a>
+          <a href="#/profile/${esc(profile.username)}/log-list/played" class="profile-header__stat"><b>${playedAll.length}</b><span>Games</span></a>
           <a href="#/profile/${esc(profile.username)}/followers" class="profile-header__stat"><b>${counts.followers}</b><span>Followers</span></a>
           <a href="#/profile/${esc(profile.username)}/following" class="profile-header__stat"><b>${counts.following}</b><span>Following</span></a>
         </div>
