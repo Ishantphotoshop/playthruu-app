@@ -1,6 +1,6 @@
 import * as api from '../api.js';
 import { state } from '../state.js';
-import { topBar, avatarImg, posterFrame, spinner, iconHeart, iconSend, iconFlag, iconBlock, iconDotsMenu, openReportSheet, profileRow } from '../components.js';
+import { topBar, avatarImg, posterFrame, spinner, iconHeart, iconSend, iconFlag, iconBlock, iconDotsMenu, openReportSheet } from '../components.js';
 import { openEntryMenu } from './entry-menu.js';
 import { esc, starRow, formatDate, timeAgo, qs, qsa, toast, tapFeedback, promptSignIn, reviewText, enableSwipeToDismiss } from '../utils.js';
 
@@ -403,10 +403,38 @@ function openLikersSheet(logId) {
   overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
   enableSwipeToDismiss(qs('.sheet', overlay), close);
   overlay.addEventListener('click', (e) => { if (e.target.closest('a')) close(); });
-  api.getLogLikers(logId).then((people) => {
-    qs('#likers-list', overlay).innerHTML = people.length
-      ? people.map((p) => profileRow(p)).join('')
-      : '<p class="likers-sheet__empty">No likes yet.</p>';
+  const meId = state.user?.id || null;
+  Promise.all([api.getLogLikers(logId), api.getFollowingIdSet(meId).catch(() => new Set())]).then(([people, followingSet]) => {
+    const list = qs('#likers-list', overlay);
+    qs('.likers-sheet__title', overlay).innerHTML = `Likes${people.length ? ` <em>${people.length}</em>` : ''}`;
+    if (!people.length) { list.innerHTML = '<p class="likers-sheet__empty">No likes yet.</p>'; return; }
+    list.innerHTML = people.map((p) => `
+      <div class="lkr">
+        <a href="#/profile/${esc(p.username)}" class="lkr__link">
+          ${avatarImg(p, 42)}
+          <span class="lkr__names"><b>${esc(p.display_name || p.username)}</b><span>@${esc(p.username)}</span></span>
+        </a>
+        ${meId && p.id !== meId
+          ? `<button type="button" class="lkr__btn${followingSet.has(p.id) ? ' is-on' : ''}" data-follow="${esc(p.id)}" data-on="${followingSet.has(p.id)}">${followingSet.has(p.id) ? 'Following' : 'Follow'}</button>`
+          : ''}
+      </div>`).join('');
+    list.addEventListener('click', async (e) => {
+      const btn = e.target.closest('[data-follow]');
+      if (!btn || btn.disabled) return;
+      const was = btn.dataset.on === 'true';
+      btn.disabled = true;
+      try {
+        if (was) await api.unfollow(meId, btn.dataset.follow); else await api.follow(meId, btn.dataset.follow);
+        btn.dataset.on = String(!was);
+        btn.classList.toggle('is-on', !was);
+        btn.textContent = was ? 'Follow' : 'Following';
+        if (!was) tapFeedback();
+      } catch (err) {
+        toast(err.message || 'Could not do that.', 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    });
   }).catch(() => {
     qs('#likers-list', overlay).innerHTML = '<p class="likers-sheet__empty">Could not load the likes.</p>';
   });

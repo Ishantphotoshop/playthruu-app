@@ -7390,3 +7390,15 @@ a.gd-credit__name { text-decoration: none; }
 .likers-sheet__list .profile-row { padding: 10px 0; }
 .likers-sheet__empty { margin: 8px 0 14px; color: var(--ink-faint); font-size: 15px; }
 @media (prefers-reduced-motion: reduce) { .likers-sheet { animation: none; } }
+
+/* who liked it: avatar, name and @handle (opens that profile), Follow on the right */
+.likers-sheet__title em { font-style: normal; color: var(--ink-faint); font-weight: 600; margin-left: 6px; }
+.lkr { display: flex; align-items: center; gap: 12px; padding: 10px 0; }
+.lkr__link { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; }
+.lkr__link .avatar, .lkr__link img { flex-shrink: 0; }
+.lkr__names { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.lkr__names b { font-size: 15px; font-weight: 700; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lkr__names span { font-family: var(--font-mono); font-size: 12.5px; color: var(--ink-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lkr__btn { flex-shrink: 0; font: inherit; font-size: 13px; font-weight: 700; padding: 7px 14px; border-radius: 999px; border: 1px solid transparent; background: var(--ink); color: var(--bg); cursor: pointer; }
+.lkr__btn.is-on { background: transparent; color: var(--ink-dim); border-color: var(--line-strong); }
+.lkr__btn:active { transform: scale(0.95); }
