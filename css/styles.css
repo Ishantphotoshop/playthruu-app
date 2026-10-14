@@ -7422,3 +7422,40 @@ a.gd-credit__name { text-decoration: none; }
 /* the like heart should not jitter while pressed or held */
 .rv__like:active { transform: none; }
 .rv__like { touch-action: manipulation; }
+
+/* ---- comments as chat bubbles, with time · likes · Reply underneath ---- */
+.comment-list { gap: 18px; }
+.comment { display: grid; grid-template-columns: 34px minmax(0, 1fr); column-gap: 10px; row-gap: 6px; align-items: start; }
+.comment__avatar, .comment__avatar img, .comment__avatar .avatar { width: 34px; height: 34px; }
+.comment__bubble {
+  min-width: 0; padding: 10px 14px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 4px 18px 18px 18px;
+}
+.comment__head { gap: 8px; }
+.comment__text { margin: 3px 0 0; color: var(--ink); font-size: 14.5px; line-height: 1.5; }
+.comment__pin { margin-bottom: 2px; color: var(--coral); }
+.comment__foot {
+  grid-column: 2; display: flex; align-items: center; gap: 6px; padding-left: 6px;
+  font-size: 12.5px; font-weight: 600; color: var(--ink-faint);
+}
+.comment__time { font-size: inherit; }
+.comment__foot .comment__like, .comment__foot .comment__replybtn {
+  all: unset; box-sizing: border-box; cursor: pointer; font: inherit; color: inherit;
+}
+.comment__foot .comment__like { width: auto; height: auto; display: inline; }
+.comment__foot .comment__like.is-on { color: var(--accent-bright); }
+.comment__foot .comment__like:active, .comment__foot .comment__replybtn:active { opacity: .6; }
+.comment--gone { display: flex; }
+
+/* ---- the comment bar: a quick reaction row, then avatar, field and Post ---- */
+.view-body--review { padding-bottom: max(calc(184px + var(--safe-bottom)), calc(var(--bar-clear, 0px) + 44px)); }
+.rv-composer { border-top: 1px solid var(--line-strong); padding-top: 4px; }
+.rv-quick { display: flex; justify-content: space-between; padding: 2px 6px 6px; }
+.rv-quick button { all: unset; box-sizing: border-box; cursor: pointer; font-size: 22px; line-height: 1; padding: 6px; border-radius: 10px; }
+.rv-quick button:active { background: var(--surface); }
+.rv-composer__send {
+  width: auto; height: 36px; padding: 0 12px; border-radius: 999px; display: inline-flex; align-items: center;
+  font: inherit; font-size: 14px; font-weight: 800; background: none; color: var(--ink-faint);
+}
+.rv-composer__send.is-ready { background: none; color: var(--ink); }
+.rv-composer__off { border: 0; }

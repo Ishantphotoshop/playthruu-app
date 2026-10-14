@@ -142,13 +142,17 @@ function composerHtml(commentsOff) {
         <button type="button" class="rv-composer__signin" id="comment-signin">Sign in to comment</button>
       </div>`;
   }
+  const me = state.profile?.display_name || state.profile?.username || 'you';
   return `
     <div class="rv-composer">
+      <div class="rv-quick" id="comment-quick" role="group" aria-label="Quick reactions">
+        ${['❤️', '🔥', '👏', '😂', '😮', '😢'].map((e) => `<button type="button" data-emoji="${e}" aria-label="Add ${e}">${e}</button>`).join('')}
+      </div>
       <form class="rv-composer__row" id="comment-form">
-        ${avatarImg(state.profile, 32)}
+        ${avatarImg(state.profile, 34)}
         <div class="rv-composer__field">
-          <input type="text" id="comment-input" maxlength="1000" placeholder="What do you think of this?" autocomplete="off" enterkeyhint="send">
-          <button type="submit" class="rv-composer__send" id="comment-send" aria-label="Post comment">${iconSend()}</button>
+          <input type="text" id="comment-input" maxlength="1000" placeholder="Add a comment as ${esc(me)}…" autocomplete="off" enterkeyhint="send">
+          <button type="submit" class="rv-composer__send" id="comment-send" aria-label="Post comment">Post</button>
         </div>
       </form>
     </div>`;
@@ -165,6 +169,14 @@ function wireComposer(root, body, { logId, ownerId }) {
   const sync = () => send.classList.toggle('is-ready', !!input.value.trim());
   input.addEventListener('input', sync);
   sync();
+  // A tapped reaction goes into the box, ready to post with or without more words.
+  qs('#comment-quick', root)?.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-emoji]');
+    if (!b) return;
+    input.value += b.dataset.emoji;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.focus();
+  });
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -218,18 +230,25 @@ function commentHtml(c, ownerId) {
   return `
     <div class="comment${c.pinned_at ? ' comment--pinned' : ''}" data-id="${esc(c.id)}" data-user="${esc(c.user_id)}" data-name="${esc(p.username || '')}">
       <a href="#/profile/${esc(p.username)}" class="comment__avatar">${avatarImg(p, 34)}</a>
-      <div class="comment__body">
+      <div class="comment__bubble">
         ${c.pinned_at ? '<span class="comment__pin">Pinned</span>' : ''}
         <div class="comment__head">
           <a href="#/profile/${esc(p.username)}" class="comment__name">${esc(p.display_name || p.username)}</a>
-          <span class="comment__time">${agoText(c.created_at)}</span>
           ${c.restricted_at ? '<span class="comment__restricted">Only you and the author can see this</span>' : ''}
         </div>
         <p class="comment__text">${linkMentions(c.body)}</p>
       </div>
-      <button type="button" class="comment__like${cl.liked ? ' is-on' : ''}" data-like="${esc(c.id)}" aria-label="Like comment" aria-pressed="${cl.liked}">${iconHeart()}<span class="comment__like-n">${cl.count || ''}</span></button>
+      <div class="comment__foot">
+        <span class="comment__time">${agoText(c.created_at)}</span>
+        <span class="comment__sep" aria-hidden="true">·</span>
+        <button type="button" class="comment__like${cl.liked ? ' is-on' : ''}" data-like="${esc(c.id)}" aria-label="Like comment" aria-pressed="${cl.liked}">${commentLikeLabel(cl.count)}</button>
+        <span class="comment__sep" aria-hidden="true">·</span>
+        <button type="button" class="comment__replybtn" data-reply="${esc(p.username || '')}">Reply</button>
+      </div>
     </div>`;
 }
+
+const commentLikeLabel = (n) => (n ? `${n} ${n === 1 ? 'like' : 'likes'}` : 'Like');
 
 // "@someone" becomes a link to that profile. Escaped FIRST and only then
 // scanned, so the pattern can never match anything a person typed as
@@ -259,7 +278,7 @@ function wireCommentActions(root, body, { logId, ownerId, isOwner, commentsOff =
     const paint = (liked, count) => {
       likeBtn.setAttribute('aria-pressed', String(liked));
       likeBtn.classList.toggle('is-on', liked);
-      qs('.comment__like-n', likeBtn).textContent = count || '';
+      likeBtn.textContent = commentLikeLabel(count);
     };
     // Show it at once; put it back if the save fails.
     const next = { liked: !was, count: Math.max(0, cur.count + (was ? -1 : 1)) };
@@ -276,6 +295,16 @@ function wireCommentActions(root, body, { logId, ownerId, isOwner, commentsOff =
     } finally {
       likeBtn.disabled = false;
     }
+  });
+
+  list.addEventListener('click', (e) => {
+    const rb = e.target.closest('[data-reply]');
+    if (!rb) return;
+    const input = qs('#comment-input');
+    if (!input) { promptSignIn('Sign in to reply.'); return; }
+    input.value = `@${rb.dataset.reply} `;
+    input.focus();
+    input.dispatchEvent(new Event('input', { bubbles: true }));
   });
 
   let timer = null;
