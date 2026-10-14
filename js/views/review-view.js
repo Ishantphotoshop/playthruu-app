@@ -368,6 +368,15 @@ function wireCommentActions(root, body, { logId, ownerId, isOwner, commentsOff =
   });
 }
 
+const CS_ICONS = {
+  reply: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 7 4 12l5 5"/><path d="M4 12h9a7 7 0 0 1 7 7"/></svg>',
+  pin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3l7 7-3 1-3 3 .5 4.5-1.5 1.5-4-4-5 5"/><path d="M8.5 8.5 14 3"/></svg>',
+  restrict: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M6 6l12 12"/></svg>',
+  delete: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h14M9.5 7V5a1.5 1.5 0 0 1 1.5-1.5h2A1.5 1.5 0 0 1 14.5 5v2M6.5 7l1 12.5A1.5 1.5 0 0 0 9 21h6a1.5 1.5 0 0 0 1.5-1.5L17.5 7"/></svg>',
+  report: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg>',
+  block: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c.6-3.4 3.4-5 7-5"/><circle cx="18" cy="17" r="3.5"/><path d="M15.5 19.5l5-5"/></svg>',
+};
+
 function openCommentSheet(row, { logId, ownerId, isOwner, body, commentsOff = false }) {
   const commentId = row.dataset.id;
   const authorId = row.dataset.user;
@@ -387,27 +396,36 @@ function openCommentSheet(row, { logId, ownerId, isOwner, body, commentsOff = fa
     actions.push({ id: 'block', label: `Block @${handle}`, icon: iconBlock(), danger: true });
   }
 
-  // The same pop-up as Browse's filters: full screen, a close button and a title on top,
-  // then the choices as plain rows with a line between them.
+  // A pop-up floating over the dimmed page: the comment you held lifted up on its own,
+  // and a separate menu floating under it. Tapping outside closes it.
   const overlay = document.createElement('div');
-  overlay.className = 'browse-filters';
+  overlay.className = 'modal-overlay cs-float';
   const who = qs('.comment__name', row)?.textContent || `@${handle}`;
+  const when = qs('.comment__time', row)?.textContent || '';
   const said = qs('.comment__text', row)?.textContent || '';
+  const avHtml = qs('.comment__avatar', row)?.innerHTML || '';
   overlay.innerHTML = `
-    <div class="browse-filters__top">
-      <button type="button" class="browse-filters__icon" data-act="cancel" aria-label="Close">${iconClose()}</button>
-      <h2>Comment</h2>
+    <div class="cs-lift">
+      <span class="cs-lift__av">${avHtml}</span>
+      <div class="cs-lift__main"><div class="cs-lift__head"><b>${esc(who)}</b><span>${esc(when)}</span></div><p>${esc(said)}</p></div>
     </div>
-    <div class="browse-filters__body">
-      <div class="cs-preview"><b>${esc(who)}</b><span>${esc(said.length > 140 ? `${said.slice(0, 140)}\u2026` : said)}</span></div>
+    <div class="cs-menu">
       ${actions.map((x) => `
-        <button type="button" class="bf-opt cs-opt${x.danger ? ' cs-opt--danger' : ''}" data-act="${x.id}">
-          <span class="bf-opt__name">${esc(x.label)}</span>
+        <button type="button" class="cs-row${x.danger ? ' cs-row--danger' : ''}" data-act="${x.id}">
+          <span>${esc(x.label)}</span><i>${CS_ICONS[x.id] || ''}</i>
         </button>`).join('')}
     </div>`;
   document.body.appendChild(overlay);
-  const close = () => overlay.remove();
+  // Goes back the way it came: the pop-up fades and settles down, then is removed.
+  let leaving = false;
+  const close = () => {
+    if (leaving) return;
+    leaving = true;
+    overlay.classList.add('is-out');
+    setTimeout(() => overlay.remove(), 190);
+  };
   overlay.__dismiss = close;
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
 
   qsa('[data-act]', overlay).forEach((btn) => btn.addEventListener('click', async () => {
     const act = btn.dataset.act;

@@ -7497,3 +7497,49 @@ a.gd-credit__name { text-decoration: none; }
 .cs-preview span { font-size: 14px; line-height: 1.45; color: var(--ink-faint); overflow-wrap: anywhere; }
 .cs-opt { min-height: 56px; font-size: 16px; }
 .cs-opt--danger { color: var(--coral); }
+
+/* ---- holding a comment: a floating pop-up (the comment lifted, a menu under it) ---- */
+.cs-float {
+  flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 0 22px;
+  background: rgba(8, 4, 2, 0.62); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+  animation: cs-fade 200ms ease both;
+}
+.cs-lift, .cs-menu { width: 100%; max-width: 420px; }
+.cs-lift {
+  display: flex; gap: 10px; padding: 12px 14px; border-radius: 18px;
+  background: var(--surface); border: 1px solid var(--line-strong); box-shadow: 0 18px 50px rgba(0, 0, 0, 0.6);
+  max-height: 34vh; overflow-y: auto; scrollbar-width: none;
+  animation: cs-pop 260ms cubic-bezier(0.2, 0.9, 0.3, 1.05) both;
+}
+.cs-lift::-webkit-scrollbar { display: none; }
+.cs-lift__av { flex-shrink: 0; width: 36px; height: 36px; }
+.cs-lift__av img, .cs-lift__av .avatar { width: 36px; height: 36px; border-radius: 50%; }
+.cs-lift__main { min-width: 0; }
+.cs-lift__head { display: flex; align-items: center; gap: 8px; }
+.cs-lift__head b { font-size: 14px; font-weight: 800; color: var(--ink); }
+.cs-lift__head span { font-size: 12.5px; color: var(--ink-faint); }
+.cs-lift p { margin: 3px 0 0; font-size: 14.5px; line-height: 1.45; color: var(--ink); overflow-wrap: anywhere; }
+.cs-menu {
+  padding: 4px 14px; border-radius: 22px; overflow: hidden;
+  background: var(--surface); border: 1px solid var(--line-strong); box-shadow: 0 18px 50px rgba(0, 0, 0, 0.6);
+  animation: cs-pop 280ms 50ms cubic-bezier(0.2, 0.9, 0.3, 1.05) both;
+}
+.cs-row {
+  all: unset; box-sizing: border-box; cursor: pointer; width: 100%;
+  display: flex; align-items: center; justify-content: space-between; padding: 14px 6px;
+  border-bottom: 1px solid var(--line); font-family: var(--font-body); font-size: 15.5px; font-weight: 600; color: var(--ink);
+}
+.cs-row:last-child { border-bottom: 0; }
+.cs-row i { width: 22px; height: 22px; display: grid; place-items: center; color: var(--ink-dim); }
+.cs-row i svg { width: 20px; height: 20px; }
+.cs-row:active { background: var(--surface-raised); }
+.cs-row--danger, .cs-row--danger i { color: var(--coral); }
+@keyframes cs-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes cs-pop { from { opacity: 0; transform: translateY(14px) scale(0.94); } to { opacity: 1; transform: none; } }
+.cs-float.is-out { animation: cs-fade-out 180ms ease both; pointer-events: none; }
+.cs-float.is-out .cs-lift, .cs-float.is-out .cs-menu { animation: cs-pop-out 180ms ease both; }
+@keyframes cs-fade-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes cs-pop-out { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(10px) scale(0.96); } }
+@media (prefers-reduced-motion: reduce) {
+  .cs-float, .cs-lift, .cs-menu, .cs-float.is-out, .cs-float.is-out .cs-lift, .cs-float.is-out .cs-menu { animation: none; }
+}
