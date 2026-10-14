@@ -1,6 +1,6 @@
 import * as api from '../api.js';
 import { state } from '../state.js';
-import { topBar, avatarImg, posterFrame, spinner, iconHeart, iconSend, iconFlag, iconBlock, iconDotsMenu, openReportSheet } from '../components.js';
+import { topBar, avatarImg, posterFrame, spinner, iconHeart, iconSend, iconFlag, iconBlock, iconDotsMenu, iconClose, openReportSheet } from '../components.js';
 import { openEntryMenu } from './entry-menu.js';
 import { navigate, refreshCurrentView } from '../router.js';
 import { esc, starRow, formatDate, timeAgo, qs, qsa, toast, tapFeedback, promptSignIn, reviewText, enableSwipeToDismiss } from '../utils.js';
@@ -387,26 +387,31 @@ function openCommentSheet(row, { logId, ownerId, isOwner, body, commentsOff = fa
     actions.push({ id: 'block', label: `Block @${handle}`, icon: iconBlock(), danger: true });
   }
 
+  // The same pop-up as Browse's filters: full screen, a close button and a title on top,
+  // then the choices as plain rows with a line between them.
   const overlay = document.createElement('div');
-  overlay.className = 'modal-overlay';
+  overlay.className = 'browse-filters';
+  const who = qs('.comment__name', row)?.textContent || `@${handle}`;
+  const said = qs('.comment__text', row)?.textContent || '';
   overlay.innerHTML = `
-    <div class="sheet comment-sheet">
-      <div class="sheet__grip" aria-hidden="true"></div>
-      <div class="comment-sheet__list">
-        ${actions.map((x) => `
-          <button type="button" class="sheet-row${x.danger ? ' sheet-row--danger' : ''}" data-act="${x.id}">
-            ${x.icon || ''}<span>${esc(x.label)}</span>
-          </button>`).join('')}
-      </div>
-      <button type="button" class="sheet-row comment-sheet__cancel" data-act="cancel">Cancel</button>
+    <div class="browse-filters__top">
+      <button type="button" class="browse-filters__icon" data-act="cancel" aria-label="Close">${iconClose()}</button>
+      <h2>Comment</h2>
+    </div>
+    <div class="browse-filters__body">
+      <div class="cs-preview"><b>${esc(who)}</b><span>${esc(said.length > 140 ? `${said.slice(0, 140)}\u2026` : said)}</span></div>
+      ${actions.map((x) => `
+        <button type="button" class="bf-opt cs-opt${x.danger ? ' cs-opt--danger' : ''}" data-act="${x.id}">
+          <span class="bf-opt__name">${esc(x.label)}</span>
+        </button>`).join('')}
     </div>`;
   document.body.appendChild(overlay);
-  document.body.style.overflow = 'hidden';
-  const close = () => { overlay.remove(); document.body.style.overflow = ''; };
-  overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+  const close = () => overlay.remove();
+  overlay.__dismiss = close;
 
   qsa('[data-act]', overlay).forEach((btn) => btn.addEventListener('click', async () => {
     const act = btn.dataset.act;
+    // Report opens another screen: open it first, then take this one down.
     if (act !== 'report') close();
     try {
       if (act === 'cancel') return;
@@ -444,8 +449,8 @@ function openCommentSheet(row, { logId, ownerId, isOwner, body, commentsOff = fa
         return;
       }
       if (act === 'report') {
-        close();
         openReportSheet({ targetType: 'comment', targetId: commentId, subject: qs('.comment__text', row)?.textContent || '' });
+        close();
       }
     } catch (err) {
       toast(err.message || 'That did not work.', 'error');

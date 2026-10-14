@@ -7490,3 +7490,10 @@ a.gd-credit__name { text-decoration: none; }
 /* comments: holding a row on a phone must not select text or pop the browser's own menu */
 .comment { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 .comment__text { -webkit-user-select: none; user-select: none; }
+
+/* the pop-up when you hold a comment: Browse's filter look */
+.cs-preview { display: flex; flex-direction: column; gap: 4px; padding: 14px 0 16px; border-bottom: 1px solid var(--line); }
+.cs-preview b { font-size: 15px; font-weight: 800; color: var(--ink); }
+.cs-preview span { font-size: 14px; line-height: 1.45; color: var(--ink-faint); overflow-wrap: anywhere; }
+.cs-opt { min-height: 56px; font-size: 16px; }
+.cs-opt--danger { color: var(--coral); }
