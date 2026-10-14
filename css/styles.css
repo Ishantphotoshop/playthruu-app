@@ -7641,3 +7641,5 @@ a.gd-credit__name { text-decoration: none; }
 .rt-low { width: 10px; overflow: visible; }
 .rt-avg { width: 58px; }
 .rt-stars .stars { gap: 0; }
+/* game page ratings: 11px stars, bars a little taller (54px) */
+.rt-bars { height: 54px; }
