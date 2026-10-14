@@ -7624,3 +7624,11 @@ a.gd-credit__name { text-decoration: none; }
 .rt-low { margin-bottom: 0; }
 .rt-avg { gap: 7px; }
 .rt-num { font-size: 26px; }
+
+/* game page ratings, measured against the reference on the same phone:
+   small spaced heading, 10px stars, 47px bars with hairline gaps, a light 17px average */
+.gd-ratings .rt-head { font-size: 11px; letter-spacing: 0.1em; margin-bottom: 11px; }
+.rt-row { gap: 9px; }
+.rt-bars { height: 47px; gap: 1.5px; }
+.rt-avg { gap: 12px; }
+.rt-num { font-size: 17px; font-weight: 300; }
