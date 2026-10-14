@@ -7587,9 +7587,6 @@ a.gd-credit__name { text-decoration: none; }
   .rv__hide.is-shown { animation: none; }
 }
 .rv__head + .rv__quote--gated { margin-top: 36px; }
-/* game page header: a smaller poster, and the game's name on one line of its own under it */
+/* game page header: a smaller poster, and the game's name on one line beside it */
 .gd-head__cover { width: 104px; }
-.gd-head__title--row {
-  position: relative; z-index: 1; margin: 0; padding-top: 6px;
-  font-size: 22px; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
+.gd-head__title--one { align-self: stretch; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.3; }

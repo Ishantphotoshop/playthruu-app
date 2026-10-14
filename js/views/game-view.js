@@ -632,6 +632,7 @@ export async function renderGameView(root, { id, igdbId }) {
             <header class="gd-head">
               ${posterFrame(poster, game.title, 'gd-head__cover', { id: 'game-cover', full: true })}
               <div class="gd-head__main">
+                ${gameTitleHtml(game.title).replace('class="gd-head__title"', 'class="gd-head__title gd-head__title--one" id="gd-title"')}
                 <div id="director-slot">${headCreditHtml(year, castDirectorData?.director, game.developer)}</div>
                 ${game.trailer_url ? `
                   <button type="button" class="gd-trailer" id="play-trailer">
@@ -639,7 +640,6 @@ export async function renderGameView(root, { id, igdbId }) {
                   </button>` : ''}
               </div>
             </header>
-            ${gameTitleHtml(game.title).replace('class="gd-head__title"', 'class="gd-head__title gd-head__title--row" id="gd-title"')}
           </div>
 
           ${game.description ? `
@@ -779,9 +779,9 @@ export async function renderGameView(root, { id, igdbId }) {
       const titleEl = qs('#gd-title', body);
       if (titleEl) {
         const fit = () => {
-          let size = 22;
+          let size = 21;
           titleEl.style.fontSize = `${size}px`;
-          while (titleEl.scrollWidth > titleEl.clientWidth + 1 && size > 15) { size -= 0.5; titleEl.style.fontSize = `${size}px`; }
+          while (titleEl.scrollWidth > titleEl.clientWidth + 1 && size > 14) { size -= 0.5; titleEl.style.fontSize = `${size}px`; }
         };
         fit();
         document.fonts?.ready?.then(fit);
