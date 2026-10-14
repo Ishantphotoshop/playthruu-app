@@ -7459,3 +7459,30 @@ a.gd-credit__name { text-decoration: none; }
 }
 .rv-composer__send.is-ready { background: none; color: var(--ink); }
 .rv-composer__off { border: 0; }
+
+/* ---- comments, Instagram-style: no bubbles. Name and time, the text, "Reply"; a heart with its count on the right ---- */
+.comment-list { gap: 22px; }
+.comment { display: grid; grid-template-columns: 40px minmax(0, 1fr) 40px; column-gap: 12px; row-gap: 0; align-items: start; }
+.comment__avatar, .comment__avatar img, .comment__avatar .avatar { width: 40px; height: 40px; }
+.comment__body { min-width: 0; grid-column: 2; }
+.comment__head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.comment__name { font-size: 14.5px; }
+.comment__time { font-size: 13.5px; color: var(--ink-faint); }
+.comment__text { margin: 3px 0 0; font-size: 16px; line-height: 1.45; color: var(--ink); }
+.comment__acts { display: flex; gap: 18px; margin-top: 6px; }
+.comment__acts .comment__replybtn { all: unset; box-sizing: border-box; cursor: pointer; font-size: 13.5px; font-weight: 700; color: var(--ink-faint); }
+.comment__acts .comment__replybtn:active { opacity: .6; }
+.comment__byauthor { position: relative; display: inline-flex; width: 22px; height: 18px; }
+.comment__byauthor img, .comment__byauthor .avatar { width: 18px; height: 18px; border-radius: 50%; }
+.comment__byauthor i { position: absolute; right: -1px; bottom: -3px; width: 11px; height: 11px; color: var(--coral); }
+.comment__byauthor i svg { width: 100%; height: 100%; fill: currentColor; stroke: currentColor; }
+.comment .comment__like {
+  all: unset; grid-column: 3; box-sizing: border-box; cursor: pointer; width: 40px; padding-top: 6px;
+  display: flex; flex-direction: column; align-items: center; gap: 4px; color: var(--ink-faint);
+}
+.comment .comment__like svg { width: 22px; height: 22px; }
+.comment .comment__like.is-on { color: var(--coral); }
+.comment .comment__like.is-on svg { fill: currentColor; }
+.comment .comment__like-n { font-size: 13px; font-weight: 600; line-height: 1; min-height: 13px; color: var(--ink-faint); }
+.comment .comment__like:active { transform: scale(.9); }
+.comment--gone { display: flex; gap: 12px; align-items: center; }

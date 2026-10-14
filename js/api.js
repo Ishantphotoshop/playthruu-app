@@ -3597,7 +3597,7 @@ export async function getLogLikers(logId) {
 // Likes on comments (migrations/2026-10-15_comment_likes.sql). Until that
 // migration has been run the table does not exist; the reads below then
 // answer "no likes" instead of breaking the page.
-export async function getCommentLikes(commentIds, userId) {
+export async function getCommentLikes(commentIds, userId, authorId = null) {
   const map = {};
   commentIds.forEach((id) => (map[id] = { count: 0, liked: false }));
   if (!commentIds.length) return map;
@@ -3607,6 +3607,7 @@ export async function getCommentLikes(commentIds, userId) {
     if (!map[r.comment_id]) return;
     map[r.comment_id].count += 1;
     if (userId && r.user_id === userId) map[r.comment_id].liked = true;
+    if (authorId && r.user_id === authorId) map[r.comment_id].byAuthor = true;
   });
   return map;
 }

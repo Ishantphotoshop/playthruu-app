@@ -7,6 +7,8 @@ import { esc, starRow, formatDate, timeAgo, qs, qsa, toast, tapFeedback, promptS
 
 // Likes on the comments of the review being shown: { commentId: { count, liked } }.
 let commentLikes = {};
+// The review's author, so a comment they liked can carry their little badge.
+let commentAuthor = null;
 
 // One person's review, on its own page — opened by tapping a poster in
 // the feed's "Friend's recent activity". It is a thread, not an entry in
@@ -31,7 +33,8 @@ export async function renderReviewView(root, { id }) {
       api.getLikeInfo(id, state.user?.id).catch(() => ({ count: 0, liked: false })),
       api.getComments(id, { ownerId }).catch(() => []),
     ]);
-    commentLikes = await api.getCommentLikes(comments.map((c) => c.id), state.user?.id).catch(() => ({}));
+    commentLikes = await api.getCommentLikes(comments.map((c) => c.id), state.user?.id, ownerId).catch(() => ({}));
+    commentAuthor = log.profiles || null;
     const g = log.games || {};
     const a = log.profiles || {};
     const who = a.display_name || a.username || 'Someone';
@@ -227,28 +230,26 @@ function commentHtml(c, ownerId) {
       </div>`;
   }
   const cl = commentLikes[c.id] || { count: 0, liked: false };
+  // A small badge when the review's author has liked this comment.
+  const byAuthor = cl.byAuthor && commentAuthor
+    ? `<span class="comment__byauthor" title="Liked by the author">${avatarImg(commentAuthor, 18)}<i>${iconHeart()}</i></span>` : '';
   return `
     <div class="comment${c.pinned_at ? ' comment--pinned' : ''}" data-id="${esc(c.id)}" data-user="${esc(c.user_id)}" data-name="${esc(p.username || '')}">
-      <a href="#/profile/${esc(p.username)}" class="comment__avatar">${avatarImg(p, 34)}</a>
-      <div class="comment__bubble">
+      <a href="#/profile/${esc(p.username)}" class="comment__avatar">${avatarImg(p, 40)}</a>
+      <div class="comment__body">
         ${c.pinned_at ? '<span class="comment__pin">Pinned</span>' : ''}
         <div class="comment__head">
           <a href="#/profile/${esc(p.username)}" class="comment__name">${esc(p.display_name || p.username)}</a>
+          <span class="comment__time">${agoText(c.created_at)}</span>
+          ${byAuthor}
           ${c.restricted_at ? '<span class="comment__restricted">Only you and the author can see this</span>' : ''}
         </div>
         <p class="comment__text">${linkMentions(c.body)}</p>
+        <div class="comment__acts"><button type="button" class="comment__replybtn" data-reply="${esc(p.username || '')}">Reply</button></div>
       </div>
-      <div class="comment__foot">
-        <span class="comment__time">${agoText(c.created_at)}</span>
-        <span class="comment__sep" aria-hidden="true">·</span>
-        <button type="button" class="comment__like${cl.liked ? ' is-on' : ''}" data-like="${esc(c.id)}" aria-label="Like comment" aria-pressed="${cl.liked}">${commentLikeLabel(cl.count)}</button>
-        <span class="comment__sep" aria-hidden="true">·</span>
-        <button type="button" class="comment__replybtn" data-reply="${esc(p.username || '')}">Reply</button>
-      </div>
+      <button type="button" class="comment__like${cl.liked ? ' is-on' : ''}" data-like="${esc(c.id)}" aria-label="Like comment" aria-pressed="${cl.liked}">${iconHeart()}<span class="comment__like-n">${cl.count || ''}</span></button>
     </div>`;
 }
-
-const commentLikeLabel = (n) => (n ? `${n} ${n === 1 ? 'like' : 'likes'}` : 'Like');
 
 // "@someone" becomes a link to that profile. Escaped FIRST and only then
 // scanned, so the pattern can never match anything a person typed as
@@ -278,7 +279,7 @@ function wireCommentActions(root, body, { logId, ownerId, isOwner, commentsOff =
     const paint = (liked, count) => {
       likeBtn.setAttribute('aria-pressed', String(liked));
       likeBtn.classList.toggle('is-on', liked);
-      likeBtn.textContent = commentLikeLabel(count);
+      qs('.comment__like-n', likeBtn).textContent = count || '';
     };
     // Show it at once; put it back if the save fails.
     const next = { liked: !was, count: Math.max(0, cur.count + (was ? -1 : 1)) };
