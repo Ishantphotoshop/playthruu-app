@@ -1,7 +1,7 @@
 import * as api from '../api.js';
 import { state } from '../state.js';
-import { topBar, navBar, spinner, rankedList, iconPlus, iconClose, combinedGameResultsList, wireCombinedGameResults } from '../components.js';
-import { esc, qs, qsa, toast, debounce, enableSwipeToDismiss, promptSignIn } from '../utils.js';
+import { topBar, navBar, spinner, emptyState, posterFrame, avatarImg, iconPlus, iconClose, iconChevronUp, iconChevronDown, iconDotsMenu, iconHeartFilled, combinedGameResultsList, wireCombinedGameResults } from '../components.js';
+import { esc, qs, qsa, toast, debounce, enableSwipeToDismiss, promptSignIn, starRow } from '../utils.js';
 import { navigate } from '../router.js';
 
 // Creating a list used to only be reachable from the dedicated Lists tab.
@@ -41,45 +41,136 @@ export function openNewListForm() {
   });
 }
 
+const LD_FILTER_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M7 12h10M10 17h4"/></svg>';
+const LD_GRID_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.6"/></svg>';
+const LD_ROWS_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1" fill="currentColor"/><circle cx="4.5" cy="12" r="1" fill="currentColor"/><circle cx="4.5" cy="18" r="1" fill="currentColor"/></svg>';
+const LD_PLAYED_ICON = '<svg viewBox="2.5 2 19 19.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 17h14a1.5 1.5 0 0 1 1.5 1.5V20.5h-17V18.5A1.5 1.5 0 0 1 5 17z"/><path d="M12 9v8"/><circle cx="12" cy="6" r="3"/></svg>';
+const LD_SORTS = [['order', 'List order'], ['year', 'Release date'], ['az', 'A to Z'], ['rating', 'Your rating']];
+
+// A small menu that drops under a top-bar button and closes on any outside tap.
+function popMenu(anchor, entries) {
+  qs('.ld-pop')?.remove();
+  const pop = document.createElement('div');
+  pop.className = 'ld-pop';
+  pop.innerHTML = entries.map((e, i) => `<button type="button" class="ld-pop__item${e.on ? ' ld-pop__item--on' : ''}${e.danger ? ' ld-pop__item--danger' : ''}" data-i="${i}">${esc(e.label)}</button>`).join('');
+  document.body.appendChild(pop);
+  const r = anchor.getBoundingClientRect();
+  pop.style.top = `${r.bottom + 6}px`;
+  pop.style.right = `${Math.max(8, window.innerWidth - r.right)}px`;
+  const close = () => { pop.remove(); document.removeEventListener('pointerdown', onOut, true); };
+  const onOut = (ev) => { if (!pop.contains(ev.target)) close(); };
+  setTimeout(() => document.addEventListener('pointerdown', onOut, true), 0);
+  pop.addEventListener('click', (ev) => {
+    const btn = ev.target.closest('[data-i]');
+    if (!btn) return;
+    close();
+    entries[Number(btn.dataset.i)].run();
+  });
+}
+
 export async function renderListDetailView(root, { id }) {
-  root.innerHTML = topBar('List', { back: true }) + `<div class="view-body" id="list-body">${spinner()}</div>` + navBar('');
+  const topRight = `<button type="button" class="icon-btn ld-top" id="ld-filter" aria-label="Sort">${LD_FILTER_ICON}</button><button type="button" class="icon-btn ld-top" id="ld-more" aria-label="More">${iconDotsMenu()}</button>`;
+  root.innerHTML = topBar('List', { back: true, right: topRight }) + `<div class="view-body" id="list-body">${spinner()}</div>` + navBar('');
   const body = qs('#list-body', root);
 
   try {
     const [list, itemRows] = await Promise.all([api.getList(id), api.getListItems(id)]);
     let items = itemRows;
     const isOwn = state.user && list.user_id === state.user.id;
+    let mode = 'rows', sort = 'order', editing = false;
+
+    // Your own rating, heart and played mark for each game, shown beside it like on a film list.
+    const mine = new Map();
+    if (state.user) {
+      try {
+        const logs = await api.getLogsForUser(state.user.id, { limit: 5000 });
+        for (const l of logs) {
+          const e = mine.get(l.game_id) || { rating: 0, loved: false, played: false };
+          e.rating = Math.max(e.rating, Number(l.rating) || 0);
+          e.loved = e.loved || !!l.loved;
+          e.played = e.played || l.status === 'played' || l.status === 'dropped';
+          mine.set(l.game_id, e);
+        }
+      } catch { /* the marks are a bonus; the list still shows without them */ }
+    }
+
+    const sorted = () => {
+      const arr = items.map((it, idx) => ({ it, idx }));
+      const g = (x) => x.it.games;
+      if (sort === 'year') arr.sort((a, b) => (g(b).release_year || 0) - (g(a).release_year || 0));
+      else if (sort === 'az') arr.sort((a, b) => (g(a).title || '').localeCompare(g(b).title || ''));
+      else if (sort === 'rating') arr.sort((a, b) => (mine.get(g(b).id)?.rating || 0) - (mine.get(g(a).id)?.rating || 0));
+      return arr;
+    };
+
+    const rowHtml = ({ it, idx }) => {
+      const g = it.games;
+      const m = mine.get(g.id);
+      const marks = m && (m.rating || m.loved)
+        ? `<div class="ld-marks">${m.rating ? starRow(m.rating, { size: 13 }) : ''}${m.loved ? `<span class="ld-heart">${iconHeartFilled()}</span>` : ''}</div>` : '';
+      return `
+        <div class="ld-row ranked-row" data-game-id="${g.id}">
+          <a href="#/game/${g.id}" class="ld-row__link">
+            ${posterFrame(g.cover_url, g.title, 'ld-row__cover')}
+            <div class="ld-row__info">
+              <div class="ld-row__title"><span class="ld-row__rank">${idx + 1}</span>${esc(g.title)}${g.release_year ? ` <em>${esc(String(g.release_year))}</em>` : ''}</div>
+              ${marks}
+            </div>
+          </a>
+          ${editing ? `
+            <div class="ranked-row__controls">
+              <button type="button" class="ranked-row__move" data-dir="up" data-idx="${idx}" ${idx === 0 ? 'disabled' : ''} aria-label="Move up">${iconChevronUp()}</button>
+              <button type="button" class="ranked-row__move" data-dir="down" data-idx="${idx}" ${idx === items.length - 1 ? 'disabled' : ''} aria-label="Move down">${iconChevronDown()}</button>
+              <button type="button" class="ranked-row__remove" data-idx="${idx}" aria-label="Remove from list">${iconClose()}</button>
+            </div>` : ''}
+        </div>`;
+    };
+    const gridHtml = ({ it }) => `<a href="#/game/${it.games.id}" class="ld-cell">${posterFrame(it.games.cover_url, it.games.title, 'ld-cell__cover')}</a>`;
 
     function paint() {
+      const played = state.user ? items.filter((it) => mine.get(it.games.id)?.played).length : 0;
+      const pct = items.length ? Math.round((played / items.length) * 100) : 0;
+      const who = list.profiles;
       body.innerHTML = `
-        <div class="list-detail__head">
-          <div class="list-detail__head-row">
-            <div>
-              <h1>${esc(list.name)}</h1>
-              ${list.description ? `<p class="muted">${esc(list.description)}</p>` : ''}
-              <p class="muted">by <a href="#/profile/${esc(list.profiles.username)}">@${esc(list.profiles.username)}</a> · ${items.length} game${items.length === 1 ? '' : 's'}</p>
-            </div>
-            ${isOwn ? `<button type="button" class="icon-btn" id="add-game-btn" aria-label="Add game to list">${iconPlus()}</button>` : ''}
-          </div>
-          ${isOwn ? `<button class="btn btn--danger" id="delete-list">Delete list</button>` : ''}
+        <div class="ld-owner">
+          <a href="#/profile/${esc(who.username)}" class="ld-owner__who">${avatarImg(who, 30)}<span>${esc(who.display_name || who.username)}</span></a>
+          <button type="button" class="icon-btn ld-top" id="ld-mode" aria-label="${mode === 'rows' ? 'Show as grid' : 'Show as list'}">${mode === 'rows' ? LD_GRID_ICON : LD_ROWS_ICON}</button>
         </div>
-        <div id="list-items-slot">${rankedList(items, { isOwn })}</div>
+        <h1 class="ld-title">${esc(list.name)}</h1>
+        ${list.description ? `<p class="ld-desc">${esc(list.description)}</p>` : ''}
+        <div class="ld-sub">
+          <span>${items.length} game${items.length === 1 ? '' : 's'}</span>
+          ${state.user && items.length ? `<span class="ld-pct">${LD_PLAYED_ICON}${pct}%</span>` : ''}
+        </div>
+        <div id="list-items-slot">${!items.length ? emptyState('No games in this list yet.')
+          : mode === 'grid' ? `<div class="ld-grid">${sorted().map(gridHtml).join('')}</div>`
+          : `<div class="ld-rows">${sorted().map(rowHtml).join('')}</div>`}</div>
       `;
-
-      if (isOwn) {
-        qs('#add-game-btn', body).addEventListener('click', () => openAddGameForm());
-        qs('#delete-list', body).addEventListener('click', async () => {
-          if (!confirm('Delete this list? This can\'t be undone.')) return;
-          try {
-            await api.deleteList(id);
-            navigate(`/profile/${list.profiles.username}`);
-          } catch (err) {
-            toast(err.message || 'Could not delete list.', 'error');
-          }
-        });
-        wireRanking();
-      }
+      qs('#ld-mode', body).addEventListener('click', () => { mode = mode === 'rows' ? 'grid' : 'rows'; paint(); });
+      if (isOwn && editing) wireRanking();
     }
+
+    qs('#ld-filter', root).addEventListener('click', (e) => {
+      popMenu(e.currentTarget, LD_SORTS.map(([k, label]) => ({ label, on: sort === k, run: () => { sort = k; if (editing && k !== 'order') editing = false; paint(); } })));
+    });
+    qs('#ld-more', root).addEventListener('click', (e) => {
+      const entries = [];
+      if (isOwn) {
+        entries.push({ label: editing ? 'Done editing' : 'Edit list', run: () => { editing = !editing; if (editing) { sort = 'order'; mode = 'rows'; } paint(); } });
+        entries.push({ label: 'Add a game', run: () => openAddGameForm() });
+      }
+      entries.push({ label: 'Share', run: async () => {
+        const url = `${location.origin}${location.pathname}#/list/${id}`;
+        if (navigator.share) { try { await navigator.share({ title: list.name, url }); } catch { /* cancelled */ } return; }
+        try { await navigator.clipboard.writeText(url); toast('Link copied.', 'success'); } catch { toast(url); }
+      } });
+      if (isOwn) entries.push({ label: 'Delete list', danger: true, run: async () => {
+        if (!confirm('Delete this list? This can\'t be undone.')) return;
+        try { await api.deleteList(id); navigate(`/profile/${list.profiles.username}`); }
+        catch (err) { toast(err.message || 'Could not delete list.', 'error'); }
+      } });
+      popMenu(e.currentTarget, entries);
+    });
 
     // Reorder/remove act on the in-memory `items` array first (so the
     // UI updates instantly) and persist after — if the save fails, the

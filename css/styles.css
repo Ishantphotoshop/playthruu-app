@@ -7715,3 +7715,32 @@ a.gd-credit__name { text-decoration: none; }
 #avatar-enlarge .avatar { outline: 1.5px solid rgba(242, 243, 246, 0.55); outline-offset: -1px; }
 .bl-name { -webkit-line-clamp: 2; }
 .bl-meta { margin-top: 4px; font-size: 13px; color: var(--ink-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* List page: owner row, title, one row per game with your own stars and heart */
+.ld-top { color: var(--ink); }
+.ld-top svg { width: 24px; height: 24px; }
+.ld-owner { display: flex; align-items: center; justify-content: space-between; padding: 4px 0 6px; }
+.ld-owner__who { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 15px; color: var(--ink-dim); text-decoration: none; }
+.ld-title { font-family: var(--font-display, 'Unbounded', sans-serif); font-weight: 700; font-size: 24px; line-height: 1.2; margin: 14px 0 0; color: var(--ink); }
+.ld-desc { margin: 8px 0 0; font-size: 14px; line-height: 1.5; color: var(--ink-dim); }
+.ld-sub { display: flex; align-items: center; justify-content: space-between; margin: 14px 0 6px; font-size: 14px; font-weight: 600; color: var(--ink-faint); }
+.ld-pct { display: inline-flex; align-items: center; gap: 6px; color: var(--ink); font-weight: 800; }
+.ld-pct svg { width: 18px; height: 18px; color: var(--ink-dim); }
+.ld-rows { margin-top: 10px; }
+.ld-row { display: flex; align-items: center; gap: 8px; padding: 14px 0; border-top: 1px solid var(--line); }
+.ld-row__link { flex: 1; min-width: 0; display: flex; gap: 16px; align-items: flex-start; text-decoration: none; color: inherit; }
+.ld-row__cover { width: 80px; aspect-ratio: 2 / 3; flex-shrink: 0; border-radius: 6px; object-fit: cover; }
+.ld-row__info { min-width: 0; padding-top: 2px; }
+.ld-row__title { font-weight: 800; font-size: 18px; line-height: 1.25; color: var(--ink); }
+.ld-row__title em { font-style: normal; font-weight: 600; font-size: 15px; color: var(--ink-faint); }
+.ld-row__rank { display: inline-block; min-width: 1.3em; margin-right: 4px; color: var(--ink-faint); font-weight: 700; font-size: 14px; }
+.ld-marks { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.ld-heart { display: inline-flex; width: 16px; height: 16px; color: var(--orange); }
+.ld-heart svg { width: 100%; height: 100%; }
+.ld-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px; }
+.ld-cell { display: block; }
+.ld-cell__cover { width: 100%; aspect-ratio: 2 / 3; border-radius: 6px; object-fit: cover; display: block; }
+.ld-pop { position: fixed; z-index: 400; min-width: 180px; padding: 6px; border-radius: 14px; background: var(--surface-raised); border: 1px solid var(--line-strong); box-shadow: 0 12px 34px rgba(0, 0, 0, 0.55); }
+.ld-pop__item { display: block; width: 100%; text-align: left; padding: 11px 12px; border: 0; background: none; border-radius: 9px; font: 600 14.5px var(--font-body); color: var(--ink); cursor: pointer; }
+.ld-pop__item:active, .ld-pop__item--on { background: var(--surface-high); }
+.ld-pop__item--danger { color: var(--danger); }
