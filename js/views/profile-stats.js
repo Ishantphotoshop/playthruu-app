@@ -65,11 +65,11 @@ function rowsHtml(profile, logs, isOwn) {
   return `
     <div class="ps-rows ps-rows--ic">
       ${SHOW_THIS_YEAR ? row('This year', sets.thisYear, `href="${base}/log-list/year"`) : ''}
-      ${row('Played', null, `href="${base}/log-list/played"`)}
+      ${row('Played', playedAll, `href="${base}/log-list/played"`, true, true)}
       ${row('Diary', sets.played, `href="${base}/log-list/diary"`, false)}
-      ${row('Reviews', null, `href="${base}/log-list/reviews"`)}
-      ${row('Likes', null, `href="${base}/log-list/liked"`)}
-      ${row('Replays', null, `href="${base}/log-list/replayed"`)}
+      ${row('Reviews', sets.reviews, `href="${base}/log-list/reviews"`, true, true)}
+      ${row('Likes', sets.likes, `href="${base}/log-list/liked"`, true, true)}
+      ${row('Replays', sets.replays, `href="${base}/log-list/replayed"`, true, true)}
       <a class="ps-row" href="${base}/backlog">${ROW_ICONS.Backlog}<span class="ps-row__l">Backlog</span><span class="ps-row__r"><span class="ps-row__n"><b>${num(logs.filter((l) => l.status === 'backlog').length)}</b></span><i class="ps-row__chev ps-row__chev--show">${chevron}</i></span></a>
       ${row('Activity', null, isOwn ? 'href="#/notifications" data-open-notif="you"' : `href="${base}/activity"`)}
     </div>`;
