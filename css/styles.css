@@ -7650,3 +7650,6 @@ a.gd-credit__name { text-decoration: none; }
 
 /* Backlog tab: a little air between the bar and the posters under it */
 #profile-tab-content > .ps-box { margin-bottom: 12px; }
+
+/* profile: the Ratings chart has no box around it (it lines up with the rest of the page) */
+.rating-histogram { background: none; border: 0; border-radius: 0; padding: 0; margin-bottom: var(--space-3); }
