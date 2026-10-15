@@ -7708,3 +7708,8 @@ a.gd-credit__name { text-decoration: none; }
 .bl-line b { font-size: 25px; font-weight: 800; margin-right: 2px; }
 .bl-sub { margin-top: 3px; font-size: 13.5px; color: var(--ink-dim); }
 .bl-name { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; font-size: 16px; font-weight: 800; color: var(--ink); text-decoration: none; }
+
+/* Full-screen viewers stay inside the app column on a wide screen (they used to cover the whole window). */
+.poster-viewer, .avatar-viewer, .image-viewer, .story-viewer, .avatar-crop, .modal-overlay.lightbox-overlay {
+  left: max(0px, calc(50% - 280px)); right: max(0px, calc(50% - 280px));
+}
