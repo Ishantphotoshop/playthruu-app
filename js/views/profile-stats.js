@@ -203,8 +203,18 @@ export function wireBacklogBar(container, logs, isOwn) {
     const g = backlog[i].games;
     slot.innerHTML = `<a href="#/game/${g.id}" aria-label="${esc(g.title)}">${posterFrame(g.cover_url, g.title, 'bl-slot__img')}</a>`;
     slot.classList.add('bl-slot--on');
-    main.innerHTML = `<a href="#/game/${g.id}" class="bl-name">${esc(g.title)}</a>`;
+    // Name first, then the release year at once; the director joins it the moment the lookup lands
+    // (the credits are cached on the game after the first look, so repeats are instant).
+    const year = g.release_year ? String(g.release_year) : '';
+    const line = (who) => [year, who].filter(Boolean).join(' · ');
+    main.innerHTML = `<a href="#/game/${g.id}" class="bl-name">${esc(g.title)}</a><div class="bl-meta" id="bl-meta">${esc(line(''))}</div>`;
     btn.textContent = 'Again';
+    const mine = i;
+    api.getGameCastAndDirector(g).then((c) => {
+      const who = c?.director?.name || g.developer;
+      const meta = qs('#bl-meta', container);
+      if (who && meta && last === mine) meta.textContent = line(who);
+    }).catch(() => {});
   });
 }
 

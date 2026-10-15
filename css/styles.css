@@ -7713,3 +7713,5 @@ a.gd-credit__name { text-decoration: none; }
   left: max(0px, calc(50% - 280px)); right: max(0px, calc(50% - 280px));
 }
 #avatar-enlarge .avatar { outline: 1.5px solid rgba(242, 243, 246, 0.55); outline-offset: -1px; }
+.bl-name { -webkit-line-clamp: 2; }
+.bl-meta { margin-top: 4px; font-size: 13px; color: var(--ink-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
