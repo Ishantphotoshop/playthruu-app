@@ -7689,7 +7689,6 @@ a.gd-credit__name { text-decoration: none; }
   background: radial-gradient(80% 300px at 50% 0%, #1d3c80 0%, rgba(29, 60, 128, 0) 70%), #08090d;
 }
 .topbar, .topbar--home, .home-tabs, .profile-top, .view-loading { background: transparent; }
-.tabbar__item:not(.tabbar__item--active) .tabbar__avatar::after { border: 1px solid rgba(242, 243, 246, 0.55); }
 
 /* Currently playing, nobody playing: controller, line, small line, button */
 .cp-empty { text-align: center; padding: 22px 16px 10px; }
