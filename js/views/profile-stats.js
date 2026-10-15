@@ -31,6 +31,17 @@ const SHOW_HOURS = false;
 const chevron = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 5l7 7-7 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
 // The list under Ratings: each row opens its own page.
+const rowIcon = (vb, body, sw = 1.7) => `<svg class="ps-row__ic" viewBox="${vb}" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
+const ROW_ICONS = {
+  Diary: rowIcon('0 0 24 24', '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 9.5h16M8.5 3v4M15.5 3v4"/>'),
+  Played: rowIcon('2.5 2 19 19.5', '<path d="M5 17h14a1.5 1.5 0 0 1 1.5 1.5V20.5h-17V18.5A1.5 1.5 0 0 1 5 17z"/><path d="M12 9v8"/><circle cx="12" cy="6" r="3"/>'),
+  Reviews: rowIcon('0 0 24 24', '<path d="M5 7h14M5 12h14M5 17h9"/>', 1.8),
+  Likes: rowIcon('2.3 4.35 19.4 16.95', '<path d="M12 20.3 4.7 13.4a4.7 4.7 0 0 1 6.6-6.7l.7.7.7-.7a4.7 4.7 0 0 1 6.6 6.7z"/>'),
+  Replays: rowIcon('13.75 7.59 104.81 104.81', '<path stroke-width="11" d="M 90.64 85.71 A 40 40 0 1 1 100 60 L 112.31 26.17 M 65.6 60 L 100 60"/>'),
+  Backlog: rowIcon('6 2 12 20', '<path d="M7 3h10v3.5L13 12l4 5.5V21H7v-3.5L11 12 7 6.5z"/>'),
+  Activity: rowIcon('0 0 24 24', '<path d="M13 3 5 14h6l-1 7 8-11h-6z"/>'),
+};
+
 function rowsHtml(profile, logs, isOwn) {
   const base = `#/profile/${esc(profile.username)}`;
   const THIS_YEAR = new Date().getFullYear();
@@ -49,16 +60,16 @@ function rowsHtml(profile, logs, isOwn) {
   };
   // "this year / all time", right after the name.
   const count = (list, withTotal = true, totalOnly = false) => `<span class="ps-row__n"><b>${num(totalOnly ? list.length : list.filter(inYear).length)}</b>${withTotal && !totalOnly ? `<em>/ ${num(list.length)}</em>` : ''}</span>`;
-  const row = (label, list, attrs, withTotal = true, totalOnly = false) => `<a class="ps-row" ${attrs}><span class="ps-row__l">${label}</span><span class="ps-row__r">${list ? count(list, withTotal, totalOnly) : ''}<i class="ps-row__chev ps-row__chev--show">${chevron}</i></span></a>`;
+  const row = (label, list, attrs, withTotal = true, totalOnly = false) => `<a class="ps-row" ${attrs}>${ROW_ICONS[label] || ''}<span class="ps-row__l">${label}</span><span class="ps-row__r">${list ? count(list, withTotal, totalOnly) : ''}<i class="ps-row__chev ps-row__chev--show">${chevron}</i></span></a>`;
   return `
-    <div class="ps-rows">
+    <div class="ps-rows ps-rows--ic">
       ${row('Diary', sets.played, `href="${base}/log-list/diary"`, false)}
       ${SHOW_THIS_YEAR ? row('This year', sets.thisYear, `href="${base}/log-list/year"`) : ''}
       ${row('Played', null, `href="${base}/log-list/played"`)}
       ${row('Reviews', null, `href="${base}/log-list/reviews"`)}
       ${row('Likes', null, `href="${base}/log-list/liked"`)}
       ${row('Replays', null, `href="${base}/log-list/replayed"`)}
-      <button type="button" class="ps-row" data-jump-tab="wanttoplay"><span class="ps-row__l">Backlog</span><span class="ps-row__r"><span class="ps-row__n"><b>${num(logs.filter((l) => l.status === 'backlog').length)}</b></span><i class="ps-row__chev ps-row__chev--show">${chevron}</i></span></button>
+      <button type="button" class="ps-row" data-jump-tab="wanttoplay">${ROW_ICONS.Backlog}<span class="ps-row__l">Backlog</span><span class="ps-row__r"><span class="ps-row__n"><b>${num(logs.filter((l) => l.status === 'backlog').length)}</b></span><i class="ps-row__chev ps-row__chev--show">${chevron}</i></span></button>
       ${row('Activity', null, isOwn ? 'href="#/notifications" data-open-notif="you"' : `href="${base}/activity"`)}
     </div>`;
 }

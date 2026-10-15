@@ -7674,3 +7674,10 @@ a.gd-credit__name { text-decoration: none; }
 /* Compare: the page behind a section's ">" (three across, with air between them) */
 .cmp-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px 12px; margin-top: 24px; }
 .cmp-cell .recent-played-item__cover { width: 100%; }
+
+/* Profile list: icons before each name, no box */
+.ps-rows.ps-rows--ic { background: none; border: 0; border-radius: 0; padding: 0; box-shadow: none; }
+.ps-rows--ic .ps-row { gap: 12px; padding: 13px 0; }
+.ps-rows--ic .ps-row__l { flex: 1; font-size: 14.5px; color: var(--ink); }
+.ps-row__ic { width: 18px; height: 18px; flex-shrink: 0; color: var(--ink-faint); }
+.ps-wrap:has(.ps-rows--ic) { background: none; padding: 0; border-radius: 0; }
