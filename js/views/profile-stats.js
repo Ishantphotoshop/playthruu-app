@@ -4,7 +4,6 @@ import * as api from '../api.js';
 import { state } from '../state.js';
 import { esc, qs, qsa } from '../utils.js';
 import { posterFrame } from '../components.js';
-import { buildCompare } from './compare-view.js';
 
 // The area under the Ratings box on a profile: a grid of six tiles (Games,
 // Diary, Reviews, Backlog, Likes, Taste), then the Stats panel: Completed and
@@ -131,7 +130,7 @@ function statsPanelHtml(ctx, period) {
   if (isOwn) {
     lower = '';
   } else if (state.user) {
-    lower = box('Compare', `you and @${esc(profile.username)}`, '<div id="ps-compare"><p class="ps-empty">Comparing…</p></div>');
+    lower = `<div class="ps-rows"><a class="ps-row" href="#/profile/${esc(profile.username)}/compare"><span class="ps-row__l">Compare</span><span class="ps-row__r"><i class="ps-row__chev ps-row__chev--show">${chevron}</i></span></a></div>`;
   }
 
   const withHours = logs.filter((l) => Number(l.hours_played) > 0);
@@ -313,25 +312,7 @@ export function wireProfileStats(container, { profile, logs, stats, isOwn }) {
 
     if (isOwn) return;
 
-    // Someone else's profile: set their ratings beside yours.
-    const cmp = qs('#ps-compare', panel);
-    if (!cmp || !state.user) return;
-    api.getLogsForUser(state.user.id, { limit: 5000 }).then((mine) => {
-      const data = buildCompare(mine, logs);
-      if (!data.items.length) { cmp.innerHTML = '<p class="ps-empty">No games in common yet.</p>'; return; }
-      const same = data.items.filter((i) => i.same).length;
-      const differ = data.items.filter((i) => i.differ).length;
-      const cell = (n, label) => `<div class="ps-cell"><b>${n}</b><span>${label}</span></div>`;
-      const gap = data.items.filter((i) => i.differ).sort((x, y) => y.diff - x.diff)[0];
-      cmp.innerHTML = `
-        <div class="ps-cells">${cell(data.match === null ? '—' : `${data.match}%`, 'Taste match')}${cell(data.items.length, 'In common')}${cell(same, 'Same taste')}${cell(differ, 'Different')}</div>
-        ${gap ? `
-          <a href="#/game/${gap.game.id}" class="ps-pick__link ps-gap-link">
-            <span class="ps-pick__cover">${posterFrame(gap.game.cover_url, gap.game.title, 'ps-pick__img')}</span>
-            <span class="ps-gap__text">Biggest gap: <b>${esc(gap.game.title)}</b><br>You gave it ${gap.me} star${gap.me === 1 ? '' : 's'}, they gave it ${gap.they}.</span>
-          </a>` : ''}
-        <a href="#/profile/${esc(profile.username)}/compare" class="ps-pill ps-pill--link">See all ${data.items.length} games</a>`;
-    }).catch(() => { cmp.innerHTML = '<p class="ps-empty">Could not compare right now.</p>'; });
+    // Someone else's profile: Compare is a plain row; the page behind it loads its own data.
   }
 
   // Likes and Taste open in place; Back to stats returns.
