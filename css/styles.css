@@ -7693,3 +7693,10 @@ a.gd-credit__name { text-decoration: none; }
 }
 .topbar, .topbar--home, .home-tabs, .profile-top, .view-loading { background: transparent; }
 .tabbar__item:not(.tabbar__item--active) .tabbar__avatar::after { border: 1px solid rgba(238, 243, 255, 0.55); }
+
+/* Currently playing, nobody playing: controller, line, small line, button */
+.cp-empty { text-align: center; padding: 22px 16px 10px; }
+.cp-empty__ic { width: 40px; height: 40px; color: var(--ink-dim); display: block; margin: 0 auto 10px; }
+.cp-empty__h { margin: 0; font-size: 17px; font-weight: 800; color: var(--ink); }
+.cp-empty__s { margin: 6px 0 0; font-size: 13.5px; color: var(--ink-dim); }
+.cp-empty__btn.btn { display: inline-flex; margin-top: 14px; padding: 9px 18px; min-height: 0; font-size: 13.5px; }
