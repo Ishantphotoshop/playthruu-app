@@ -1,6 +1,6 @@
 import * as api from '../api.js';
 import { state } from '../state.js';
-import { topBar, navBar, spinner, avatarImg, posterFrame, emptyState, iconChevronRight } from '../components.js';
+import { topBar, navBar, spinner, avatarImg, posterFrame, emptyState, iconChevronRight, iconReplay, iconReviewLines } from '../components.js';
 import { esc, qs, starRow } from '../utils.js';
 
 // Compare: every game you and another player both have, in one scroll of sections:
@@ -19,10 +19,12 @@ function perGame(logs) {
   const map = new Map();
   for (const l of logs) {
     if (!l.games || !l.game_id) continue;
-    const e = map.get(l.game_id) || { game: l.games, rating: 0, ratedAt: -1, backlogOnly: true };
+    const e = map.get(l.game_id) || { game: l.games, rating: 0, ratedAt: -1, backlogOnly: true, replay: false, review: false };
     const r = Number(l.rating) || 0;
     if (r > 0 && when(l) >= e.ratedAt) { e.rating = r; e.ratedAt = when(l); }
     if (l.status !== 'backlog') e.backlogOnly = false;
+    if (l.is_replay) e.replay = true;
+    if (l.review) e.review = true;
     map.set(l.game_id, e);
   }
   return map;
@@ -38,7 +40,7 @@ export function buildCompare(mine, theirs) {
     const rated = m.rating > 0 && t.rating > 0;
     const diff = rated ? Math.abs(m.rating - t.rating) : null;
     items.push({
-      game: m.game, me: m.rating, they: t.rating, diff,
+      game: m.game, me: m.rating, they: t.rating, diff, meReplay: m.replay, meReview: m.review, theyReplay: t.replay, theyReview: t.review,
       same: rated && diff <= 1,
       differ: rated && diff > 1,
       backlog: m.backlogOnly && t.backlogOnly,
@@ -68,10 +70,14 @@ function sorted(list, key) {
   return out;
 }
 
-const rateRow = (profile, rating) => `
+const rateRow = (profile, rating, replay, review) => `
   <div class="cmp-rate">
     <span class="cmp-rate__av">${avatarImg(profile, 24)}</span>
-    ${rating > 0 ? starRow(rating, { size: 10, count: 5 }) : '<span class="cmp-dash">not rated</span>'}
+    <span class="cmp-rate__st">
+      ${rating > 0 ? starRow(rating, { size: 10, count: 5 }) : '<span class="cmp-dash">not rated</span>'}
+      ${replay ? `<span class="card-who__icon card-who__icon--replayed">${iconReplay()}</span>` : ''}
+      ${review ? `<span class="card-who__icon card-who__icon--review">${iconReviewLines()}</span>` : ''}
+    </span>
   </div>`;
 
 // A section shows its first 15 games; with more than that, a ">" next to the name opens a
@@ -94,12 +100,12 @@ const itemHtml = (i, them, cls) => `
     <a href="#/game/${esc(i.game.id)}" aria-label="${esc(i.game.title)}">
       ${posterFrame(i.game.cover_url, i.game.title, 'recent-played-item__cover')}
     </a>
-    ${rateRow(state.profile, i.me)}
-    ${rateRow(them, i.they)}
+    ${rateRow(state.profile, i.me, i.meReplay, i.meReview)}
+    ${rateRow(them, i.they, i.theyReplay, i.theyReview)}
   </div>`;
 
 export async function renderCompareView(root, { username }) {
-  root.innerHTML = topBar('Compare', { back: true }) + `<div class="view-body" id="cmp-body">${spinner()}</div>` + navBar('');
+  root.innerHTML = topBar('Compare', { back: true, brand: true }) + `<div class="view-body" id="cmp-body">${spinner()}</div>` + navBar('');
   const body = qs('#cmp-body', root);
   try {
     const loaded = await loadCompare(username);
@@ -108,18 +114,17 @@ export async function renderCompareView(root, { username }) {
 
     const sectionHtml = ([key, label, fn]) => {
       const list = sorted(data.items.filter(fn), key);
-      if (!list.length) return '';
       const more = list.length > STRIP_MAX;
       return `
         <section class="cmp-sec">
-          ${more ? `
-            <div class="feed-section-head rp-head">
-              <h2 class="section-heading">${label}</h2>
-              <a href="#/profile/${esc(username)}/compare/${key}" class="see-more-icon" aria-label="See all ${list.length} games in ${label}">${iconChevronRight()}</a>
-            </div>` : `<h2 class="section-heading">${label}</h2>`}
+          <div class="feed-section-head rp-head">
+            <h2 class="section-heading">${label}</h2>
+            ${more ? `<a href="#/profile/${esc(username)}/compare/${key}" class="see-more-icon" aria-label="See all ${list.length} games in ${label}">${iconChevronRight()}</a>` : ''}
+          </div>
+          ${list.length ? `
           <div class="recent-played-row">
             ${list.slice(0, STRIP_MAX).map((i) => itemHtml(i, them, 'recent-played-item')).join('')}
-          </div>
+          </div>` : '<p class="cmp-none">None yet</p>'}
         </section>`;
     };
 
@@ -142,7 +147,7 @@ export async function renderCompareView(root, { username }) {
 // The page behind the ">" : every game in one section, three across.
 export async function renderCompareSectionView(root, { username, section }) {
   const def = SECTIONS.find((x) => x[0] === section) || SECTIONS[0];
-  root.innerHTML = topBar(def[1], { back: true }) + `<div class="view-body" id="cmp-body">${spinner()}</div>` + navBar('');
+  root.innerHTML = topBar(def[1], { back: true, brand: true }) + `<div class="view-body" id="cmp-body">${spinner()}</div>` + navBar('');
   const body = qs('#cmp-body', root);
   try {
     const loaded = await loadCompare(username);

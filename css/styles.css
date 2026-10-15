@@ -7655,15 +7655,16 @@ a.gd-credit__name { text-decoration: none; }
 .rating-histogram { background: none; border: 0; border-radius: 0; padding: 0; margin-bottom: var(--space-3); }
 
 /* ---- Compare page: the score on top, then one scroll of sections (a strip of posters each) ---- */
-.cmp-top { display: flex; align-items: center; justify-content: center; gap: 22px; margin: 28px 0 0; }
+.cmp-top { display: flex; align-items: center; justify-content: center; gap: 22px; margin: 18px 0 6px; }
 .cmp-top .avatar { border: 1px solid var(--line); flex-shrink: 0; }
 .cmp-score { text-align: center; }
 .cmp-score b { display: block; font-size: 38px; font-weight: 800; letter-spacing: -0.03em; line-height: 1; color: var(--ink); }
 .cmp-score span { display: block; margin-top: 6px; font-size: 13px; color: var(--ink-faint); }
-.cmp-sec { margin-top: 44px; }
-.cmp-sec .section-heading { margin-bottom: 18px; }
-.cmp-item .cmp-rate:first-of-type { margin-top: 12px; }
-.cmp-rate { display: flex; align-items: center; gap: 8px; margin-top: 8px; min-height: 24px; }
+.cmp-sec { margin-top: 0; }
+.cmp-sec .rp-head { margin-top: 18px; }
+.cmp-none { margin: 0; padding: 8px 0 6px; font-size: 13.5px; color: var(--ink-faint); }
+.cmp-rate { display: flex; align-items: center; gap: 8px; margin-top: 6px; min-height: 24px; }
+.cmp-rate__st { display: flex; align-items: center; gap: 4px; min-width: 0; }
 .cmp-rate__av { display: flex; flex-shrink: 0; }
 .cmp-rate__av .avatar { border: 1px solid var(--line); border-radius: 50%; }
 .cmp-dash { font-size: 11px; color: var(--ink-faint); }
