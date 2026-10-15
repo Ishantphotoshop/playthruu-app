@@ -171,41 +171,40 @@ function statsPanelHtml(ctx, period) {
     </div>`;
 }
 
-// The Backlog bar: how many are waiting, how long the oldest has waited, and (on your own
-// profile) Pick for me. It sits on top of the Backlog tab.
+// The Backlog bar: how many games are waiting and (on your own profile) Pick for me, which
+// turns the "?" slot into the picked game without growing the box.
 export function backlogBarHtml(profile, logs, isOwn) {
-  const backlogLogs = logs.filter((l) => l.status === 'backlog' && l.games);
-  if (!backlogLogs.length) return '';
-  const oldest = backlogLogs.reduce((min, l) => (!min || new Date(l.created_at) < new Date(min.created_at) ? l : min), null);
-  const days = oldest ? Math.max(0, Math.floor((Date.now() - new Date(oldest.created_at)) / 86400000)) : 0;
-  return box('Backlog', '', `
-    <div class="ps-split">
-      <div>
-        <div class="ps-big"><b>${num(backlogLogs.length)}</b>waiting</div>
-        <div class="ps-note ps-note--below">Oldest added ${days === 0 ? 'today' : `${num(days)} day${days === 1 ? '' : 's'} ago`}</div>
+  const n = logs.filter((l) => l.status === 'backlog' && l.games).length;
+  if (!n) return '';
+  return `<div class="ps-box">
+    <div class="ps-split bl-bar">
+      ${isOwn ? '<div class="bl-slot" id="bl-slot"><span>?</span></div>' : ''}
+      <div class="bl-main" id="bl-main">
+        <div class="bl-line"><b>${num(n)}</b> game${n === 1 ? '' : 's'}</div>
+        <div class="bl-sub">waiting patiently</div>
       </div>
       ${isOwn ? '<button type="button" class="ps-pill" id="ps-pick">Pick for me</button>' : ''}
-    </div>
-    ${isOwn ? '<div class="ps-pick" id="ps-pick-out" hidden></div>' : ''}`);
+    </div></div>`;
 }
 
 export function wireBacklogBar(container, logs, isOwn) {
   if (!isOwn) return;
   const backlog = logs.filter((l) => l.status === 'backlog' && l.games);
-  const out = qs('#ps-pick-out', container);
+  const slot = qs('#bl-slot', container);
+  const main = qs('#bl-main', container);
+  const btn = qs('#ps-pick', container);
+  if (!slot || !main || !btn) return;
   let last = -1;
-  qs('#ps-pick', container)?.addEventListener('click', () => {
-    if (!backlog.length || !out) return;
+  btn.addEventListener('click', () => {
+    if (!backlog.length) return;
     let i = Math.floor(Math.random() * backlog.length);
     if (backlog.length > 1 && i === last) i = (i + 1) % backlog.length;
     last = i;
     const g = backlog[i].games;
-    out.hidden = false;
-    out.innerHTML = `
-      <a href="#/game/${g.id}" class="ps-pick__link">
-        <span class="ps-pick__cover">${posterFrame(g.cover_url, g.title, 'ps-pick__img')}</span>
-        <span><span class="ps-note">Tonight's pick</span><span class="ps-pick__name">${esc(g.title)}</span></span>
-      </a>`;
+    slot.innerHTML = `<a href="#/game/${g.id}" aria-label="${esc(g.title)}">${posterFrame(g.cover_url, g.title, 'bl-slot__img')}</a>`;
+    slot.classList.add('bl-slot--on');
+    main.innerHTML = `<a href="#/game/${g.id}" class="bl-name">${esc(g.title)}</a>`;
+    btn.textContent = 'Again';
   });
 }
 
