@@ -1,6 +1,7 @@
 import * as api from '../api.js';
 import { state } from '../state.js';
 import { topBar, navBar, emptyState, spinner, iconStamp, posterFrame, iconFilter, iconClose, iconReplay, iconReviewLines } from '../components.js';
+import { backlogBarHtml, wireBacklogBar } from './profile-stats.js';
 import { esc, qs, formatDate, statusStamp, starRow, igdbSized, playedKind } from '../utils.js';
 
 // `keep` narrows the list after it is fetched (the database can't ask these
@@ -43,6 +44,30 @@ export function diaryTilesHtml(list, byDate = true) {
     last = key;
     return head + row(l);
   }).join('')}</div>`;
+}
+
+// The Backlog as its own page: the same bar and poster grid as the profile's Backlog tab.
+export async function renderBacklogView(root, { username }) {
+  root.innerHTML = topBar('Backlog', { back: true }) + `<div class="view-body" id="backlog-body">${spinner()}</div>` + navBar('');
+  const body = qs('#backlog-body', root);
+  try {
+    const profile = state.profile?.username === username ? state.profile : await api.getProfileByUsername(username);
+    const isOwn = state.user?.id === profile.id;
+    const logs = (await api.getLogsForUser(profile.id, { statuses: ['backlog'], limit: 5000 }))
+      .filter((l) => l.status === 'backlog' && l.games)
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    body.innerHTML = logs.length ? `
+      ${backlogBarHtml(profile, logs, isOwn)}
+      <div class="poster-grid3">
+        ${logs.map((l) => `
+          <a href="#/game/${l.games.id}" class="poster-grid3__item">
+            ${posterFrame(l.games.cover_url, l.games.title, 'poster-grid3__cover')}
+          </a>`).join('')}
+      </div>` : emptyState('Nothing on the backlog yet.', { icon: iconStamp() });
+    wireBacklogBar(body, logs, isOwn);
+  } catch (err) {
+    body.innerHTML = emptyState(err.message || 'Could not load the backlog.');
+  }
 }
 
 export async function renderLogListView(root, { username, mode }) {

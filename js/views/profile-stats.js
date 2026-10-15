@@ -39,6 +39,7 @@ const ROW_ICONS = {
   Likes: rowIcon('2.3 4.35 19.4 16.95', '<path d="M12 20.3 4.7 13.4a4.7 4.7 0 0 1 6.6-6.7l.7.7.7-.7a4.7 4.7 0 0 1 6.6 6.7z"/>'),
   Replays: rowIcon('13.75 7.59 104.81 104.81', '<path stroke-width="11" d="M 90.64 85.71 A 40 40 0 1 1 100 60 L 112.31 26.17 M 65.6 60 L 100 60"/>'),
   Backlog: rowIcon('6 2 12 20', '<path d="M7 3h10v3.5L13 12l4 5.5V21H7v-3.5L11 12 7 6.5z"/>'),
+  Compare: rowIcon('0 0 24 24', '<circle cx="9" cy="12" r="6"/><circle cx="15" cy="12" r="6"/>'),
   Activity: rowIcon('0 0 24 24', '<path d="M13 3 5 14h6l-1 7 8-11h-6z"/>'),
 };
 
@@ -63,13 +64,13 @@ function rowsHtml(profile, logs, isOwn) {
   const row = (label, list, attrs, withTotal = true, totalOnly = false) => `<a class="ps-row" ${attrs}>${ROW_ICONS[label] || ''}<span class="ps-row__l">${label}</span><span class="ps-row__r">${list ? count(list, withTotal, totalOnly) : ''}<i class="ps-row__chev ps-row__chev--show">${chevron}</i></span></a>`;
   return `
     <div class="ps-rows ps-rows--ic">
-      ${row('Diary', sets.played, `href="${base}/log-list/diary"`, false)}
       ${SHOW_THIS_YEAR ? row('This year', sets.thisYear, `href="${base}/log-list/year"`) : ''}
       ${row('Played', null, `href="${base}/log-list/played"`)}
+      ${row('Diary', sets.played, `href="${base}/log-list/diary"`, false)}
       ${row('Reviews', null, `href="${base}/log-list/reviews"`)}
       ${row('Likes', null, `href="${base}/log-list/liked"`)}
       ${row('Replays', null, `href="${base}/log-list/replayed"`)}
-      <button type="button" class="ps-row" data-jump-tab="wanttoplay">${ROW_ICONS.Backlog}<span class="ps-row__l">Backlog</span><span class="ps-row__r"><span class="ps-row__n"><b>${num(logs.filter((l) => l.status === 'backlog').length)}</b></span><i class="ps-row__chev ps-row__chev--show">${chevron}</i></span></button>
+      <a class="ps-row" href="${base}/backlog">${ROW_ICONS.Backlog}<span class="ps-row__l">Backlog</span><span class="ps-row__r"><span class="ps-row__n"><b>${num(logs.filter((l) => l.status === 'backlog').length)}</b></span><i class="ps-row__chev ps-row__chev--show">${chevron}</i></span></a>
       ${row('Activity', null, isOwn ? 'href="#/notifications" data-open-notif="you"' : `href="${base}/activity"`)}
     </div>`;
 }
@@ -141,7 +142,7 @@ function statsPanelHtml(ctx, period) {
   if (isOwn) {
     lower = '';
   } else if (state.user) {
-    lower = `<div class="ps-rows"><a class="ps-row" href="#/profile/${esc(profile.username)}/compare"><span class="ps-row__l">Compare</span><span class="ps-row__r"><i class="ps-row__chev ps-row__chev--show">${chevron}</i></span></a></div>`;
+    lower = `<div class="ps-rows ps-rows--ic"><a class="ps-row" href="#/profile/${esc(profile.username)}/compare">${ROW_ICONS.Compare}<span class="ps-row__l">Compare</span><span class="ps-row__r"><i class="ps-row__chev ps-row__chev--show">${chevron}</i></span></a></div>`;
   }
 
   const withHours = logs.filter((l) => Number(l.hours_played) > 0);
