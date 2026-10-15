@@ -7692,3 +7692,4 @@ a.gd-credit__name { text-decoration: none; }
   background-color: #060a17;
 }
 .topbar, .topbar--home, .home-tabs, .profile-top, .view-loading { background: transparent; }
+.tabbar__item:not(.tabbar__item--active) .tabbar__avatar::after { border: 1px solid rgba(238, 243, 255, 0.55); }
