@@ -1,7 +1,7 @@
 import * as api from '../api.js';
 import { state } from '../state.js';
 import { navBar, avatarImg, emptyState, spinner, iconBell } from '../components.js';
-import { esc, timeAgo, starRow, qs, qsa, keepLoading } from '../utils.js';
+import { esc, timeAgo, starRow, qs, qsa, keepLoading, wireTabSwipe } from '../utils.js';
 import { navigate, markTabStale } from '../router.js';
 import { wirePullToRefresh, pullRefreshing } from './feed-view.js';
 import { getCached, setCached, CACHE_KEYS } from '../cache.js';
@@ -193,6 +193,8 @@ export async function renderNotificationsView(root) {
       const rowEl = e.target.closest('.act');
       if (rowEl?.dataset.href) navigate(rowEl.dataset.href);
     });
+
+    wireTabSwipe(root, '#act-tabs .home-tabs__item', 'home-tabs__item--active');
 
     // Pull down at the top of the list to reload it — the same gesture
     // the Feed, Messages and Profile already carry.

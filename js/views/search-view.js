@@ -2,7 +2,7 @@ import * as api from '../api.js';
 import { state } from '../state.js';
 import { navBar, combinedGameResultsList, wireCombinedGameResults, wireResultDirectors, profileRow, wireFollowButtons, spinner, skeletonList, emptyState, iconSearch, iconFilter, iconUser, iconGamepad, iconList, iconClose, iconChevronRight, posterFrame, confirmSheet, gameHref,
 } from '../components.js';
-import { qs, qsa, esc, toast, promptSignIn, getRecentlyViewed, recordRecentSearch, getRecentSearches, removeRecentSearch, clearRecentSearches, revealTogether, igdbSized, keepLoading } from '../utils.js';
+import { qs, qsa, esc, toast, promptSignIn, getRecentlyViewed, recordRecentSearch, getRecentSearches, removeRecentSearch, clearRecentSearches, revealTogether, igdbSized, keepLoading, wireTabSwipe } from '../utils.js';
 import { navigate } from '../router.js';
 import { getCached, setCached, CACHE_KEYS } from '../cache.js';
 
@@ -313,6 +313,7 @@ export function renderSearchView(root, { initialTab = 'games' } = {}) {
   // Remember whether the box had focus at the moment a tab was touched:
   // by the time the click arrives the tab button has already taken focus
   // from it.
+  wireTabSwipe(root, '#search-tabs .home-tabs__item', 'home-tabs__item--active');
   let hadFocus = false;
   tabsEl.addEventListener('pointerdown', () => { hadFocus = document.activeElement === input; });
   qsa('.home-tabs__item', root).forEach(btn => {

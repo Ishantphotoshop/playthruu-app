@@ -8,7 +8,7 @@ import {
   emptyState, iconStamp, iconSettings, iconShare, iconQr, iconDotsMenu, iconClose, iconSearch, iconPlus, listCard, iconMessage,
   combinedGameResults, wireCombinedGameResults, openReportSheet, iconFlag, iconBlock, iconReplay, iconReviewLines, iconChevronRight,
 } from '../components.js';
-import { esc, formatDate, statusStamp, starRow, playedKind, qs, qsa, toast, debounce, pulseLogTab, igdbSized, enableSwipeToDismiss, promptSignIn } from '../utils.js';
+import { esc, formatDate, statusStamp, starRow, playedKind, qs, qsa, toast, debounce, pulseLogTab, igdbSized, enableSwipeToDismiss, promptSignIn, wireTabSwipe } from '../utils.js';
 import { refreshCurrentView, navigate } from '../router.js';
 import { wirePullToRefresh } from './feed-view.js';
 import { diaryTilesHtml } from './log-list-view.js';
@@ -382,6 +382,7 @@ export async function renderProfileView(root, { username }) {
     });
 
     paintTab('profile');
+    wireTabSwipe(root, '#profile-tabs .segmented__item', 'segmented__item--active');
 
     // ---- header actions ----
     const shareUrl = `${location.origin}${location.pathname}#/profile/${profile.username}`;

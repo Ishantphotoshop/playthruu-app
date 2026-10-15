@@ -535,3 +535,42 @@ export function reviewText(str) {
     })
     .join('\n');
 }
+
+// Swipe sideways to flip to the next or previous tab, like Home's Feed/News: anywhere on the page
+// that is empty, not a poster row that can still scroll that way, an input or a [data-no-swipe].
+// Swiping left (finger moves left) goes to the next tab, right to the previous one. It presses the
+// neighbouring tab's own button, so each page switches exactly the way a tap would.
+export function wireTabSwipe(root, tabSelector, activeClass) {
+  let sx = 0, sy = 0, ok = false, strip = null, stripLeft = 0;
+  const sidewaysParent = (el) => {
+    for (let n = el; n && n !== root; n = n.parentElement) {
+      if (n.matches?.('input, textarea, select, [data-no-swipe], .tabbar')) return 'block';
+      if (n.scrollWidth > n.clientWidth + 2 && /(auto|scroll)/.test(getComputedStyle(n).overflowX)) return n;
+    }
+    return null;
+  };
+  root.addEventListener('touchstart', (e) => {
+    const found = e.touches.length === 1 && !e.target.closest(tabSelector) ? sidewaysParent(e.target) : 'block';
+    ok = found !== 'block';
+    strip = found && found !== 'block' ? found : null;
+    stripLeft = strip ? strip.scrollLeft : 0;
+    sx = e.touches[0].clientX; sy = e.touches[0].clientY;
+  }, { passive: true });
+  root.addEventListener('touchend', (e) => {
+    if (!ok) return;
+    ok = false;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - sx, dy = t.clientY - sy;
+    if (Math.abs(dx) < 70 || Math.abs(dy) > Math.abs(dx) * 0.6) return;
+    if (strip && Math.abs(strip.scrollLeft - stripLeft) > 1) return;
+    if (strip) {
+      const atStart = stripLeft <= 1, atEnd = stripLeft >= strip.scrollWidth - strip.clientWidth - 1;
+      if (dx < 0 ? !atEnd : !atStart) return;
+    }
+    const tabs = [...root.querySelectorAll(tabSelector)];
+    const at = tabs.findIndex((b) => b.classList.contains(activeClass));
+    const next = tabs[at + (dx < 0 ? 1 : -1)];
+    if (at >= 0 && next) next.click();
+  }, { passive: true });
+  root.addEventListener('touchcancel', () => { ok = false; }, { passive: true });
+}
