@@ -7712,3 +7712,4 @@ a.gd-credit__name { text-decoration: none; }
 .poster-viewer, .avatar-viewer, .image-viewer, .story-viewer, .avatar-crop, .modal-overlay.lightbox-overlay {
   left: max(0px, calc(50% - 280px)); right: max(0px, calc(50% - 280px));
 }
+#avatar-enlarge.profile-header__avatar-btn { padding: 3px; border: 1px solid rgba(242, 243, 246, 0.5); border-radius: 50%; line-height: 0; }
