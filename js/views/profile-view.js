@@ -1,5 +1,5 @@
 import * as api from '../api.js';
-import { profileStatsHtml, wireProfileStats } from './profile-stats.js';
+import { profileStatsHtml, wireProfileStats, backlogBarHtml, wireBacklogBar } from './profile-stats.js';
 import { openPosterViewer } from './game-view.js';
 import { state } from '../state.js';
 import { MESSENGER_ARCHIVED } from '../config.js';
@@ -315,7 +315,7 @@ export async function renderProfileView(root, { username }) {
     // Poster grid, three across (like the discover screen) — a want-to-play
     // pile reads best as cover art you browse, not a text list.
     const renderWantToPlayTab = () => `
-      <h2 class="section-heading">Backlog</h2>
+      ${backlog.length ? backlogBarHtml(profile, logs, isOwn) : '<h2 class="section-heading">Backlog</h2>'}
       ${backlog.length ? `
         <div class="poster-grid3">
           ${backlog.map((l) => `
@@ -346,6 +346,7 @@ export async function renderProfileView(root, { username }) {
       contentEl.innerHTML = tabRenderers[tab]();
       wireRatingHistogram(contentEl);
       wireProfileStats(contentEl, { profile, logs, stats, isOwn });
+      wireBacklogBar(contentEl, logs, isOwn);
       const followBtn = qs('#follow-btn', body);
       if (followBtn) wireFollowBtn(followBtn, profile);
       qsa('[data-jump-tab]', contentEl).forEach((btn) => {

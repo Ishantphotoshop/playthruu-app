@@ -58,6 +58,7 @@ function rowsHtml(profile, logs, isOwn) {
       ${row('Reviews', null, `href="${base}/log-list/reviews"`)}
       ${row('Likes', null, `href="${base}/log-list/liked"`)}
       ${row('Replays', null, `href="${base}/log-list/replayed"`)}
+      <button type="button" class="ps-row" data-jump-tab="wanttoplay"><span class="ps-row__l">Backlog</span><span class="ps-row__r"><span class="ps-row__n"><b>${num(logs.filter((l) => l.status === 'backlog').length)}</b></span><i class="ps-row__chev ps-row__chev--show">${chevron}</i></span></button>
       ${row('Activity', null, isOwn ? 'href="#/notifications" data-open-notif="you"' : `href="${base}/activity"`)}
     </div>`;
 }
@@ -125,20 +126,9 @@ function statsPanelHtml(ctx, period) {
   const { profile, logs, stats, isOwn, diary, lastYear } = ctx;
   const base = `#/profile/${esc(profile.username)}/log-list`;
 
-  const backlogLogs = logs.filter((l) => l.status === 'backlog' && l.games);
   let lower = '';
   if (isOwn) {
-    const oldest = backlogLogs.reduce((min, l) => (!min || new Date(l.created_at) < new Date(min.created_at) ? l : min), null);
-    const days = oldest ? Math.max(0, Math.floor((Date.now() - new Date(oldest.created_at)) / 86400000)) : 0;
-    lower = box('Backlog', '', backlogLogs.length ? `
-      <div class="ps-split">
-        <div>
-          <div class="ps-big"><b>${num(backlogLogs.length)}</b>waiting</div>
-          <div class="ps-note ps-note--below">Oldest added ${days === 0 ? 'today' : `${num(days)} day${days === 1 ? '' : 's'} ago`}</div>
-        </div>
-        <button type="button" class="ps-pill" id="ps-pick">Pick for me</button>
-      </div>
-      <div class="ps-pick" id="ps-pick-out" hidden></div>` : '<p class="ps-empty">Nothing waiting. Add games to Want to Play and they show here.</p>');
+    lower = '';
   } else if (state.user) {
     lower = box('Compare', `you and @${esc(profile.username)}`, '<div id="ps-compare"><p class="ps-empty">Comparing…</p></div>');
   }
@@ -167,6 +157,44 @@ function statsPanelHtml(ctx, period) {
       ${SHOW_HOURS ? box('Hours', '', hoursBody) : ''}
       ${SHOW_ACTIVITY_BOTTOM && !SHOW_ACTIVITY_BOX ? box('Activity', `<span id="ps-amut">${periodNote(period)}</span>`, `<div id="ps-act-slot">${activityHtml(diary, period)}</div>`) : ''}
     </div>`;
+}
+
+// The Backlog bar: how many are waiting, how long the oldest has waited, and (on your own
+// profile) Pick for me. It sits on top of the Backlog tab.
+export function backlogBarHtml(profile, logs, isOwn) {
+  const backlogLogs = logs.filter((l) => l.status === 'backlog' && l.games);
+  if (!backlogLogs.length) return '';
+  const oldest = backlogLogs.reduce((min, l) => (!min || new Date(l.created_at) < new Date(min.created_at) ? l : min), null);
+  const days = oldest ? Math.max(0, Math.floor((Date.now() - new Date(oldest.created_at)) / 86400000)) : 0;
+  return box('Backlog', '', `
+    <div class="ps-split">
+      <div>
+        <div class="ps-big"><b>${num(backlogLogs.length)}</b>waiting</div>
+        <div class="ps-note ps-note--below">Oldest added ${days === 0 ? 'today' : `${num(days)} day${days === 1 ? '' : 's'} ago`}</div>
+      </div>
+      ${isOwn ? '<button type="button" class="ps-pill" id="ps-pick">Pick for me</button>' : ''}
+    </div>
+    ${isOwn ? '<div class="ps-pick" id="ps-pick-out" hidden></div>' : ''}`);
+}
+
+export function wireBacklogBar(container, logs, isOwn) {
+  if (!isOwn) return;
+  const backlog = logs.filter((l) => l.status === 'backlog' && l.games);
+  const out = qs('#ps-pick-out', container);
+  let last = -1;
+  qs('#ps-pick', container)?.addEventListener('click', () => {
+    if (!backlog.length || !out) return;
+    let i = Math.floor(Math.random() * backlog.length);
+    if (backlog.length > 1 && i === last) i = (i + 1) % backlog.length;
+    last = i;
+    const g = backlog[i].games;
+    out.hidden = false;
+    out.innerHTML = `
+      <a href="#/game/${g.id}" class="ps-pick__link">
+        <span class="ps-pick__cover">${posterFrame(g.cover_url, g.title, 'ps-pick__img')}</span>
+        <span><span class="ps-note">Tonight's pick</span><span class="ps-pick__name">${esc(g.title)}</span></span>
+      </a>`;
+  });
 }
 
 function tasteHtml(logs) {
@@ -282,25 +310,7 @@ export function wireProfileStats(container, { profile, logs, stats, isOwn }) {
     slot?.addEventListener('pointercancel', release);
     slot?.addEventListener('lostpointercapture', release);
 
-    if (isOwn) {
-      const backlog = logs.filter((l) => l.status === 'backlog' && l.games);
-      const out = qs('#ps-pick-out', panel);
-      let last = -1;
-      qs('#ps-pick', panel)?.addEventListener('click', () => {
-        if (!backlog.length) return;
-        let i = Math.floor(Math.random() * backlog.length);
-        if (backlog.length > 1 && i === last) i = (i + 1) % backlog.length;
-        last = i;
-        const g = backlog[i].games;
-        out.hidden = false;
-        out.innerHTML = `
-          <a href="#/game/${g.id}" class="ps-pick__link">
-            <span class="ps-pick__cover">${posterFrame(g.cover_url, g.title, 'ps-pick__img')}</span>
-            <span><span class="ps-note">Tonight's pick</span><span class="ps-pick__name">${esc(g.title)}</span></span>
-          </a>`;
-      });
-      return;
-    }
+    if (isOwn) return;
 
     // Someone else's profile: set their ratings beside yours.
     const cmp = qs('#ps-compare', panel);
