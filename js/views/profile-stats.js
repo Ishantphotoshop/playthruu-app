@@ -24,7 +24,7 @@ const SHOW_TILES = false;
 // The This year row under Ratings. Set to true to bring it back (its page still exists).
 const SHOW_THIS_YEAR = false;
 // The Activity (months) box on its own, at the very bottom, without the Stats bar or filter.
-const SHOW_ACTIVITY_BOTTOM = true;
+const SHOW_ACTIVITY_BOTTOM = false;
 // The Hours box (total hours, average, most played). Set to true to bring it back.
 const SHOW_HOURS = false;
 
