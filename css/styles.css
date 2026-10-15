@@ -7653,3 +7653,28 @@ a.gd-credit__name { text-decoration: none; }
 
 /* profile: the Ratings chart has no box around it (it lines up with the rest of the page) */
 .rating-histogram { background: none; border: 0; border-radius: 0; padding: 0; margin-bottom: var(--space-3); }
+
+/* ---- Compare page: the score on top, then every game you both have as posters with two star rows ---- */
+.cmp-top { display: flex; align-items: center; justify-content: center; gap: 16px; margin: 6px 0 16px; }
+.cmp-top .avatar { border: 1px solid var(--line); flex-shrink: 0; }
+.cmp-score { text-align: center; }
+.cmp-score b { display: block; font-size: 32px; font-weight: 800; letter-spacing: -0.03em; line-height: 1; color: var(--ink); }
+.cmp-score span { display: block; margin-top: 4px; font-size: 12px; color: var(--ink-faint); }
+.cmp-legend { display: flex; align-items: center; gap: 14px; margin-bottom: 12px; font-size: 12.5px; font-weight: 600; color: var(--ink-dim); }
+.cmp-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.cmp-legend em { margin-left: auto; font-style: normal; color: var(--ink-faint); font-weight: 500; }
+.cmp-legend .avatar, .cmp-rate__av .avatar { border-radius: 50%; }
+.cmp-chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 0 calc(-1 * var(--gutter)); padding: 0 var(--gutter) 2px; }
+.cmp-chips::-webkit-scrollbar { display: none; }
+.cmp-chip { flex-shrink: 0; padding: 8px 14px; border: 1px solid var(--line-strong); border-radius: 999px; background: none; color: var(--ink-dim); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+.cmp-chip b { margin-left: 5px; color: var(--ink-faint); font-weight: 700; }
+.cmp-chip.is-on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.cmp-chip.is-on b { color: #6b4a30; }
+.cmp-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px 10px; margin-top: 16px; }
+.cmp-cover { display: block; }
+.cmp-cover__img { width: 100%; }
+.cmp-rate { display: flex; align-items: center; gap: 5px; margin-top: 5px; min-height: 12px; }
+.cmp-rate__av { display: flex; flex-shrink: 0; }
+.cmp-dash { font-size: 10px; color: var(--ink-faint); }
+.cmp-empty, .cmp-note { grid-column: 1 / -1; margin: 12px 0 0; font-size: 14px; color: var(--ink-faint); text-align: center; }
+.ps-pill--link { display: inline-block; margin-top: 12px; text-decoration: none; text-align: center; }

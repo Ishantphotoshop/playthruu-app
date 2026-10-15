@@ -15,6 +15,7 @@ import { renderMessageThreadView } from './views/message-thread-view.js';
 import { renderProfileView, warmOwnProfile } from './views/profile-view.js';
 import { renderConnectionsView } from './views/connections-view.js';
 import { renderActivityView } from './views/activity-view.js';
+import { renderCompareView } from './views/compare-view.js';
 import { renderTrendingView } from './views/trending-view.js';
 import { renderFriendsPlayingView } from './views/friends-playing-view.js';
 import { renderCurrentlyPlayingView } from './views/currently-playing-view.js';
@@ -234,6 +235,7 @@ function registerRoutes() {
   route('/profile/:username/followers', (p) => renderConnectionsView(pageEl(), { username: p.username, kind: 'followers' }));
   route('/profile/:username/following', (p) => renderConnectionsView(pageEl(), { username: p.username, kind: 'following' }));
   route('/profile/:username/activity', (p) => renderActivityView(pageEl(), p));
+  route('/profile/:username/compare', (p) => renderCompareView(pageEl(), p));
   route('/profile/:username/log-list/:mode', (p) => renderLogListView(pageEl(), p));
   route('/game/:id/reviews', (p) => renderGameReviewsView(pageEl(), p));
   route('/review/:id', (p) => renderReviewView(pageEl(), p));

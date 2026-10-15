@@ -4,6 +4,7 @@ import * as api from '../api.js';
 import { state } from '../state.js';
 import { esc, qs, qsa } from '../utils.js';
 import { posterFrame } from '../components.js';
+import { buildCompare } from './compare-view.js';
 
 // The area under the Ratings box on a profile: a grid of six tiles (Games,
 // Diary, Reviews, Backlog, Likes, Taste), then the Stats panel: Completed and
@@ -315,24 +316,21 @@ export function wireProfileStats(container, { profile, logs, stats, isOwn }) {
     // Someone else's profile: set their ratings beside yours.
     const cmp = qs('#ps-compare', panel);
     if (!cmp || !state.user) return;
-    api.getLogsForUser(state.user.id, { limit: 500 }).then((mine) => {
-      const theirs = new Map(logs.map((l) => [l.game_id, l]));
-      const both = mine.filter((l) => theirs.has(l.game_id));
-      const rated = both
-        .map((l) => ({ me: Number(l.rating), they: Number(theirs.get(l.game_id).rating), game: l.games }))
-        .filter((r) => r.me > 0 && r.they > 0);
-      const agree = rated.filter((r) => Math.abs(r.me - r.they) <= 1).length;
-      const differ = rated.length - agree;
-      if (!both.length) { cmp.innerHTML = '<p class="ps-empty">No games in common yet.</p>'; return; }
-      const gap = rated.reduce((best, r) => (!best || Math.abs(r.me - r.they) > Math.abs(best.me - best.they) ? r : best), null);
-      const cell = (n, label) => `<div class="ps-cell"><b>${num(n)}</b><span>${label}</span></div>`;
+    api.getLogsForUser(state.user.id, { limit: 5000 }).then((mine) => {
+      const data = buildCompare(mine, logs);
+      if (!data.items.length) { cmp.innerHTML = '<p class="ps-empty">No games in common yet.</p>'; return; }
+      const same = data.items.filter((i) => i.same).length;
+      const differ = data.items.filter((i) => i.differ).length;
+      const cell = (n, label) => `<div class="ps-cell"><b>${n}</b><span>${label}</span></div>`;
+      const gap = data.items.filter((i) => i.differ).sort((x, y) => y.diff - x.diff)[0];
       cmp.innerHTML = `
-        <div class="ps-cells">${cell(both.length, 'In common')}${cell(agree, 'Agree')}${cell(differ, 'Differ')}</div>
-        ${gap && Math.abs(gap.me - gap.they) > 1 && gap.game ? `
+        <div class="ps-cells">${cell(data.match === null ? '—' : `${data.match}%`, 'Taste match')}${cell(data.items.length, 'In common')}${cell(same, 'Same taste')}${cell(differ, 'Different')}</div>
+        ${gap ? `
           <a href="#/game/${gap.game.id}" class="ps-pick__link ps-gap-link">
             <span class="ps-pick__cover">${posterFrame(gap.game.cover_url, gap.game.title, 'ps-pick__img')}</span>
             <span class="ps-gap__text">Biggest gap: <b>${esc(gap.game.title)}</b><br>You gave it ${gap.me} star${gap.me === 1 ? '' : 's'}, they gave it ${gap.they}.</span>
-          </a>` : ''}`;
+          </a>` : ''}
+        <a href="#/profile/${esc(profile.username)}/compare" class="ps-pill ps-pill--link">See all ${data.items.length} games</a>`;
     }).catch(() => { cmp.innerHTML = '<p class="ps-empty">Could not compare right now.</p>'; });
   }
 
