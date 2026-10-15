@@ -483,6 +483,22 @@ async function paintForYou(slot) {
   }
   if (!pool.length) { slot.innerHTML = ''; return; }
 
+  // The picks hold still for 24 hours, then the whole pool is reshuffled: the same strip all
+  // day (not a different one every time the feed opens), a fresh one tomorrow.
+  const orderKey = `foryou-order:${userId}`;
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem(orderKey) || 'null'); } catch { /* fine without it */ }
+  if (saved && Date.now() - saved.at < 86400000 && Array.isArray(saved.order)) {
+    const rank = new Map(saved.order.map((id, i) => [id, i]));
+    pool.sort((a, b) => (rank.has(a.game.igdb_id) ? rank.get(a.game.igdb_id) : 1e6) - (rank.has(b.game.igdb_id) ? rank.get(b.game.igdb_id) : 1e6));
+  } else {
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+    try { localStorage.setItem(orderKey, JSON.stringify({ at: Date.now(), order: pool.map((p) => p.game.igdb_id) })); } catch { /* fine without it */ }
+  }
+
   const shown = pool.splice(0, FORYOU_SHOWN);
   const seen = new Set(shown.map((p) => p.game.igdb_id));
   pool.forEach((p) => seen.add(p.game.igdb_id));
