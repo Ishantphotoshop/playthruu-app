@@ -1508,7 +1508,7 @@ async function paintCurrentlyPlaying(slot) {
         <h2 class="section-heading">Currently playing</h2>
         ${isFallback
           ? emptyState('Nobody\'s currently playing anything yet. Be the first to log one.', { icon: iconStamp(), actionLabel: 'Log your first game', actionRoute: '/log' })
-          : `<div class="cp-empty"><svg class="cp-empty__ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M7 9h10a4 4 0 0 1 4 4v1a3 3 0 0 1-5.4 1.8L14.5 14h-5l-1.1 1.8A3 3 0 0 1 3 14v-1a4 4 0 0 1 4-4z"/><path d="M8 11.5v2.5M6.75 12.75h2.5"/><circle cx="15.5" cy="12" r=".6" fill="currentColor"/><circle cx="17.5" cy="13.5" r=".6" fill="currentColor"/></svg><p class="cp-empty__h">Controllers are charging.</p><p class="cp-empty__s">When a friend starts a game it shows up here.</p><a class="btn btn--accent cp-empty__btn" href="#/people">Find people</a></div>`}`;
+          : `<div class="cp-empty"><svg class="cp-empty__ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="7" width="17" height="10" rx="2.5"/><path d="M22 10.5v3"/><path d="M5.5 10v4" stroke-width="2.4"/></svg><p class="cp-empty__h">Controllers are charging.</p><p class="cp-empty__s">When a friend starts a game it shows up here.</p><a class="btn btn--accent cp-empty__btn" href="#/people">Find people</a></div>`}`;
       return;
     }
 
