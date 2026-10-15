@@ -113,7 +113,7 @@ export async function renderListDetailView(root, { id }) {
           <a href="#/game/${g.id}" class="ld-row__link">
             ${posterFrame(g.cover_url, g.title, 'ld-row__cover')}
             <div class="ld-row__info">
-              <div class="ld-row__title"><span class="ld-row__rank">${idx + 1}</span>${esc(g.title)}${g.release_year ? ` <em>${esc(String(g.release_year))}</em>` : ''}</div>
+              <div class="ld-row__title">${esc(g.title)}${g.release_year ? ` <em>${esc(String(g.release_year))}</em>` : ''}</div>
               ${marks}
             </div>
           </a>
