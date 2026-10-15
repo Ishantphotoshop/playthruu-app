@@ -51,17 +51,17 @@
      (luminance 0.006, against green's 0.017), so the lean is slighter
      than it looks, and a near-black violet gives the gold the deepest
      ground it has ever had to sit on. */
-  --bg: #0a1226;
-  --bg-deep: #060a17;
-  --bg-lift: #0f1a33;
-  --surface: #14213f;
-  --surface-raised: #1b2b50;
-  --surface-high: #26386a;
+  --bg: #160b2e;
+  --bg-deep: #0e0720;
+  --bg-lift: #1d1038;
+  --surface: #251545;
+  --surface-raised: #301c58;
+  --surface-high: #3f2672;
 
   /* --- glass --- */
   --glass-fill: rgba(255, 255, 255, 0.03);
   --glass-fill-strong: rgba(255, 255, 255, 0.08);
-  --glass-tint: rgba(10, 18, 38, 0.14);
+  --glass-tint: rgba(22, 11, 46, 0.14);
   --glass-filter: blur(22px) saturate(240%) brightness(1.24) contrast(1.05);
   --glass-filter-strong: blur(34px) saturate(230%) brightness(1.16) contrast(1.04);
   --glass-light: rgba(255, 255, 255, 0.045);
@@ -71,7 +71,7 @@
   --blur: 30px;
   --blur-strong: 42px;
   --glass: rgba(255, 255, 255, 0.05);
-  --glass-strong: rgba(10, 18, 38, 0.74);
+  --glass-strong: rgba(22, 11, 46, 0.74);
 
   /* --- text: a lilac white, then two steps of the ground's own violet ---
      Secondary text carries the base's hue rather than being neutral
@@ -83,9 +83,9 @@
      surfaces constantly, so the reference's value was failing exactly
      where the token is used most. Lifted until both clear: dim 8.5:1
      on the ground and 7.0:1 on a surface, faint 5.6:1 and 4.9:1. --- */
-  --ink: #eef3ff;
-  --ink-dim: #a9b9da;
-  --ink-faint: #8193b8;
+  --ink: #f5efff;
+  --ink-dim: #bfaedd;
+  --ink-faint: #9580b8;
 
   /* --- accent: one gold, and only it ---
      #F5C542 over a #190B28 ground is an 11.5:1 pair — the highest
@@ -133,7 +133,7 @@
      which works in a still image and not in a control: a half star
      needs its unfilled half to be visible or it reads as a whole star
      at the wrong size. */
-  --star-empty: #26386a;
+  --star-empty: #3f2672;
   /* Placeholder text, one step below --ink-faint. On the navy ramp the
      faint step was a muted blue-grey and doubled as a placeholder
      happily; on every coloured ramp since it is a saturated colour, and
@@ -141,7 +141,7 @@
      as something already typed rather than as a prompt. A placeholder
      is the one piece of text that is supposed to sit under the reading
      threshold. */
-  --ink-ghost: #5d6d92;
+  --ink-ghost: #6c5a8f;
   --coral: #ff9933;
   --teal: #40bcf4;
   --violet: #40bcf4;
@@ -151,8 +151,8 @@
   --pink: #ff9933;
 
   /* --- semantic --- */
-  --line: rgba(150, 180, 255, 0.18);
-  --line-strong: rgba(150, 180, 255, 0.30);
+  --line: rgba(200, 170, 255, 0.18);
+  --line-strong: rgba(200, 170, 255, 0.30);
   /* The reference's own "dropped" red. Under the coral palette this
      token had to be forced into a hot pink to stay clear of the
      primary — coral and red sit ~13 degrees apart and "delete account"
@@ -450,7 +450,7 @@ ul { list-style: none; margin: 0; padding: 0; }
 .boot-fail__body { margin: 10px 0 0; font-size: 14px; line-height: 1.5; color: #99aabb; }
 .boot-fail__btn {
   margin-top: 20px; width: 100%; min-height: 46px; border: none; cursor: pointer;
-  border-radius: 999px; background: #00e054; color: #0a1226;
+  border-radius: 999px; background: #00e054; color: #160b2e;
   font-size: 15px; font-weight: 800;
 }
 /* A soft ambient glow breathing behind the mark — the same --accent
@@ -2377,9 +2377,9 @@ a.announce:active { transform: scale(0.99); background: color-mix(in srgb, var(-
 .rating-histogram__bar { flex: 1; min-width: 0; height: 100%; position: relative; display: flex; align-items: flex-end; }
 /* Every bar is the same green; only the held one is brighter. */
 .rating-histogram__bar-fill { display: block; width: 100%; height: var(--bar-h, 3px); border-radius: 0; background: rgba(0, 224, 84, 0.55); }
-.rating-histogram__bar.is-zero .rating-histogram__bar-fill { background: #26386a; }
+.rating-histogram__bar.is-zero .rating-histogram__bar-fill { background: #3f2672; }
 .rating-histogram__bar.rating-histogram__bar--active .rating-histogram__bar-fill { background: var(--accent-bright); }
-.rh-base { border-top: 1px solid rgba(150, 180, 255, 0.32); }
+.rh-base { border-top: 1px solid rgba(200, 170, 255, 0.32); }
 
 /* ------------------------------------------------------------ log cards ("save slot") */
 .log-list { display: flex; flex-direction: column; gap: 14px; }
@@ -4687,13 +4687,13 @@ a.gd-credit__name { text-decoration: none; }
    fill itself is doing a lot less of the work. Ink tokens are pinned
    since the tint is dark regardless of the active theme. */
 .modal--providers {
-  --ink: #eef3ff;
+  --ink: #f5efff;
   --ink-dim: #e2c9ad;
-  --ink-faint: #8193b8;
+  --ink-faint: #9580b8;
   position: relative;
   background:
     linear-gradient(180deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.02) 38%, rgba(255,255,255,0.06) 100%),
-    rgba(10, 18, 38, 0.34);
+    rgba(22, 11, 46, 0.34);
   border-top: none;
   box-shadow:
     inset 0 1.5px 0.5px rgba(255,255,255,0.6),
@@ -5578,7 +5578,7 @@ a.gd-credit__name { text-decoration: none; }
 }
 .psn-pick__tick svg { width: 15px; height: 15px; }
 .psn-pick__tick svg path {
-  fill: none; stroke: var(--bg, #0a1226); stroke-width: 3;
+  fill: none; stroke: var(--bg, #160b2e); stroke-width: 3;
   stroke-linecap: round; stroke-linejoin: round;
   stroke-dasharray: 22; stroke-dashoffset: 22;
   transition: stroke-dashoffset 180ms ease 40ms;
@@ -6475,7 +6475,7 @@ a.gd-credit__name { text-decoration: none; }
 /* ---- the viewer ---- */
 .story-viewer {
   position: fixed; inset: 0; z-index: 120;
-  background: #060a17; color: #fff;
+  background: #0e0720; color: #fff;
   display: flex; flex-direction: column;
   padding: calc(var(--safe-top) + 10px) 14px calc(var(--safe-bottom) + 18px);
 }
@@ -7684,15 +7684,13 @@ a.gd-credit__name { text-decoration: none; }
 #backlog-body > .ps-box { margin: 4px 0 12px; }
 .ps-rows--ic .ps-row__n b { font-size: 14.5px; font-weight: 600; color: var(--ink-dim); }
 
-/* Sapphire Glow: a soft blue light in the top corner over dark navy, on the app column itself. */
+/* Royal Purple: deep purple at the top fading into near-black, on the app column itself. */
 #app {
-  background:
-    radial-gradient(120% 420px at 85% 0%, rgba(42, 91, 215, 0.50) 0%, rgba(42, 91, 215, 0) 70%),
-    linear-gradient(180deg, #0c1631 0%, #060a17 900px);
-  background-color: #060a17;
+  background: linear-gradient(180deg, #3b1f6b 0%, #24124a 360px, #0e0720 900px);
+  background-color: #0e0720;
 }
 .topbar, .topbar--home, .home-tabs, .profile-top, .view-loading { background: transparent; }
-.tabbar__item:not(.tabbar__item--active) .tabbar__avatar::after { border: 1px solid rgba(238, 243, 255, 0.55); }
+.tabbar__item:not(.tabbar__item--active) .tabbar__avatar::after { border: 1px solid rgba(245, 239, 255, 0.55); }
 
 /* Currently playing, nobody playing: controller, line, small line, button */
 .cp-empty { text-align: center; padding: 22px 16px 10px; }
