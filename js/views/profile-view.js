@@ -329,7 +329,10 @@ export async function renderProfileView(root, { username }) {
     `;
 
     const renderListsTab = () => `
-      $1
+      <div class="feed-section-head">
+        <h2 class="section-heading">Lists</h2>
+        ${isOwn ? `<button type="button" class="icon-btn icon-btn--small" id="new-list-btn" aria-label="New list">${iconPlus()}</button>` : ''}
+      </div>
       ${lists.length ? `
         <div class="list-cards">
           ${lists.map(listCard).join('')}

@@ -7910,3 +7910,7 @@ a.gd-credit__name { text-decoration: none; }
 /* New account's home: one short call to follow people where the strangers used to be */
 .empty-state--home { padding: 36px var(--space-5) 28px; }
 .empty-state p.empty-state__sub { min-height: 0; margin: 0 auto 16px; font-size: 13.5px; color: var(--ink-faint); }
+
+/* Lists tab: heading with the + beside it again, as it was */
+#new-list-btn { position: static; }
+#profile-tab-content:has(#new-list-btn) .list-cards { padding-top: 0; }
