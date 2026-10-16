@@ -1,8 +1,8 @@
 import * as api from '../api.js';
 import { state } from '../state.js';
-import { topBar, navBar, emptyState, spinner, iconStamp, posterFrame, iconFilter, iconClose, iconReplay, iconReviewLines, iconHeartFilled } from '../components.js';
+import { topBar, navBar, emptyState, spinner, iconStamp, posterFrame, iconFilter, iconClose, iconReplay, iconReviewLines, iconHeartFilled, iconChevronDown } from '../components.js';
 import { backlogBarHtml, wireBacklogBar } from './profile-stats.js';
-import { esc, qs, formatDate, statusStamp, starRow, igdbSized, playedKind } from '../utils.js';
+import { esc, qs, qsa, formatDate, statusStamp, starRow, igdbSized, playedKind } from '../utils.js';
 
 // `keep` narrows the list after it is fetched (the database can't ask these
 // questions directly): this year's games, real logs (a rating, a review or a
@@ -176,7 +176,22 @@ export async function renderLogListView(root, { username, mode }) {
       let list = matches(f).sort(sorters[f.sort]);
       let content;
       if (!list.length) content = emptyState(logs.length ? 'Nothing matches those filters.' : cfg.empty(username), { icon: iconStamp() });
-      else if (f.group) {
+      else if (mode === 'replayed') {
+        // one row per game replayed more than once; tap it and every play opens underneath, newest first, first ever last
+        const byGame = new Map();
+        list.forEach((l) => { if (!byGame.has(l.games.id)) byGame.set(l.games.id, []); byGame.get(l.games.id).push(l); });
+        const when = (l) => new Date(l.played_date || l.created_at || 0).getTime();
+        const groups = [...byGame.values()].map((g) => g.sort((x, y) => when(y) - when(x))).sort((x, y) => when(y[0]) - when(x[0]));
+        content = `<div class="rpl">${groups.map((g) => `
+          <div class="rpl__game">
+            <button type="button" class="rpl__head" aria-expanded="false">
+              <span class="rpl__cover">${posterFrame(g[0].games.cover_url, g[0].games.title, 'rpl__img')}</span>
+              <span class="rpl__main"><span class="rpl__title">${esc(g[0].games.title)}${g[0].games.release_year ? ` <em>${esc(String(g[0].games.release_year))}</em>` : ''}</span><span class="rpl__sub">${g.length} playthroughs &middot; latest ${esc(formatDate(g[0].played_date || String(g[0].created_at).slice(0, 10)))}</span></span>
+              <span class="rpl__chev">${iconChevronDown()}</span>
+            </button>
+            <div class="rpl__plays">${diaryTilesHtml(g, false)}</div>
+          </div>`).join('')}</div>`;
+      } else if (f.group) {
         const byGame = new Map();
         list.forEach((l) => { if (!byGame.has(l.games.id)) byGame.set(l.games.id, []); byGame.get(l.games.id).push(l); });
         content = `<div class="diary-list">${[...byGame.values()].map((g) => `
@@ -190,6 +205,7 @@ export async function renderLogListView(root, { username, mode }) {
         content = `<div class="ll-grid">${list.map((l) => `<div class="ll-cell"><a class="game-card" data-game-id="${esc(l.games.id)}" href="${isLogged(l) ? `#/review/${l.id}` : `#/game/${l.games.id}`}" aria-label="${esc(l.games.title)}">${posterFrame(l.games.cover_url, l.games.title, 'game-card__cover')}</a><div class="rp-meta">${l.rating ? starRow(l.rating, { size: 12 }) : ''}${l.is_replay ? `<span class="rp-meta__icon rp-meta__icon--replay">${iconReplay()}</span>` : ''}${l.review ? `<span class="rp-meta__icon rp-meta__icon--review">${iconReviewLines()}</span>` : ''}</div></div>`).join('')}</div>`;
       }
       body.innerHTML = `<div id="ll-results">${content}</div>`;
+      qsa('.rpl__head', body).forEach((h) => h.addEventListener('click', () => { const o = h.parentElement.classList.toggle('is-open'); h.setAttribute('aria-expanded', String(o)); }));
       setBadge();
     };
     qs('#ll-fbtn', root).addEventListener('click', openFilters);
