@@ -19,7 +19,7 @@ import { renderCompareView, renderCompareSectionView } from './views/compare-vie
 import { renderTrendingView } from './views/trending-view.js';
 import { renderFriendsPlayingView } from './views/friends-playing-view.js';
 import { renderCurrentlyPlayingView } from './views/currently-playing-view.js';
-import { renderLogListView, renderBacklogView } from './views/log-list-view.js';
+import { renderLogListView, renderBacklogView, renderGameReplaysView } from './views/log-list-view.js';
 import { renderGameView, openQuickLogSheet, prefetchQuickLog } from './views/game-view.js';
 import { renderGameReviewsView } from './views/game-reviews-view.js';
 import { renderReviewView } from './views/review-view.js';
@@ -238,6 +238,7 @@ function registerRoutes() {
   route('/profile/:username/compare', (p) => renderCompareView(pageEl(), p));
   route('/profile/:username/compare/:section', (p) => renderCompareSectionView(pageEl(), p));
   route('/profile/:username/backlog', (p) => renderBacklogView(pageEl(), p));
+  route('/profile/:username/replays/:gameId', (p) => renderGameReplaysView(pageEl(), p));
   route('/profile/:username/log-list/:mode', (p) => renderLogListView(pageEl(), p));
   route('/game/:id/reviews', (p) => renderGameReviewsView(pageEl(), p));
   route('/review/:id', (p) => renderReviewView(pageEl(), p));

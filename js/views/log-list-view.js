@@ -1,6 +1,6 @@
 import * as api from '../api.js';
 import { state } from '../state.js';
-import { topBar, navBar, emptyState, spinner, iconStamp, posterFrame, iconFilter, iconClose, iconReplay, iconReviewLines, iconHeartFilled, iconChevronDown } from '../components.js';
+import { topBar, navBar, emptyState, spinner, iconStamp, posterFrame, iconFilter, iconClose, iconReplay, iconReviewLines, iconHeartFilled, iconChevronDown, iconChevronRight } from '../components.js';
 import { backlogBarHtml, wireBacklogBar } from './profile-stats.js';
 import { esc, qs, qsa, formatDate, statusStamp, starRow, igdbSized, playedKind } from '../utils.js';
 
@@ -67,6 +67,22 @@ export async function renderBacklogView(root, { username }) {
     wireBacklogBar(body, logs, isOwn);
   } catch (err) {
     body.innerHTML = emptyState(err.message || 'Could not load the backlog.');
+  }
+}
+
+// One game's replay history, laid out like the Diary: month strips, then each playthruu, newest first.
+export async function renderGameReplaysView(root, { username, gameId }) {
+  root.innerHTML = topBar('', { back: true }) + `<div class="view-body" id="gr-body">${spinner()}</div>` + navBar('');
+  const body = qs('#gr-body', root);
+  try {
+    const profile = state.profile?.username === username ? state.profile : await api.getProfileByUsername(username);
+    const all = await api.getLogsForUser(profile.id, { statuses: ['played', 'dropped'], limit: 5000 });
+    const list = all.filter((l) => l.games && l.games.id === gameId && l.status !== 'backlog')
+      .sort((a, b) => new Date(b.played_date || b.created_at) - new Date(a.played_date || a.created_at));
+    qs('.topbar__title', root).textContent = list[0]?.games?.title || 'Replays';
+    body.innerHTML = list.length ? diaryTilesHtml(list, true) : emptyState('No replays of this game yet.');
+  } catch (err) {
+    body.innerHTML = `<p class="muted" style="padding:24px">Couldn't load this: ${esc(err.message)}</p>`;
   }
 }
 
@@ -184,12 +200,11 @@ export async function renderLogListView(root, { username, mode }) {
         const groups = [...byGame.values()].map((g) => g.sort((x, y) => when(y) - when(x))).sort((x, y) => when(y[0]) - when(x[0]));
         content = `<div class="rpl">${groups.map((g) => `
           <div class="rpl__game">
-            <button type="button" class="rpl__head" aria-expanded="false">
+            <a class="rpl__head" href="#/profile/${esc(username)}/replays/${esc(g[0].games.id)}">
               <span class="rpl__cover">${posterFrame(g[0].games.cover_url, g[0].games.title, 'rpl__img')}</span>
               <span class="rpl__main"><span class="rpl__title">${esc(g[0].games.title)}${g[0].games.release_year ? ` <em>${esc(String(g[0].games.release_year))}</em>` : ''}</span><span class="rpl__sub">${g.length} playthruu</span></span>
-              <span class="rpl__chev">${iconChevronDown()}</span>
-            </button>
-            <div class="rpl__plays">${diaryTilesHtml(g, true)}</div>
+              <span class="rpl__chev">${iconChevronRight()}</span>
+            </a>
           </div>`).join('')}</div>`;
       } else if (f.group) {
         const byGame = new Map();
@@ -205,7 +220,6 @@ export async function renderLogListView(root, { username, mode }) {
         content = `<div class="ll-grid">${list.map((l) => `<div class="ll-cell"><a class="game-card" data-game-id="${esc(l.games.id)}" href="${isLogged(l) ? `#/review/${l.id}` : `#/game/${l.games.id}`}" aria-label="${esc(l.games.title)}">${posterFrame(l.games.cover_url, l.games.title, 'game-card__cover')}</a><div class="rp-meta">${l.rating ? starRow(l.rating, { size: 12 }) : ''}${l.is_replay ? `<span class="rp-meta__icon rp-meta__icon--replay">${iconReplay()}</span>` : ''}${l.review ? `<span class="rp-meta__icon rp-meta__icon--review">${iconReviewLines()}</span>` : ''}</div></div>`).join('')}</div>`;
       }
       body.innerHTML = `<div id="ll-results">${content}</div>`;
-      qsa('.rpl__head', body).forEach((h) => h.addEventListener('click', () => { const o = h.parentElement.classList.toggle('is-open'); h.setAttribute('aria-expanded', String(o)); }));
       setBadge();
     };
     qs('#ll-fbtn', root).addEventListener('click', openFilters);

@@ -7989,3 +7989,8 @@ a.gd-credit__name { text-decoration: none; }
 .dp-hint { font-size: 10px; margin-top: 4px; }
 
 .avatar[data-profile]:not([data-profile=""]) { cursor: pointer; }
+
+/* Replays list rows are links now; the history opens on its own page */
+a.rpl__head { text-decoration: none; }
+.rpl__chev { transform: none !important; }
+#gr-body .dq-month { margin: 0 -16px; padding: 9px 16px; background: var(--surface-raised); font-family: var(--font-body); font-size: 11.5px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-dim); }
