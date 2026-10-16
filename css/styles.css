@@ -7860,3 +7860,8 @@ a.gd-credit__name { text-decoration: none; }
 /* While likes and comments are still on their way, the line is there but nothing is said under it. */
 .rv-comments--loading .rv-comments__none, .rv-comments--loading .rv-comments__head { display: none !important; }
 .act--log .act__card { margin-top: -12px; }
+
+/* Empty screens: wordmark, tagline, message, button */
+.empty-state__wm { font-family: var(--font-display); font-weight: 800; font-size: 20px; color: var(--accent); margin-bottom: 12px; letter-spacing: -0.01em; }
+.empty-state__tag { font-family: var(--font-display); font-weight: 800; font-size: 15px; color: var(--ink); margin-bottom: 8px; }
+.empty-state p { font-size: 13px; color: var(--ink-dim); }
