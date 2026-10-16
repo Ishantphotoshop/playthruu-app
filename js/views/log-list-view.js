@@ -88,7 +88,7 @@ export async function renderGameReplaysView(root, { username, gameId }) {
 
 export async function renderLogListView(root, { username, mode }) {
   const cfg = MODES[mode] || MODES.logged;
-  root.innerHTML = topBar(cfg.title, { back: true, right: `<button type="button" class="browse-fbtn" id="ll-fbtn" aria-label="Filters">${iconFilter()}</button>` }) + `<div class="view-body" id="loglist-body">${spinner()}</div>` + navBar('');
+  root.innerHTML = topBar(cfg.title, { back: true, right: mode === 'replayed' ? '' : `<button type="button" class="browse-fbtn" id="ll-fbtn" aria-label="Filters">${iconFilter()}</button>` }) + `<div class="view-body" id="loglist-body">${spinner()}</div>` + navBar('');
   const body = qs('#loglist-body', root);
 
   try {
@@ -185,6 +185,7 @@ export async function renderLogListView(root, { username, mode }) {
       const n = Object.keys(BLANK).filter((k) => String(f[k]) !== String(BLANK[k])).length;
       const btn = qs('#ll-fbtn', root);
       if (!btn) return;
+      if (!btn) return;
       qs('.ll-fbadge', btn)?.remove();
       if (n) btn.insertAdjacentHTML('beforeend', `<em class="ll-fbadge">${n}</em>`);
     };
@@ -222,7 +223,7 @@ export async function renderLogListView(root, { username, mode }) {
       body.innerHTML = `<div id="ll-results">${content}</div>`;
       setBadge();
     };
-    qs('#ll-fbtn', root).addEventListener('click', openFilters);
+    qs('#ll-fbtn', root)?.addEventListener('click', openFilters);
     if (!logs.length) { body.innerHTML = emptyState(cfg.empty(username), { icon: iconStamp() }); return; }
     paint();
   } catch (err) {
