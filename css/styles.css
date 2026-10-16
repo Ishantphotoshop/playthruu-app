@@ -7804,3 +7804,7 @@ a.gd-credit__name { text-decoration: none; }
 /* Backlog box: one sentence at one size ("19 games waiting for you..."), the number no bigger than the words. */
 .bl-line { font-size: 17px; line-height: 1.35; font-weight: 600; color: var(--ink); }
 .bl-line b { font-size: inherit; font-weight: 800; margin-right: 0; }
+/* Backlog sentence in the game page's title font (same family, weight and letter spacing). */
+.bl-line { font-family: var(--font-display); font-weight: 800; letter-spacing: -0.01em; font-size: 15px; line-height: 1.35; }
+.bl-line b { font-weight: 800; }
+.bl-name { font-family: var(--font-display); letter-spacing: -0.01em; }
