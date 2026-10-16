@@ -7793,3 +7793,8 @@ a.gd-credit__name { text-decoration: none; }
 .act__game { font-size: 14px; }
 /* The card starts under the first letter of the name, not under the profile picture (avatar 32px + 10px gap). */
 .act--log .act__card { margin-left: 42px; }
+/* Same sizes as Friend's recent activity on Home: stars 10px, marks 9.5px, 3px between them. */
+.act__marks { gap: 3px; min-height: 14px; }
+.act__marks .stars { --star-size: 10px !important; gap: 0; }
+.act__mark { width: 9.5px; height: 9.5px; }
+.act__mark svg { stroke-width: 1.6; }
