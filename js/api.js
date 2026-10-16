@@ -4971,7 +4971,7 @@ export async function deletePushSubscription(endpoint) {
 // its own screen with its own unread state.
 
 const ACT_ACTOR = 'id, username, display_name, avatar_url';
-const ACT_GAME = 'id, title, cover_url';
+const ACT_GAME = 'id, title, cover_url, release_year';
 
 // Every row carries a `key` that identifies the EVENT rather than the
 // table it came from, because the same event legitimately arrives twice:
@@ -4985,7 +4985,7 @@ async function actLogs(actorIds, limit, before) {
   if (!actorIds.length) return [];
   let q = supabase
     .from('logs')
-    .select(`id, rating, review, status, played_date, created_at, user_id,
+    .select(`id, rating, review, status, played_date, created_at, user_id, loved, is_replay,
       actor:profiles!logs_user_id_fkey(${ACT_ACTOR}),
       games!logs_game_id_fkey(${ACT_GAME})`)
     .in('user_id', actorIds)

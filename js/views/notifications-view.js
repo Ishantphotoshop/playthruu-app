@@ -1,6 +1,6 @@
 import * as api from '../api.js';
 import { state } from '../state.js';
-import { navBar, avatarImg, emptyState, spinner, iconBell } from '../components.js';
+import { navBar, avatarImg, emptyState, spinner, iconBell, posterFrame, iconHeartFilled, iconReviewLines, iconReplay } from '../components.js';
 import { esc, timeAgo, starRow, qs, qsa, keepLoading, wireTabSwipe } from '../utils.js';
 import { navigate, markTabStale } from '../router.js';
 import { wirePullToRefresh, pullRefreshing } from './feed-view.js';
@@ -120,7 +120,42 @@ function describe(row, viewerId) {
   }
 }
 
+// A logged game is a card, not a sentence: who and what with the time on one line, then a
+// rounded card with the poster, the title and year, the stars with the liked, review and
+// replay marks, and the review. Every other kind of row stays a plain sentence.
+function logCard(row, viewerId) {
+  const log = row.log || {};
+  const g = row.game;
+  const isYou = row.actor_id === viewerId;
+  const who = isYou ? 'You' : `<span class="act__who">${esc(nameOf(row.actor))}</span>`;
+  const status = log.status || 'played';
+  const verb = status === 'backlog' ? `added to ${isYou ? 'your' : 'their'} backlog`
+    : log.is_replay ? 'replayed' : (PAST_TENSE[status] || 'played');
+  const marks = `${log.loved ? `<span class="act__mark act__mark--heart">${iconHeartFilled()}</span>` : ''}${log.review ? `<span class="act__mark">${iconReviewLines()}</span>` : ''}${log.is_replay ? `<span class="act__mark">${iconReplay()}</span>` : ''}`;
+  const rated = log.rating && status !== 'backlog';
+  const href = log.id && status !== 'backlog' ? `/review/${log.id}` : `/game/${g.id}`;
+  const unread = !!row.unread;
+  return `
+    <button type="button" class="act act--log${unread ? ' act--unread' : ''}" data-href="${esc(href)}">
+      <span class="act__line">
+        <span class="act__avatar">${row.actor ? avatarImg(row.actor, 32) : ''}</span>
+        <span class="act__text">${who} ${verb}</span>
+        <span class="act__time">${esc(timeAgo(row.created_at))}</span>
+        ${unread ? '<span class="act__dot" aria-label="New"></span>' : ''}
+      </span>
+      <span class="act__card">
+        ${posterFrame(g.cover_url, g.title, 'act__poster')}
+        <span class="act__card-body">
+          <span class="act__game">${esc(g.title)}${g.release_year ? ` <em>${esc(String(g.release_year))}</em>` : ''}</span>
+          ${rated || marks ? `<span class="act__marks">${rated ? starRow(log.rating, { size: 12 }) : ''}${marks}</span>` : ''}
+          ${log.review ? `<span class="act__review">${esc(log.review)}</span>` : ''}
+        </span>
+      </span>
+    </button>`;
+}
+
 function activityRow(row, viewerId) {
+  if (row.kind === 'log' && row.game) return logCard(row, viewerId);
   const { text, quote, href } = describe(row, viewerId);
   const unread = !!row.unread;
   const avatar = row.actor ? avatarImg(row.actor, 36) : '';
