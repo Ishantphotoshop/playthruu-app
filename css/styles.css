@@ -7849,3 +7849,10 @@ a.gd-credit__name { text-decoration: none; }
 .act__mark { width: 11px; height: 11px; }
 .act__marks .stars { --star-size: 12px !important; }
 .act__mark { width: 12px; height: 12px; }
+/* A logged game's top line sits exactly where every other row's line sits: text starts at the top of the avatar. */
+.act__line { align-items: flex-start; }
+.act__line .act__avatar { padding-top: 1px; }
+.act__line .act__text { line-height: 1.5; font-size: 14px; }
+.act__line .act__time { padding-top: 3px; margin-left: 4px; font-size: 11px; }
+.act--log { padding-top: 14px; padding-bottom: 14px; }
+.act--log { gap: 2px; }
