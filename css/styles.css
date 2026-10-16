@@ -7836,3 +7836,16 @@ a.gd-credit__name { text-decoration: none; }
 /* No comments: just a very small "No comments" in the middle under the line. */
 .rv-comments__none { display: none; margin: 0; text-align: center; font-size: 11px; font-weight: 600; color: var(--ink-faint); }
 .rv-comments--empty .rv-comments__none { display: block; padding: 10px 0 4px; }
+
+/* Spoiler reveal, back: the words arrive one by one. The delay now scales with the review's length (--step, set in JS), so a long
+   review keeps revealing all the way down instead of the rest popping in at once. Only the first lines are blurred (cheap). */
+.rv__quote--gated .rv__text { opacity: 1; transition: none; }
+.rv__w { display: inline-block; opacity: 0; transform: translateY(8px); filter: none; transition: opacity .35s var(--ease), transform .35s var(--ease); }
+.rv__w--b { filter: blur(4px); transition: opacity .35s var(--ease), transform .35s var(--ease), filter .35s var(--ease); }
+.rv__quote--gated.is-revealed .rv__w { opacity: 1; transform: none; filter: none; transition-delay: calc(var(--i) * var(--step, 16ms) + 0.12s); }
+/* Notifications card: stars and the three marks read as one size (the star glyph sits smaller inside its box, so it gets a bigger box). */
+.act__marks { gap: 4px; }
+.act__marks .stars { --star-size: 13px !important; }
+.act__mark { width: 11px; height: 11px; }
+.act__marks .stars { --star-size: 12px !important; }
+.act__mark { width: 12px; height: 12px; }

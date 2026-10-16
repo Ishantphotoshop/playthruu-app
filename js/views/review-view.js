@@ -121,6 +121,9 @@ export async function renderReviewView(root, { id }) {
     const gate = qs('#spoiler-gate', body);
     const card = qs('#spoiler-card', body);
     if (gate && card) {
+      const words = wrapWords(qs('.rv__text', card));
+      // however long the review is, every word gets its turn inside about 1.5 seconds
+      card.style.setProperty('--step', `${Math.max(1, Math.min(16, 1500 / Math.max(1, words)))}ms`);
       const hide = qs('#spoiler-hide', body);
       gate.addEventListener('click', () => {
         card.classList.add('is-revealed');
@@ -172,7 +175,7 @@ export async function renderReviewView(root, { id }) {
 // Wrap every word of the (already escaped and formatted) review in a span, keeping
 // the bold / italic / link markup around them, so the words can arrive one by one.
 function wrapWords(root) {
-  if (!root) return;
+  if (!root) return 0;
   let i = 0;
   const walk = (node) => {
     Array.from(node.childNodes).forEach((n) => {
@@ -182,7 +185,7 @@ function wrapWords(root) {
           if (!part) return;
           if (/^\s+$/.test(part)) { frag.appendChild(document.createTextNode(part)); return; }
           const w = document.createElement('span');
-          w.className = 'rv__w';
+          w.className = i < 80 ? 'rv__w rv__w--b' : 'rv__w';
           w.style.setProperty('--i', String(i++));
           w.textContent = part;
           frag.appendChild(w);
@@ -194,6 +197,7 @@ function wrapWords(root) {
     });
   };
   walk(root);
+  return i;
 }
 
 function reviewBodyHtml(log) {
