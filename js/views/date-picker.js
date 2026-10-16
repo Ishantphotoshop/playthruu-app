@@ -38,10 +38,8 @@ export function openDatePicker({ value = null, min = null, max = null, onPick })
       const cls = `${dt.getTime() === today.getTime() ? ' is-today' : ''}${dt.getTime() === cur.getTime() ? ' is-sel' : ''}`;
       days += `<button type="button" class="dp-d${cls}" data-d="${d}" ${off ? 'disabled' : ''}>${d}</button>`;
     }
-    ov.innerHTML = `
-      <div class="dp-sheet" role="dialog" aria-label="Pick a date">
-        <div class="dp-grab"></div>
-        <div class="dp-top"><button type="button" class="dp-x" data-a="cancel">Cancel</button><b>Date</b><button type="button" class="dp-ok" data-a="ok">Done</button></div>
+    if (!ov.firstChild) ov.innerHTML = '<div class="dp-sheet" role="dialog" aria-label="Pick a date"><div class="dp-grab"></div><div class="dp-top"><button type="button" class="dp-x" data-a="cancel">Cancel</button><b>Date</b><button type="button" class="dp-ok" data-a="ok">Done</button></div><div class="dp-in"></div></div>';
+    ov.querySelector('.dp-in').innerHTML = `
         <div class="dp-big">${esc(label(cur))}</div>
         <div class="dp-tabs"><button type="button" class="${tab === 'cal' ? 'on' : ''}" data-t="cal">Calendar</button><button type="button" class="${tab === 'wheel' ? 'on' : ''}" data-t="wheel">Wheels</button></div>
         ${tab === 'cal' ? `
@@ -51,7 +49,7 @@ export function openDatePicker({ value = null, min = null, max = null, onPick })
           <div class="dp-wheels"><div class="dp-w" data-k="d"></div><div class="dp-w dp-w--m" data-k="m"></div><div class="dp-w" data-k="y"></div></div>`}
         <div class="dp-type"><input data-i="d" inputmode="numeric" maxlength="2" placeholder="DD" value="${cur.getDate()}"><input data-i="m" inputmode="numeric" maxlength="2" placeholder="MM" value="${cur.getMonth() + 1}"><input data-i="y" inputmode="numeric" maxlength="4" placeholder="YYYY" value="${cur.getFullYear()}"></div>
         <div class="dp-hint">or type any date</div>
-      </div>`;
+`;
     if (tab === 'wheel') wheels();
   }
 

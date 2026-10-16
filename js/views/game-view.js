@@ -1609,11 +1609,17 @@ function openLogSheet({ game, ownLog, replayCount, ensureSavedGame, onChanged, o
     // database first — otherwise opening the review composer would
     // discard a rating set moments earlier.
     if (act === 'review' || act === 'again') {
+      // The finger that tapped this row lands on whatever is underneath once the sheet is gone (the + tab); that
+      // stray tap used to open the game-search sheet instead of the log screen. Ignore + taps for a moment.
+      window.__logTabBlockUntil = Date.now() + 1200;
       const current = await commit();
       close();
       // The next sheet must not open until this one's history entry is
       // gone - see afterOverlayClosed in router.js.
       await afterOverlayClosed();
+      // a search sheet that still got opened by that stray tap is replaced by this game's log screen
+      document.querySelector('.modal-overlay[data-lc]')?.remove();
+      document.body.style.overflow = 'hidden';
       if (act === 'again') {
         const saved = await ensureSavedGame();
         if (saved) openLogComposer({ game: saved, defaultReplay: true, onSaved: onChanged });

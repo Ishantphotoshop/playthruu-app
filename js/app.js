@@ -290,6 +290,7 @@ function wireGlobalChrome() {
     // so you come back to exactly the screen you were on when you close
     // it, and nothing is re-fetched behind it.
     const wantsLog = e.target.closest('[data-action="log"]');
+    if (wantsLog && Date.now() < (window.__logTabBlockUntil || 0)) { e.preventDefault(); return; }
     if (wantsLog) {
       e.preventDefault();
       openLogComposer({ onSaved: refreshCurrentView });
