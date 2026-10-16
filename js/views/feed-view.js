@@ -1521,7 +1521,7 @@ async function paintCurrentlyPlaying(slot) {
 
     // Someone following nobody sees nothing here: no strangers' games on a new account's home screen.
     if (isFallback) {
-      slot.innerHTML = `<div class="empty-state empty-state--home"><p class="empty-state__title">It’s dangerous to go alone!</p><p class="empty-state__sub">Follow a few people to see what they play.</p><a class="btn btn--accent" href="#/people">Find people</a></div>`;
+      slot.innerHTML = `<div class="empty-state empty-state--home"><p class="empty-state__title">Follow people.</p><p class="empty-state__sub">See what they play, rate and review.</p><a class="btn btn--accent" href="#/people">Find people</a></div>`;
       return;
     }
 
