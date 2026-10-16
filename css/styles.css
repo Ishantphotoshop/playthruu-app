@@ -7801,3 +7801,6 @@ a.gd-credit__name { text-decoration: none; }
 /* The Backlog "?" slot: a solid box like the empty slot in Currently playing, not dashed. */
 .bl-slot { border: 1px solid var(--line-strong); background: var(--surface); border-radius: var(--poster-radius); color: var(--ink-dim); }
 .bl-slot--on { border: 1px solid var(--line-strong); background: var(--surface-raised); }
+/* Backlog box: one sentence at one size ("19 games waiting for you..."), the number no bigger than the words. */
+.bl-line { font-size: 17px; line-height: 1.35; font-weight: 600; color: var(--ink); }
+.bl-line b { font-size: inherit; font-weight: 800; margin-right: 0; }
