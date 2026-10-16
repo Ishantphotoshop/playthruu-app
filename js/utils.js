@@ -508,6 +508,8 @@ export function pulseLogTab() {
 // day your account was created (saving an entry dates it today). Marking a game as
 // played, or rating it, from the game page does not make a diary entry.
 export function playedKind(log, joinedAt) {
+  // A written review, a replay or hours played is a proper log whatever its date (an old date picked on purpose included).
+  if (log.review || log.is_replay || log.hours_played) return log.played_date || log.review ? 'diary' : 'marked';
   const d = log.played_date ? new Date(`${String(log.played_date).slice(0, 10)}T00:00:00`) : null;
   if (!d) return 'marked';
   if (joinedAt) {
