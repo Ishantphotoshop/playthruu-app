@@ -1,7 +1,7 @@
 import * as api from '../api.js';
 import { state } from '../state.js';
 import { navBar, avatarImg, emptyState, refreshEmptyQuote, spinner, iconBell, posterFrame, iconHeartFilled, iconReviewLines, iconReplay } from '../components.js';
-import { esc, timeAgo, starRow, qs, qsa, keepLoading, wireTabSwipe, playedKind } from '../utils.js';
+import { esc, timeAgo, starRow, qs, qsa, keepLoading, wireTabSwipe, playedKind, formatDate } from '../utils.js';
 import { navigate, markTabStale } from '../router.js';
 import { wirePullToRefresh, pullRefreshing } from './feed-view.js';
 import { getCached, setCached, CACHE_KEYS } from '../cache.js';
@@ -157,6 +157,7 @@ function logCard(row, viewerId) {
         ${posterFrame(g.cover_url, g.title, 'act__poster')}
         <span class="act__card-body">
           <span class="act__game">${esc(g.title)}${g.release_year ? ` <em>${esc(String(g.release_year))}</em>` : ''}</span>
+          ${log.played_date ? `<span class="act__date">${log.is_replay ? 'Replayed' : 'Played'} on ${esc(formatDate(String(log.played_date).slice(0, 10)))}</span>` : ''}
           ${rated || marks ? `<span class="act__marks">${rated ? starRow(log.rating, { size: 12 }) : ''}${marks}</span>` : ''}
           ${log.review ? `<span class="act__review">${esc(log.review)}</span>` : ''}
         </span>
