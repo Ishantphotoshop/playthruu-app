@@ -788,9 +788,7 @@ export function ratingHistogram(counts, { total = 0, average = null } = {}) {
   // that nothing's rated yet than to draw an empty chart.
   if (!total) {
     return `
-      <div class="rating-histogram rating-histogram--empty">
-        <p class="rating-histogram__empty">No ratings yet — be the first.</p>
-      </div>`;
+      <div class="rating-histogram rating-histogram--empty"></div>`;
   }
 
   // A boxed title row and ten bars. The title says how many ratings the

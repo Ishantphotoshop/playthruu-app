@@ -1519,6 +1519,9 @@ async function paintCurrentlyPlaying(slot) {
     // capped single-scroll every other row keeps to.
     const { logs, isFallback } = await api.getFeed(state.user.id, 15, 'playing');
 
+    // Someone following nobody sees nothing here: no strangers' games on a new account's home screen.
+    if (isFallback) { slot.innerHTML = ''; return; }
+
     if (!logs.length) {
       slot.innerHTML = `
         <h2 class="section-heading">Currently playing</h2>

@@ -14,13 +14,13 @@ export function openNewListForm() {
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
   overlay.innerHTML = `
-    <div class="modal">
-      <header class="modal__header"><h2>New list</h2><button class="modal__close" data-close>&times;</button></header>
-      <form class="modal__body" id="new-list-form">
-        <label class="field"><span>Name *</span><input name="name" required placeholder="Best cozy games"></label>
-        <label class="field"><span>Description</span><textarea name="description" rows="2" placeholder="What ties this list together?"></textarea></label>
-        <label class="checkbox"><input type="checkbox" name="is_public" checked> Public</label>
-        <button type="submit" class="btn btn--accent btn--block">Create list</button>
+    <div class="modal nl">
+      <div class="nl__grab" aria-hidden="true"></div>
+      <header class="nl__head"><h2>New list</h2><button class="modal__close" data-close aria-label="Close">&times;</button></header>
+      <form class="nl__form" id="new-list-form">
+        <input class="nl__name" name="name" required maxlength="80" placeholder="List name" autocomplete="off">
+        <textarea class="nl__desc" name="description" rows="3" maxlength="300" placeholder="What ties these games together? (optional)"></textarea>
+        <button type="submit" class="btn btn--accent nl__go">Create list</button>
       </form>
     </div>`;
   document.body.appendChild(overlay);
@@ -30,7 +30,7 @@ export function openNewListForm() {
   qs('#new-list-form', overlay).addEventListener('submit', async (e) => {
     e.preventDefault();
     const data = Object.fromEntries(new FormData(e.target));
-    data.is_public = e.target.is_public.checked;
+    data.is_public = true; // everything on PlayThruu is public
     try {
       const list = await api.createList(state.user.id, data);
       overlay.remove();
@@ -339,7 +339,6 @@ export function openAddToListPicker(game) {
     bodyEl.innerHTML = `
       <form id="pick-new-list-form">
         <label class="field"><span>Name *</span><input name="name" required placeholder="Best cozy games"></label>
-        <label class="checkbox"><input type="checkbox" name="is_public" checked> Public</label>
         <button type="submit" class="btn btn--accent btn--block">Create &amp; add</button>
       </form>`;
     qs('input[name="name"]', bodyEl)?.focus();
@@ -349,7 +348,7 @@ export function openAddToListPicker(game) {
       btn.disabled = true;
       try {
         const data = Object.fromEntries(new FormData(e.target));
-        data.is_public = e.target.is_public.checked;
+        data.is_public = true;
         const list = await api.createList(state.user.id, data);
         await api.addGameToList(list.id, game.id, 0);
         close();

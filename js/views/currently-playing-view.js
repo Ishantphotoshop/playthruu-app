@@ -13,6 +13,8 @@ export async function renderCurrentlyPlayingView(root) {
 
   try {
     const { logs, isFallback } = await api.getFeed(state.user.id, 200, 'playing');
+    // a brand-new account follows nobody: no strangers' games here
+    if (isFallback) { body.innerHTML = emptyState('Nothing here yet.', { quotes: 'friends' }); return; }
     body.innerHTML = logs.length
       ? `<div class="card-grid">${logs.map((l) => activityCard(l)).join('')}</div>`
       : (isFallback

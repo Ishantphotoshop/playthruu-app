@@ -315,7 +315,7 @@ export async function renderProfileView(root, { username }) {
     // Poster grid, three across (like the discover screen) — a want-to-play
     // pile reads best as cover art you browse, not a text list.
     const renderWantToPlayTab = () => `
-      ${backlog.length ? backlogBarHtml(profile, logs, isOwn) : '<h2 class="section-heading">Backlog</h2>'}
+      ${backlog.length ? backlogBarHtml(profile, logs, isOwn) : ''}
       ${backlog.length ? `
         <div class="poster-grid3">
           ${backlog.map((l) => `
@@ -329,10 +329,7 @@ export async function renderProfileView(root, { username }) {
     `;
 
     const renderListsTab = () => `
-      <div class="feed-section-head">
-        <h2 class="section-heading">Lists</h2>
-        ${isOwn ? `<button type="button" class="icon-btn icon-btn--small" id="new-list-btn" aria-label="New list">${iconPlus()}</button>` : ''}
-      </div>
+      $1
       ${lists.length ? `
         <div class="list-cards">
           ${lists.map(listCard).join('')}

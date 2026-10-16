@@ -61,7 +61,10 @@ function rowsHtml(profile, logs, isOwn) {
   };
   // "this year / all time", right after the name.
   const count = (list, withTotal = true, totalOnly = false) => `<span class="ps-row__n"><b>${num(totalOnly ? list.length : list.filter(inYear).length)}</b>${withTotal && !totalOnly ? `<em>/ ${num(list.length)}</em>` : ''}</span>`;
-  const row = (label, list, attrs, withTotal = true, totalOnly = false) => `<a class="ps-row" ${attrs}>${ROW_ICONS[label] || ''}<span class="ps-row__l">${label}</span><span class="ps-row__r">${list ? count(list, withTotal, totalOnly) : ''}<i class="ps-row__chev ps-row__chev--show">${chevron}</i></span></a>`;
+  // A row with nothing behind it is faded and does not open; it comes alive once there is something to see.
+  const row = (label, list, attrs, withTotal = true, totalOnly = false) => (list && list.length === 0)
+    ? `<div class="ps-row ps-row--off" aria-disabled="true">${ROW_ICONS[label] || ''}<span class="ps-row__l">${label}</span><span class="ps-row__r"><span class="ps-row__n"><b>0</b></span><i class="ps-row__chev ps-row__chev--show">${chevron}</i></span></div>`
+    : `<a class="ps-row" ${attrs}>${ROW_ICONS[label] || ''}<span class="ps-row__l">${label}</span><span class="ps-row__r">${list ? count(list, withTotal, totalOnly) : ''}<i class="ps-row__chev ps-row__chev--show">${chevron}</i></span></a>`;
   return `
     <div class="ps-rows ps-rows--ic">
       ${SHOW_THIS_YEAR ? row('This year', sets.thisYear, `href="${base}/log-list/year"`) : ''}
@@ -70,7 +73,7 @@ function rowsHtml(profile, logs, isOwn) {
       ${row('Reviews', sets.reviews, `href="${base}/log-list/reviews"`, true, true)}
       ${row('Likes', sets.likes, `href="${base}/log-list/liked"`, true, true)}
       ${row('Replays', sets.replays, `href="${base}/log-list/replayed"`, true, true)}
-      <a class="ps-row" href="${base}/backlog">${ROW_ICONS.Backlog}<span class="ps-row__l">Backlog</span><span class="ps-row__r"><span class="ps-row__n"><b>${num(logs.filter((l) => l.status === 'backlog').length)}</b></span><i class="ps-row__chev ps-row__chev--show">${chevron}</i></span></a>
+      <a class="ps-row${logs.some((l) => l.status === 'backlog') ? '' : ' ps-row--off'}" ${logs.some((l) => l.status === 'backlog') ? `href="${base}/backlog"` : 'aria-disabled="true"'}>${ROW_ICONS.Backlog}<span class="ps-row__l">Backlog</span><span class="ps-row__r"><span class="ps-row__n"><b>${num(logs.filter((l) => l.status === 'backlog').length)}</b></span><i class="ps-row__chev ps-row__chev--show">${chevron}</i></span></a>
       ${row('Activity', null, isOwn ? 'href="#/notifications" data-open-notif="you"' : `href="${base}/activity"`)}
     </div>`;
 }
