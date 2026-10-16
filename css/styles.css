@@ -7968,3 +7968,22 @@ a.gd-credit__name { text-decoration: none; }
 .dp-type input { flex: 1; min-width: 0; background: var(--surface-raised); border: 1px solid var(--line); border-radius: 10px; padding: 10px; color: var(--ink); font: 600 14px var(--font-body); outline: none; text-align: center; }
 .dp-type input:focus { border-color: var(--accent); }
 .dp-hint { text-align: center; font-size: 11px; color: var(--ink-faint); margin-top: 6px; font-weight: 600; }
+
+/* Date picker in the middle of the screen, in a curved box (not a bottom sheet) */
+.dp-overlay { align-items: center; padding: 0 18px; }
+.dp-sheet { border-radius: 26px; max-width: 360px; padding: 16px 18px 18px; box-shadow: 0 24px 70px rgba(0,0,0,.6); animation: dp-pop .2s var(--ease); }
+.dp-grab { display: none; }
+@keyframes dp-pop { from { transform: scale(.94); opacity: 0; } to { transform: none; opacity: 1; } }
+.dp-dg, .dp-wd { touch-action: pan-y; }
+/* smaller box */
+.dp-sheet { max-width: 296px; padding: 12px 14px 14px; border-radius: 22px; }
+.dp-top button { font-size: 12.5px; padding: 3px 0; }
+.dp-big { font-size: 15.5px; margin: 4px 0 8px; }
+.dp-tabs button { padding: 6px; font-size: 12px; }
+.dp-tabs { margin-bottom: 6px; }
+.dp-mh button { width: 26px; height: 26px; font-size: 14px; } .dp-mh b { font-size: 13px; } .dp-mh { margin-bottom: 4px; }
+.dp-wd span { font-size: 9.5px; padding: 2px 0; }
+.dp-d { height: 29px; margin: 0; font-size: 12.5px; border-radius: 8px; }
+.dp-wheels { height: 150px; } .dp-wheels::before { top: 55px; height: 40px; } .dp-w { padding: 55px 0; } .dp-w div { font-size: 15px; }
+.dp-type { margin-top: 8px; gap: 6px; } .dp-type input { padding: 7px; font-size: 12.5px; border-radius: 9px; }
+.dp-hint { font-size: 10px; margin-top: 4px; }

@@ -104,6 +104,19 @@ export function openDatePicker({ value = null, min = null, max = null, onPick })
     else if (a === 'next') { view = new Date(view.getFullYear(), view.getMonth() + 1, 1); paint(); }
     else if (a === 'ok') { onPick?.(iso(cur)); close(); }
   });
+  // Swipe the month grid left or right to go to the next or previous month (a sideways flick; up and down is left alone).
+  let sx = 0, sy = 0, sw = false;
+  ov.addEventListener('pointerdown', (e) => { sw = tab === 'cal' && !!e.target.closest('.dp-wd, .dp-dg, .dp-mh'); sx = e.clientX; sy = e.clientY; });
+  ov.addEventListener('pointerup', (e) => {
+    if (!sw) return; sw = false;
+    const dx = e.clientX - sx, dy = e.clientY - sy;
+    if (Math.abs(dx) < 40 || Math.abs(dy) > Math.abs(dx) * 0.7) return;
+    const step = dx < 0 ? 1 : -1;
+    view = new Date(view.getFullYear(), view.getMonth() + step, 1);
+    paint();
+    const g = ov.querySelector('.dp-dg, .dp-wd'); void g;
+    ov.querySelectorAll('.dp-wd, .dp-dg').forEach((n) => n.animate([{ transform: `translateX(${step * 36}px)`, opacity: 0.3 }, { transform: 'none', opacity: 1 }], { duration: 180, easing: 'ease-out' }));
+  });
   ov.addEventListener('input', (e) => {
     if (!e.target.dataset.i) return;
     const v = (k) => +ov.querySelector(`[data-i=${k}]`).value;
