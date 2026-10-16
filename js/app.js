@@ -254,8 +254,10 @@ function registerRoutes() {
   // not added, so Back never returns to a URL that reopens the sheet) and
   // the sheet opens over it once the feed is in place.
   route('/log', () => {
-    window.addEventListener('hashchange', () => setTimeout(() => openLogComposer({ onSaved: refreshCurrentView }), 0), { once: true });
+    // No waiting listener: a hashchange listener that never fired (already on the feed) stayed armed and opened
+    // the search sheet on the NEXT navigation, e.g. after "Review or log" on a held poster.
     navigate('/feed', { replace: true });
+    setTimeout(() => openLogComposer({ onSaved: refreshCurrentView }), 250);
   }, { keep: false });
   // Replace, not push: pushing /feed on top of the bad URL meant Back
   // returned to it, which redirected straight forward again, so Back
