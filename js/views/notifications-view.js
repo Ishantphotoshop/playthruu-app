@@ -272,15 +272,15 @@ export async function renderNotificationsView(root) {
   }
 
   function emptyMessage(id) {
-    if (id === 'you') return "You haven't done anything yet — log a game and it shows up here.";
-    if (id === 'friends') return 'Nothing from the people you follow yet. Follow a few people and their activity fills this in.';
-    return 'Nothing yet. Follow a few people, and what they do (and what happens to you) shows up here.';
+    if (id === 'you') return 'Log a game and it shows up here.';
+    if (id === 'friends') return 'Follow a few people and their activity fills this in.';
+    return 'Follow a few people and what they do shows up here.';
   }
 
   function paintList(t) {
     if (!t.pane) return;
     if (!t.rows.length) {
-      t.pane.innerHTML = emptyState(emptyMessage(t.id), { icon: iconBell() });
+      t.pane.innerHTML = emptyState(emptyMessage(t.id));
       return;
     }
     t.pane.innerHTML = `

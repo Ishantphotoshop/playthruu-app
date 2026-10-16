@@ -7865,3 +7865,12 @@ a.gd-credit__name { text-decoration: none; }
 .empty-state__wm { font-family: var(--font-display); font-weight: 800; font-size: 20px; color: var(--accent); margin-bottom: 12px; letter-spacing: -0.01em; }
 .empty-state__tag { font-family: var(--font-display); font-weight: 800; font-size: 15px; color: var(--ink); margin-bottom: 8px; }
 .empty-state p { font-size: 13px; color: var(--ink-dim); }
+
+/* Every empty screen sits in the same place: same distance from the top, same message height, button at the same spot and size. */
+.empty-state { padding: 64px var(--space-5) 24px; }
+.empty-state p { min-height: 3em; margin-bottom: 18px; font-size: 14px; color: var(--ink-dim); }
+.empty-state .btn { min-width: 190px; min-height: 46px; display: inline-flex; align-items: center; justify-content: center; }
+.showcase-empty { min-height: 176px; display: flex; align-items: center; justify-content: center; }
+.showcase-empty .empty-state { padding: 0 var(--space-5); }
+.showcase-empty .empty-state p { min-height: 0; margin: 0; }
+.empty-state .btn { width: 220px; min-width: 0; }

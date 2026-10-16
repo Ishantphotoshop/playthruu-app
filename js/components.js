@@ -890,8 +890,6 @@ export function emptyState(message, { actionLabel, actionRoute, icon, tagline } 
   return `
     <div class="empty-state">
       ${icon || ''}
-      <div class="empty-state__wm">PlayThruu</div>
-      <div class="empty-state__tag">${esc(tagline || 'Keep playing thruu.')}</div>
       <p>${esc(message)}</p>
       ${actionLabel ? `<a class="btn btn--accent" href="#${actionRoute}">${esc(actionLabel)}</a>` : ''}
     </div>`;

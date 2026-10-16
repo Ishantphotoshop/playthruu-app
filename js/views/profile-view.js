@@ -246,7 +246,7 @@ export async function renderProfileView(root, { username }) {
     // ---- tab content renderers (all working off data already fetched above) ----
     const renderProfileTab = () => `
       <h2 class="section-heading">${favorites.length ? `Top ${SHOWCASE_MAX}` : 'Recently completed'}</h2>
-      ${showcaseSlots.length ? showcaseGrid(showcaseSlots) : emptyState('Nothing completed yet.', { icon: iconStamp() })}
+      ${showcaseSlots.length ? showcaseGrid(showcaseSlots) : `<div class="showcase-empty">${emptyState('Nothing completed yet.')}</div>`}
 
       ${recentlyPlayed.length ? `
         <div class="feed-section-head rp-head">
@@ -307,8 +307,8 @@ export async function renderProfileView(root, { username }) {
 
     const renderJournalTab = () => `
       ${diary.length ? diaryTilesHtml(diary.filter((l) => l.games).sort((a, b) => new Date(b.played_date || b.created_at) - new Date(a.played_date || a.created_at))) : emptyState(
-          isOwn ? 'No journal entries yet. Log a game once you\'ve played it.' : 'No diary entries yet.',
-          isOwn ? { icon: iconStamp(), actionLabel: 'Log your first game', actionRoute: '/log' } : { icon: iconStamp() }
+          isOwn ? 'Your diary starts here. Log a game once you\'ve played it.' : 'No diary entries yet.',
+          isOwn ? { actionLabel: 'Log your first game', actionRoute: '/log' } : {}
         )}
     `;
 
@@ -323,8 +323,8 @@ export async function renderProfileView(root, { username }) {
               ${posterFrame(l.games.cover_url, l.games.title, 'poster-grid3__cover')}
             </a>`).join('')}
         </div>` : emptyState(
-        'Nothing on the want-to-play list yet.',
-        isOwn ? { icon: iconStamp(), actionLabel: 'Find a game', actionRoute: '/search' } : { icon: iconStamp() }
+        isOwn ? 'Games you want to play will pile up here.' : 'Nothing on the backlog yet.',
+        isOwn ? { actionLabel: 'Find a game', actionRoute: '/search' } : {}
       )}
     `;
 
@@ -336,7 +336,7 @@ export async function renderProfileView(root, { username }) {
       ${lists.length ? `
         <div class="list-cards">
           ${lists.map(listCard).join('')}
-        </div>` : emptyState(isOwn ? 'No lists yet. Make one for your favourite roguelikes, cozy games, anything.' : `${username} hasn't made any public lists yet.`, { icon: iconStamp() })}
+        </div>` : emptyState(isOwn ? 'No lists yet. Make one for your favourite roguelikes, cozy games, anything.' : `${username} hasn't made any public lists yet.`)}
     `;
 
     const tabRenderers = { profile: renderProfileTab, journal: renderJournalTab, wanttoplay: renderWantToPlayTab, lists: renderListsTab };
