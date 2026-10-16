@@ -7791,3 +7791,5 @@ a.gd-credit__name { text-decoration: none; }
 .act__card .act__poster .poster-frame__img { object-fit: cover; object-position: 50% 50%; }
 .act__card-body { padding-top: 1px; gap: 5px; }
 .act__game { font-size: 14px; }
+/* The card starts under the first letter of the name, not under the profile picture (avatar 32px + 10px gap). */
+.act--log .act__card { margin-left: 42px; }
