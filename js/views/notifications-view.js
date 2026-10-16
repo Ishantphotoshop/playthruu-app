@@ -1,6 +1,6 @@
 import * as api from '../api.js';
 import { state } from '../state.js';
-import { navBar, avatarImg, emptyState, spinner, iconBell, posterFrame, iconHeartFilled, iconReviewLines, iconReplay } from '../components.js';
+import { navBar, avatarImg, emptyState, refreshEmptyQuote, spinner, iconBell, posterFrame, iconHeartFilled, iconReviewLines, iconReplay } from '../components.js';
 import { esc, timeAgo, starRow, qs, qsa, keepLoading, wireTabSwipe, playedKind } from '../utils.js';
 import { navigate, markTabStale } from '../router.js';
 import { wirePullToRefresh, pullRefreshing } from './feed-view.js';
@@ -262,6 +262,7 @@ export async function renderNotificationsView(root) {
     if (to.loadedAt) {
       // Already loaded: just show it where it was left. Quietly refresh it if
       // it has been a while.
+      refreshEmptyQuote(to.pane, id); // a fresh line each time you come back to an empty tab
       body().scrollTop = to.scroll;
       watchEnd(to);
       if (Date.now() - to.loadedAt > STALE_MS) load(to, { reset: true });

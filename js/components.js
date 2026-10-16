@@ -891,9 +891,6 @@ const EMPTY_QUOTES = {
   diary: [
     ['Hey, you. You’re finally awake.', 'The Elder Scrolls V: Skyrim'],
     ['Endure and survive.', 'The Last of Us'],
-    ['Keep on keeping on.', 'Death Stranding'],
-    ['Finish the fight.', 'Halo 2'],
-    ['Hey, mister!', 'Red Dead Redemption 2'],
     ['Alan Wake up.', 'Alan Wake'],
     ['No cost too great.', 'Hollow Knight'],
     ['Nothing is true, everything is permitted.', 'Assassin’s Creed'],
@@ -902,9 +899,7 @@ const EMPTY_QUOTES = {
     ['Thank you Mario! But our princess is in another castle!', 'Super Mario Bros.'],
     ['Stay awhile and listen.', 'Diablo'],
     ['Would you kindly?', 'BioShock'],
-    ['Praise the sun!', 'Dark Souls'],
     ['Kept you waiting, huh?', 'Metal Gear Solid V'],
-    ['Alan Wake up.', 'Alan Wake'],
     ['You were almost a Jill sandwich!', 'Resident Evil'],
   ],
   lists: [
@@ -912,7 +907,6 @@ const EMPTY_QUOTES = {
     ['Gotta catch ’em all!', 'Pokémon'],
     ['All your base are belong to us.', 'Zero Wing'],
     ['Try finger, but hole.', 'Elden Ring'],
-    ['Nothing is true, everything is permitted.', 'Assassin’s Creed'],
   ],
   friends: [
     ['It’s dangerous to go alone! Take this.', 'The Legend of Zelda'],
@@ -926,12 +920,10 @@ const EMPTY_QUOTES = {
   you: [
     ['Wake up, Samurai.', 'Cyberpunk 2077'],
     ['War. War never changes.', 'Fallout'],
-    ['Kept you waiting, huh?', 'Metal Gear Solid V'],
     ['Arise now, ye Tarnished.', 'Elden Ring'],
     ['Maidenless?', 'Elden Ring'],
-    ['Keep on keeping on.', 'Death Stranding'],
     ['I have never known defeat.', 'Elden Ring'],
-    ['Alan Wake up.', 'Alan Wake'],
+    ['Keep on keeping on.', 'Death Stranding'],
     ['Finish the fight.', 'Halo 2'],
   ],
 };
@@ -944,6 +936,16 @@ function pickQuote(key) {
   if (list.length > 1 && i === lastQuote[key]) i = (i + 1) % list.length; // never the same one twice in a row
   lastQuote[key] = i;
   return { quote: list[i][0], source: list[i][1] };
+}
+
+// Swap the line in an empty screen that is already on the page (used when you come back to a tab).
+export function refreshEmptyQuote(root, key) {
+  const q = pickQuote(key);
+  const el = root && root.querySelector('.empty-state__quote');
+  if (!q || !el) return;
+  el.textContent = `“${q.quote}”`;
+  const src = root.querySelector('.empty-state__src');
+  if (src) src.textContent = q.source;
 }
 
 export function emptyState(message, { actionLabel, actionRoute, icon, quote, source, quotes } = {}) {
