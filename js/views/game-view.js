@@ -1133,14 +1133,32 @@ function iconStack() { return `<svg viewBox="0 0 24 24" fill="none"><rect x="4" 
 // below rather than competing with the three that are exclusive.
 // Holding a poster anywhere opens the same pop-up as the game page's
 // "Rate, log, review + more", not the full I Played screen.
+// Started the moment a finger lands on a poster, so the game AND the person's logs of it are already in
+// by the time the hold completes and the sheet can open at once.
+export function prefetchQuickLog(lookup) {
+  return (async () => {
+    const game = await lookup;
+    if (!game?.id) return { game: null, mine: [] };
+    const { supabase } = await import('../supabase-client.js');
+    const { data } = await supabase.from('logs').select('*').eq('user_id', state.user.id).eq('game_id', game.id)
+      .order('created_at', { ascending: false });
+    return { game, mine: data || [] };
+  })();
+}
+
 export async function openQuickLogSheet(lookup, onChanged = () => {}) {
-  let game;
-  try { game = await lookup; } catch { game = null; }
+  let game; let mine;
+  try {
+    const r = await lookup;
+    if (r && Object.prototype.hasOwnProperty.call(r, 'mine')) ({ game, mine } = r); else game = r;
+  } catch { game = null; }
   if (!game?.id) { toast('Could not open that game.', 'error'); return; }
-  const { supabase } = await import('../supabase-client.js');
-  const { data } = await supabase.from('logs').select('*').eq('user_id', state.user.id).eq('game_id', game.id)
-    .order('created_at', { ascending: false });
-  const mine = data || [];
+  if (!mine) {
+    const { supabase } = await import('../supabase-client.js');
+    const { data } = await supabase.from('logs').select('*').eq('user_id', state.user.id).eq('game_id', game.id)
+      .order('created_at', { ascending: false });
+    mine = data || [];
+  }
   openLogSheet({
     game,
     ownLog: mine[0] || null,

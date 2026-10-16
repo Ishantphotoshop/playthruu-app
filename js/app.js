@@ -20,7 +20,7 @@ import { renderTrendingView } from './views/trending-view.js';
 import { renderFriendsPlayingView } from './views/friends-playing-view.js';
 import { renderCurrentlyPlayingView } from './views/currently-playing-view.js';
 import { renderLogListView, renderBacklogView } from './views/log-list-view.js';
-import { renderGameView, openQuickLogSheet } from './views/game-view.js';
+import { renderGameView, openQuickLogSheet, prefetchQuickLog } from './views/game-view.js';
 import { renderGameReviewsView } from './views/game-reviews-view.js';
 import { renderReviewView } from './views/review-view.js';
 import { renderPersonView } from './views/person-view.js';
@@ -732,7 +732,7 @@ function handleSignedOut() {
 // Search uses, and added to the catalogue if they are new.
 function wirePosterLongPress() {
   // Held for half a second: the sheet slides up with a buzz, together.
-  const HOLD_MS = 500;
+  const HOLD_MS = 300;
   // The strip down each side of the screen where the back gesture starts.
   const EDGE_PX = 28;
   let timer = 0;
@@ -772,6 +772,8 @@ function wirePosterLongPress() {
     // ready the moment the hold completes instead of a beat after it.
     const lookup = state.user ? gameFor(frame) : null;
     lookup?.catch(() => {});
+    const prep = lookup ? prefetchQuickLog(lookup) : null;
+    prep?.catch(() => {});
     timer = setTimeout(async () => {
       timer = 0; start = null;
       swallowClick = true;
@@ -781,7 +783,7 @@ function wirePosterLongPress() {
       // Drop the pressed/focused state off the poster: once the sheet covers
       // it, no touchend/mouseup reaches it, so it stayed lifted after close.
       document.activeElement?.blur?.();
-      openQuickLogSheet(lookup, refreshCurrentView);
+      openQuickLogSheet(prep || lookup, refreshCurrentView);
     }, HOLD_MS);
   }
   const moved = (x, y) => { if (start && Math.hypot(x - start.x, y - start.y) > 8) cancel(); };

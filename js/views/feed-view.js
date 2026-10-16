@@ -1208,7 +1208,7 @@ async function paintDiscovery(slot) {
     // this card just isn't a `.poster-frame`, so that global handler
     // (which deliberately skips .draw-overlay) never reaches it, and this
     // is its own copy of the same gesture.
-    const HOLD_MS = 500;
+    const HOLD_MS = 300;
     let pressTimer = 0;
     let pressStart = null;
     let swallowClick = false;
