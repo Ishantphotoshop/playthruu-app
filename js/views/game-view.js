@@ -404,6 +404,7 @@ export async function renderGameView(root, { id, igdbId }) {
     paintGame();
     loadMoreFromStudio();
     loadSimilarGames();
+    loadGameNews();
     recordRecentlyViewed(game);
     loadCastDirector();
 
@@ -481,6 +482,30 @@ export async function renderGameView(root, { id, igdbId }) {
     // shows nothing if the game has no igdb_id, no credited developer,
     // or that developer only has this one game — never an error state
     // for what's a nice-to-have, not a core part of the page.
+    // PlayThruu's own news about this game or its series, shown above the link to all news.
+    // Only stories that really name the game; with none, the page keeps just the link.
+    async function loadGameNews() {
+      try {
+        const stories = await api.getNewsForGame(game, 4);
+        const slot = qs('#game-news-slot', body);
+        if (!stories.length || !slot) return;
+        slot.innerHTML = `
+          <section class="gd-block gd-gnews">
+            <h2 class="gd-block__title">News</h2>
+            <div class="gd-gnews__list">
+              ${stories.map((n) => `
+                <a class="gd-gnews__item" href="${esc(n.link)}" target="_blank" rel="noopener noreferrer">
+                  <span class="gd-gnews__thumb" style="background-image:url('${esc(n.image)}')"></span>
+                  <span class="gd-gnews__text">
+                    <span class="gd-gnews__title">${esc(n.title)}</span>
+                    <span class="gd-gnews__meta">${esc(timeAgo(n.pubDate))}${n.status ? ` · ${esc(n.status)}` : ''}</span>
+                  </span>
+                </a>`).join('')}
+            </div>
+          </section>`;
+      } catch { /* a nice extra, never an error */ }
+    }
+
     async function loadMoreFromStudio() {
       if (!game.igdb_id) return;
       try {
@@ -726,6 +751,7 @@ export async function renderGameView(root, { id, igdbId }) {
                Stardew Valley page routinely served Elden Ring and PC
                hardware stories. A banner is what the sketch asks for and
                it can't be wrong about the game it's on. -->
+          <div id="game-news-slot"></div>
           <a class="gd-newsad" href="#/news">
             <span class="gd-newsad__label">News</span>
             <span class="gd-newsad__url">www.playthruu.com/news</span>

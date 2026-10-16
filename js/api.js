@@ -178,6 +178,54 @@ export async function getGameNews() {
   }
 }
 
+// ---- News about one game, for its game page --------------------------------
+// A game's franchise key: lower case, subtitle cut off, trailing sequel numbers,
+// years and edition words dropped, so "Cyberpunk 2077" and "Cyberpunk 2" share one
+// key, and so do "Grand Theft Auto V" and "Grand Theft Auto VI".
+const KEY_TAIL = /^(?:[ivx]{1,5}|\d{1,4}|part|chapter|remastered|remake|edition|collection|definitive|complete|goty|reloaded|enhanced|deluxe|ultimate|anniversary)$/;
+export function newsGameKey(title) {
+  let s = String(title || '').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '');
+  s = s.replace(/\([^)]*\)/g, ' ').split(/:| - | – | — /)[0];
+  const words = s.replace(/[^a-z0-9]+/g, ' ').trim().split(' ').filter(Boolean);
+  while (words.length > 1 && KEY_TAIL.test(words[words.length - 1])) words.pop();
+  return words.join(' ');
+}
+const sameFranchise = (a, b) => a.length >= 4 && b.length >= 4 && (a === b || a.startsWith(b + ' ') || b.startsWith(a + ' '));
+
+// Published stories about this game or its series: the story's own game field matches
+// the game's franchise, or the headline names the game (only when the name is distinctive
+// enough to mean something). Nothing unrelated is ever added to fill the list.
+export async function getNewsForGame(game, limit = 4) {
+  try {
+    const key = newsGameKey(game?.title);
+    if (key.length < 4) return [];
+    const probe = key.split(' ').slice(0, 2).join(' ').replace(/[^a-z0-9 ]/g, '');
+    const { data, error } = await supabase.from('news_articles')
+      .select('slug, title, card_description, summary, category, importance, verification_status, image_url, game, tags, updated_at')
+      .eq('status', 'published')
+      .or(`game.ilike.*${probe}*,title.ilike.*${probe}*`)
+      .order('updated_at', { ascending: false }).limit(40);
+    if (error || !data) return [];
+    const distinctive = key.includes(' ') || key.length >= 6;
+    const titleHas = (t) => distinctive && ` ${newsGameKey(t).replace(/[^a-z0-9]+/g, ' ')} `.includes(` ${key} `);
+    const raw = (t) => ` ${String(t || '').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim()} `;
+    return data
+      .filter((a) => (a.game ? sameFranchise(newsGameKey(a.game), key) : false) || (distinctive && raw(a.title).includes(` ${key} `)))
+      .slice(0, limit)
+      .map((a) => ({
+        slug: a.slug,
+        title: a.title,
+        image: a.image_url || `${NEWS_SITE}${a.slug}/thumb`,
+        status: NEWS_LABEL[a.verification_status] || '',
+        isBreaking: a.importance === 'breaking',
+        link: NEWS_SITE + a.slug,
+        pubDate: a.updated_at,
+      }));
+  } catch {
+    return [];
+  }
+}
+
 // Just the freshest publish time, for the News tab's unread dot — one
 // skinny row instead of the whole archive, since this runs on every Feed
 // open (see feed-view.js) and most of those never touch News.
