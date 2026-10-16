@@ -889,6 +889,9 @@ export function wireRatingHistogram(container) {
 // Famous game lines for the empty screens, a different one each time, only ones that fit the tab they sit on.
 const EMPTY_QUOTES = {
   diary: [
+    ['I don’t think I can ever forgive you for that. But I would like to try.', 'The Last of Us Part II'],
+    ['Tomorrow is in your hands.', 'Death Stranding'],
+    ['I can’t fight my own nature, none of us can.', 'Red Dead Redemption 2'],
     ['Hey, you. You’re finally awake.', 'The Elder Scrolls V: Skyrim'],
     ['Endure and survive.', 'The Last of Us'],
     ['The right man in the wrong place can make all the difference in the world.', 'Half-Life 2'],
@@ -897,6 +900,7 @@ const EMPTY_QUOTES = {
     ['Finish the fight.', 'Halo 2'],
   ],
   backlog: [
+    ['It’s not a lake. It’s an ocean.', 'Alan Wake'],
     ['Thank you Mario! But our princess is in another castle!', 'Super Mario Bros.'],
     ['Stay awhile and listen.', 'Diablo'],
     ['Would you kindly?', 'BioShock'],
@@ -905,6 +909,7 @@ const EMPTY_QUOTES = {
     ['You were almost a Jill sandwich!', 'Resident Evil'],
   ],
   lists: [
+    ['Mine will be an order not of gold, but the stars and moon of the chill night.', 'Elden Ring'],
     ['The cake is a lie.', 'Portal'],
     ['Gotta catch ’em all!', 'Pokémon'],
     ['All your base are belong to us.', 'Zero Wing'],
@@ -920,6 +925,9 @@ const EMPTY_QUOTES = {
     ['Heroes never die!', 'Overwatch'],
   ],
   you: [
+    ['I am Malenia, Blade of Miquella, and I have never known defeat.', 'Elden Ring'],
+    ['No cost too great. No mind to think. No will to break. No voice to cry suffering.', 'Hollow Knight'],
+    ['Tomorrow is in your hands.', 'Death Stranding'],
     ['Wake up, Samurai. We have a city to burn.', 'Cyberpunk 2077'],
     ['War. War never changes.', 'Fallout'],
     ['Kept you waiting, huh?', 'Metal Gear Solid V'],
