@@ -1,4 +1,5 @@
 import * as api from '../api.js';
+import { openDatePicker } from './date-picker.js';
 import { state } from '../state.js';
 import {
   esc, starRow, toast, qs, qsa, debounce, formatDate, enableSwipeToDismiss, reviewText,
@@ -467,8 +468,13 @@ export function openLogComposer({ game = null, resolveGame = null, existingLog =
     // The date row opens the date picker; its cross removes the date.
     const dateRow = e.target.closest('.ip-date');
     if (dateRow && !e.target.closest('.ip-clear') && !e.target.matches('input')) {
-      const inp = qs('#lc-date', overlay);
-      try { inp.showPicker(); } catch { inp.focus(); }
+      e.preventDefault();
+      const g = selectedGame || {};
+      const minDate = g.release_date ? String(g.release_date).slice(0, 10) : (g.release_year ? `${g.release_year}-01-01` : null);
+      openDatePicker({
+        value: draft.played_date, min: minDate, max: localToday(),
+        onPick: (v) => { draft.played_date = v; const dv = qs('.ip-date__v', overlay); if (dv) dv.textContent = longDate(v); paintForm(); },
+      });
       return;
     }
 

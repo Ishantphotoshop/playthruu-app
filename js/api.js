@@ -3202,7 +3202,7 @@ export async function createLog(log) {
   if (!log.is_replay && log.user_id && log.game_id) {
     const { data: existing } = await supabase
       .from('logs')
-      .select('id')
+      .select('id, status')
       .eq('user_id', log.user_id)
       .eq('game_id', log.game_id)
       // is_replay is nullable, and PostgREST's neq drops NULLs the way
@@ -3214,7 +3214,11 @@ export async function createLog(log) {
     const prior = existing?.[0];
     // Update the row that is already there, so the game MOVES between
     // backlog / playing / played instead of accumulating.
-    if (prior) return updateLog(prior.id, log);
+    // A game already played that gets logged again (any date, including an older one) is a replay: a new entry
+    // in the diary and in Replays, not an overwrite of the first play.
+    const again = prior && (prior.status === 'played' || prior.status === 'dropped') && log.status === 'played' && log.played_date;
+    if (again) log = { ...log, is_replay: true };
+    else if (prior) return updateLog(prior.id, log);
   }
   const { data, error } = await supabase.from('logs').insert(log).select('*, games!logs_game_id_fkey(*), profiles!logs_user_id_fkey(*)').single();
   if (error) throw error;
