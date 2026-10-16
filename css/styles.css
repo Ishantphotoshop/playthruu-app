@@ -7828,3 +7828,11 @@ a.gd-credit__name { text-decoration: none; }
 /* Notifications: a logged game's name and card start at the same x as every other row's text (36px avatar + 12px gap). */
 .act__line { gap: 12px; }
 .act--log .act__card { margin-left: 48px; }
+
+/* Spoiler review, smooth: the cover fades away and the whole text fades in once. No per-word effects. */
+.rv__quote--gated .rv__text { opacity: 0; transition: opacity 0.25s var(--ease); }
+.rv__quote--gated.is-revealed .rv__text { opacity: 1; }
+.rv__quote--gated .rv__spoiler { transition: opacity 0.2s var(--ease); }
+/* No comments: just a very small "No comments" in the middle under the line. */
+.rv-comments__none { display: none; margin: 0; text-align: center; font-size: 11px; font-weight: 600; color: var(--ink-faint); }
+.rv-comments--empty .rv-comments__none { display: block; padding: 10px 0 4px; }

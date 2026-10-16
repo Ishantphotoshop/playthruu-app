@@ -73,7 +73,7 @@ export async function renderReviewView(root, { id }) {
     // Your own review says so at the top, and carries the three dots: Edit,
     // Share to Instagram Stories, Share and Delete.
     const bar = qs('.topbar', root);
-    if (bar) qs('.topbar__title', bar).textContent = isOwner ? 'Your review' : `${possessive} review`;
+    if (isOwner && bar) qs('.topbar__title', bar).textContent = `${possessive} review`;
     if (bar) {
       qs('.topbar__right', bar).innerHTML = `<button type="button" class="icon-btn" id="rv-menu-btn" aria-label="Review options">${iconDotsMenu()}</button>`;
       qs('#rv-menu-btn', bar).addEventListener('click', () => openEntryMenu(log, isOwner, { onChanged: () => refreshCurrentView() }));
@@ -86,7 +86,7 @@ export async function renderReviewView(root, { id }) {
             ${posterFrame(g.cover_url, g.title, 'rv__cover')}
           </a>
           <div class="rv__meta">
-            ${log.review ? `<a href="#/profile/${esc(a.username)}" class="rv__whose">${avatarImg(a, 32)}<span>${isOwner ? 'Your review' : `${esc(possessive)} review`}</span></a>` : ''}
+            ${log.review ? `<a href="#/profile/${esc(a.username)}" class="rv__whose">${avatarImg(a, 32)}<span>${esc(possessive)} review</span></a>` : ''}
             <a href="#/game/${g.id}" class="rv__game">
               <h1 class="rv__title">${esc(g.title || 'Untitled')}</h1>
               ${g.release_year ? `<span class="rv__year">${esc(String(g.release_year))}</span>` : ''}
@@ -109,6 +109,7 @@ export async function renderReviewView(root, { id }) {
         <div class="comment-list" id="comment-list">
           ${comments.map((c) => commentHtml(c, ownerId)).join('')}
         </div>
+        <p class="rv-comments__none">No comments</p>
       </section>`;
 
     root.insertAdjacentHTML('beforeend', composerHtml(commentNote));
@@ -120,7 +121,6 @@ export async function renderReviewView(root, { id }) {
     const gate = qs('#spoiler-gate', body);
     const card = qs('#spoiler-card', body);
     if (gate && card) {
-      wrapWords(qs('.rv__text', card));
       const hide = qs('#spoiler-hide', body);
       gate.addEventListener('click', () => {
         card.classList.add('is-revealed');
@@ -136,7 +136,7 @@ export async function renderReviewView(root, { id }) {
     const fold = qs('.rv__quote:not(.rv__quote--gated)', body);
     const foldText = fold && qs('.rv__text', fold);
     if (fold && foldText) {
-      const SHORT = 76;
+      const SHORT = 90;
       foldText.style.maxHeight = `${SHORT}px`;
       if (foldText.scrollHeight > SHORT + 4) {
         fold.classList.add('rv__quote--fold');

@@ -175,7 +175,7 @@ function statsPanelHtml(ctx, period) {
 // turns the "?" slot into the picked game without growing the box.
 export function backlogBarHtml(profile, logs, isOwn) {
   const n = logs.filter((l) => l.status === 'backlog' && l.games).length;
-  if (!n) return '';
+  if (!n || !isOwn) return ''; // someone else's backlog is just their posters, no box
   return `<div class="ps-box">
     <div class="ps-split bl-bar">
       ${isOwn ? '<div class="bl-slot" id="bl-slot"><span>?</span></div>' : ''}
