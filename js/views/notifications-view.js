@@ -1,7 +1,7 @@
 import * as api from '../api.js';
 import { state } from '../state.js';
 import { navBar, avatarImg, emptyState, spinner, iconBell, posterFrame, iconHeartFilled, iconReviewLines, iconReplay } from '../components.js';
-import { esc, timeAgo, starRow, qs, qsa, keepLoading, wireTabSwipe } from '../utils.js';
+import { esc, timeAgo, starRow, qs, qsa, keepLoading, wireTabSwipe, playedKind } from '../utils.js';
 import { navigate, markTabStale } from '../router.js';
 import { wirePullToRefresh, pullRefreshing } from './feed-view.js';
 import { getCached, setCached, CACHE_KEYS } from '../cache.js';
@@ -52,6 +52,14 @@ const PAST_TENSE = {
 // two competing emphases in a one-line sentence and made the list read
 // as heavier than it is — the row is scanned for which game it is
 // about, and the name is context.
+// A game that was LOGGED (a diary entry: a play date on or after the account was made) gets the
+// poster card. Marking a game as played, adding it to the backlog or starting it stays a sentence.
+function isLoggedGame(row) {
+  if (row.kind !== 'log' || !row.game || !row.log) return false;
+  const status = row.log.status || 'played';
+  return (status === 'played' || status === 'dropped') && playedKind(row.log, row.actor?.created_at) === 'diary';
+}
+
 function describe(row, viewerId) {
   const isYou = row.actor_id === viewerId;
   const who = isYou ? 'You' : `<span class="act__who">${esc(nameOf(row.actor))}</span>`;
@@ -63,13 +71,14 @@ function describe(row, viewerId) {
   switch (row.kind) {
     case 'log': {
       const status = row.log?.status || 'played';
-      const verb = PAST_TENSE[status] || 'played';
+      const marked = (status === 'played') && playedKind(row.log || {}, row.actor?.created_at) !== 'diary';
+      const verb = marked ? 'marked as played' : (PAST_TENSE[status] || 'played');
       if (!game) return { text: `${who} logged a game`, href: null };
       // "added X to their backlog" needs the possessive the other three
       // statuses don't, so it is built rather than templated.
       const tail = status === 'backlog'
         ? `${game} to ${isYou ? 'your' : 'their'} backlog`
-        : `${game}${inlineStars(row.log?.rating)}`;
+        : (marked ? `${game}` : `${game}${inlineStars(row.log?.rating)}`);
       return {
         text: `${who} ${verb} ${tail}`,
         quote: row.log?.review ? row.log.review : null,
@@ -155,7 +164,7 @@ function logCard(row, viewerId) {
 }
 
 function activityRow(row, viewerId) {
-  if (row.kind === 'log' && row.game) return logCard(row, viewerId);
+  if (isLoggedGame(row)) return logCard(row, viewerId);
   const { text, quote, href } = describe(row, viewerId);
   const unread = !!row.unread;
   const avatar = row.actor ? avatarImg(row.actor, 36) : '';

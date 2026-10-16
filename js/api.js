@@ -4970,7 +4970,7 @@ export async function deletePushSubscription(endpoint) {
 // something that belongs in a public-shaped activity list, and it has
 // its own screen with its own unread state.
 
-const ACT_ACTOR = 'id, username, display_name, avatar_url';
+const ACT_ACTOR = 'id, username, display_name, avatar_url, created_at';
 const ACT_GAME = 'id, title, cover_url, release_year';
 
 // Every row carries a `key` that identifies the EVENT rather than the
