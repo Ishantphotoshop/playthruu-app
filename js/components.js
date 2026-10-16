@@ -657,9 +657,9 @@ export function likeButton(logId, { count, liked }) {
 
 export function avatarImg(profile, size = 32) {
   if (profile?.avatar_url) {
-    return `<img class="avatar" style="width:${size}px;height:${size}px" src="${esc(profile.avatar_url)}" alt="${esc(profile.username)}">`;
+    return `<img class="avatar" data-profile="${esc(profile.username || '')}" style="width:${size}px;height:${size}px" src="${esc(profile.avatar_url)}" alt="${esc(profile.username)}">`;
   }
-  return `<span class="avatar avatar--fallback" style="width:${size}px;height:${size}px;font-size:${size * 0.4}px">${esc(initials(profile?.display_name || profile?.username))}</span>`;
+  return `<span class="avatar avatar--fallback" data-profile="${esc(profile?.username || '')}" style="width:${size}px;height:${size}px;font-size:${size * 0.4}px">${esc(initials(profile?.display_name || profile?.username))}</span>`;
 }
 
 // `following` (true/false) shows a compact follow-toggle icon button on

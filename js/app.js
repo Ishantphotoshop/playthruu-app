@@ -289,6 +289,16 @@ function wireGlobalChrome() {
     // The + in the tab bar. Opens the sheet in place — no navigation,
     // so you come back to exactly the screen you were on when you close
     // it, and nothing is re-fetched behind it.
+    // Any profile picture in the app opens that person's profile, unless it already sits inside a link or button
+    // (which does its own thing) or in a box you type into.
+    const av = e.target.closest?.('.avatar[data-profile]');
+    const avHost = av?.closest('a, button, label');
+    if (av && av.dataset.profile && (!avHost || avHost.classList.contains('act')) && !av.closest('.rv-composer, .thread-composer, .avatar-viewer, [data-no-profile]')) {
+      e.preventDefault();
+      navigate(`/profile/${av.dataset.profile}`);
+      return;
+    }
+
     const wantsLog = e.target.closest('[data-action="log"]');
     if (wantsLog && Date.now() < (window.__logTabBlockUntil || 0)) { e.preventDefault(); return; }
     if (wantsLog) {

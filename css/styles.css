@@ -7987,3 +7987,5 @@ a.gd-credit__name { text-decoration: none; }
 .dp-wheels { height: 150px; } .dp-wheels::before { top: 55px; height: 40px; } .dp-w { padding: 55px 0; } .dp-w div { font-size: 15px; }
 .dp-type { margin-top: 8px; gap: 6px; } .dp-type input { padding: 7px; font-size: 12.5px; border-radius: 9px; }
 .dp-hint { font-size: 10px; margin-top: 4px; }
+
+.avatar[data-profile]:not([data-profile=""]) { cursor: pointer; }
