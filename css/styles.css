@@ -7765,3 +7765,9 @@ a.gd-credit__name { text-decoration: none; }
 .gd-gnews__meta { font-size: 12px; color: var(--ink-faint); }
 .gd-gnews { gap: 4px; }
 .gd-gnews__list { margin-top: 0; }
+/* Profile top bar: a solid bar again (content scrolls under it), with the same blue light as the page behind it. */
+.profile-top {
+  background-color: #08090d;
+  background-image: radial-gradient(80% 300px at 50% 0%, #1d3c80 0%, rgba(29, 60, 128, 0) 70%);
+  background-attachment: fixed;
+}
