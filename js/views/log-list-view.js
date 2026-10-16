@@ -77,7 +77,7 @@ export async function renderGameReplaysView(root, { username, gameId }) {
   try {
     const profile = state.profile?.username === username ? state.profile : await api.getProfileByUsername(username);
     const all = await api.getLogsForUser(profile.id, { statuses: ['played', 'dropped'], limit: 5000 });
-    const list = all.filter((l) => l.games && l.games.id === gameId && l.status !== 'backlog')
+    const list = all.filter((l) => l.games && l.games.id === gameId && l.status !== 'backlog' && l.is_replay)
       .sort((a, b) => new Date(b.played_date || b.created_at) - new Date(a.played_date || a.created_at));
     qs('.topbar__title', root).textContent = list[0]?.games?.title || 'Replays';
     body.innerHTML = list.length ? diaryTilesHtml(list, true) : emptyState('No replays of this game yet.');
