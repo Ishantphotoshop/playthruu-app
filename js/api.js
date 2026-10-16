@@ -1,5 +1,6 @@
 import { supabase } from './supabase-client.js';
 import { invalidateLogViews } from './cache.js';
+import { playedKind } from './utils.js';
 import { SUPABASE_URL, SUPABASE_ANON_KEY, RAWG_API_KEY, GIPHY_API_KEY } from './config.js';
 
 // All IGDB traffic goes through a Supabase Edge Function (see
@@ -1914,7 +1915,7 @@ export async function getFriendsPlaying(userId, limit = 12) {
   // that's the social hook the feed is built around.
   const { data, error } = await supabase
     .from('logs')
-    .select('id, game_id, status, rating, loved, review, is_replay, contains_spoilers, created_at, games!logs_game_id_fkey(*), profiles!logs_user_id_fkey(*)')
+    .select('id, game_id, status, rating, loved, review, is_replay, contains_spoilers, played_date, created_at, games!logs_game_id_fkey(*), profiles!logs_user_id_fkey(*)')
     .in('user_id', followingIds)
     .eq('status', 'played') // NOT 'playing' too — that's what "Currently Playing" shows, kept separate on purpose
     .eq('is_public', true)
@@ -1924,6 +1925,8 @@ export async function getFriendsPlaying(userId, limit = 12) {
 
   return (data || []).map((row) => ({
     logId: row.id,
+    // a review page only for a written review or a logged game; a quick "played" mark opens the game
+    link: row.review || playedKind(row, row.profiles?.created_at) === 'diary' ? `#/review/${row.id}` : `#/game/${row.game_id}`,
     game: row.games,
     friend: row.profiles,
     rating: row.rating,

@@ -82,7 +82,8 @@ function describe(row, viewerId) {
       return {
         text: `${who} ${verb} ${tail}`,
         quote: row.log?.review ? row.log.review : null,
-        href: row.log?.id ? `/review/${row.log.id}` : gameHref,
+        // only a logged game (or one with a written review) has a review page; the rest open the game itself
+        href: row.log?.id && (row.log.review || (status !== 'backlog' && playedKind(row.log, row.actor?.created_at) === 'diary')) ? `/review/${row.log.id}` : gameHref,
       };
     }
 

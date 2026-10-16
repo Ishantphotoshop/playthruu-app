@@ -7856,3 +7856,7 @@ a.gd-credit__name { text-decoration: none; }
 .act__line .act__time { padding-top: 3px; margin-left: 4px; font-size: 11px; }
 .act--log { padding-top: 14px; padding-bottom: 14px; }
 .act--log { gap: 2px; }
+
+/* While likes and comments are still on their way, the line is there but nothing is said under it. */
+.rv-comments--loading .rv-comments__none, .rv-comments--loading .rv-comments__head { display: none !important; }
+.act--log .act__card { margin-top: -12px; }

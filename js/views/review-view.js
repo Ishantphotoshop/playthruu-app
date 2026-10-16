@@ -22,46 +22,21 @@ let commentAuthor = null;
 // the bottom of the screen and the thumb that reaches it.
 
 export async function renderReviewView(root, { id }) {
-  root.innerHTML = topBar('Review', { back: true }) +
+  // The top bar is up at once with no title yet (a generic "Review" that then changed was the flash);
+  // the title and the review arrive together, and the slower parts (likes, comments) fill in after.
+  root.innerHTML = topBar('', { back: true }) +
     `<div class="view-body view-body--review" id="review-body">${spinner()}</div>`;
   const body = qs('#review-body', root);
 
   try {
     const log = await api.getLogById(id);
     // A game that was only marked as played (no diary entry, no write-up) has no review page:
-    // send it to the game page.
+    // send it to the game page. (Links already avoid this; it only catches an old shared link.)
     if (!log.review && playedKind(log, log.profiles?.created_at) === 'marked' && log.games?.id) {
       navigate(`/game/${log.games.id}`, { replace: true });
       return;
     }
     const ownerId = log.user_id;
-    const [likeInfo, comments] = await Promise.all([
-      api.getLikeInfo(id, state.user?.id).catch(() => ({ count: 0, liked: false })),
-      api.getComments(id, { ownerId }).catch(() => []),
-    ]);
-    commentLikes = await api.getCommentLikes(comments.map((c) => c.id), state.user?.id, ownerId).catch(() => ({}));
-    commentAuthor = log.profiles || null;
-
-    // Who is allowed to write here: off, everyone, or only people the author follows /
-    // the author's followers. The owner can always comment (unless comments are off).
-    let commentNote = null;
-    const authorName = log.profiles?.display_name || log.profiles?.username || 'the author';
-    if (log.comments_disabled) {
-      commentNote = 'Comments are turned off.';
-    } else if (state.user && ownerId !== state.user.id && log.comments_who && log.comments_who !== 'everyone') {
-      const [ownerFollowsMe, iFollowOwner] = await Promise.all([
-        api.isFollowing(ownerId, state.user.id).catch(() => false),
-        api.isFollowing(state.user.id, ownerId).catch(() => false),
-      ]);
-      const ok = log.comments_who === 'following' ? ownerFollowsMe
-        : log.comments_who === 'followers' ? iFollowOwner
-        : (ownerFollowsMe || iFollowOwner);
-      if (!ok) {
-        commentNote = log.comments_who === 'following' ? `Only people ${authorName} follows can comment.`
-          : log.comments_who === 'followers' ? `Only ${authorName}\u2019s followers can comment.`
-          : `Only people ${authorName} follows and ${authorName}\u2019s followers can comment.`;
-      }
-    }
     const g = log.games || {};
     const a = log.profiles || {};
     const who = a.display_name || a.username || 'Someone';
@@ -69,12 +44,46 @@ export async function renderReviewView(root, { id }) {
     // either, for the names that already end in one.
     const possessive = /s$/i.test(who) ? `${who}’` : `${who}’s`;
     const isOwner = !!state.user && state.user.id === ownerId;
+    commentAuthor = a.id ? a : null;
 
-    // Your own review says so at the top, and carries the three dots: Edit,
+    // The slow parts start now, in parallel, and are never waited for before the first paint.
+    const authorName = a.display_name || a.username || 'the author';
+    const extras = (async () => {
+      const needRel = !!state.user && ownerId !== state.user.id && log.comments_who && log.comments_who !== 'everyone' && !log.comments_disabled;
+      const [likeInfo, comments, rel] = await Promise.all([
+        api.getLikeInfo(id, state.user?.id).catch(() => ({ count: 0, liked: false })),
+        api.getComments(id, { ownerId }).catch(() => []),
+        needRel ? Promise.all([
+          api.isFollowing(ownerId, state.user.id).catch(() => false),
+          api.isFollowing(state.user.id, ownerId).catch(() => false),
+        ]) : null,
+      ]);
+      const likesDone = api.getCommentLikes(comments.map((c) => c.id), state.user?.id, ownerId).catch(() => ({}));
+      // Who is allowed to write here: off, everyone, or only people the author follows / the
+      // author's followers. The owner can always comment (unless comments are off).
+      let commentNote = null;
+      if (log.comments_disabled) {
+        commentNote = 'Comments are turned off.';
+      } else if (rel) {
+        const [ownerFollowsMe, iFollowOwner] = rel;
+        const ok = log.comments_who === 'following' ? ownerFollowsMe
+          : log.comments_who === 'followers' ? iFollowOwner
+          : (ownerFollowsMe || iFollowOwner);
+        if (!ok) {
+          commentNote = log.comments_who === 'following' ? `Only people ${authorName} follows can comment.`
+            : log.comments_who === 'followers' ? `Only ${authorName}\u2019s followers can comment.`
+            : `Only people ${authorName} follows and ${authorName}\u2019s followers can comment.`;
+        }
+      }
+      commentLikes = await likesDone;
+      return { likeInfo, comments, commentNote };
+    })();
+
+    // Your own review carries your name at the top and the three dots: Edit,
     // Share to Instagram Stories, Share and Delete.
     const bar = qs('.topbar', root);
-    if (isOwner && bar) qs('.topbar__title', bar).textContent = `${possessive} review`;
     if (bar) {
+      qs('.topbar__title', bar).textContent = isOwner ? `${possessive} review` : 'Review';
       qs('.topbar__right', bar).innerHTML = `<button type="button" class="icon-btn" id="rv-menu-btn" aria-label="Review options">${iconDotsMenu()}</button>`;
       qs('#rv-menu-btn', bar).addEventListener('click', () => openEntryMenu(log, isOwner, { onChanged: () => refreshCurrentView() }));
     }
@@ -98,24 +107,17 @@ export async function renderReviewView(root, { id }) {
 
         ${reviewBodyHtml(log)}
 
-        ${log.review ? `<button type="button" class="rv__like${likeInfo.liked ? ' rv__like--on' : ''}" id="review-like"
-                aria-pressed="${likeInfo.liked}" aria-label="${likeInfo.liked ? 'Unlike' : 'Like'} this review">
-          ${iconHeart()}<span id="review-like-count">${likeLabel(likeInfo.count)}</span>
+        ${log.review ? `<button type="button" class="rv__like" id="review-like" aria-pressed="false" aria-label="Like this review">
+          ${iconHeart()}<span id="review-like-count"></span>
         </button>` : ''}
       </article>
 
-      <section class="rv-comments${comments.length ? '' : ' rv-comments--empty'}">
-        <h2 class="rv-comments__head">Comments <span id="comment-count">${countLabel(visibleCount(comments))}</span></h2>
-        <div class="comment-list" id="comment-list">
-          ${comments.map((c) => commentHtml(c, ownerId)).join('')}
-        </div>
+      <section class="rv-comments rv-comments--empty rv-comments--loading" id="rv-comments">
+        <h2 class="rv-comments__head">Comments <span id="comment-count"></span></h2>
+        <div class="comment-list" id="comment-list"></div>
         <p class="rv-comments__none">No comments</p>
       </section>`;
 
-    root.insertAdjacentHTML('beforeend', composerHtml(commentNote));
-
-    // The spoiler card is replaced by the writing, rather than the
-    // writing being un-blurred underneath it.
     // A review that does contain spoilers is covered. Tapping the cover brings the words
     // in one by one; "Hide the words" under the review covers it again.
     const gate = qs('#spoiler-gate', body);
@@ -159,14 +161,31 @@ export async function renderReviewView(root, { id }) {
       }
     }
 
-    wireLike(qs('#review-like', body), id, likeInfo, qs('.rv', body));
+    // Likes and comments land when they arrive; the review above is already on screen.
+    const { likeInfo, comments, commentNote } = await extras;
+    if (!body.isConnected) return; // left the page while it loaded
+
+    const likeBtn = qs('#review-like', body);
+    if (likeBtn) {
+      likeBtn.classList.toggle('rv__like--on', !!likeInfo.liked);
+      likeBtn.setAttribute('aria-pressed', String(!!likeInfo.liked));
+      likeBtn.setAttribute('aria-label', `${likeInfo.liked ? 'Unlike' : 'Like'} this review`);
+      qs('#review-like-count', body).textContent = likeLabel(likeInfo.count);
+    }
+    const section = qs('#rv-comments', body);
+    qs('#comment-list', body).innerHTML = comments.map((c) => commentHtml(c, ownerId)).join('');
+    qs('#comment-count', body).textContent = countLabel(visibleCount(comments));
+    section.classList.remove('rv-comments--loading');
+    section.classList.toggle('rv-comments--empty', !comments.length);
+
+    root.insertAdjacentHTML('beforeend', composerHtml(commentNote));
+    wireLike(likeBtn, id, likeInfo, qs('.rv', body));
     wireCommentActions(root, body, { logId: id, ownerId, isOwner, commentsOff: !!commentNote });
     wireComposer(root, body, { logId: id, ownerId });
   } catch (err) {
     body.innerHTML = `<p class="muted" style="padding:24px">Couldn't load this review: ${esc(err.message)}</p>`;
   }
 }
-
 // The write-up. A review marked for spoilers is not shown blurred — a
 // blur is a picture of hidden text, it still takes the full height of
 // whatever is behind it, and every review ends up a different size. A

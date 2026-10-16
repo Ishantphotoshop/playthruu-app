@@ -627,7 +627,7 @@ export function friendsPlayingCard(entry) {
   const f = entry.friend || {};
   return `
     <div class="friend-card">
-      <a href="#/review/${entry.logId}" class="friend-card__poster" aria-label="Open ${esc(f.display_name || f.username)}'s log of ${esc(g.title)}">
+      <a href="${entry.link || `#/review/${entry.logId}`}" class="friend-card__poster" aria-label="Open ${esc(f.display_name || f.username)}'s log of ${esc(g.title)}">
         ${posterFrame(g.cover_url, g.title, 'friend-card__cover')}
       </a>
       ${cardWho(f, entry.rating, { replayed: entry.isReplay, hasReview: entry.hasReview })}
