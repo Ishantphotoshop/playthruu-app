@@ -7771,3 +7771,5 @@ a.gd-credit__name { text-decoration: none; }
   background-image: radial-gradient(80% 300px at 50% 0%, #1d3c80 0%, rgba(29, 60, 128, 0) 70%);
   background-attachment: fixed;
 }
+/* Viewers size themselves to their own box (the app column), not to the whole window. */
+.poster-viewer__img { width: 100%; max-width: 100%; max-height: 100%; }
