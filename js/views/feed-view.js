@@ -1520,7 +1520,10 @@ async function paintCurrentlyPlaying(slot) {
     const { logs, isFallback } = await api.getFeed(state.user.id, 15, 'playing');
 
     // Someone following nobody sees nothing here: no strangers' games on a new account's home screen.
-    if (isFallback) { slot.innerHTML = ''; return; }
+    if (isFallback) {
+      slot.innerHTML = `<div class="empty-state empty-state--home"><p class="empty-state__title">It’s dangerous to go alone!</p><p class="empty-state__sub">Follow a few people to see what they play.</p><a class="btn btn--accent" href="#/people">Find people</a></div>`;
+      return;
+    }
 
     if (!logs.length) {
       slot.innerHTML = `
