@@ -1601,7 +1601,11 @@ function openLogSheet({ game, ownLog, replayCount, ensureSavedGame, onChanged, o
         if (saved) openLogComposer({ game: saved, defaultReplay: true, onSaved: onChanged });
         return;
       }
-      if (current) openLogComposer({ existingLog: current, onSaved: onChanged });
+      // already logged properly: "Review or log" starts a new log of the game (log again); a quick mark just gets edited
+      if (current && (current.review || playedKind(current, state.profile?.created_at) === 'diary')) {
+        const saved = await ensureSavedGame();
+        if (saved) openLogComposer({ game: saved, defaultReplay: true, onSaved: onChanged });
+      } else if (current) openLogComposer({ existingLog: current, onSaved: onChanged });
       else {
         const saved = await ensureSavedGame();
         // The row ensureSavedGame just returned, NOT `game`: this sheet was
