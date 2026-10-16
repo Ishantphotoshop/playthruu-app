@@ -138,7 +138,7 @@ function logCard(row, viewerId) {
   return `
     <button type="button" class="act act--log${unread ? ' act--unread' : ''}" data-href="${esc(href)}">
       <span class="act__line">
-        <span class="act__avatar">${row.actor ? avatarImg(row.actor, 32) : ''}</span>
+        <span class="act__avatar">${row.actor ? avatarImg(row.actor, 36) : ''}</span>
         <span class="act__text">${who} ${verb}</span>
         <span class="act__time">${esc(timeAgo(row.created_at))}</span>
         ${unread ? '<span class="act__dot" aria-label="New"></span>' : ''}

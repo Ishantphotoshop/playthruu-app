@@ -7808,3 +7808,23 @@ a.gd-credit__name { text-decoration: none; }
 .bl-line { font-family: var(--font-display); font-weight: 800; letter-spacing: -0.01em; font-size: 15px; line-height: 1.35; }
 .bl-line b { font-weight: 800; }
 .bl-name { font-family: var(--font-display); letter-spacing: -0.01em; }
+
+/* Review page: the written review sits in a short box (same width as the page, little height); a long one opens downward on tap. */
+.rv__quote:not(.rv__quote--gated) { position: relative; padding: 12px 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+.rv__quote:not(.rv__quote--gated) .rv__text { overflow: hidden; transition: max-height 0.28s var(--ease); font-size: 14.5px; line-height: 1.55; }
+.rv__quote--fold { cursor: pointer; padding-bottom: 26px; -webkit-tap-highlight-color: transparent; }
+.rv__quote--fold:not(.is-open) .rv__text { -webkit-mask-image: linear-gradient(180deg, #000 62%, transparent); mask-image: linear-gradient(180deg, #000 62%, transparent); }
+.rv__more { position: absolute; left: 0; right: 0; bottom: 4px; display: flex; justify-content: center; color: var(--ink-dim); pointer-events: none; transition: transform 0.28s var(--ease); }
+.rv__more svg { width: 18px; height: 18px; }
+.rv__quote--fold.is-open .rv__more { transform: rotate(180deg); }
+/* No comments: nothing at all under the line, not even a heading or a hint. */
+.rv-comments--empty .rv-comments__head, .rv-comments--empty .comment-list { display: none; }
+.rv-comments--empty { padding-top: 0; min-height: 1px; }
+/* A spoiler review is the same short box until it is tapped, then the words open downward. */
+.rv__quote--gated:not(.is-revealed) { height: 104px; min-height: 0; overflow: hidden; border-radius: 14px; }
+.rv__quote--gated .rv__spoiler { inset: 0; border-radius: 14px; }
+/* Alignment: the Top 3 posters run the full width between the page edges (no 2px inset). */
+.showcase-grid { padding-left: 0; padding-right: 0; }
+/* Notifications: a logged game's name and card start at the same x as every other row's text (36px avatar + 12px gap). */
+.act__line { gap: 12px; }
+.act--log .act__card { margin-left: 48px; }

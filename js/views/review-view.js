@@ -1,6 +1,6 @@
 import * as api from '../api.js';
 import { state } from '../state.js';
-import { topBar, avatarImg, posterFrame, spinner, iconHeart, iconSend, iconFlag, iconBlock, iconDotsMenu, iconClose, openReportSheet } from '../components.js';
+import { topBar, avatarImg, posterFrame, spinner, iconHeart, iconSend, iconFlag, iconBlock, iconDotsMenu, iconClose, iconChevronDown, openReportSheet } from '../components.js';
 import { openEntryMenu } from './entry-menu.js';
 import { navigate, refreshCurrentView } from '../router.js';
 import { esc, starRow, formatDate, timeAgo, qs, qsa, toast, tapFeedback, promptSignIn, reviewText, enableSwipeToDismiss, playedKind } from '../utils.js';
@@ -73,7 +73,7 @@ export async function renderReviewView(root, { id }) {
     // Your own review says so at the top, and carries the three dots: Edit,
     // Share to Instagram Stories, Share and Delete.
     const bar = qs('.topbar', root);
-    if (isOwner && bar) qs('.topbar__title', bar).textContent = 'Your review';
+    if (bar) qs('.topbar__title', bar).textContent = isOwner ? 'Your review' : `${possessive} review`;
     if (bar) {
       qs('.topbar__right', bar).innerHTML = `<button type="button" class="icon-btn" id="rv-menu-btn" aria-label="Review options">${iconDotsMenu()}</button>`;
       qs('#rv-menu-btn', bar).addEventListener('click', () => openEntryMenu(log, isOwner, { onChanged: () => refreshCurrentView() }));
@@ -104,14 +104,12 @@ export async function renderReviewView(root, { id }) {
         </button>` : ''}
       </article>
 
-      ${log.comments_disabled && !visibleCount(comments) ? '' : `<section class="rv-comments">
+      <section class="rv-comments${comments.length ? '' : ' rv-comments--empty'}">
         <h2 class="rv-comments__head">Comments <span id="comment-count">${countLabel(visibleCount(comments))}</span></h2>
         <div class="comment-list" id="comment-list">
-          ${comments.length
-            ? comments.map((c) => commentHtml(c, ownerId)).join('')
-            : '<p class="rv-comments__empty">No comments yet. Be the first.</p>'}
+          ${comments.map((c) => commentHtml(c, ownerId)).join('')}
         </div>
-      </section>`}`;
+      </section>`;
 
     root.insertAdjacentHTML('beforeend', composerHtml(commentNote));
 
@@ -132,6 +130,30 @@ export async function renderReviewView(root, { id }) {
         card.classList.remove('is-revealed');
         hide.classList.remove('is-shown');
       });
+    }
+
+    // A long review sits in a short box and opens downward when tapped.
+    const fold = qs('.rv__quote:not(.rv__quote--gated)', body);
+    const foldText = fold && qs('.rv__text', fold);
+    if (fold && foldText) {
+      const SHORT = 76;
+      foldText.style.maxHeight = `${SHORT}px`;
+      if (foldText.scrollHeight > SHORT + 4) {
+        fold.classList.add('rv__quote--fold');
+        fold.insertAdjacentHTML('beforeend', `<span class="rv__more" aria-hidden="true">${iconChevronDown()}</span>`);
+        fold.setAttribute('role', 'button');
+        fold.setAttribute('aria-expanded', 'false');
+        fold.tabIndex = 0;
+        const toggle = () => {
+          const open = fold.classList.toggle('is-open');
+          foldText.style.maxHeight = open ? `${foldText.scrollHeight}px` : `${SHORT}px`;
+          fold.setAttribute('aria-expanded', String(open));
+        };
+        fold.addEventListener('click', toggle);
+        fold.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
+      } else {
+        foldText.style.maxHeight = '';
+      }
     }
 
     wireLike(qs('#review-like', body), id, likeInfo, qs('.rv', body));
@@ -240,8 +262,7 @@ function wireComposer(root, body, { logId, ownerId }) {
       const saved = await api.addComment(logId, state.user.id, text);
       saved.profiles = saved.profiles || state.profile;
       const list = qs('#comment-list', body);
-      const empty = qs('.rv-comments__empty', list);
-      if (empty) list.innerHTML = '';
+      qs('.rv-comments', body)?.classList.remove('rv-comments--empty');
       list.insertAdjacentHTML('beforeend', commentHtml(saved, ownerId));
       input.value = '';
       sync();

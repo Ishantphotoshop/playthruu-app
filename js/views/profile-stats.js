@@ -180,7 +180,7 @@ export function backlogBarHtml(profile, logs, isOwn) {
     <div class="ps-split bl-bar">
       ${isOwn ? '<div class="bl-slot" id="bl-slot"><span>?</span></div>' : ''}
       <div class="bl-main" id="bl-main">
-        <div class="bl-line"><b>${num(n)}</b> game${n === 1 ? '' : 's'} waiting for you...</div>
+        <div class="bl-line"><b>${num(n)}</b> game${n === 1 ? '' : 's'} waiting for ${isOwn ? 'you' : 'me'}...</div>
       </div>
       ${isOwn ? '<button type="button" class="ps-pill" id="ps-pick">Pick for me</button>' : ''}
     </div></div>`;
