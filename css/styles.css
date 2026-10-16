@@ -7798,3 +7798,6 @@ a.gd-credit__name { text-decoration: none; }
 .act__marks .stars { --star-size: 10px !important; gap: 0; }
 .act__mark { width: 9.5px; height: 9.5px; }
 .act__mark svg { stroke-width: 1.6; }
+/* The Backlog "?" slot: a solid box like the empty slot in Currently playing, not dashed. */
+.bl-slot { border: 1px solid var(--line-strong); background: var(--surface); border-radius: var(--poster-radius); color: var(--ink-dim); }
+.bl-slot--on { border: 1px solid var(--line-strong); background: var(--surface-raised); }
