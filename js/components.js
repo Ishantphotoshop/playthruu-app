@@ -886,11 +886,12 @@ export function wireRatingHistogram(container) {
   chart.addEventListener('lostpointercapture', release);
 }
 
-export function emptyState(message, { actionLabel, actionRoute, icon, tagline } = {}) {
+export function emptyState(message, { actionLabel, actionRoute, icon, quote, source } = {}) {
   return `
     <div class="empty-state">
       ${icon || ''}
-      <p>${esc(message)}</p>
+      <p class="empty-state__title">${esc(message)}</p>
+      ${quote ? `<div class="empty-state__q"><p class="empty-state__quote">“${esc(quote)}”</p>${source ? `<p class="empty-state__src">${esc(source)}</p>` : ''}</div>` : ''}
       ${actionLabel ? `<a class="btn btn--accent" href="#${actionRoute}">${esc(actionLabel)}</a>` : ''}
     </div>`;
 }

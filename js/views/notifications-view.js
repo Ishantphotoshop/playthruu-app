@@ -271,16 +271,22 @@ export async function renderNotificationsView(root) {
     }
   }
 
+  const EMPTY_QUOTE = {
+    friends: { quote: 'It’s dangerous to go alone! Follow someone.', source: 'The Legend of Zelda' },
+    you: { quote: 'Wake up, Samurai. We have a city to burn.', source: 'Cyberpunk 2077' },
+    all: { quote: 'It’s dangerous to go alone! Follow someone.', source: 'The Legend of Zelda' },
+  };
+
   function emptyMessage(id) {
-    if (id === 'you') return 'Log a game and it shows up here.';
-    if (id === 'friends') return 'Follow a few people and their activity fills this in.';
-    return 'Follow a few people and what they do shows up here.';
+    if (id === 'you') return 'Nothing yet.';
+    if (id === 'friends') return 'No activity.';
+    return 'Nothing yet.';
   }
 
   function paintList(t) {
     if (!t.pane) return;
     if (!t.rows.length) {
-      t.pane.innerHTML = emptyState(emptyMessage(t.id));
+      t.pane.innerHTML = emptyState(emptyMessage(t.id), EMPTY_QUOTE[t.id] || EMPTY_QUOTE.all);
       return;
     }
     t.pane.innerHTML = `

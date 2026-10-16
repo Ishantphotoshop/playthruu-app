@@ -7874,3 +7874,15 @@ a.gd-credit__name { text-decoration: none; }
 .showcase-empty .empty-state { padding: 0 var(--space-5); }
 .showcase-empty .empty-state p { min-height: 0; margin: 0; }
 .empty-state .btn { width: 220px; min-width: 0; }
+
+/* Empty screens, Letterboxd style: a plain title, a famous game line, the game it is from */
+.empty-state p.empty-state__title { font-size: 17px; font-weight: 800; color: var(--ink-dim); min-height: 0; margin: 0 0 10px; }
+.empty-state p.empty-state__quote { font-size: 14px; line-height: 1.5; color: var(--ink-faint); min-height: 3em; margin: 0 auto 6px; }
+.empty-state p.empty-state__src { font-size: 11.5px; font-weight: 600; color: var(--ink-faint); opacity: .7; min-height: 0; margin: 0 0 18px; }
+.empty-state p.empty-state__quote:last-child { margin-bottom: 18px; }
+
+.empty-state__q { min-height: 6.2em; margin-bottom: 14px; }
+.empty-state p.empty-state__quote { min-height: 0; margin: 0 auto 6px; }
+.empty-state p.empty-state__src { margin: 0 auto; }
+.empty-state p.empty-state__quote:last-child { margin-bottom: 6px; }
+.empty-state__q { min-height: 5.2em; }
