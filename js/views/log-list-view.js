@@ -1,6 +1,6 @@
 import * as api from '../api.js';
 import { state } from '../state.js';
-import { topBar, navBar, emptyState, spinner, iconStamp, posterFrame, iconFilter, iconClose, iconReplay, iconReviewLines } from '../components.js';
+import { topBar, navBar, emptyState, spinner, iconStamp, posterFrame, iconFilter, iconClose, iconReplay, iconReviewLines, iconHeartFilled } from '../components.js';
 import { backlogBarHtml, wireBacklogBar } from './profile-stats.js';
 import { esc, qs, formatDate, statusStamp, starRow, igdbSized, playedKind } from '../utils.js';
 
@@ -16,7 +16,7 @@ const MODES = {
   logged: { title: 'Played', statuses: undefined, reviewsOnly: false, keep: (l) => l.rating || l.review || l.loved, empty: (u) => `${u} hasn't logged anything yet.` },
   reviews: { title: 'Reviews', statuses: undefined, reviewsOnly: true, empty: (u) => `${u} hasn't written any reviews yet.` },
   liked: { title: 'Likes', statuses: undefined, reviewsOnly: false, keep: (l) => l.loved, empty: (u) => `${u} hasn't liked any games yet.` },
-  replayed: { title: 'Replays', statuses: ['played', 'dropped'], reviewsOnly: false, post: (list) => { const n = {}; list.forEach((l) => { n[l.game_id] = (n[l.game_id] || 0) + 1; }); return list.filter((l) => n[l.game_id] > 1); }, empty: (u) => `${u} hasn't replayed any games yet.` },
+  replayed: { title: 'Replays', statuses: ['played', 'dropped'], reviewsOnly: false, diary: true, post: (list) => { const n = {}; list.forEach((l) => { n[l.game_id] = (n[l.game_id] || 0) + 1; }); return list.filter((l) => n[l.game_id] > 1); }, empty: (u) => `${u} hasn't replayed any games yet.` },
 };
 
 // Calendar tiles: weekday and day number in a tile, the game beside it, the cover
@@ -30,7 +30,7 @@ export function diaryTilesHtml(list, byDate = true) {
       <div class="dq-tile"><span>${d ? d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase() : ''}</span><b>${d ? d.getDate() : '·'}</b></div>
       <div class="dq-main">
         <div class="dq-title">${esc(l.games.title)}${l.games.release_year ? ` <em>${l.games.release_year}</em>` : ''}</div>
-        <div class="dq-meta">${l.rating ? starRow(l.rating, { size: 12 }) : ''}${l.is_replay ? `<span class="dq-mark">${iconReplay()}</span>` : ''}${l.review ? `<span class="dq-mark">${iconReviewLines()}</span>` : ''}</div>
+        <div class="dq-meta">${l.rating ? starRow(l.rating, { size: 12 }) : ''}${l.loved ? `<span class="dq-mark dq-mark--heart">${iconHeartFilled()}</span>` : ''}${l.is_replay ? `<span class="dq-mark">${iconReplay()}</span>` : ''}${l.review ? `<span class="dq-mark">${iconReviewLines()}</span>` : ''}</div>
       </div>
       <img src="${esc(igdbSized(l.games.cover_url, 'cover_small') || '')}" alt="" class="dq-cover" loading="lazy" decoding="async" onerror="this.style.visibility='hidden'">
     </a>`;
@@ -84,7 +84,7 @@ export async function renderLogListView(root, { username, mode }) {
 
     // Filters: sort, year, minimum rating, and "By game" (one game, every play under it).
     const fkey = `ll-filters:${username}:${mode}`;
-    const f = { sort: 'new', year: 'all', rating: '0', group: mode === 'replayed' };
+    const f = { sort: 'new', year: 'all', rating: '0', group: false };
     try { Object.assign(f, JSON.parse(sessionStorage.getItem(fkey) || '{}')); } catch (_) { /* fine without it */ }
     // Only a properly logged game (a diary entry) has a review page; a game just marked as
     // played opens the game page.
@@ -105,7 +105,7 @@ export async function renderLogListView(root, { username, mode }) {
     const matches = (d) => logs.filter((l) => l.games)
       .filter((l) => d.year === 'all' || yearOf(l) === Number(d.year))
       .filter((l) => (l.rating || 0) >= Number(d.rating));
-    const BLANK = { sort: 'new', year: 'all', rating: '0', group: mode === 'replayed' };
+    const BLANK = { sort: 'new', year: 'all', rating: '0', group: false };
 
     // The filter pop-up: same layout as Browse's (categories left, choices right, Reset and Show below).
     function openFilters() {
