@@ -308,7 +308,7 @@ export async function renderProfileView(root, { username }) {
     const renderJournalTab = () => `
       ${diary.length ? diaryTilesHtml(diary.filter((l) => l.games).sort((a, b) => new Date(b.played_date || b.created_at) - new Date(a.played_date || a.created_at))) : emptyState(
           'No diary entries.',
-          isOwn ? { quote: 'Hey, you. You\u2019re finally awake.', source: 'The Elder Scrolls V: Skyrim', actionLabel: 'Log your first game', actionRoute: '/log' } : { quote: 'Hey, you. You\u2019re finally awake.', source: 'The Elder Scrolls V: Skyrim' }
+          isOwn ? { quotes: 'diary', actionLabel: 'Log your first game', actionRoute: '/log' } : { quotes: 'diary' }
         )}
     `;
 
@@ -324,7 +324,7 @@ export async function renderProfileView(root, { username }) {
             </a>`).join('')}
         </div>` : emptyState(
         'Nothing waiting.',
-        isOwn ? { quote: 'Stay awhile and listen.', source: 'Diablo', actionLabel: 'Find a game', actionRoute: '/search' } : { quote: 'Stay awhile and listen.', source: 'Diablo' }
+        isOwn ? { quotes: 'backlog', actionLabel: 'Find a game', actionRoute: '/search' } : { quotes: 'backlog' }
       )}
     `;
 
@@ -336,7 +336,7 @@ export async function renderProfileView(root, { username }) {
       ${lists.length ? `
         <div class="list-cards">
           ${lists.map(listCard).join('')}
-        </div>` : emptyState('No lists.', { quote: 'The cake is a lie.', source: 'Portal' })}
+        </div>` : emptyState('No lists.', { quotes: 'lists' })}
     `;
 
     const tabRenderers = { profile: renderProfileTab, journal: renderJournalTab, wanttoplay: renderWantToPlayTab, lists: renderListsTab };

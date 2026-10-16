@@ -886,7 +886,61 @@ export function wireRatingHistogram(container) {
   chart.addEventListener('lostpointercapture', release);
 }
 
-export function emptyState(message, { actionLabel, actionRoute, icon, quote, source } = {}) {
+// Famous game lines for the empty screens, a different one each time, only ones that fit the tab they sit on.
+const EMPTY_QUOTES = {
+  diary: [
+    ['Hey, you. You’re finally awake.', 'The Elder Scrolls V: Skyrim'],
+    ['Endure and survive.', 'The Last of Us'],
+    ['The right man in the wrong place can make all the difference in the world.', 'Half-Life 2'],
+    ['Nothing is true, everything is permitted.', 'Assassin’s Creed'],
+    ['I used to be an adventurer like you. Then I took an arrow in the knee.', 'The Elder Scrolls V: Skyrim'],
+    ['Finish the fight.', 'Halo 2'],
+  ],
+  backlog: [
+    ['Thank you Mario! But our princess is in another castle!', 'Super Mario Bros.'],
+    ['Stay awhile and listen.', 'Diablo'],
+    ['Would you kindly?', 'BioShock'],
+    ['Praise the sun!', 'Dark Souls'],
+    ['Kept you waiting, huh?', 'Metal Gear Solid V'],
+    ['You were almost a Jill sandwich!', 'Resident Evil'],
+  ],
+  lists: [
+    ['The cake is a lie.', 'Portal'],
+    ['Gotta catch ’em all!', 'Pokémon'],
+    ['All your base are belong to us.', 'Zero Wing'],
+    ['I’m Commander Shepard, and this is my favorite store on the Citadel.', 'Mass Effect 2'],
+    ['Nothing is true, everything is permitted.', 'Assassin’s Creed'],
+  ],
+  friends: [
+    ['It’s dangerous to go alone! Take this.', 'The Legend of Zelda'],
+    ['Hey! Listen!', 'The Legend of Zelda: Ocarina of Time'],
+    ['Do a barrel roll!', 'Star Fox 64'],
+    ['Praise the sun!', 'Dark Souls'],
+    ['Get over here!', 'Mortal Kombat'],
+    ['Heroes never die!', 'Overwatch'],
+  ],
+  you: [
+    ['Wake up, Samurai. We have a city to burn.', 'Cyberpunk 2077'],
+    ['War. War never changes.', 'Fallout'],
+    ['Kept you waiting, huh?', 'Metal Gear Solid V'],
+    ['It’s time to kick ass and chew bubblegum.', 'Duke Nukem 3D'],
+    ['Hey, you. You’re finally awake.', 'The Elder Scrolls V: Skyrim'],
+    ['Finish the fight.', 'Halo 2'],
+  ],
+};
+EMPTY_QUOTES.all = [...EMPTY_QUOTES.friends, ...EMPTY_QUOTES.you];
+let lastQuote = {};
+function pickQuote(key) {
+  const list = EMPTY_QUOTES[key];
+  if (!list) return null;
+  let i = Math.floor(Math.random() * list.length);
+  if (list.length > 1 && i === lastQuote[key]) i = (i + 1) % list.length; // never the same one twice in a row
+  lastQuote[key] = i;
+  return { quote: list[i][0], source: list[i][1] };
+}
+
+export function emptyState(message, { actionLabel, actionRoute, icon, quote, source, quotes } = {}) {
+  if (quotes && !quote) ({ quote, source } = pickQuote(quotes) || {});
   return `
     <div class="empty-state">
       ${icon || ''}
