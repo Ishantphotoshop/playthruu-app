@@ -8033,3 +8033,14 @@ a.rpl__head { text-decoration: none; }
 .tab-head .browse-fbtn, .tab-head .icon-btn { margin: 0; }
 .tab-sliding { overflow-x: clip; }
 .act__you { font-weight: 800; color: var(--accent); background: rgba(255, 198, 26, 0.14); padding: 0 6px; border-radius: 5px; }
+
+/* Less transition clutter: no fade when a screen's body loads, and switching bottom-bar tabs is a plain cut. */
+.view-body { animation: none; }
+[data-nav='tab']::view-transition-new(root) { animation: none; }
+.act__you { background: none; color: inherit; padding: 0; font-weight: 800; }
+
+/* Every heading is in the brand font (Unbounded), like the bars at the top of each screen. */
+.topbar__title, .view-body h1, .view-body h2, .ld-title, .browse-filters__top h2, .lg-head__title, .modal h2 { font-family: var(--font-brand); font-weight: 700; letter-spacing: -0.01em; }
+
+/* Diary, Backlog and Lists headings sit exactly where "Top 3" does. */
+.tab-head { height: 20px; min-height: 0; margin: 0 0 9px; }

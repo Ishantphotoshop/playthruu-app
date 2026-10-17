@@ -551,35 +551,6 @@ export function wireTabSwipe(root, tabSelector, activeClass, areaSelector) {
     }
     return null;
   };
-  // Any tab change is a real slide: a copy of the page you are leaving slides out while the new page slides in beside it.
-  root.addEventListener('click', (e) => {
-    const btn = e.target.closest(tabSelector);
-    if (!btn || !areaSelector) return;
-    const tabs = [...root.querySelectorAll(tabSelector)];
-    const from = tabs.findIndex((b) => b.classList.contains(activeClass));
-    const to = tabs.indexOf(btn);
-    if (from < 0 || to < 0 || from === to) return;
-    const area = root.querySelector(areaSelector);
-    if (!area?.animate || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    const dir = to > from ? 1 : -1;
-    const host = area.parentElement;
-    const ghost = area.cloneNode(true);
-    ghost.removeAttribute('id');
-    ghost.querySelectorAll('[id]').forEach((n) => n.removeAttribute('id'));
-    Object.assign(ghost.style, { position: 'absolute', left: area.offsetLeft + 'px', top: area.offsetTop + 'px', width: area.offsetWidth + 'px', height: area.offsetHeight + 'px', overflow: 'hidden', pointerEvents: 'none', margin: '0' });
-    ghost.setAttribute('aria-hidden', 'true');
-    const prevPos = host.style.position;
-    if (getComputedStyle(host).position === 'static') host.style.position = 'relative';
-    host.classList.add('tab-sliding');
-    host.appendChild(ghost);
-    const opts = { duration: 340, easing: 'cubic-bezier(.22,.8,.24,1)', fill: 'both' };
-    const out = ghost.animate([{ transform: 'translateX(0)' }, { transform: `translateX(${-dir * 100}%)` }], opts);
-    setTimeout(() => {
-      const fresh = root.querySelector(areaSelector);
-      fresh?.animate([{ transform: `translateX(${dir * 100}%)` }, { transform: 'translateX(0)' }], opts);
-    }, 0);
-    out.finished.catch(() => {}).then(() => { ghost.remove(); host.classList.remove('tab-sliding'); host.style.position = prevPos; });
-  }, true);
   root.addEventListener('touchstart', (e) => {
     const found = e.touches.length === 1 && !e.target.closest(tabSelector) ? sidewaysParent(e.target) : 'block';
     ok = found !== 'block';
@@ -601,7 +572,27 @@ export function wireTabSwipe(root, tabSelector, activeClass, areaSelector) {
     const tabs = [...root.querySelectorAll(tabSelector)];
     const at = tabs.findIndex((b) => b.classList.contains(activeClass));
     const next = tabs[at + (dx < 0 ? 1 : -1)];
-    if (at >= 0 && next) next.click();
+    if (at < 0 || !next) return;
+    // A swipe slides: a copy of the page you leave goes out one side while the new page comes in from the other.
+    // Tapping a tab name stays a plain cut.
+    const area = areaSelector ? root.querySelector(areaSelector) : null;
+    if (!area?.animate || matchMedia('(prefers-reduced-motion: reduce)').matches) { next.click(); return; }
+    const dir = dx < 0 ? 1 : -1;
+    const host = area.parentElement;
+    const ghost = area.cloneNode(true);
+    ghost.querySelectorAll('[id]').forEach((n) => n.removeAttribute('id'));
+    ghost.removeAttribute('id');
+    Object.assign(ghost.style, { position: 'absolute', left: area.offsetLeft + 'px', top: area.offsetTop + 'px', width: area.offsetWidth + 'px', height: area.offsetHeight + 'px', overflow: 'hidden', pointerEvents: 'none', margin: '0' });
+    ghost.setAttribute('aria-hidden', 'true');
+    const prevPos = host.style.position;
+    if (getComputedStyle(host).position === 'static') host.style.position = 'relative';
+    host.classList.add('tab-sliding');
+    host.appendChild(ghost);
+    const opts = { duration: 300, easing: 'cubic-bezier(.22,.8,.24,1)', fill: 'both' };
+    const out = ghost.animate([{ transform: 'translateX(0)' }, { transform: `translateX(${-dir * 100}%)` }], opts);
+    next.click();
+    root.querySelector(areaSelector)?.animate([{ transform: `translateX(${dir * 100}%)` }, { transform: 'translateX(0)' }], opts);
+    out.finished.catch(() => {}).then(() => { ghost.remove(); host.classList.remove('tab-sliding'); host.style.position = prevPos; });
   }, { passive: true });
   root.addEventListener('touchcancel', () => { ok = false; }, { passive: true });
 }
