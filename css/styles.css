@@ -8026,3 +8026,10 @@ a.rpl__head { text-decoration: none; }
 .list-card__collage img + img { margin-left: -30px; }
 .list-card__collage--empty { width: 56px; height: 84px; border-radius: 5px; background: var(--surface); }
 .rpl__count { flex-shrink: 0; font-size: 22px; font-weight: 800; color: var(--accent); font-variant-numeric: tabular-nums; }
+
+/* Diary, Backlog and Lists open with the same header: title left, action right, same height, same gap below. */
+.tab-head { display: flex; align-items: center; justify-content: space-between; min-height: 44px; margin: 6px 0 14px; }
+.tab-head .section-heading { margin: 0; }
+.tab-head .browse-fbtn, .tab-head .icon-btn { margin: 0; }
+.tab-sliding { overflow-x: clip; }
+.act__you { font-weight: 800; color: var(--accent); background: rgba(255, 198, 26, 0.14); padding: 0 6px; border-radius: 5px; }

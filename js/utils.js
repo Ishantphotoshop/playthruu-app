@@ -551,7 +551,7 @@ export function wireTabSwipe(root, tabSelector, activeClass, areaSelector) {
     }
     return null;
   };
-  // Any tab change slides the new page in from the side the tab lies on.
+  // Any tab change is a real slide: a copy of the page you are leaving slides out while the new page slides in beside it.
   root.addEventListener('click', (e) => {
     const btn = e.target.closest(tabSelector);
     if (!btn || !areaSelector) return;
@@ -559,12 +559,26 @@ export function wireTabSwipe(root, tabSelector, activeClass, areaSelector) {
     const from = tabs.findIndex((b) => b.classList.contains(activeClass));
     const to = tabs.indexOf(btn);
     if (from < 0 || to < 0 || from === to) return;
+    const area = root.querySelector(areaSelector);
+    if (!area?.animate || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const dir = to > from ? 1 : -1;
+    const host = area.parentElement;
+    const ghost = area.cloneNode(true);
+    ghost.removeAttribute('id');
+    ghost.querySelectorAll('[id]').forEach((n) => n.removeAttribute('id'));
+    Object.assign(ghost.style, { position: 'absolute', left: area.offsetLeft + 'px', top: area.offsetTop + 'px', width: area.offsetWidth + 'px', height: area.offsetHeight + 'px', overflow: 'hidden', pointerEvents: 'none', margin: '0' });
+    ghost.setAttribute('aria-hidden', 'true');
+    const prevPos = host.style.position;
+    if (getComputedStyle(host).position === 'static') host.style.position = 'relative';
+    host.classList.add('tab-sliding');
+    host.appendChild(ghost);
+    const opts = { duration: 340, easing: 'cubic-bezier(.22,.8,.24,1)', fill: 'both' };
+    const out = ghost.animate([{ transform: 'translateX(0)' }, { transform: `translateX(${-dir * 100}%)` }], opts);
     setTimeout(() => {
-      const area = root.querySelector(areaSelector);
-      if (!area?.animate || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-      area.animate([{ transform: `translateX(${dir * 22}%)`, opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 280, easing: 'cubic-bezier(.2,.8,.2,1)' });
+      const fresh = root.querySelector(areaSelector);
+      fresh?.animate([{ transform: `translateX(${dir * 100}%)` }, { transform: 'translateX(0)' }], opts);
     }, 0);
+    out.finished.catch(() => {}).then(() => { ghost.remove(); host.classList.remove('tab-sliding'); host.style.position = prevPos; });
   }, true);
   root.addEventListener('touchstart', (e) => {
     const found = e.touches.length === 1 && !e.target.closest(tabSelector) ? sidewaysParent(e.target) : 'block';

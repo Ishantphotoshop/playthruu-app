@@ -303,6 +303,7 @@ export async function renderProfileView(root, { username }) {
     `;
 
     const renderJournalTab = () => `
+      <div class="tab-head"><h2 class="section-heading">Diary</h2></div>
       ${diary.length ? diaryTilesHtml(diary.filter((l) => l.games).sort((a, b) => new Date(b.played_date || b.created_at) - new Date(a.played_date || a.created_at))) : emptyState(
           'No diary entries.',
           isOwn ? { quotes: 'diary', actionLabel: 'Log your first game', actionRoute: '/log' } : { quotes: 'diary' }
@@ -324,7 +325,7 @@ export async function renderProfileView(root, { username }) {
               ${posterFrame(l.games.cover_url, l.games.title, 'poster-grid3__cover')}
             </a>`).join('');
     const renderWantToPlayTab = () => `
-      ${backlog.length ? `<div class="bl-top"><button type="button" class="browse-fbtn" id="bl-fbtn" aria-label="Filter backlog">${iconFilter()}</button></div>` : ''}
+      <div class="tab-head"><h2 class="section-heading">Backlog</h2>${backlog.length ? `<button type="button" class="browse-fbtn" id="bl-fbtn" aria-label="Filter backlog">${iconFilter()}</button>` : ''}</div>
       ${backlog.length ? backlogBarHtml(profile, logs, isOwn) : ''}
       ${backlog.length ? `
         <div class="poster-grid3" id="bl-grid">
@@ -336,7 +337,7 @@ export async function renderProfileView(root, { username }) {
     `;
 
     const renderListsTab = () => `
-      <div class="feed-section-head">
+      <div class="tab-head">
         <h2 class="section-heading">Lists</h2>
         ${isOwn ? `<button type="button" class="icon-btn icon-btn--small" id="new-list-btn" aria-label="New list">${iconPlus()}</button>` : ''}
       </div>

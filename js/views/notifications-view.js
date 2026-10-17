@@ -62,7 +62,7 @@ function isLoggedGame(row) {
 
 function describe(row, viewerId) {
   const isYou = row.actor_id === viewerId;
-  const who = isYou ? 'You' : `<span class="act__who">${esc(nameOf(row.actor))}</span>`;
+  const who = isYou ? '<span class="act__who act__you">You</span>' : `<span class="act__who">${esc(nameOf(row.actor))}</span>`;
   const game = row.game
     ? `<b>${esc(row.game.title)}</b>`
     : null;
@@ -137,7 +137,7 @@ function logCard(row, viewerId) {
   const log = row.log || {};
   const g = row.game;
   const isYou = row.actor_id === viewerId;
-  const who = isYou ? 'You' : `<span class="act__who">${esc(nameOf(row.actor))}</span>`;
+  const who = isYou ? '<span class="act__who act__you">You</span>' : `<span class="act__who">${esc(nameOf(row.actor))}</span>`;
   const status = log.status || 'played';
   const verb = status === 'backlog' ? `added to ${isYou ? 'your' : 'their'} backlog`
     : log.is_replay ? 'replayed' : (PAST_TENSE[status] || 'played');
