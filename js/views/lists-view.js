@@ -1,6 +1,6 @@
 import * as api from '../api.js';
 import { state } from '../state.js';
-import { topBar, navBar, spinner, emptyState, posterFrame, avatarImg, iconPlus, iconClose, iconChevronUp, iconChevronDown, iconDotsMenu, iconHeartFilled, combinedGameResultsList, wireCombinedGameResults } from '../components.js';
+import { topBar, navBar, spinner, emptyState, confirmSheet, posterFrame, avatarImg, iconPlus, iconClose, iconChevronUp, iconChevronDown, iconDotsMenu, iconHeartFilled, combinedGameResultsList, wireCombinedGameResults } from '../components.js';
 import { esc, qs, qsa, toast, debounce, enableSwipeToDismiss, promptSignIn, starRow } from '../utils.js';
 import { navigate } from '../router.js';
 
@@ -165,7 +165,7 @@ export async function renderListDetailView(root, { id }) {
         try { await navigator.clipboard.writeText(url); toast('Link copied.', 'success'); } catch { toast(url); }
       } });
       if (isOwn) entries.push({ label: 'Delete list', danger: true, run: async () => {
-        if (!confirm('Delete this list? This can\'t be undone.')) return;
+        if (!(await confirmSheet({ title: 'Delete this list?', message: "This can't be undone.", confirmLabel: 'Delete', danger: true }))) return;
         try { await api.deleteList(id); navigate(`/profile/${list.profiles.username}`); }
         catch (err) { toast(err.message || 'Could not delete list.', 'error'); }
       } });

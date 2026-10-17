@@ -527,7 +527,7 @@ export function openLogComposer({ game = null, resolveGame = null, existingLog =
     if (act === 'save') return save();
 
     if (act === 'delete' && existingLog) {
-      if (!confirm('Delete this entry? This can\'t be undone.')) return;
+      if (!(await confirmSheet({ title: 'Delete this entry?', message: "This can't be undone.", confirmLabel: 'Delete', danger: true }))) return;
       try {
         await api.deleteLog(existingLog.id);
         toast('Entry deleted.', 'success');

@@ -5,7 +5,7 @@ import { state } from '../state.js';
 import { MESSENGER_ARCHIVED } from '../config.js';
 import {
   navBar, spinner, avatarImg, gameCard, showcaseGrid, SHOWCASE_MAX, ratingHistogram, wireRatingHistogram, posterFrame,
-  emptyState, iconStamp, iconSettings, iconShare, iconQr, iconDotsMenu, iconClose, iconSearch, iconPlus, listCard, iconMessage,
+  emptyState, confirmSheet, iconStamp, iconSettings, iconShare, iconQr, iconDotsMenu, iconClose, iconSearch, iconPlus, listCard, iconMessage,
   combinedGameResults, wireCombinedGameResults, openReportSheet, iconFlag, iconBlock, iconReplay, iconReviewLines, iconChevronRight,
 } from '../components.js';
 import { esc, formatDate, statusStamp, starRow, playedKind, qs, qsa, toast, debounce, pulseLogTab, igdbSized, enableSwipeToDismiss, promptSignIn, wireTabSwipe } from '../utils.js';
@@ -363,7 +363,7 @@ export async function renderProfileView(root, { username }) {
       qsa('[data-remove-log]', contentEl).forEach((btn) => {
         btn.addEventListener('click', async (e) => {
           e.preventDefault();
-          if (!confirm('Remove this from currently playing?')) return;
+          if (!(await confirmSheet({ title: 'Remove from currently playing?', message: 'This game will be removed from your currently playing.', confirmLabel: 'Remove', danger: true }))) return;
           try {
             await api.deleteLog(btn.dataset.removeLog);
             refreshCurrentView();
