@@ -542,7 +542,7 @@ export function reviewText(str) {
 // that is empty, not a poster row that can still scroll that way, an input or a [data-no-swipe].
 // Swiping left (finger moves left) goes to the next tab, right to the previous one. It presses the
 // neighbouring tab's own button, so each page switches exactly the way a tap would.
-export function wireTabSwipe(root, tabSelector, activeClass) {
+export function wireTabSwipe(root, tabSelector, activeClass, areaSelector) {
   let sx = 0, sy = 0, ok = false, strip = null, stripLeft = 0;
   const sidewaysParent = (el) => {
     for (let n = el; n && n !== root; n = n.parentElement) {
@@ -572,7 +572,17 @@ export function wireTabSwipe(root, tabSelector, activeClass) {
     const tabs = [...root.querySelectorAll(tabSelector)];
     const at = tabs.findIndex((b) => b.classList.contains(activeClass));
     const next = tabs[at + (dx < 0 ? 1 : -1)];
-    if (at >= 0 && next) next.click();
+    if (at < 0 || !next) return;
+    const dir = dx < 0 ? 1 : -1;
+    const area = areaSelector ? root.querySelector(areaSelector) : null;
+    if (!area || !area.animate || matchMedia('(prefers-reduced-motion: reduce)').matches) { next.click(); return; }
+    // slide the old page out the way the finger went, then the new one in from the other side
+    area.animate([{ transform: 'none', opacity: 1 }, { transform: `translateX(${-dir * 28}%)`, opacity: 0 }], { duration: 140, easing: 'ease-in' }).finished
+      .catch(() => {}).then(() => {
+        next.click();
+        const a2 = areaSelector ? root.querySelector(areaSelector) : area;
+        a2?.animate([{ transform: `translateX(${dir * 28}%)`, opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 220, easing: 'ease-out' });
+      });
   }, { passive: true });
   root.addEventListener('touchcancel', () => { ok = false; }, { passive: true });
 }

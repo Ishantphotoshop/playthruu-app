@@ -1,4 +1,5 @@
 import * as api from '../api.js';
+import { openFilterSheet } from './filter-sheet.js';
 import { state } from '../state.js';
 import { topBar, navBar, spinner, emptyState, confirmSheet, posterFrame, avatarImg, iconPlus, iconClose, iconChevronUp, iconChevronDown, iconDotsMenu, iconHeartFilled, combinedGameResultsList, wireCombinedGameResults } from '../components.js';
 import { esc, qs, qsa, toast, debounce, enableSwipeToDismiss, promptSignIn, starRow } from '../utils.js';
@@ -103,7 +104,7 @@ export async function renderListDetailView(root, { id }) {
       return arr;
     };
 
-    const rowHtml = ({ it, idx }) => {
+    const rowHtml = ({ it, idx }, pos) => {
       const g = it.games;
       const m = mine.get(g.id);
       const marks = m && (m.rating || m.loved)
@@ -111,7 +112,7 @@ export async function renderListDetailView(root, { id }) {
       return `
         <div class="ld-row ranked-row" data-game-id="${g.id}">
           <a href="#/game/${g.id}" class="ld-row__link">
-            ${posterFrame(g.cover_url, g.title, 'ld-row__cover')}
+            <span class="ld-num-wrap">${posterFrame(g.cover_url, g.title, 'ld-row__cover')}<i class="ld-num">${pos + 1}</i></span>
             <div class="ld-row__info">
               <div class="ld-row__title">${esc(g.title)}${g.release_year ? ` <em>${esc(String(g.release_year))}</em>` : ''}</div>
               ${marks}
@@ -125,7 +126,7 @@ export async function renderListDetailView(root, { id }) {
             </div>` : ''}
         </div>`;
     };
-    const gridHtml = ({ it }) => `<a href="#/game/${it.games.id}" class="ld-cell">${posterFrame(it.games.cover_url, it.games.title, 'ld-cell__cover')}</a>`;
+    const gridHtml = ({ it }, pos) => `<a href="#/game/${it.games.id}" class="ld-cell">${posterFrame(it.games.cover_url, it.games.title, 'ld-cell__cover')}<i class="ld-num">${pos + 1}</i></a>`;
 
     function paint() {
       const played = state.user ? items.filter((it) => mine.get(it.games.id)?.played).length : 0;
@@ -151,7 +152,7 @@ export async function renderListDetailView(root, { id }) {
     }
 
     qs('#ld-filter', root).addEventListener('click', (e) => {
-      popMenu(e.currentTarget, LD_SORTS.map(([k, label]) => ({ label, on: sort === k, run: () => { sort = k; if (editing && k !== 'order') editing = false; paint(); } })));
+      openFilterSheet({ cats: [{ id: 'sort', label: 'Sort', options: LD_SORTS }], values: { sort }, defaults: { sort: 'order' }, onApply: (v) => { sort = v.sort; if (editing && sort !== 'order') editing = false; paint(); } });
     });
     qs('#ld-more', root).addEventListener('click', (e) => {
       const entries = [];

@@ -313,7 +313,7 @@ export function renderSearchView(root, { initialTab = 'games' } = {}) {
   // Remember whether the box had focus at the moment a tab was touched:
   // by the time the click arrives the tab button has already taken focus
   // from it.
-  wireTabSwipe(root, '#search-tabs .home-tabs__item', 'home-tabs__item--active');
+  wireTabSwipe(root, '#search-tabs .home-tabs__item', 'home-tabs__item--active', '#search-results');
   let hadFocus = false;
   tabsEl.addEventListener('pointerdown', () => { hadFocus = document.activeElement === input; });
   qsa('.home-tabs__item', root).forEach(btn => {

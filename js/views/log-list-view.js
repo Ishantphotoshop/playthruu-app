@@ -1,6 +1,6 @@
 import * as api from '../api.js';
 import { state } from '../state.js';
-import { topBar, navBar, emptyState, spinner, iconStamp, posterFrame, iconFilter, iconClose, iconReplay, iconReviewLines, iconHeartFilled, iconChevronDown, iconChevronRight } from '../components.js';
+import { topBar, navBar, emptyState, spinner, iconStamp, posterFrame, iconFilter, iconClose, iconReplay, iconReviewLines, iconHeartFilled, posterMetaHtml, iconChevronDown, iconChevronRight } from '../components.js';
 import { backlogBarHtml, wireBacklogBar } from './profile-stats.js';
 import { esc, qs, qsa, formatDate, statusStamp, starRow, igdbSized, playedKind } from '../utils.js';
 
@@ -16,7 +16,7 @@ const MODES = {
   logged: { title: 'Played', statuses: undefined, reviewsOnly: false, keep: (l) => l.rating || l.review || l.loved, empty: (u) => `${u} hasn't logged anything yet.` },
   reviews: { title: 'Reviews', statuses: undefined, reviewsOnly: true, empty: (u) => `${u} hasn't written any reviews yet.` },
   liked: { title: 'Likes', statuses: undefined, reviewsOnly: false, keep: (l) => l.loved, empty: (u) => `${u} hasn't liked any games yet.` },
-  replayed: { title: 'Replays', statuses: ['played', 'dropped'], reviewsOnly: false, diary: true, post: (list) => { const n = {}; list.forEach((l) => { n[l.game_id] = (n[l.game_id] || 0) + 1; }); return list.filter((l) => n[l.game_id] > 1); }, empty: (u) => `${u} hasn't replayed any games yet.` },
+  replayed: { title: 'Replays', statuses: ['played', 'dropped'], reviewsOnly: false, diary: true, keep: (l, profile) => playedKind(l, profile.created_at) === 'diary', post: (list) => { const n = {}; list.forEach((l) => { n[l.game_id] = (n[l.game_id] || 0) + 1; }); return list.filter((l) => n[l.game_id] > 1); }, empty: (u) => `${u} hasn't replayed any games yet.` },
 };
 
 // Calendar tiles: weekday and day number in a tile, the game beside it, the cover
@@ -30,7 +30,7 @@ export function diaryTilesHtml(list, byDate = true) {
       <div class="dq-tile"><span>${d ? d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase() : ''}</span><b>${d ? d.getDate() : '·'}</b></div>
       <div class="dq-main">
         <div class="dq-title">${esc(l.games.title)}${l.games.release_year ? ` <em>${l.games.release_year}</em>` : ''}</div>
-        <div class="dq-meta">${l.rating ? starRow(l.rating, { size: 12 }) : ''}${l.loved ? `<span class="dq-mark dq-mark--heart">${iconHeartFilled()}</span>` : ''}${l.is_replay ? `<span class="dq-mark">${iconReplay()}</span>` : ''}${l.review ? `<span class="dq-mark">${iconReviewLines()}</span>` : ''}</div>
+        <div class="dq-meta">${l.rating ? starRow(l.rating, { size: 12 }) : ''}${l.loved ? `<span class="dq-mark dq-mark--heart">${iconHeartFilled()}</span>` : ''}${l.review ? `<span class="dq-mark">${iconReviewLines()}</span>` : ''}${l.is_replay ? `<span class="dq-mark">${iconReplay()}</span>` : ''}</div>
       </div>
       <img src="${esc(igdbSized(l.games.cover_url, 'cover_small') || '')}" alt="" class="dq-cover" loading="lazy" decoding="async" onerror="this.style.visibility='hidden'">
     </a>`;
@@ -77,7 +77,7 @@ export async function renderGameReplaysView(root, { username, gameId }) {
   try {
     const profile = state.profile?.username === username ? state.profile : await api.getProfileByUsername(username);
     const all = await api.getLogsForUser(profile.id, { statuses: ['played', 'dropped'], limit: 5000 });
-    const list = all.filter((l) => l.games && l.games.id === gameId && l.status !== 'backlog' && l.is_replay)
+    const list = all.filter((l) => l.games && l.games.id === gameId && l.status !== 'backlog' && l.is_replay && playedKind(l, profile.created_at) === 'diary')
       .sort((a, b) => new Date(b.played_date || b.created_at) - new Date(a.played_date || a.created_at));
     qs('.topbar__title', root).textContent = list[0]?.games?.title || 'Replays';
     body.innerHTML = list.length ? diaryTilesHtml(list, true) : emptyState('No replays of this game yet.');
@@ -218,7 +218,7 @@ export async function renderLogListView(root, { username, mode }) {
       } else if (cfg.diary) {
         content = diaryTilesHtml(list, f.sort === 'new' || f.sort === 'old');
       } else {
-        content = `<div class="ll-grid">${list.map((l) => `<div class="ll-cell"><a class="game-card" data-game-id="${esc(l.games.id)}" href="${isLogged(l) ? `#/review/${l.id}` : `#/game/${l.games.id}`}" aria-label="${esc(l.games.title)}">${posterFrame(l.games.cover_url, l.games.title, 'game-card__cover')}</a><div class="rp-meta">${l.rating ? starRow(l.rating, { size: 12 }) : ''}${l.is_replay ? `<span class="rp-meta__icon rp-meta__icon--replay">${iconReplay()}</span>` : ''}${l.review ? `<span class="rp-meta__icon rp-meta__icon--review">${iconReviewLines()}</span>` : ''}</div></div>`).join('')}</div>`;
+        content = `<div class="ll-grid">${list.map((l) => `<div class="ll-cell"><a class="game-card" data-game-id="${esc(l.games.id)}" href="${isLogged(l) ? `#/review/${l.id}` : `#/game/${l.games.id}`}" aria-label="${esc(l.games.title)}">${posterFrame(l.games.cover_url, l.games.title, 'game-card__cover')}</a>${posterMetaHtml(l)}</div>`).join('')}</div>`;
       }
       body.innerHTML = `<div id="ll-results">${content}</div>`;
       setBadge();

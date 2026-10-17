@@ -7994,3 +7994,34 @@ a.gd-credit__name { text-decoration: none; }
 a.rpl__head { text-decoration: none; }
 .rpl__chev { transform: none !important; }
 /* history page: month headings exactly as in the Diary (no strip) */
+
+/* Icon line under a poster: starts at the poster's left edge, just below it; order stars, like, review, replay; small even gaps. */
+.rp-meta { margin-top: 3px; justify-content: flex-start; gap: calc(var(--u) * 0.45); }
+.rp-meta .stars { gap: calc(var(--u) * 0.2) !important; }
+.rp-meta .rp-meta__icon, .rp-meta .rp-meta__icon--replay, .rp-meta .rp-meta__icon--review, .rp-meta .rp-meta__icon--replay + .rp-meta__icon--review { margin: 0; }
+.rp-meta__icon--heart { color: var(--orange); }
+.rp-meta__icon--heart svg { transform: scale(1.1); }
+.ll-cell .rp-meta .stars, .recent-played-item .rp-meta .stars { gap: calc(var(--s) * 0.2) !important; }
+.ll-cell .rp-meta .rp-meta__icon--review svg, .recent-played-item .rp-meta .rp-meta__icon--review svg { transform: scale(1.2); transform-origin: 50% 50%; }
+.dq-meta { gap: 4px; }
+.view-body { overflow-x: clip; }
+
+/* Backlog tab: filter button top right; the picker box reads as one tidy block. */
+.bl-top { display: flex; justify-content: flex-end; margin: 0 0 8px; }
+.bl-bar { align-items: center; gap: 14px; }
+.bl-col { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
+.bl-col .bl-main { width: 100%; }
+.bl-col .bl-line { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bl-col .bl-pick { padding: 8px 18px; }
+
+/* Counting on list posters: a small white circle with the number. */
+.ld-num-wrap { position: relative; display: block; flex-shrink: 0; }
+.ld-cell { position: relative; }
+.ld-num { position: absolute; left: 5px; top: 5px; min-width: 20px; height: 20px; padding: 0 5px; box-sizing: border-box; border-radius: 999px; background: #fff; color: #000; font: 800 11px/20px var(--font-body); font-style: normal; text-align: center; font-variant-numeric: tabular-nums; pointer-events: none; }
+.ip-draft { display: inline-block; margin-right: 8px; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--accent); color: var(--accent); font: 800 11px/16px var(--font-body); letter-spacing: 0.04em; text-transform: uppercase; vertical-align: 1px; }
+
+/* List preview on the profile: up to five whole posters in a row, each overlapping the one before, so nothing is cropped. */
+.list-card__collage, .list-card__collage[data-n] { display: flex; width: auto; height: 84px; min-width: 56px; gap: 0; background: none; border-radius: 0; overflow: visible; grid-template-columns: none; grid-template-rows: none; }
+.list-card__collage img, .list-card__collage[data-n] img:first-child { width: 56px; height: 84px; grid-row: auto; border-radius: 5px; object-fit: cover; box-shadow: 0 0 0 2px var(--bg, #000); background: var(--surface); }
+.list-card__collage img + img { margin-left: -30px; }
+.list-card__collage--empty { width: 56px; height: 84px; border-radius: 5px; background: var(--surface); }

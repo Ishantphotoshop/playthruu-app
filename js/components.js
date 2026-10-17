@@ -1304,3 +1304,8 @@ export function openUsernameClaim({ suggested = '', onCheck, onSave }) {
   qs('#claim-skip', overlay).addEventListener('click', close);
   setTimeout(() => input.focus(), 50);
 }
+
+// The icon line under a poster: stars, then like, review, replay (only the ones this log has).
+export function posterMetaHtml(l) {
+  return `<div class="rp-meta">${l.rating ? starRow(l.rating, { size: 12 }) : ''}${l.loved ? `<span class="rp-meta__icon rp-meta__icon--heart">${iconHeartFilled()}</span>` : ''}${l.review ? `<span class="rp-meta__icon rp-meta__icon--review">${iconReviewLines()}</span>` : ''}${l.is_replay ? `<span class="rp-meta__icon rp-meta__icon--replay">${iconReplay()}</span>` : ''}</div>`;
+}

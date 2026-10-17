@@ -165,7 +165,7 @@ function logCard(row, viewerId) {
     </button>`;
 }
 
-function activityRow(row, viewerId) {
+export function activityRow(row, viewerId) {
   if (isLoggedGame(row)) return logCard(row, viewerId);
   const { text, quote, href } = describe(row, viewerId);
   const unread = !!row.unread;
@@ -240,7 +240,7 @@ export async function renderNotificationsView(root) {
       if (rowEl?.dataset.href) navigate(rowEl.dataset.href);
     });
 
-    wireTabSwipe(root, '#act-tabs .home-tabs__item', 'home-tabs__item--active');
+    wireTabSwipe(root, '#act-tabs .home-tabs__item', 'home-tabs__item--active', '#act-slot');
 
     // Pull down at the top of the list to reload it — the same gesture
     // the Feed, Messages and Profile already carry.

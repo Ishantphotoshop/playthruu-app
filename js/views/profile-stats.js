@@ -74,7 +74,7 @@ function rowsHtml(profile, logs, isOwn) {
       ${row('Likes', sets.likes, `href="${base}/log-list/liked"`, true, true)}
       ${row('Replays', sets.replays, `href="${base}/log-list/replayed"`, true, true)}
       <a class="ps-row${logs.some((l) => l.status === 'backlog') ? '' : ' ps-row--off'}" ${logs.some((l) => l.status === 'backlog') ? `href="${base}/backlog"` : 'aria-disabled="true"'}>${ROW_ICONS.Backlog}<span class="ps-row__l">Backlog</span><span class="ps-row__r"><span class="ps-row__n"><b>${num(logs.filter((l) => l.status === 'backlog').length)}</b></span><i class="ps-row__chev ps-row__chev--show">${chevron}</i></span></a>
-      ${row('Activity', null, isOwn ? 'href="#/notifications" data-open-notif="you"' : `href="${base}/activity"`)}
+      ${row('Activity', null, `href="${base}/activity"`)}
     </div>`;
 }
 
@@ -182,10 +182,12 @@ export function backlogBarHtml(profile, logs, isOwn) {
   return `<div class="ps-box">
     <div class="ps-split bl-bar">
       ${isOwn ? '<div class="bl-slot" id="bl-slot"><span>?</span></div>' : ''}
-      <div class="bl-main" id="bl-main">
-        <div class="bl-line"><b>${num(n)}</b> game${n === 1 ? '' : 's'} waiting for ${isOwn ? 'you' : 'me'}...</div>
+      <div class="bl-col">
+        <div class="bl-main" id="bl-main">
+          <div class="bl-line"><b>${num(n)}</b> game${n === 1 ? '' : 's'} waiting for ${isOwn ? 'you' : 'me'}...</div>
+        </div>
+        ${isOwn ? '<button type="button" class="ps-pill bl-pick" id="ps-pick">Pick for me</button>' : ''}
       </div>
-      ${isOwn ? '<button type="button" class="ps-pill" id="ps-pick">Pick for me</button>' : ''}
     </div></div>`;
 }
 

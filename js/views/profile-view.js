@@ -1,11 +1,12 @@
 import * as api from '../api.js';
+import { openFilterSheet } from './filter-sheet.js';
 import { profileStatsHtml, wireProfileStats, backlogBarHtml, wireBacklogBar } from './profile-stats.js';
 import { openPosterViewer } from './game-view.js';
 import { state } from '../state.js';
 import { MESSENGER_ARCHIVED } from '../config.js';
 import {
   navBar, spinner, avatarImg, gameCard, showcaseGrid, SHOWCASE_MAX, ratingHistogram, wireRatingHistogram, posterFrame,
-  emptyState, confirmSheet, iconStamp, iconSettings, iconShare, iconQr, iconDotsMenu, iconClose, iconSearch, iconPlus, listCard, iconMessage,
+  emptyState, confirmSheet, posterMetaHtml, iconFilter, iconStamp, iconSettings, iconShare, iconQr, iconDotsMenu, iconClose, iconSearch, iconPlus, listCard, iconMessage,
   combinedGameResults, wireCombinedGameResults, openReportSheet, iconFlag, iconBlock, iconReplay, iconReviewLines, iconChevronRight,
 } from '../components.js';
 import { esc, formatDate, statusStamp, starRow, playedKind, qs, qsa, toast, debounce, pulseLogTab, igdbSized, enableSwipeToDismiss, promptSignIn, wireTabSwipe } from '../utils.js';
@@ -259,11 +260,7 @@ export async function renderProfileView(root, { username }) {
               <a href="#/review/${l.id}" data-game-id="${esc(l.games.id)}" aria-label="${esc(l.games.title)}">
                 ${posterFrame(l.games.cover_url, l.games.title, 'recent-played-item__cover')}
               </a>
-              <div class="rp-meta">
-                ${l.rating ? starRow(l.rating, { size: 12 }) : ''}
-                ${l.is_replay ? `<span class="rp-meta__icon rp-meta__icon--replay">${iconReplay()}</span>` : ''}
-                ${l.review ? `<span class="rp-meta__icon rp-meta__icon--review">${iconReviewLines()}</span>` : ''}
-              </div>
+              ${posterMetaHtml(l)}
             </div>`).join('')}
         </div>` : ''}
 
@@ -314,14 +311,24 @@ export async function renderProfileView(root, { username }) {
 
     // Poster grid, three across (like the discover screen) — a want-to-play
     // pile reads best as cover art you browse, not a text list.
-    const renderWantToPlayTab = () => `
-      ${backlog.length ? backlogBarHtml(profile, logs, isOwn) : ''}
-      ${backlog.length ? `
-        <div class="poster-grid3">
-          ${backlog.map((l) => `
+    const BL_SORTS = [['new', 'Recently added'], ['old', 'Added first'], ['az', 'A to Z'], ['rel', 'Newest release'], ['relold', 'Oldest release']];
+    let blSort = 'new';
+    const blSorted = () => {
+      const t = (l) => new Date(l.created_at || 0).getTime();
+      const by = { new: (a, b) => t(b) - t(a), old: (a, b) => t(a) - t(b), az: (a, b) => (a.games?.title || '').localeCompare(b.games?.title || ''),
+        rel: (a, b) => (b.games?.release_year || 0) - (a.games?.release_year || 0), relold: (a, b) => (a.games?.release_year || 9999) - (b.games?.release_year || 9999) };
+      return [...backlog].filter((l) => l.games).sort(by[blSort]);
+    };
+    const blGridHtml = () => blSorted().map((l) => `
             <a href="#/game/${l.games.id}" class="poster-grid3__item">
               ${posterFrame(l.games.cover_url, l.games.title, 'poster-grid3__cover')}
-            </a>`).join('')}
+            </a>`).join('');
+    const renderWantToPlayTab = () => `
+      ${backlog.length ? `<div class="bl-top"><button type="button" class="browse-fbtn" id="bl-fbtn" aria-label="Filter backlog">${iconFilter()}</button></div>` : ''}
+      ${backlog.length ? backlogBarHtml(profile, logs, isOwn) : ''}
+      ${backlog.length ? `
+        <div class="poster-grid3" id="bl-grid">
+          ${blGridHtml()}
         </div>` : emptyState(
         'Nothing waiting.',
         isOwn ? { quotes: 'backlog', actionLabel: 'Find a game', actionRoute: '/search' } : { quotes: 'backlog' }
@@ -347,6 +354,10 @@ export async function renderProfileView(root, { username }) {
       wireRatingHistogram(contentEl);
       wireProfileStats(contentEl, { profile, logs, stats, isOwn });
       wireBacklogBar(contentEl, logs, isOwn);
+      qs('#bl-fbtn', contentEl)?.addEventListener('click', () => openFilterSheet({
+        cats: [{ id: 'sort', label: 'Sort', options: BL_SORTS }], values: { sort: blSort }, defaults: { sort: 'new' },
+        onApply: (v) => { blSort = v.sort; const g = qs('#bl-grid', contentEl); if (g) g.innerHTML = blGridHtml(); },
+      }));
       const followBtn = qs('#follow-btn', body);
       if (followBtn) wireFollowBtn(followBtn, profile);
       qsa('[data-jump-tab]', contentEl).forEach((btn) => {
@@ -382,7 +393,7 @@ export async function renderProfileView(root, { username }) {
     });
 
     paintTab('profile');
-    wireTabSwipe(root, '#profile-tabs .segmented__item', 'segmented__item--active');
+    wireTabSwipe(root, '#profile-tabs .segmented__item', 'segmented__item--active', '#profile-tab-content');
 
     // ---- header actions ----
     const shareUrl = `${location.origin}${location.pathname}#/profile/${profile.username}`;

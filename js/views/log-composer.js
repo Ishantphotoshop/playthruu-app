@@ -56,6 +56,21 @@ export function openLogComposer({ game = null, resolveGame = null, existingLog =
     hours: existingLog?.hours_played ?? null,
   };
 
+  // An unfinished review is kept on this device as a draft, per game, until the entry is saved or deleted.
+  const draftKey = () => { const id = existingLog ? 'log' + existingLog.id : selectedGame?.id; return id ? `pt-review-draft:${state.user?.id || 'anon'}:${id}` : null; };
+  const stashDraft = () => { try { const k = draftKey(); if (!k) return; const t = draft.review.trim(); if (t && t !== (existingLog?.review || '').trim()) localStorage.setItem(k, draft.review); else localStorage.removeItem(k); } catch (_) { /* no storage, no draft */ } };
+  const dropDraft = () => { try { const k = draftKey(); if (k) localStorage.removeItem(k); } catch (_) { /* fine */ } };
+  let draftLoadedFor = null;
+  const loadDraft = () => {
+    const k = draftKey();
+    if (!k || draftLoadedFor === k) return;
+    draftLoadedFor = k;
+    try {
+      const d = localStorage.getItem(k);
+      if (d && d.trim() && d.trim() !== draft.review.trim()) { draft.review = d; draft.isDraft = true; hist = [draft.review]; pos = 0; }
+    } catch (_) { /* fine */ }
+  };
+
   function close() {
     overlay.remove();
     document.body.style.overflow = '';
@@ -108,6 +123,7 @@ export function openLogComposer({ game = null, resolveGame = null, existingLog =
   // cross and a save tick, the game, the date (tap to change, the cross removes
   // it), stars and Like, the review (opens the editor), hours, and three toggles.
   function paintForm() {
+    loadDraft();
     view = 'form';
     overlay.classList.add('modal-overlay--full');
     const g = selectedGame;
@@ -138,7 +154,7 @@ export function openLogComposer({ game = null, resolveGame = null, existingLog =
             <button type="button" class="ip-like" data-act="love" aria-pressed="${draft.loved}" aria-label="${draft.loved ? 'Remove from loved' : 'Mark as loved'}">${iconHeartSolid()}<small>Like</small></button>
           </div>
           <button type="button" class="ip-review" data-act="edit">
-            ${draft.review.trim() ? `<span class="ip-review__t">${reviewText(draft.review)}</span>` : '<span class="ip-review__ph">Add review…</span>'}
+            ${draft.review.trim() ? `${draft.isDraft ? '<span class="ip-draft">Draft</span>' : ''}<span class="ip-review__t">${reviewText(draft.review)}</span>` : '<span class="ip-review__ph">Add review…</span>'}
           </button>
           <label class="ip-hours">
             <span>Hours played</span>
@@ -293,6 +309,7 @@ export function openLogComposer({ game = null, resolveGame = null, existingLog =
       const saved = existingLog
         ? await api.updateLog(existingLog.id, payload)
         : await api.createLog(payload);
+      dropDraft();
       toast(existingLog ? 'Entry updated.' : 'Logged!', 'success');
       // The tab bar is part of the shell, so its pulse is safe to fire
       // before close(). The confetti is saved for the one moment worth
@@ -500,7 +517,7 @@ export function openLogComposer({ game = null, resolveGame = null, existingLog =
       t.value = t.value.slice(0, a) + pre + body + post + t.value.slice(b);
       t.focus();
       t.setSelectionRange(a + pre.length, a + pre.length + body.length);
-      draft.review = t.value;
+      draft.review = t.value; draft.isDraft = true; stashDraft();
       hist = hist.slice(0, pos + 1); hist.push(draft.review); pos = hist.length - 1;
       syncUndo();
       return;
@@ -530,6 +547,7 @@ export function openLogComposer({ game = null, resolveGame = null, existingLog =
       if (!(await confirmSheet({ title: 'Delete this entry?', message: "This can't be undone.", confirmLabel: 'Delete', danger: true }))) return;
       try {
         await api.deleteLog(existingLog.id);
+        dropDraft();
         toast('Entry deleted.', 'success');
         close();
         onSaved({ deleted: true, log: existingLog });
@@ -541,7 +559,7 @@ export function openLogComposer({ game = null, resolveGame = null, existingLog =
 
   overlay.addEventListener('input', (e) => {
     if (e.target.id === 'lc-review') {
-      draft.review = e.target.value;
+      draft.review = e.target.value; draft.isDraft = true; stashDraft();
       hist = hist.slice(0, pos + 1); hist.push(draft.review); pos = hist.length - 1; syncUndo();
     }
     if (e.target.id === 'lc-date') {
