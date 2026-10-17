@@ -551,6 +551,21 @@ export function wireTabSwipe(root, tabSelector, activeClass, areaSelector) {
     }
     return null;
   };
+  // Any tab change slides the new page in from the side the tab lies on.
+  root.addEventListener('click', (e) => {
+    const btn = e.target.closest(tabSelector);
+    if (!btn || !areaSelector) return;
+    const tabs = [...root.querySelectorAll(tabSelector)];
+    const from = tabs.findIndex((b) => b.classList.contains(activeClass));
+    const to = tabs.indexOf(btn);
+    if (from < 0 || to < 0 || from === to) return;
+    const dir = to > from ? 1 : -1;
+    setTimeout(() => {
+      const area = root.querySelector(areaSelector);
+      if (!area?.animate || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      area.animate([{ transform: `translateX(${dir * 22}%)`, opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 280, easing: 'cubic-bezier(.2,.8,.2,1)' });
+    }, 0);
+  }, true);
   root.addEventListener('touchstart', (e) => {
     const found = e.touches.length === 1 && !e.target.closest(tabSelector) ? sidewaysParent(e.target) : 'block';
     ok = found !== 'block';
@@ -572,17 +587,7 @@ export function wireTabSwipe(root, tabSelector, activeClass, areaSelector) {
     const tabs = [...root.querySelectorAll(tabSelector)];
     const at = tabs.findIndex((b) => b.classList.contains(activeClass));
     const next = tabs[at + (dx < 0 ? 1 : -1)];
-    if (at < 0 || !next) return;
-    const dir = dx < 0 ? 1 : -1;
-    const area = areaSelector ? root.querySelector(areaSelector) : null;
-    if (!area || !area.animate || matchMedia('(prefers-reduced-motion: reduce)').matches) { next.click(); return; }
-    // slide the old page out the way the finger went, then the new one in from the other side
-    area.animate([{ transform: 'none', opacity: 1 }, { transform: `translateX(${-dir * 28}%)`, opacity: 0 }], { duration: 140, easing: 'ease-in' }).finished
-      .catch(() => {}).then(() => {
-        next.click();
-        const a2 = areaSelector ? root.querySelector(areaSelector) : area;
-        a2?.animate([{ transform: `translateX(${dir * 28}%)`, opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 220, easing: 'ease-out' });
-      });
+    if (at >= 0 && next) next.click();
   }, { passive: true });
   root.addEventListener('touchcancel', () => { ok = false; }, { passive: true });
 }
