@@ -203,8 +203,8 @@ export async function renderLogListView(root, { username, mode }) {
           <div class="rpl__game">
             <a class="rpl__head" href="#/profile/${esc(username)}/replays/${esc(g[0].games.id)}">
               <span class="rpl__cover">${posterFrame(g[0].games.cover_url, g[0].games.title, 'rpl__img')}</span>
-              <span class="rpl__main"><span class="rpl__title">${esc(g[0].games.title)}${g[0].games.release_year ? ` <em>${esc(String(g[0].games.release_year))}</em>` : ''}</span><span class="rpl__sub">${g.length} playthruu</span></span>
-              <span class="rpl__chev">${iconChevronRight()}</span>
+              <span class="rpl__main"><span class="rpl__title">${esc(g[0].games.title)}${g[0].games.release_year ? ` <em>${esc(String(g[0].games.release_year))}</em>` : ''}</span><span class="rpl__sub">${[g[0].games.release_year, `last replayed ${new Date(g[0].played_date || g[0].created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`].filter(Boolean).join(' · ')}</span></span>
+              <span class="rpl__count">${g.length}×</span>
             </a>
           </div>`).join('')}</div>`;
       } else if (f.group) {

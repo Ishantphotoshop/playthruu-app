@@ -8025,3 +8025,4 @@ a.rpl__head { text-decoration: none; }
 .list-card__collage img, .list-card__collage[data-n] img:first-child { width: 56px; height: 84px; grid-row: auto; border-radius: 5px; object-fit: cover; box-shadow: 0 0 0 2px var(--bg, #000); background: var(--surface); }
 .list-card__collage img + img { margin-left: -30px; }
 .list-card__collage--empty { width: 56px; height: 84px; border-radius: 5px; background: var(--surface); }
+.rpl__count { flex-shrink: 0; font-size: 22px; font-weight: 800; color: var(--accent); font-variant-numeric: tabular-nums; }
