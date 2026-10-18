@@ -8044,3 +8044,14 @@ a.rpl__head { text-decoration: none; }
 
 /* Diary, Backlog and Lists headings sit exactly where "Top 3" does. */
 .tab-head { height: 20px; min-height: 0; margin: 0 0 9px; }
+
+/* The full-page loading icon sits in the exact middle of the screen on every tab and page.
+   (Small "loading more" spinners at the end of a list are left where they are.) */
+:is(.view-body, .page, .act-pane, .search-pane, #discover-results, #profile-tab-content, #search-results, #act-slot) > .spinner:only-child {
+  position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); margin: 0; z-index: 5;
+}
+#discover-results:has(> .spinner:only-child) { display: block; min-height: 0; }
+.view-body:not(:has(> :not(.spinner):not(.pull-refresh))) > .spinner,
+.view-loading > .spinner, #messages-list > .spinner:only-child, #news-list > .spinner:only-child, #landing-browse-content > .spinner:only-child {
+  position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); margin: 0; z-index: 5;
+}

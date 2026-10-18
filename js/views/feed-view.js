@@ -1572,7 +1572,7 @@ export function wirePullToRefresh(body) {
   let startY = 0, tracking = false, dragging = false, refreshing = false;
 
   body.addEventListener('pointerdown', (e) => {
-    if (e.pointerType === 'mouse' || refreshing || body.scrollTop > 0) return;
+    if (refreshing || body.scrollTop > 0 || (e.pointerType === 'mouse' && e.target.closest('input, textarea, select, button, a, [data-no-swipe]'))) return;
     // Re-attach if the view has repainted its own body since this was
     // wired. The Feed does exactly that — the indicator is prepended
     // when the shell is built, and then every section paint replaces

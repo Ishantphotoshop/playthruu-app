@@ -5,7 +5,7 @@ import { state, cachedProfile } from './state.js';
 import { route, setNotFound, startRouter, navigate, refreshCurrentView, pageEl, historyDepth, resetPages, trackOverlays, onOverlayEntry, markTabStale } from './router.js';
 import { renderLandingView, seedPinnedGames } from './views/landing-view.js';
 import { renderAuthView } from './views/auth-view.js';
-import { renderFeedView } from './views/feed-view.js';
+import { renderFeedView, wirePullToRefresh } from './views/feed-view.js';
 import { renderSearchView } from './views/search-view.js';
 import { renderDiscoverView, renderBrowsePick, renderBrowseGames, warmDiscover } from './views/discover-view.js';
 import { renderListDetailView } from './views/lists-view.js';
@@ -848,6 +848,15 @@ async function boot() {
   window.addEventListener('hashchange', closeStrayOverlays);
   // A page put back from the back stack still has the tab bar it was
   // built with; bring its badges up to date like a fresh one's.
+  // Pull down from the top to reload, on every page (the ones that already wire their own are skipped).
+  const wirePulls = () => {
+    document.querySelectorAll('#app .view-body').forEach((vb) => {
+      if (vb.__pull || vb.querySelector(':scope > .pull-refresh')) { vb.__pull = true; return; }
+      vb.__pull = true;
+      wirePullToRefresh(vb);
+    });
+  };
+  window.addEventListener('page:shown', () => { wirePulls(); setTimeout(wirePulls, 400); });
   window.addEventListener('page:shown', () => { applyMessageBadge(); applyNotifBadge(); document.activeElement?.blur?.(); keepContentClearOfBar(); });
   window.addEventListener('resize', keepContentClearOfBar);
   setTimeout(keepContentClearOfBar, 400);
