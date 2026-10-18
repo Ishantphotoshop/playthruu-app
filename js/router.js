@@ -83,6 +83,11 @@ const tabPages = new Map(); // tab path -> the shared page record
 // shown old. Search keeps what you typed; Notifications refreshes itself.
 const TAB_TTL = { '/feed': 15 * 60_000, '/me': 15 * 60_000 };
 const tabFresh = (tp, path) => !tp.stale && Date.now() - tp.builtAt < (TAB_TTL[path] || Infinity);
+// Each main tab also remembers the page you were on INSIDE it. Open a game on Home, go to Profile, come back
+// to Home: that game is still there, loaded, where you left it. Tapping the tab you are already on goes to its root.
+let section = '/feed'; // the main tab we are currently inside
+const sectionLast = new Map(); // tab root -> { path, rec } for its deepest remembered page
+let pendingRestore = null;
 let current = null; // { key, idx, path }
 let activePage = null;
 let seq = 0;
@@ -143,6 +148,7 @@ export function markPagesStale() {
   for (const [k, pg] of pages) if (k !== current?.key) pg.stale = true;
   const here = pages.get(current?.key);
   for (const tp of tabPages.values()) if (tp !== here) tp.stale = true;
+  for (const sl of sectionLast.values()) if (sl.rec !== here) sl.rec.stale = true;
 }
 
 // One tab's page is out of date (a new notification arrived while it was
@@ -212,6 +218,9 @@ function prune(idx) {
 export function resetPages() {
   pages.clear();
   tabPages.clear();
+  sectionLast.clear();
+  pendingRestore = null;
+  section = '/feed';
   activePage = null;
   if (current) current = { key: null, idx: current.idx, path: null };
 }
@@ -420,6 +429,24 @@ function resolve(force = false) {
   const m = cleanPath.match(r.regex);
   const params = {};
   r.paramNames.forEach((name, i) => (params[name] = decodeURIComponent(m[i + 1])));
+  if (TAB_ROOTS.has(cleanPath)) { section = cleanPath; sectionLast.delete(cleanPath); }
+  const deep = !force && pendingRestore && pendingRestore.path === path && pendingRestore.rec.el && !pendingRestore.rec.stale ? pendingRestore.rec : null;
+  const deepSection = pendingRestore?.section;
+  pendingRestore = null;
+  if (deep) {
+    if (deepSection) section = deepSection;
+    deep.idx = st.idx;
+    pages.set(st.key, deep);
+    prune(st.idx + 1);
+    paint(() => {
+      showPage(deep.el);
+      restoreScroll(deep.scroll);
+      updateNav(cleanPath);
+      window.dispatchEvent(new CustomEvent('page:shown', { detail: { restored: true } }));
+    }, direction);
+    if (!TAB_ROOTS.has(cleanPath)) sectionLast.set(section, { path, rec: deep });
+    return;
+  }
   const kept = force ? null : pages.get(st.key);
   // Opening a main tab again from the bar: its page is still alive, show it.
   const shared = !force && TAB_PERSIST.has(cleanPath) ? tabPages.get(cleanPath) : null;
@@ -434,6 +461,7 @@ function resolve(force = false) {
     return;
   }
   if (kept && kept.path === path && !kept.stale) {
+    if (!TAB_ROOTS.has(cleanPath)) sectionLast.set(section, { path, rec: kept });
     // Back (or forward) to a screen we still have: put it back exactly as
     // it was left. Nothing is re-run and nothing is refetched.
     paint(() => {
@@ -462,6 +490,7 @@ function resolve(force = false) {
     }
   } else pages.delete(st.key);
   prune(st.idx + 1);
+  if (!TAB_ROOTS.has(cleanPath) && r.keep && !force) sectionLast.set(section, { path, rec: pages.get(st.key) });
   paint(() => {
     showPage(el);
     appEl().scrollTop = 0;
@@ -503,6 +532,17 @@ export function startRouter() {
   // to, so it doesn't.
   document.addEventListener('click', (e) => {
     if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    // Bar tap on another tab that has a page remembered inside it: go back to that page, not the tab's root.
+    const bar = e.target.closest?.('.tabbar a[data-route]');
+    if (bar) {
+      const last = sectionLast.get(bar.dataset.route);
+      if (last && bar.dataset.route !== section && last.rec.el && !last.rec.stale) {
+        e.preventDefault();
+        pendingRestore = { ...last, section: bar.dataset.route };
+        location.hash = last.path;
+        return;
+      }
+    }
     const a = e.target.closest?.('a[href^="#/"]');
     if (a && !a.target && a.getAttribute('href') === location.hash) e.preventDefault();
   });

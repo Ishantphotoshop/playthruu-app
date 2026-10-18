@@ -388,6 +388,7 @@ export async function renderProfileView(root, { username }) {
 
     qsa('.segmented__item', qs('#profile-tabs', body)).forEach((btn) => {
       btn.addEventListener('click', () => {
+        if (btn.classList.contains('segmented__item--active')) return; // tapping the tab you are on repaints it for nothing (it blinked)
         qsa('.segmented__item', qs('#profile-tabs', body)).forEach((b) => b.classList.toggle('segmented__item--active', b === btn));
         paintTab(btn.dataset.tab);
       });
