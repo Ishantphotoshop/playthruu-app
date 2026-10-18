@@ -184,7 +184,7 @@ export async function getGameNews() {
 // years and edition words dropped, so "Cyberpunk 2077" and "Cyberpunk 2" share one
 // key, and so do "Grand Theft Auto V" and "Grand Theft Auto VI".
 const KEY_TAIL = /^(?:[ivx]{1,5}|\d{1,4}|part|chapter|remastered|remake|edition|collection|definitive|complete|goty|reloaded|enhanced|deluxe|ultimate|anniversary)$/;
-export function newsGameKey(title) {
+function newsGameKey(title) {
   let s = String(title || '').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '');
   s = s.replace(/\([^)]*\)/g, ' ').split(/:| - | – | — /)[0];
   const words = s.replace(/[^a-z0-9]+/g, ' ').trim().split(' ').filter(Boolean);
@@ -391,63 +391,7 @@ export async function searchArtists(query, limit = 15) {
  * GROUP BY through PostgREST without an RPC, and this is one small
  * query against a table that is tiny at this scale.
  */
-export async function getSuggestedPeople(userId, limit = 20) {
-  const [{ data: follows }, alreadyFollowing] = await Promise.all([
-    supabase.from('follows').select('following_id'),
-    userId ? getFollowingIdSet(userId) : Promise.resolve(new Set()),
-  ]);
 
-  const counts = new Map();
-  for (const row of (follows || [])) {
-    counts.set(row.following_id, (counts.get(row.following_id) || 0) + 1);
-  }
-
-  const blocked = await getBlockedIds().catch(() => new Set());
-  const ranked = [...counts.entries()]
-    .filter(([id]) => id !== userId && !alreadyFollowing.has(id) && !blocked.has(id))
-    .sort((a, b) => b[1] - a[1]);
-
-  // Take a generous slice of the top, then shuffle THAT — so every
-  // suggestion is still a well-followed account, but which of them you
-  // see changes between visits.
-  const pool = ranked.slice(0, Math.max(limit * 3, 30)).map(([id]) => id);
-  for (let i = pool.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [pool[i], pool[j]] = [pool[j], pool[i]];
-  }
-  const ids = pool.slice(0, limit);
-
-  // Nobody has any followers yet (a young app) — fall back to real
-  // accounts that have actually logged something, so this never comes
-  // back empty just because the follow graph is still bare.
-  if (!ids.length) {
-    const { data: active } = await supabase
-      .from('logs')
-      .select('user_id, profiles!logs_user_id_fkey(*)')
-      .eq('is_public', true)
-      .order('created_at', { ascending: false })
-      .limit(120);
-    const seen = new Set();
-    const people = [];
-    for (const row of (active || [])) {
-      const p = row.profiles;
-      if (!p || p.id === userId || seen.has(p.id)) continue;
-      if (alreadyFollowing.has(p.id) || blocked.has(p.id)) continue;
-      seen.add(p.id);
-      people.push(p);
-      if (people.length >= limit) break;
-    }
-    return people;
-  }
-
-  const { data: profiles, error } = await supabase
-    .from('profiles').select('*').in('id', ids);
-  if (error) throw error;
-  // .in() comes back in whatever order Postgres likes; restore the
-  // shuffled ranking the work above actually produced.
-  const byId = new Map((profiles || []).map((p) => [p.id, p]));
-  return ids.map((id) => byId.get(id)).filter(Boolean);
-}
 
 // ------------------------------------------------------------
 // GAMES (shared catalog)
@@ -716,7 +660,7 @@ function swapNumberForms(q) {
  * "grand theft auto v"], which between them find the game whichever way
  * IGDB happens to have titled it.
  */
-export function expandQuery(query) {
+function expandQuery(query) {
   const raw = String(query || '').trim();
   if (!raw) return [];
   const out = [raw];
@@ -1097,14 +1041,6 @@ function mergeDuplicateTitles(games) {
   });
 }
 
-// Local-catalog-only search, for painting something on screen the
-// instant a key is pressed while the network calls are still in the
-// air. Supabase is milliseconds away; IGDB/RAWG are not.
-// Uncached for the same reason as searchGamesEverywhere above.
-export async function searchLocalFast(query, limit = 20) {
-  const local = await searchGames(query, limit);
-  return rankSearchResults(query, dropIrrelevant(query, filterOutEditions(local)));
-}
 
 function isRelevantMatch(query, title) {
   const q = query.trim().toLowerCase();
@@ -1351,26 +1287,8 @@ export const BROWSE_GENRES = [
   { label: 'Point-and-Click', value: 'genre:2' }, { label: 'Music', value: 'genre:7' },
   { label: 'Quiz/Trivia', value: 'genre:26' }, { label: 'Pinball', value: 'genre:30' },
 ];
-export const BROWSE_PLATFORMS = [
-  { label: 'PC', value: '6' }, { label: 'PlayStation 5', value: '167' },
-  { label: 'PlayStation 4', value: '48' }, { label: 'Xbox Series X/S', value: '169' },
-  { label: 'Xbox One', value: '49' }, { label: 'Switch', value: '130' },
-  { label: 'iOS', value: '39' }, { label: 'Android', value: '34' },
-];
-// The longer list the Browse screen offers (Browse > Platform, and the
-// Platform row in its Filters). Ids checked against IGDB's platforms table.
-export const BROWSE_PLATFORMS_ALL = [
-  { label: 'PC', value: '6' }, { label: 'PlayStation 5', value: '167' }, { label: 'PlayStation 4', value: '48' },
-  { label: 'Xbox Series X|S', value: '169' }, { label: 'Xbox One', value: '49' },
-  { label: 'Nintendo Switch 2', value: '508' }, { label: 'Nintendo Switch', value: '130' },
-  { label: 'iOS', value: '39' }, { label: 'Android', value: '34' }, { label: 'Mac', value: '14' }, { label: 'Linux', value: '3' },
-  { label: 'PlayStation VR2', value: '390' }, { label: 'Meta Quest 3', value: '471' }, { label: 'Meta Quest 2', value: '386' },
-  { label: 'PlayStation 3', value: '9' }, { label: 'Xbox 360', value: '12' }, { label: 'Wii U', value: '41' }, { label: 'Wii', value: '5' },
-  { label: 'Nintendo 3DS', value: '37' }, { label: 'PlayStation Vita', value: '46' }, { label: 'Nintendo DS', value: '20' },
-  { label: 'PlayStation 2', value: '8' }, { label: 'Xbox', value: '11' }, { label: 'GameCube', value: '21' },
-  { label: 'Game Boy Advance', value: '24' }, { label: 'PlayStation', value: '7' }, { label: 'Nintendo 64', value: '4' },
-  { label: 'Super Nintendo', value: '19' }, { label: 'NES', value: '18' }, { label: 'Game Boy', value: '33' },
-];
+
+
 // Every platform worth browsing, grouped by who makes it (Browse > Filters >
 // Platform). Ids are IGDB's own, from its platforms table.
 export const BROWSE_PLATFORM_GROUPS = [
@@ -1450,26 +1368,8 @@ async function igdbCount(where) {
     return null;
   }
 }
-// IGDB's themes, game modes and player perspectives (ids from its own
-// reference tables). Erotic is left out on purpose.
-export const BROWSE_THEMES = [
-  { label: 'Action', value: '1' }, { label: 'Fantasy', value: '17' }, { label: 'Science fiction', value: '18' },
-  { label: 'Horror', value: '19' }, { label: 'Thriller', value: '20' }, { label: 'Survival', value: '21' },
-  { label: 'Historical', value: '22' }, { label: 'Stealth', value: '23' }, { label: 'Comedy', value: '27' },
-  { label: 'Business', value: '28' }, { label: 'Drama', value: '31' }, { label: 'Non-fiction', value: '32' },
-  { label: 'Sandbox', value: '33' }, { label: 'Educational', value: '34' }, { label: 'Kids', value: '35' },
-  { label: 'Open world', value: '38' }, { label: 'Warfare', value: '39' }, { label: 'Party', value: '40' },
-  { label: '4X', value: '41' }, { label: 'Mystery', value: '43' }, { label: 'Romance', value: '44' },
-];
-export const BROWSE_MODES = [
-  { label: 'Single player', value: '1' }, { label: 'Multiplayer or co-op', value: '2,3' },
-  { label: 'Multiplayer', value: '2' }, { label: 'Co-op', value: '3' },
-  { label: 'Split screen', value: '4' }, { label: 'MMO', value: '5' }, { label: 'Battle royale', value: '6' },
-];
-export const BROWSE_PERSPECTIVES = [
-  { label: 'First person', value: '1' }, { label: 'Third person', value: '2' }, { label: 'Top-down / isometric', value: '3' },
-  { label: 'Side view', value: '4' }, { label: 'Text', value: '5' }, { label: 'Virtual reality', value: '7' },
-];
+
+
 // Who you play with. Massively multiplayer and battle royale games are
 // left out of all of these: IGDB tags Fortnite or Minecraft with split
 // screen and co-op too, and they would bury the games people mean.
@@ -1486,11 +1386,7 @@ const PLAYER_CLAUSES = {
   // "has some online mode somewhere" like GTA V.
   coop: 'multiplayer_modes.campaigncoop = true & game_modes != (5,6)',
 };
-// IGDB's game_type: what kind of release it is.
-export const BROWSE_GAME_TYPES = [
-  { label: 'Everything', value: '' }, { label: 'Full games (no DLC)', value: 'games' }, { label: 'Main games only', value: 'main' },
-  { label: 'Remakes and remasters', value: 'remakes' }, { label: 'DLC and expansions', value: 'dlc' },
-];
+
 const GAME_TYPE_IDS = { games: '0,4,8,9,10', main: '0', remakes: '8,9', dlc: '1,2,4' };
 // Curated "Bored? Try these" collections for the feed. Each one is
 // just a preset bundle of browseGames() params, so this adds no new
@@ -1645,34 +1541,6 @@ export async function resolveGotyWinners() {
   return gotyCache;
 }
 
-export const BROWSE_SORTS = [
-  { label: 'Most Popular', value: 'popular' }, { label: 'Highest Rated', value: 'top_rated' },
-  { label: 'Most Anticipated', value: 'anticipated' }, { label: 'All-Time Top Rated', value: 'all_time' },
-  { label: 'Newest Releases', value: 'newest' }, { label: 'A–Z', value: 'az' },
-];
-// The Browse screen's Sort by options (same sorts, plus oldest first).
-// The Browse screen's Sort by page, grouped the way Letterboxd groups it.
-// `section` entries are headings; `short` is what the Filters row shows.
-export const BROWSE_SORTS_SIMPLE = [
-  { label: 'A to Z', short: 'A to Z', value: 'az' },
-  { section: 'Release date' },
-  { label: 'Newest first', short: 'Newest first', value: 'newest' },
-  { label: 'Just released and hyped', short: 'Just released', value: 'recent' },
-  { label: 'Earliest first', short: 'Earliest first', value: 'oldest' },
-  { section: 'Average rating' },
-  { label: 'Players’ highest first', short: 'Highest rated', value: 'top_rated' },
-  { label: 'Critics’ highest first', short: 'Critics’ favourites', value: 'all_time' },
-  { section: 'Popularity' },
-  { label: 'Trending now', short: 'Trending now', value: 'trending' },
-  { label: 'All time', short: 'Most popular', value: 'popular' },
-  { label: 'Most anticipated', short: 'Most anticipated', value: 'anticipated' },
-];
-export const BROWSE_SORTS_FULL = [
-  { label: 'Trending now', value: 'trending' }, { label: 'Most rated of all time', value: 'popular' },
-  { label: 'Highest rated (players and critics)', value: 'top_rated' },
-  { label: 'Highest rated by critics', value: 'all_time' }, { label: 'Most anticipated', value: 'anticipated' },
-  { label: 'New and hyped', value: 'recent' }, { label: 'Newest first', value: 'newest' }, { label: 'Oldest first', value: 'oldest' }, { label: 'A to Z', value: 'az' },
-];
 
 // ------------------------------------------------------------
 // CURATED TRENDING (admin build)
@@ -2203,13 +2071,6 @@ async function trendingIds() {
   return ids;
 }
 
-export const BROWSE_RATINGS = [
-  { label: 'Any rating', value: '' }, { label: '90+ (Universal acclaim)', value: '90' },
-  { label: '75+ (Generally favorable)', value: '75' }, { label: '50+ (Mixed or better)', value: '50' },
-];
-export const BROWSE_PLAYER_MODES = [
-  { label: 'Any', value: '' }, { label: 'Singleplayer', value: 'singleplayer' }, { label: 'Multiplayer', value: 'multiplayer' },
-];
 
 // Truncates IGDB's often-long, sometimes spoiler-heavy summary down to
 // roughly its opening premise — IGDB doesn't provide a separate
@@ -2683,7 +2544,7 @@ export async function getGameCastAndDirector(game) {
 // useful later) but is no longer read anywhere as a cover_url source —
 // IGDB/RAWG remain the only sources for the actual poster everywhere in
 // the app.
-export async function getGameArt(game) {
+async function getGameArt(game) {
   if (!game || !game.title) return { logo_url: null, grid_url: null };
   if (game.logo_fetched) return { logo_url: game.logo_url || null, grid_url: game.grid_url || null };
   let logo_url = null, grid_url = null;
@@ -3049,31 +2910,6 @@ export async function setFavorites(userId, gameIdsInOrder) {
   return data;
 }
 
-// ------------------------------------------------------------
-// ACTIVITY (the "More activity" page)
-// ------------------------------------------------------------
-export async function getUserActivity(userId, limit = 40) {
-  const { data, error } = await supabase
-    .from('logs')
-    .select('*, games!logs_game_id_fkey(*), profiles!logs_user_id_fkey(*)')
-    .eq('user_id', userId)
-    .eq('is_public', true)
-    .order('created_at', { ascending: false })
-    .limit(limit);
-  if (error) throw error;
-  return data;
-}
-
-export async function getLikesGiven(userId, limit = 20) {
-  const { data, error } = await supabase
-    .from('log_likes')
-    .select('created_at, logs!inner(*, games!logs_game_id_fkey(*), profiles!logs_user_id_fkey(*))')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false })
-    .limit(limit);
-  if (error) throw error;
-  return (data || []).map((r) => r.logs);
-}
 
 // ------------------------------------------------------------
 // AVATAR UPLOAD (Supabase Storage — requires the storage migration
@@ -3158,13 +2994,6 @@ async function addGameNow({ title, cover_url, background_url, platform, release_
   return data;
 }
 
-export async function recentGames(limit = 20) {
-  const { data, error } = await supabase.from('games').select('*')
-    .not('is_hidden', 'is', true)
-    .order('created_at', { ascending: false }).limit(limit);
-  if (error) throw error;
-  return data;
-}
 
 // ------------------------------------------------------------
 // LOGS (diary entries / reviews)
@@ -3286,11 +3115,6 @@ export async function deleteLog(logId) {
   noteLogChanged();
 }
 
-export async function getLog(logId) {
-  const { data, error } = await supabase.from('logs').select('*, games!logs_game_id_fkey(*), profiles!logs_user_id_fkey(*)').eq('id', logId).single();
-  if (error) throw error;
-  return data;
-}
 
 export async function getLogsForUser(userId, { statuses, reviewsOnly = false, limit = 100 } = {}) {
   // The database hands back at most 1000 rows per request, so bigger asks are
@@ -3842,14 +3666,11 @@ export async function getBlockedIds() {
   return blockedIdCache;
 }
 
-export async function isBlocked(userId) {
-  return (await getBlockedIds()).has(userId);
-}
 
 // Removes rows authored by anyone the signed-in user has blocked.
 // Applied at render time rather than in SQL because the blocklist is
 // per-viewer — the same row is visible to everyone else.
-export async function filterBlocked(rows, getUserId = (r) => r.user_id) {
+async function filterBlocked(rows, getUserId = (r) => r.user_id) {
   const blocked = await getBlockedIds();
   if (!blocked.size) return rows;
   return rows.filter((r) => !blocked.has(getUserId(r)));
@@ -4130,11 +3951,6 @@ export async function setConversationPref(userId, conversationId, patch) {
   if (error) throw error;
 }
 
-// The mirror of markConversationRead — bumps this chat back to unread.
-export async function markConversationUnread(conversationId) {
-  const { error } = await supabase.rpc('mark_conversation_unread', { p_conversation_id: conversationId });
-  if (error) throw error;
-}
 
 // ---- reactions ----------------------------------------------------
 // One reaction per person per message (the table's primary key IS this
@@ -4734,7 +4550,7 @@ function buildTitleIndex(rows, nameOf) {
 // plainly that you should only tick what you actually finished. The app
 // stops guessing; the person decides.
 
-export async function psnDiaryCandidates(userId, trophyTitles) {
+async function psnDiaryCandidates(userId, trophyTitles) {
   const { data: rows, error } = await supabase
     .from('imported_games')
     .select('id, name, game_id, playtime_minutes, last_played_at, platform_label, games(id, title, cover_url)')
@@ -4833,32 +4649,6 @@ export async function disconnectPsnAccount(userId) {
 // NOTIFICATIONS (see migrations/2026-09-18_notifications.sql)
 // ------------------------------------------------------------
 
-// Everything that happened TO you, newest first, with the actor and (for
-// likes and comments) the thing it happened to already joined on — the
-// hub renders a row per notification and would otherwise need a second
-// round trip per row to learn whose review was liked.
-export async function getNotifications(userId, { limit = 60 } = {}) {
-  const { data, error } = await supabase
-    .from('notifications')
-    .select(`
-      id, kind, read_at, created_at, actor_id, log_id, comment_id, conversation_id,
-      actor:profiles!notifications_actor_id_fkey(id, username, display_name, avatar_url),
-      log:logs!notifications_log_id_fkey(id, rating, review, game_id, games!logs_game_id_fkey(id, title, cover_url)),
-      comment:comments!notifications_comment_id_fkey(id, body)
-    `)
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false })
-    .limit(limit);
-  if (error) throw error;
-
-  // Blocking is enforced at read time rather than in the trigger. A block
-  // can happen long after the notification was written, and the person
-  // doing the blocking expects that to hide what is already sitting in
-  // their hub too — not just anything new.
-  let blocked = new Set();
-  try { blocked = await getBlockedIds(); } catch { /* a failed block list must not empty the hub */ }
-  return (data || []).filter((n) => !n.actor_id || !blocked.has(n.actor_id));
-}
 
 export async function getUnreadNotificationCount(userId) {
   const { count, error } = await supabase
@@ -4884,20 +4674,6 @@ export async function markAllNotificationsRead(userId) {
   if (error) throw error;
 }
 
-export async function markNotificationsRead(ids) {
-  if (!ids?.length) return;
-  const { error } = await supabase
-    .from('notifications')
-    .update({ read_at: new Date().toISOString() })
-    .in('id', ids)
-    .is('read_at', null);
-  if (error) throw error;
-}
-
-export async function clearNotifications(userId) {
-  const { error } = await supabase.from('notifications').delete().eq('user_id', userId);
-  if (error) throw error;
-}
 
 // Live badge + sound. Insert-only: an update here is something being
 // marked read, which the client that did it already knows about, and
@@ -5227,7 +5003,7 @@ export async function removeGroupMember(conversationId, userId) {
   if (error) throw error;
 }
 
-export async function getGroupMembers(conversationId) {
+async function getGroupMembers(conversationId) {
   const { data, error } = await supabase
     .from('conversation_participants')
     .select(`user_id, joined_at, last_read_at,
@@ -5778,7 +5554,7 @@ export async function getDiaryGameKeys(userId) {
 // punctuation, edition words dropped. IGDB gives a remaster, a "Definitive
 // Edition" or an HD re-release its own id, so matching ids alone let a game
 // you've already played come back as a "new" pick under a different id.
-export function diaryTitleKey(title) {
+function diaryTitleKey(title) {
   return String(title || '')
     .normalize('NFKD').replace(/[̀-ͯ]/g, '')
     .toLowerCase()

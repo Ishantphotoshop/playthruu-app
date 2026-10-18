@@ -87,7 +87,7 @@ export async function paintStoryRail(slot) {
 
 // ---- the viewer -------------------------------------------------------
 
-export function openStoryViewer(groups, startGroup = 0, onClose) {
+function openStoryViewer(groups, startGroup = 0, onClose) {
   let gi = startGroup;
   let si = 0;
   let timer = null;
@@ -286,7 +286,7 @@ function openViewerList(story, onClose) {
 // game you are actually playing — a full game search would invite
 // posting about things you have never touched, which is a different
 // (and less interesting) feature.
-export function openAddStorySheet(onDone) {
+function openAddStorySheet(onDone) {
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
   overlay.innerHTML = `

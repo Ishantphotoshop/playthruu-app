@@ -30,7 +30,7 @@ function perGame(logs) {
   return map;
 }
 
-export function buildCompare(mine, theirs) {
+function buildCompare(mine, theirs) {
   const a = perGame(mine);
   const b = perGame(theirs);
   const items = [];

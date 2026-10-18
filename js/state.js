@@ -27,6 +27,4 @@ export function cachedProfile(userId) {
   } catch { return null; }
 }
 
-export function isLoggedIn() {
-  return !!state.user;
-}
+

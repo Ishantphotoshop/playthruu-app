@@ -275,40 +275,6 @@ export function gameCard(game, { note } = {}) {
     </a>`;
 }
 
-export function gameGrid(games) {
-  if (!games.length) return emptyState('No games here yet.');
-  return `<div class="game-grid">${games.map(g => gameCard(g)).join('')}</div>`;
-}
-
-// Numbered, reorderable rows for a list's detail page — ranked #1, #2,
-// #3... with up/down/remove controls when it's your own list, read-only
-// (no controls, but numbering stays) when viewing someone else's.
-export function rankedList(items, { isOwn = false } = {}) {
-  if (!items.length) return emptyState('No games in this list yet.');
-  return `<div class="ranked-list">
-    ${items.map((item, i) => {
-      const g = item.games;
-      const meta = [g.release_year, g.platform].filter(Boolean).join(' · ');
-      return `
-        <div class="ranked-row" data-game-id="${g.id}">
-          <div class="ranked-row__num">${i + 1}</div>
-          <a href="#/game/${g.id}" class="ranked-row__link">
-            ${posterFrame(g.cover_url, g.title, 'ranked-row__cover')}
-            <div class="ranked-row__info">
-              <div class="ranked-row__title">${esc(g.title)}</div>
-              ${meta ? `<div class="ranked-row__meta">${esc(meta)}</div>` : ''}
-            </div>
-          </a>
-          ${isOwn ? `
-            <div class="ranked-row__controls">
-              <button type="button" class="ranked-row__move" data-dir="up" data-idx="${i}" ${i === 0 ? 'disabled' : ''} aria-label="Move up">${iconChevronUp()}</button>
-              <button type="button" class="ranked-row__move" data-dir="down" data-idx="${i}" ${i === items.length - 1 ? 'disabled' : ''} aria-label="Move down">${iconChevronDown()}</button>
-              <button type="button" class="ranked-row__remove" data-idx="${i}" aria-label="Remove from list">${iconClose()}</button>
-            </div>` : ''}
-        </div>`;
-    }).join('')}
-  </div>`;
-}
 
 // Renders search results that mix your own catalog (clickable, tagged
 // data-kind="local") with not-yet-added IGDB results (data-kind="remote",
@@ -566,7 +532,7 @@ export function wireTrendingStrip(container, games, { onSelect }) {
 // alongside the stars (all independent — someone can rate AND love AND
 // review the same log), each its own small icon so every combination
 // stays legible instead of trying to cram one composite glyph.
-export function cardWho(profile, rating, { playing = false, replayed = false, hasReview = false } = {}) {
+function cardWho(profile, rating, { playing = false, replayed = false, hasReview = false } = {}) {
   const bits = [];
   if (playing) {
     // No "Playing" label on the card itself. Both places these appear
@@ -610,13 +576,6 @@ export function cardWho(profile, rating, { playing = false, replayed = false, ha
     </a>`;
 }
 
-// Supabase's numeric column comes back as a string with trailing
-// precision ("4.00", "3.50") — this trims it to how a rating actually
-// gets talked about (4, 3.5), never a redundant "4.0".
-function formatRatingNum(rating) {
-  const n = Number(rating);
-  return Number.isInteger(n) ? String(n) : n.toFixed(1);
-}
 
 // A friend's completed game. The poster opens that log's OWN review page
 // (their status/rating/write-up), not the game page — the whole entry is
@@ -992,7 +951,7 @@ export function skeletonList(count = 4) {
 }
 
 // ---- icons (inline SVG, currentColor, no external requests) ----
-export function iconHome() { return `<svg viewBox="0 0 24 24" fill="none"><path d="M4 11.5 12 4l8 7.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 10v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`; }
+function iconHome() { return `<svg viewBox="0 0 24 24" fill="none"><path d="M4 11.5 12 4l8 7.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 10v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`; }
 export function iconNewspaper() { return `<svg viewBox="0 0 24 24" fill="none"><rect x="3.5" y="5.5" width="13" height="14" rx="1.5" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M16.5 9h2.5a1.5 1.5 0 0 1 1.5 1.5v8a1.5 1.5 0 0 1-1.5 1.5h-13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 9.5h5M7 12.5h5M7 15.5h3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`; }
 export function iconSearch() { return `<svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="6.5" stroke="currentColor" stroke-width="2"/><path d="m20 20-4.3-4.3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`; }
 export function iconFilter() { return `<svg viewBox="0 0 24 24" fill="none"><path d="M4 4h16l-6 8v6l-4 2v-8z" fill="currentColor"/></svg>`; }
@@ -1010,11 +969,9 @@ export function iconList() { return `<svg viewBox="0 0 24 24" fill="none"><path 
 export function iconUser() { return `<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="3.5" stroke="currentColor" stroke-width="2"/><path d="M4.5 20c1.4-4 4.2-6 7.5-6s6.1 2 7.5 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`; }
 export function iconDiary() { return `<svg viewBox="0 0 24 24" fill="none"><path d="M5 4.5A1.5 1.5 0 0 1 6.5 3H17a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6.5A1.5 1.5 0 0 1 5 19.5v-15z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M8.5 3v18" stroke="currentColor" stroke-width="2"/><path d="M12 8h4M12 11.5h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`; }
 export function iconFlame() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.5c1 3-3.5 4.6-3.5 8.5a3.5 3.5 0 0 0 7 0c0-1.4-.7-2.3-1.2-3 .8 3-2.3 3.6-2.3 3.6"/><path d="M8.2 12.5A5 5 0 0 0 12 21a5 5 0 0 0 4.8-6.4c-.5 1.6-1.8 2.4-1.8 2.4"/></svg>`; }
-export function iconStamp() { return ''; } // the old computer-like empty-state icon is gone everywhere
-export function iconTag() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round"><path d="M11.5 3.5h6a2 2 0 0 1 2 2v6a1 1 0 0 1-.3.7l-8.5 8.5a1 1 0 0 1-1.4 0l-6.5-6.5a1 1 0 0 1 0-1.4l8.5-8.5a1 1 0 0 1 .7-.3z"/><circle cx="16" cy="8" r="1.4" fill="currentColor" stroke="none"/></svg>`; }
-export function iconStar() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><path d="M12 3.3l2.6 5.5 5.9.8-4.3 4.2 1 6-5.2-2.9-5.2 2.9 1-6-4.3-4.2 5.9-.8z"/></svg>`; }
-export function iconTrophy() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4.5h10v5a5 5 0 0 1-10 0v-5z"/><path d="M7 6H4.5A1.5 1.5 0 0 0 3 7.5 3.5 3.5 0 0 0 6.5 11H7M17 6h2.5A1.5 1.5 0 0 1 21 7.5 3.5 3.5 0 0 1 17.5 11H17"/><path d="M12 14.5v3.5M9 21h6M9.5 18h5"/></svg>`; }
-export function iconSparkle() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M11.3 3.5c.4 3.4 1.3 4.3 4.7 4.7-3.4.4-4.3 1.3-4.7 4.7-.4-3.4-1.3-4.3-4.7-4.7 3.4-.4 4.3-1.3 4.7-4.7z"/><path d="M17.8 13.5c.25 2 .75 2.5 2.7 2.75-1.95.25-2.45.75-2.7 2.75-.25-2-.75-2.5-2.7-2.75 1.95-.25 2.45-.75 2.7-2.75z"/></svg>`; }
+export function iconStamp() { return ''; }
+
+
 // Open journal with a quill — the centre "Log" action. Drawn in the same
 // 24x24 stroke language as the rest of the set so it doesn't read as a
 // pasted-in graphic: the right-hand page stops short where the feather
@@ -1049,7 +1006,7 @@ export function iconChevronRight() { return `<svg viewBox="0 0 24 24" fill="none
 export function iconPlus() { return `<svg viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>`; }
 // "New message" — a pencil writing on paper, the standard compose glyph.
 export function iconCompose() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>`; }
-export function iconCalendar() { return `<svg viewBox="0 0 24 24" fill="none" class="date-input-wrap__icon"><rect x="4" y="5.5" width="16" height="15" rx="2.5" stroke="currentColor" stroke-width="2"/><path d="M4 10h16M8 3.5v3M16 3.5v3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`; }
+
 // A STROKE gear, six teeth and a hollow centre. The old one was a
 // solid Material cog — the only filled glyph in an app whose icons
 // are all outlines — and at the 19px it actually renders at, solid
@@ -1070,8 +1027,8 @@ export function iconQr() { return `<svg viewBox="0 0 24 24" fill="none"><rect x=
 export function iconNote() { return `<svg viewBox="0 0 24 24" fill="none"><path d="M6 3.5h9l4 4V19a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 10h6M9 13.5h6M9 17h3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>`; }
 export function iconCamera() { return `<svg viewBox="0 0 24 24" fill="none"><path d="M4 8.5a1.5 1.5 0 0 1 1.5-1.5h1.9l1-1.6h7.2l1 1.6h1.9A1.5 1.5 0 0 1 20 8.5V18a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18V8.5z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.4" stroke="currentColor" stroke-width="1.8"/></svg>`; }
 export function iconDrag() { return `<svg viewBox="0 0 24 24" fill="none"><circle cx="9" cy="6" r="1.4" fill="currentColor"/><circle cx="15" cy="6" r="1.4" fill="currentColor"/><circle cx="9" cy="12" r="1.4" fill="currentColor"/><circle cx="15" cy="12" r="1.4" fill="currentColor"/><circle cx="9" cy="18" r="1.4" fill="currentColor"/><circle cx="15" cy="18" r="1.4" fill="currentColor"/></svg>`; }
-export function iconUserPlus() { return `<svg viewBox="0 0 24 24" fill="none"><circle cx="9.5" cy="8" r="3.5" stroke="currentColor" stroke-width="2"/><path d="M2.5 20c1.3-3.8 3.9-5.7 7-5.7s5.7 1.9 7 5.7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M18.5 7.5v5M16 10h5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`; }
-export function iconUserCheck() { return `<svg viewBox="0 0 24 24" fill="none"><circle cx="9.5" cy="8" r="3.5" stroke="currentColor" stroke-width="2"/><path d="M2.5 20c1.3-3.8 3.9-5.7 7-5.7s5.7 1.9 7 5.7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M16 11.5l2 2 4-4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`; }
+function iconUserPlus() { return `<svg viewBox="0 0 24 24" fill="none"><circle cx="9.5" cy="8" r="3.5" stroke="currentColor" stroke-width="2"/><path d="M2.5 20c1.3-3.8 3.9-5.7 7-5.7s5.7 1.9 7 5.7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M18.5 7.5v5M16 10h5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`; }
+function iconUserCheck() { return `<svg viewBox="0 0 24 24" fill="none"><circle cx="9.5" cy="8" r="3.5" stroke="currentColor" stroke-width="2"/><path d="M2.5 20c1.3-3.8 3.9-5.7 7-5.7s5.7 1.9 7 5.7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M16 11.5l2 2 4-4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`; }
 export function iconLock() { return `<svg viewBox="0 0 24 24" fill="none"><rect x="5" y="10.5" width="14" height="9.5" rx="2" stroke="currentColor" stroke-width="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`; }
 export function iconMail() { return `<svg viewBox="0 0 24 24" fill="none"><rect x="3.5" y="5.5" width="17" height="13" rx="2" stroke="currentColor" stroke-width="2"/><path d="M4.5 7l7.5 6 7.5-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`; }
 export function iconEye() { return `<svg viewBox="0 0 24 24" fill="none"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="12" cy="12" r="2.8" stroke="currentColor" stroke-width="2"/></svg>`; }

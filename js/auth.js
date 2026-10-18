@@ -185,11 +185,6 @@ export async function changeEmail(newEmail) {
   if (error) throw error;
 }
 
-export async function getCurrentUser() {
-  const { data, error } = await supabase.auth.getUser();
-  if (error) return null;
-  return data.user;
-}
 
 export function onAuthChange(callback) {
   return supabase.auth.onAuthStateChange((event, session) => callback(event, session));

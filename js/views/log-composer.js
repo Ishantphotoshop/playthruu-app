@@ -604,15 +604,6 @@ function headTitle(game) {
   return t.replace(new RegExp('\\s*\\(' + game.release_year + '\\)\\s*$'), '');
 }
 
-function shortDate(iso) {
-  if (!iso) return '';
-  const d = new Date(iso + (iso.length === 10 ? 'T00:00:00' : ''));
-  if (isNaN(d)) return formatDate(iso);
-  const thisYear = d.getFullYear() === new Date().getFullYear();
-  return d.toLocaleDateString(undefined, thisYear
-    ? { month: 'short', day: 'numeric' }
-    : { year: 'numeric', month: 'short', day: 'numeric' });
-}
 
 function localToday() {
   const n = new Date();
@@ -639,24 +630,7 @@ function iconFmtLink() { return '<svg viewBox="0 0 24 24" fill="none" stroke="cu
 function iconFmtUndo() { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 7 5 11l4 4"/><path d="M5 11h9a5 5 0 0 1 0 10h-2"/></svg>'; }
 function iconFmtRedo() { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 7 4 4-4 4"/><path d="M19 11h-9a5 5 0 0 0 0 10h2"/></svg>'; }
 
-function countWords(text) {
-  const t = String(text || '').trim();
-  if (!t) return '';
-  const n = t.split(/\s+/).length;
-  return `${n} word${n === 1 ? '' : 's'}`;
-}
 
-// The heart, at both weights. The viewBox is wider than the 3 4 18 18
-// the rest of the app uses for this path: measured, the path itself
-// runs from x 2.95 to 21.05, so that box clipped a sliver off both
-// sides — invisible at the 10px it renders in a feed byline, plainly
-// visible at 26px here. The outline needs more room again, since a
-// 1.9 stroke puts another 0.95 beyond the path on every side. Both
-// weights share one box so the mark does not change size when it is
-// toggled.
-function iconHeartLine() {
-  return `<svg viewBox="1.8 2.2 20.4 20.4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M12 20.3 4.3 12.6A4.7 4.7 0 0 1 11 6l1 1 1-1a4.7 4.7 0 0 1 6.7 6.6z"/></svg>`;
-}
 function iconHeartSolid() {
   return `<svg viewBox="1.8 2.2 20.4 20.4" fill="currentColor"><path d="M12 20.3 4.3 12.6A4.7 4.7 0 0 1 11 6l1 1 1-1a4.7 4.7 0 0 1 6.7 6.6z"/></svg>`;
 }

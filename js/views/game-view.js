@@ -1112,13 +1112,13 @@ function openTrailer(embedUrl) {
 }
 
 function iconCloseSmall() { return `<svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>`; }
-function iconLogAgain() { return `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.4-5.7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M20 3.6V9h-5.4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`; }
+
 function iconPencil() { return `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15.6 4.6l3.8 3.8M5 19h3.6L19.4 8.2a1.6 1.6 0 0 0 0-2.3l-1.3-1.3a1.6 1.6 0 0 0-2.3 0L5 15.4z" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round"/></svg>`; }
 function iconDots() { return `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5.5" cy="12" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="18.5" cy="12" r="1.9"/></svg>`; }
 function iconChevronSmall() { return `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`; }
-function iconStarLine() { return `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3.8l2.7 5.6 6.1.85-4.4 4.3 1.05 6.1-5.45-2.9-5.45 2.9L7.6 14.55 3.2 10.25l6.1-.85z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>`; }
+
 function iconController() { return `<svg viewBox="0 0 24 24" fill="none"><path d="M7 9h10l2.5 7a2 2 0 0 1-3.7 1.4L14 15h-4l-1.8 2.4A2 2 0 0 1 4.5 16z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 11.5v3M7.5 13h3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="16" cy="12" r="0.9" fill="currentColor"/><circle cx="18" cy="14" r="0.9" fill="currentColor"/></svg>`; }
-function iconDoc() { return `<svg viewBox="0 0 24 24" fill="none"><path d="M6 3.5h9l4 4V19a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 10h6M9 13.5h6M9 17h3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>`; }
+
 function iconStack() { return `<svg viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="12" height="16" rx="1.5" stroke="currentColor" stroke-width="1.8"/><path d="M8 1.5h12v16" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" opacity="0.55"/></svg>`; }
 
 
@@ -1754,19 +1754,15 @@ function qaIcon({ box, body, inside = '', outside = '', base = '', knob = '', st
   const on = `<svg class="lg-qa__on-ic" viewBox="${box}">${outside ? line(outside, 2) : ''}<path d="${body}" fill="currentColor"${solidStroke ? ' stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"' : ''}/>${inside ? `<path d="${inside}" fill="none" stroke="var(--surface)" stroke-width="1.7" stroke-linecap="round"/>` : ''}</svg>`;
   return off + on;
 }
-function iconPadLg() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M7.5 8h9a4 4 0 0 1 3.9 4.9l-1 4.3a2 2 0 0 1-3.5.8L14 16h-4l-1.9 2a2 2 0 0 1-3.5-.8l-1-4.3A4 4 0 0 1 7.5 8z"/><path d="M8 11v3M6.5 12.5h3" stroke-linecap="round"/><circle cx="15.5" cy="11.6" r=".7" fill="currentColor"/><circle cx="17.3" cy="13.4" r=".7" fill="currentColor"/></svg>`; }
-function iconBacklogLg() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"><path d="M6 4.5h9v15l-4.5-3.3L6 19.5z"/><circle cx="17.5" cy="16.5" r="4"/><path d="M17.5 14.6v3.8M15.6 16.5h3.8"/></svg>`; }
+
+
 function iconPlusLg() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>`; }
 function iconListAdd() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3.5 7h11M3.5 12h11M3.5 17h7M18 13.5v7M14.5 17h7"/></svg>`; }
 function iconExpand() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg>`; }
 function iconShareLg() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="18" cy="5.5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="18.5" r="2.5"/><path d="M8.2 10.8l7.6-4.1M8.2 13.2l7.6 4.1"/></svg>`; }
 function iconPlay() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M10 8.5l6 3.5-6 3.5z"/></svg>`; }
-function iconBookmarkSm() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round"><path d="M6 3.8h12a1 1 0 0 1 1 1V20.5l-7-4.1-7 4.1V4.8a1 1 0 0 1 1-1z"/></svg>`; }
-function iconPencilSm() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L20 8l-4-4L4 16z"/></svg>`; }
-function iconPlusSm() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>`; }
-function iconLinkSm() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M10 13.5a4 4 0 0 0 5.7 0l2.8-2.8a4 4 0 0 0-5.7-5.7L11.5 6.3"/><path d="M14 10.5a4 4 0 0 0-5.7 0l-2.8 2.8a4 4 0 0 0 5.7 5.7l1.3-1.3"/></svg>`; }
-function iconCalendarSm() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3.2v3.6M16 3.2v3.6"/></svg>`; }
-function iconClockSm() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.8"/><path d="M12 7.2V12l3.2 2"/></svg>`; }
+
+
 // Measured, this path runs from x 2.95 to 21.05 — so the 3 4 18 18 box
 // the rest of the app uses for it shaves a sliver off both sides. That
 // is invisible at the 10px a feed byline renders it at and plain to see
