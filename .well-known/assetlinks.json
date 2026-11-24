@@ -7,7 +7,9 @@
       "namespace": "android_app",
       "package_name": "com.playthruu.app",
       "sha256_cert_fingerprints": [
-        "8C:2B:26:4B:06:11:EC:F3:F9:38:43:FA:5F:C5:1D:AC:F0:EA:81:26:22:BA:8C:C7:09:4D:53:B8:F6:2B:A1:E1"
+        "55:71:6B:96:72:69:15:67:43:01:08:DC:AB:AB:81:4B:4F:A5:BA:91:13:C1:66:34:0F:5F:F1:A9:2E:A4:3A:BA",
+        "0B:36:57:B3:81:E8:AB:84:61:04:B4:9D:B6:F9:0B:B2:1D:2A:25:B0:35:03:E8:D9:8F:69:60:86:5A:C0:16:0E",
+        "E8:CB:95:56:5B:51:D3:0D:B1:90:4F:99:CD:20:56:74:80:89:31:E1:23:1C:35:22:18:EE:86:0A:58:AD:CE:C8"
       ]
     }
   }
