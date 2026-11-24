@@ -368,6 +368,13 @@ body {
   overscroll-behavior-y: none;
   overflow-x: hidden;
   width: 100%;
+  /* This is an app-like surface, not a document reader. Prevent Chrome's
+     long-press selection handles and Copy / Web search menu on ordinary
+     interface labels, cards and headings. Actual form fields opt back in
+     immediately below so users can still edit and select what they type. */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 h1, h2, h3, p, figure { margin: 0; }
 a { color: inherit; text-decoration: none; }
@@ -379,7 +386,13 @@ a { color: inherit; text-decoration: none; }
    but on a small icon-only circle (the filter button) it read as a
    clearly misaligned glyph no amount of resizing the icon could fix. */
 button { font: inherit; color: inherit; background: none; border: none; padding: 0; cursor: pointer; }
-input, textarea { font: inherit; color: inherit; }
+input, textarea, [contenteditable="true"] {
+  font: inherit;
+  color: inherit;
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
+}
 img { max-width: 100%; display: block; }
 ul { list-style: none; margin: 0; padding: 0; }
 
