@@ -378,6 +378,14 @@ body {
 }
 h1, h2, h3, p, figure { margin: 0; }
 a { color: inherit; text-decoration: none; }
+/* Chrome otherwise treats held profile photos and linked cover art as
+   browser content, showing "Open in Chrome", copy, download and share.
+   These are app controls, so a hold must do nothing. */
+a, img {
+  -webkit-touch-callout: none;
+  -webkit-user-drag: none;
+  user-drag: none;
+}
 /* padding: 0 is load-bearing, not decoration — the browser's own default
    button padding (Chromium: 1px 6px, not symmetric) was never zeroed
    here, so every icon-only circular button centering its icon with

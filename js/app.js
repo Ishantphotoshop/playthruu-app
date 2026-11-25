@@ -834,6 +834,21 @@ function wirePosterLongPress() {
 }
 
 async function boot() {
+  // This runs before page-specific handlers. Chrome treats a held link or
+  // image as browser content by default (preview/copy/download/share), which
+  // is wrong for an app-style UI. Inputs and editable content are exempt so
+  // users can still select and edit text they enter.
+  const isEditableTarget = (target) => target?.closest?.('input, textarea, select, [contenteditable="true"]');
+  document.addEventListener('contextmenu', (e) => {
+    if (!isEditableTarget(e.target)) e.preventDefault();
+  }, true);
+  document.addEventListener('selectstart', (e) => {
+    if (!isEditableTarget(e.target)) e.preventDefault();
+  }, true);
+  document.addEventListener('dragstart', (e) => {
+    if (!isEditableTarget(e.target)) e.preventDefault();
+  }, true);
+
   wireGlobalChrome();
   wirePosterLongPress();
   trackOverlays({
