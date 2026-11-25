@@ -29,6 +29,14 @@
 <meta name="apple-mobile-web-app-title" content="Playthruu">
 <link rel="stylesheet" href="css/styles.css">
 <script>
+  // Playthruu deliberately has no vibration feedback. This is installed
+  // before the application modules load, so every web haptic call is a
+  // harmless no-op while touch, scrolling and forms continue normally.
+  (() => {
+    try { navigator.vibrate = () => false; } catch { /* unavailable */ }
+  })();
+</script>
+<script>
   // The real visible height, as a CSS variable. 100vh / 100dvh are wrong in
   // some Android WebViews (they include the system bars), which made the
   // app taller than the screen: scrolling stopped with the last rows still
